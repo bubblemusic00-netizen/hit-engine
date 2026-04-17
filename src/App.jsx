@@ -1768,148 +1768,344 @@ function CountStepper({ value, onChange, min = 1, max = 10 }) {
 
 function HitButton({ onRandomize, isRolling, disabled }) {
   const [hover, setHover] = useState(false);
+  const [pressing, setPressing] = useState(false);
+  const [burstKey, setBurstKey] = useState(0); // remount burst on each press
 
-  // 16 marquee bulbs chasing around the border
+  const handleClick = () => {
+    if (disabled || isRolling) return;
+    setBurstKey(k => k + 1);
+    onRandomize();
+  };
+
   const MARQUEE_COLORS = [V.hotPink, V.neonGold, V.cyan, V.orange, V.lime, V.magenta, V.red, V.purple];
 
   return (
     <>
       <style>{`
-        @keyframes casinoMarquee {
-          0%, 49%  { opacity: 1; box-shadow: 0 0 8px currentColor, 0 0 16px currentColor, 0 0 24px currentColor; }
-          50%,100% { opacity: 0.25; box-shadow: 0 0 3px currentColor; }
+        /* Conic gradient halo rotating around the entire button */
+        @keyframes hitHaloRotate {
+          from { transform: rotate(0deg); }
+          to   { transform: rotate(360deg); }
         }
-        @keyframes casinoBorderChase {
-          0%   { background-position: 0% 0%; }
-          100% { background-position: 400% 0%; }
+        /* Idle breathing — subtle alive state */
+        @keyframes hitBreathe {
+          0%,100% { transform: scale(1);    filter: brightness(1); }
+          50%     { transform: scale(1.015); filter: brightness(1.08); }
         }
-        @keyframes casinoJackpotGlow {
-          0%,100% { text-shadow: 0 0 14px ${V.neonGold}, 0 0 28px ${V.neonGold}, 0 0 56px ${V.orange}; }
-          50%     { text-shadow: 0 0 24px ${V.neonGold}, 0 0 48px ${V.orange},  0 0 80px ${V.hotPink}; }
+        /* Dopamine glow pulse */
+        @keyframes hitGlowPulse {
+          0%,100% { box-shadow:
+            0 0 30px ${V.red},
+            0 0 60px ${V.hotPink}aa,
+            0 0 100px ${V.hotPink}55,
+            inset 0 6px 0 rgba(255,255,255,0.35),
+            inset 0 -10px 20px rgba(0,0,0,0.6); }
+          50%     { box-shadow:
+            0 0 50px ${V.red},
+            0 0 90px ${V.hotPink}cc,
+            0 0 140px ${V.neonGold}55,
+            inset 0 6px 0 rgba(255,255,255,0.45),
+            inset 0 -10px 20px rgba(0,0,0,0.6); }
         }
-        @keyframes casinoStrobe {
-          0%,100% { filter: brightness(1); }
-          50%     { filter: brightness(1.8); }
+        /* Press ring burst — expanding circle that fades */
+        @keyframes hitRingBurst {
+          0%   { transform: scale(0.5); opacity: 0.9; border-width: 4px; }
+          100% { transform: scale(2.4); opacity: 0;   border-width: 1px; }
         }
-        .casino-hit-lever { transition: transform 120ms cubic-bezier(.5,1.5,.5,1); }
-        .casino-hit-lever:active:not(:disabled) { transform: translateY(3px) scale(0.98); }
-        .casino-hit-lever:hover:not(:disabled) { transform: translateY(-1px); }
+        /* Particle burst */
+        @keyframes hitParticle {
+          0%   { transform: translate(0,0) scale(1); opacity: 1; }
+          100% { transform: var(--tr) scale(0.3);    opacity: 0; }
+        }
+        /* Rolling strobe */
+        @keyframes hitStrobe {
+          0%,100% { filter: brightness(1.1) saturate(1.2); }
+          50%     { filter: brightness(2.2) saturate(1.6); }
+        }
+        /* Text shimmer */
+        @keyframes hitTextShimmer {
+          0%,100% { text-shadow:
+            0 0 18px rgba(255,255,255,0.9),
+            0 0 36px ${V.hotPink},
+            0 0 72px ${V.neonGold},
+            2px 2px 0 rgba(0,0,0,0.8); }
+          50%     { text-shadow:
+            0 0 24px rgba(255,255,255,1),
+            0 0 48px ${V.neonGold},
+            0 0 96px ${V.hotPink},
+            2px 2px 0 rgba(0,0,0,0.8); }
+        }
+        /* Marquee LED flicker */
+        @keyframes hitLed {
+          0%,49%   { opacity: 1; box-shadow: 0 0 10px currentColor, 0 0 20px currentColor; }
+          50%,100% { opacity: 0.2; box-shadow: 0 0 3px currentColor; }
+        }
+        /* Chrome ring rotation */
+        @keyframes hitRingRotate {
+          from { transform: rotate(0deg); }
+          to   { transform: rotate(-360deg); }
+        }
+
+        .hit-wrapper {
+          position: relative;
+          animation: hitBreathe 3.2s ease-in-out infinite;
+          transition: transform 120ms cubic-bezier(.5,1.5,.5,1);
+        }
+        .hit-wrapper:hover { animation-duration: 1.4s; }
+        .hit-core {
+          transition: transform 80ms cubic-bezier(.3,1.5,.4,1), box-shadow 180ms ease-out;
+        }
+        .hit-core:hover:not(:disabled) { transform: translateY(-3px) scale(1.02); }
+        .hit-core:active:not(:disabled) { transform: translateY(4px) scale(0.97); }
       `}</style>
 
-      <div style={{
-        position: "relative",
-        padding: 4,
-        background: `linear-gradient(180deg, ${V.velvet} 0%, #0a0010 100%)`,
-        backgroundImage: `
-          linear-gradient(180deg, ${V.velvet} 0%, #0a0010 100%),
-          linear-gradient(90deg, ${V.hotPink} 0%, ${V.neonGold} 20%, ${V.cyan} 40%, ${V.lime} 60%, ${V.orange} 80%, ${V.hotPink} 100%)
-        `,
-        backgroundOrigin: "border-box",
-        backgroundClip: "padding-box, border-box",
-        backgroundSize: "100% 100%, 400% 100%",
-        border: "3px solid transparent",
-        animation: `casinoBorderChase ${isRolling ? "0.45s" : "2.5s"} linear infinite`,
-        boxShadow: `0 0 32px ${V.hotPink}55, 0 0 64px ${V.neonGold}22, inset 0 0 24px rgba(0,0,0,0.7)`,
-      }}>
-        {/* Top marquee */}
+      <div className="hit-wrapper">
+        {/* ── OUTER CONIC HALO ─────────────────────────────────────── */}
         <div style={{
-          display: "flex", justifyContent: "space-between", alignItems: "center",
-          padding: "10px 14px 6px", gap: 6,
-        }}>
-          {Array.from({ length: 16 }).map((_, i) => {
-            const color = MARQUEE_COLORS[i % MARQUEE_COLORS.length];
-            return (
-              <span key={i} style={{
-                width: 8, height: 8, borderRadius: "50%",
-                background: color, color,
-                animation: `casinoMarquee ${isRolling ? 0.12 + (i % 4) * 0.03 : 0.5 + (i % 4) * 0.08}s ease-in-out infinite`,
-                animationDelay: `${i * (isRolling ? 0.015 : 0.05)}s`,
-                flex: "0 0 auto",
-              }} />
-            );
-          })}
-        </div>
+          position: "absolute",
+          inset: -18,
+          borderRadius: 24,
+          background: `conic-gradient(from 0deg,
+            ${V.hotPink} 0%, ${V.neonGold} 14%, ${V.cyan} 28%,
+            ${V.lime} 42%, ${V.orange} 56%, ${V.magenta} 70%,
+            ${V.red} 84%, ${V.hotPink} 100%)`,
+          filter: `blur(14px)`,
+          opacity: isRolling ? 0.95 : hover ? 0.75 : 0.42,
+          animation: `hitHaloRotate ${isRolling ? "1.2s" : "7s"} linear infinite`,
+          pointerEvents: "none",
+          transition: "opacity 180ms ease-out",
+          zIndex: 0,
+        }} />
 
-        {/* Status readout */}
+        {/* ── FRAME WITH MARQUEE LIGHTS ────────────────────────────── */}
         <div style={{
-          margin: "0 14px 10px",
-          padding: "6px 10px",
-          background: "rgba(0,0,0,0.7)",
-          border: `1px solid ${V.neonGold}66`,
-          display: "flex", justifyContent: "space-between", alignItems: "center",
-          fontFamily: T.font_mono, fontSize: 10, letterSpacing: "0.2em", fontWeight: 700,
+          position: "relative", zIndex: 1,
+          padding: 5,
+          background: `linear-gradient(180deg, #120010 0%, #05000a 100%)`,
+          backgroundImage: `
+            linear-gradient(180deg, #120010 0%, #05000a 100%),
+            conic-gradient(from 0deg,
+              ${V.hotPink}, ${V.neonGold}, ${V.cyan}, ${V.lime},
+              ${V.orange}, ${V.magenta}, ${V.red}, ${V.hotPink})`,
+          backgroundOrigin: "border-box",
+          backgroundClip: "padding-box, border-box",
+          border: "3px solid transparent",
+          borderRadius: 18,
+          boxShadow: `0 20px 60px rgba(0,0,0,0.7), inset 0 0 30px rgba(0,0,0,0.8)`,
+          overflow: "hidden",
         }}>
-          <span style={{ color: V.neonGold, textShadow: `0 0 6px ${V.neonGold}` }}>★ JACKPOT READY</span>
-          <span style={{ color: isRolling ? V.orange : V.lime, textShadow: `0 0 6px currentColor`,
-            animation: isRolling ? "casinoStrobe 0.2s linear infinite" : "none",
+          {/* Top marquee */}
+          <div style={{
+            display: "flex", justifyContent: "space-between", alignItems: "center",
+            padding: "10px 14px 4px", gap: 6,
           }}>
-            {isRolling ? "◉ ROLLING" : "● ARMED"}
-          </span>
-        </div>
+            {Array.from({ length: 16 }).map((_, i) => {
+              const color = MARQUEE_COLORS[i % MARQUEE_COLORS.length];
+              return (
+                <span key={i} style={{
+                  width: 8, height: 8, borderRadius: "50%",
+                  background: color, color,
+                  animation: `hitLed ${isRolling ? 0.1 + (i % 4) * 0.02 : 0.45 + (i % 4) * 0.08}s ease-in-out infinite`,
+                  animationDelay: `${i * (isRolling ? 0.012 : 0.05)}s`,
+                  flex: "0 0 auto",
+                }} />
+              );
+            })}
+          </div>
 
-        {/* THE BIG RED PULL LEVER */}
-        <div style={{ padding: "0 14px 6px" }}>
-          <button type="button"
-            className="casino-hit-lever"
-            onClick={onRandomize}
-            disabled={disabled || isRolling}
-            onMouseEnter={() => setHover(true)}
-            onMouseLeave={() => setHover(false)}
-            style={{
-              width: "100%",
-              padding: "28px 20px",
-              background: isRolling
-                ? `radial-gradient(ellipse at 50% 30%, ${V.orange} 0%, ${V.red} 40%, ${V.darkRed} 100%)`
-                : hover
-                  ? `radial-gradient(ellipse at 50% 30%, #FF5050 0%, ${V.red} 40%, ${V.darkRed} 100%)`
-                  : `radial-gradient(ellipse at 50% 30%, #FF3030 0%, #D00000 50%, ${V.darkRed} 100%)`,
-              border: `3px solid ${V.neonGold}`,
-              color: "#FFFFFF",
-              fontSize: 56,
-              fontWeight: 900,
-              letterSpacing: "0.18em",
-              fontFamily: T.font_sans,
-              cursor: disabled ? "not-allowed" : isRolling ? "wait" : "pointer",
-              textShadow: isRolling
-                ? `0 0 20px ${V.neonGold}, 0 0 40px ${V.orange}, 2px 2px 0 rgba(0,0,0,0.6)`
-                : `0 0 16px rgba(255,255,255,0.5), 0 0 32px ${V.hotPink}88, 2px 2px 0 rgba(0,0,0,0.6)`,
-              boxShadow: isRolling
-                ? `inset 0 0 30px rgba(0,0,0,0.7), 0 0 40px ${V.neonGold}, 0 0 80px ${V.orange}`
-                : `inset 0 4px 0 rgba(255,255,255,0.25), inset 0 -6px 12px rgba(0,0,0,0.5), 0 0 24px ${V.red}CC, 0 0 48px ${V.hotPink}77, 0 6px 0 ${V.darkRed}`,
-              position: "relative",
-              overflow: "hidden",
-              opacity: disabled ? 0.5 : 1,
-              animation: isRolling ? "casinoStrobe 0.15s linear infinite" : hover && !disabled ? "casinoJackpotGlow 1s ease-in-out infinite" : "none",
-            }}>
-            {/* Inner gloss */}
-            <span style={{
-              position: "absolute", top: 0, left: "8%", right: "8%", height: "40%",
-              background: "linear-gradient(180deg, rgba(255,255,255,0.45) 0%, rgba(255,255,255,0) 100%)",
-              pointerEvents: "none", borderRadius: "0 0 50% 50% / 0 0 100% 100%",
-            }} />
-            <span style={{ position: "relative", zIndex: 1 }}>
-              {isRolling ? "◉" : "HIT"}
+          {/* Status readout */}
+          <div style={{
+            margin: "0 14px 10px",
+            padding: "7px 12px",
+            background: "rgba(0,0,0,0.75)",
+            border: `1px solid ${V.neonGold}66`,
+            borderRadius: 4,
+            display: "flex", justifyContent: "space-between", alignItems: "center",
+            fontFamily: T.font_mono, fontSize: 10, letterSpacing: "0.25em", fontWeight: 700,
+          }}>
+            <span style={{ color: V.neonGold, textShadow: `0 0 8px ${V.neonGold}` }}>
+              ★ JACKPOT
             </span>
-          </button>
-        </div>
+            <span style={{
+              color: isRolling ? V.orange : V.lime,
+              textShadow: `0 0 8px currentColor`,
+              animation: isRolling ? "hitStrobe 0.18s linear infinite" : "none",
+            }}>
+              {isRolling ? "◉ SPINNING" : "● READY"}
+            </span>
+          </div>
 
-        {/* Bottom marquee */}
-        <div style={{
-          display: "flex", justifyContent: "space-between", alignItems: "center",
-          padding: "6px 14px 10px", gap: 6,
-        }}>
-          {Array.from({ length: 16 }).map((_, i) => {
-            const color = MARQUEE_COLORS[(i + 3) % MARQUEE_COLORS.length];
-            return (
-              <span key={i} style={{
-                width: 8, height: 8, borderRadius: "50%",
-                background: color, color,
-                animation: `casinoMarquee ${isRolling ? 0.13 + (i % 4) * 0.02 : 0.55 + (i % 4) * 0.07}s ease-in-out infinite`,
-                animationDelay: `${i * (isRolling ? 0.02 : 0.07) + (isRolling ? 0.06 : 0.3)}s`,
-                flex: "0 0 auto",
+          {/* ── THE BUTTON ITSELF ─────────────────────────────────────── */}
+          <div style={{ padding: "0 14px 14px", position: "relative" }}>
+            {/* Expanding ring burst — one per press */}
+            <div key={burstKey} style={{
+              position: "absolute", top: "50%", left: "50%",
+              width: 200, height: 200,
+              marginTop: -100, marginLeft: -100,
+              border: `4px solid ${V.neonGold}`,
+              borderRadius: "50%",
+              pointerEvents: "none",
+              animation: burstKey > 0 ? "hitRingBurst 0.8s ease-out forwards" : "none",
+              opacity: 0,
+              zIndex: 3,
+            }} />
+            <div key={`r2-${burstKey}`} style={{
+              position: "absolute", top: "50%", left: "50%",
+              width: 200, height: 200,
+              marginTop: -100, marginLeft: -100,
+              border: `3px solid ${V.hotPink}`,
+              borderRadius: "50%",
+              pointerEvents: "none",
+              animation: burstKey > 0 ? "hitRingBurst 1.0s ease-out 0.12s forwards" : "none",
+              opacity: 0,
+              zIndex: 3,
+            }} />
+
+            {/* Particle burst — 12 sparks flying outward on press */}
+            {burstKey > 0 && (
+              <div key={`particles-${burstKey}`} style={{
+                position: "absolute", top: "50%", left: "50%",
+                pointerEvents: "none", zIndex: 4,
+              }}>
+                {Array.from({ length: 14 }).map((_, i) => {
+                  const angle = (i / 14) * Math.PI * 2;
+                  const dist = 80 + Math.random() * 60;
+                  const dx = Math.cos(angle) * dist;
+                  const dy = Math.sin(angle) * dist;
+                  const color = MARQUEE_COLORS[i % MARQUEE_COLORS.length];
+                  return (
+                    <span key={i} style={{
+                      position: "absolute",
+                      width: 6, height: 6, borderRadius: "50%",
+                      background: color, color,
+                      left: 0, top: 0,
+                      boxShadow: `0 0 10px currentColor, 0 0 20px currentColor`,
+                      "--tr": `translate(${dx}px, ${dy}px)`,
+                      animation: "hitParticle 0.9s cubic-bezier(.2,.8,.3,1) forwards",
+                    }} />
+                  );
+                })}
+              </div>
+            )}
+
+            <button type="button"
+              className="hit-core"
+              onClick={handleClick}
+              disabled={disabled || isRolling}
+              onMouseEnter={() => setHover(true)}
+              onMouseLeave={() => { setHover(false); setPressing(false); }}
+              onMouseDown={() => setPressing(true)}
+              onMouseUp={() => setPressing(false)}
+              style={{
+                width: "100%",
+                padding: "34px 20px",
+                background: isRolling
+                  ? `radial-gradient(circle at 50% 30%, #FF7070 0%, ${V.red} 45%, #5a0000 100%)`
+                  : `radial-gradient(circle at 50% 25%, #FF4848 0%, ${V.red} 45%, #6a0000 100%)`,
+                border: `4px solid ${V.neonGold}`,
+                color: "#FFFFFF",
+                fontSize: 72,
+                fontWeight: 900,
+                letterSpacing: "0.15em",
+                fontFamily: T.font_display,
+                cursor: disabled ? "not-allowed" : isRolling ? "wait" : "pointer",
+                borderRadius: 12,
+                position: "relative",
+                overflow: "hidden",
+                opacity: disabled ? 0.5 : 1,
+                animation: isRolling
+                  ? "hitStrobe 0.13s linear infinite"
+                  : "hitGlowPulse 2.4s ease-in-out infinite",
+              }}>
+              {/* Spinning chrome ring behind text */}
+              <div style={{
+                position: "absolute", top: "50%", left: "50%",
+                width: 180, height: 180,
+                marginTop: -90, marginLeft: -90,
+                borderRadius: "50%",
+                border: `2px dashed rgba(255,215,0,0.35)`,
+                animation: `hitRingRotate ${isRolling ? "2s" : "12s"} linear infinite`,
+                pointerEvents: "none",
               }} />
-            );
-          })}
+              {/* Secondary inner ring */}
+              <div style={{
+                position: "absolute", top: "50%", left: "50%",
+                width: 130, height: 130,
+                marginTop: -65, marginLeft: -65,
+                borderRadius: "50%",
+                border: `1px solid rgba(255,255,255,0.25)`,
+                animation: `hitHaloRotate ${isRolling ? "1.2s" : "18s"} linear infinite`,
+                pointerEvents: "none",
+              }} />
+              {/* Top gloss */}
+              <span style={{
+                position: "absolute", top: 0, left: "6%", right: "6%", height: "45%",
+                background: "linear-gradient(180deg, rgba(255,255,255,0.55) 0%, rgba(255,255,255,0) 100%)",
+                pointerEvents: "none",
+                borderRadius: "0 0 50% 50% / 0 0 100% 100%",
+              }} />
+              {/* Inner scanlines for texture */}
+              <div style={{
+                position: "absolute", inset: 0,
+                backgroundImage: `repeating-linear-gradient(0deg,
+                  rgba(0,0,0,0.08) 0 2px,
+                  transparent 2px 4px)`,
+                pointerEvents: "none",
+                mixBlendMode: "multiply",
+                opacity: 0.4,
+              }} />
+              {/* Hot spot */}
+              <div style={{
+                position: "absolute", top: "15%", left: "50%",
+                width: 80, height: 40,
+                marginLeft: -40,
+                background: "radial-gradient(ellipse, rgba(255,255,255,0.6) 0%, rgba(255,255,255,0) 70%)",
+                pointerEvents: "none",
+                filter: "blur(4px)",
+              }} />
+              {/* HIT LABEL */}
+              <span style={{
+                position: "relative", zIndex: 1,
+                display: "inline-block",
+                animation: isRolling ? "none" : "hitTextShimmer 1.8s ease-in-out infinite",
+                fontStyle: "italic",
+              }}>
+                {isRolling ? "◉" : "HIT"}
+              </span>
+            </button>
+
+            {/* Subtitle under button */}
+            <div style={{
+              marginTop: 8,
+              display: "flex", justifyContent: "center", alignItems: "center", gap: 6,
+              fontFamily: T.font_mono, fontSize: 9, letterSpacing: "0.3em",
+              color: V.neonGold, textShadow: `0 0 6px ${V.neonGold}88`,
+              fontWeight: 700,
+            }}>
+              <span style={{ opacity: 0.6 }}>▸</span>
+              PRESS TO ROLL
+              <span style={{ opacity: 0.6 }}>◂</span>
+            </div>
+          </div>
+
+          {/* Bottom marquee */}
+          <div style={{
+            display: "flex", justifyContent: "space-between", alignItems: "center",
+            padding: "4px 14px 10px", gap: 6,
+          }}>
+            {Array.from({ length: 16 }).map((_, i) => {
+              const color = MARQUEE_COLORS[(i + 3) % MARQUEE_COLORS.length];
+              return (
+                <span key={i} style={{
+                  width: 8, height: 8, borderRadius: "50%",
+                  background: color, color,
+                  animation: `hitLed ${isRolling ? 0.11 + (i % 4) * 0.02 : 0.5 + (i % 4) * 0.07}s ease-in-out infinite`,
+                  animationDelay: `${i * (isRolling ? 0.015 : 0.06) + (isRolling ? 0.05 : 0.3)}s`,
+                  flex: "0 0 auto",
+                }} />
+              );
+            })}
+          </div>
         </div>
       </div>
     </>
