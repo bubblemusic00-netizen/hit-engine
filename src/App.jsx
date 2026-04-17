@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useMemo, Component } from "react";
+import headerImage from "./assets/header.png";
 
 // ════════════════════════════════════════════════════════════════════════════
 // HIT-ENGINE — self-contained, deterministic music prompt engine.
@@ -41,6 +42,7 @@ const T = {
   r_sm: 4, r_md: 6, r_lg: 8,
   font_sans: "'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
   font_mono: "'Geist Mono', ui-monospace, 'SF Mono', Menlo, monospace",
+  font_display: "'Instrument Serif', 'Playfair Display', Georgia, serif",
 };
 
 const CASINO_OUTLINES = ["#FF2D9C","#FFD700","#00E5FF","#FF6B00","#00FF88","#E94FEF","#FF4D4D"];
@@ -603,6 +605,142 @@ const MODE_SECTION_LIMITS = {
   chaos:     [11, 12],
 };
 
+// ────────────────────────────────────────────────────────────────────────────
+// PRESETS — first-visit quick starts. Each applies a full state snapshot.
+// ────────────────────────────────────────────────────────────────────────────
+const PRESETS = [
+  {
+    id: "modern-trap",
+    name: "Modern trap hit",
+    emoji: "🔥",
+    lyricsOn: true,
+    mode: "expanded",
+    state: {
+      slots: [
+        { genre: "Trap", sub: "Atlanta trap", micro: null },
+        { genre: "Melodic Rap", sub: "sung-rap hybrid", micro: null },
+        null,
+      ],
+      mood: "Confident",
+      energy: "Slow-building then exploding",
+      groove: "halftime trap",
+      vocalist: "Auto-tuned melodic rapper",
+      language: "en",
+      lyricalVibe: "Braggadocio flex",
+      specificInstruments: ["TR-808", "Rhodes electric piano", "Acoustic kit close-mic"],
+      specificArticulations: { "TR-808": "slide 808", "Rhodes electric piano": "vibrato on" },
+      specificCount: 3,
+      harmonic: "Minor-key modal",
+      texture: "Thick & saturated",
+      mix: "Polished radio",
+    },
+  },
+  {
+    id: "afrobeats-summer",
+    name: "Afrobeats summer",
+    emoji: "🌴",
+    lyricsOn: true,
+    mode: "moderated",
+    state: {
+      slots: [
+        { genre: "Afrobeats", sub: null, micro: null },
+        null,
+        null,
+      ],
+      mood: "Euphoric",
+      energy: "Steady dance pulse",
+      groove: "afrobeats log-drum",
+      vocalist: "Smooth melodic lead",
+      language: "en",
+      lyricalVibe: "Party celebration",
+      specificInstruments: ["Log drum", "Shakers", "Synth bass"],
+      specificArticulations: { "Shakers": "16th shaker" },
+      specificCount: 3,
+      harmonic: "Major pop diatonic",
+      texture: "Organic & breathing",
+      mix: "Polished radio",
+    },
+  },
+  {
+    id: "moody-rnb",
+    name: "Moody R&B ballad",
+    emoji: "🌙",
+    lyricsOn: true,
+    mode: "moderated",
+    state: {
+      slots: [
+        { genre: "Alt R&B", sub: "noir ballad", micro: null },
+        null,
+        null,
+      ],
+      mood: "Sensual",
+      energy: "Slow burn",
+      groove: "halftime trap",
+      vocalist: "Whispered intimate vocal",
+      language: "en",
+      lyricalVibe: "Confessional diary",
+      specificInstruments: ["Rhodes electric piano", "808 sub bass", "Brushes on snare"],
+      specificArticulations: { "Rhodes electric piano": "warm mk1", "808 sub bass": "long-tail 808" },
+      specificCount: 3,
+      harmonic: "Jazz-influenced extended",
+      texture: "Smooth & liquid",
+      mix: "Polished radio",
+    },
+  },
+  {
+    id: "synthpop-80s",
+    name: "80s synthpop",
+    emoji: "✨",
+    lyricsOn: true,
+    mode: "moderated",
+    state: {
+      slots: [
+        { genre: "Synth-Pop", sub: "80s revival synthpop", micro: null },
+        null,
+        null,
+      ],
+      mood: "Nostalgic",
+      energy: "Euphoric arc",
+      groove: "4-on-the-floor",
+      vocalist: "Anthemic clear lead",
+      language: "en",
+      lyricalVibe: "Romantic devotion",
+      specificInstruments: ["Juno-60 pads", "Linn LM-1", "Prophet-5 lead"],
+      specificArticulations: { "Juno-60 pads": "chorus on", "Linn LM-1": "80s gated kick" },
+      specificCount: 3,
+      harmonic: "Major pop diatonic",
+      texture: "Crystalline & brittle",
+      mix: "Polished radio",
+    },
+  },
+  {
+    id: "dark-pop",
+    name: "Dark pop",
+    emoji: "🖤",
+    lyricsOn: true,
+    mode: "moderated",
+    state: {
+      slots: [
+        { genre: "Dark Pop", sub: "cinematic dark-pop", micro: null },
+        null,
+        null,
+      ],
+      mood: "Dark & brooding",
+      energy: "Cinematic rise",
+      groove: "halftime trap",
+      vocalist: "Breathy pop vocal",
+      language: "en",
+      lyricalVibe: "Heartbreak elegy",
+      specificInstruments: ["Grand piano", "808 sub bass", "Full string section"],
+      specificArticulations: { "Grand piano": "felt muted", "Full string section": "tremolo sustained" },
+      specificCount: 3,
+      harmonic: "Minor-key modal",
+      texture: "Digital & precise",
+      mix: "Cinematic wide",
+    },
+  },
+];
+
 function getModeById(id) { return MODES.find(m => m.id === id) || MODES[1]; }
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -799,92 +937,112 @@ function shortPromptL4(state, lyricsOn) {
   return parts.join(", ");
 }
 
+// Suno-format detailed prompt: structured, compact, label-driven.
+// Suno's description field responds best to clear declarative lines, not
+// flowing prose. Each line is a self-contained instruction. No meta-
+// commentary about what the AI should aim for — just facts.
 function buildDetailedSentences(state, lyricsOn) {
   const slots = state.slots.filter(Boolean);
   const primary = slots[0];
   const bpm = inferBPM(state);
   const sentences = [];
 
+  // ── LINE 1: GENRE HEADLINE ──────────────────────────────────────────
   if (slots.length === 1) {
     const s = slots[0];
-    const trail = s.sub ? ` in the ${s.sub} tradition` : "";
-    const micro = s.micro ? `, leaning into ${s.micro}` : "";
-    sentences.push({ priority: 1,
-      text: `A ${s.genre.toLowerCase()} track${trail}${micro}.` });
+    const path = [s.genre, s.sub, s.micro].filter(Boolean).join(", ");
+    sentences.push({ priority: 1, text: `Genre: ${path.toLowerCase()}.` });
   } else if (slots.length === 2) {
-    sentences.push({ priority: 1,
-      text: `A fusion of ${slots[0].genre.toLowerCase()}${slots[0].sub ? ` (${slots[0].sub})` : ""} and ${slots[1].genre.toLowerCase()}${slots[1].sub ? ` (${slots[1].sub})` : ""}, where the two traditions inform each other without either dominating.` });
+    const a = [slots[0].genre, slots[0].sub].filter(Boolean).join(" ").toLowerCase();
+    const b = [slots[1].genre, slots[1].sub].filter(Boolean).join(" ").toLowerCase();
+    sentences.push({ priority: 1, text: `Genre: ${a} crossed with ${b}.` });
   } else if (slots.length === 3) {
-    sentences.push({ priority: 1,
-      text: `A three-way fusion of ${slots[0].genre.toLowerCase()}, ${slots[1].genre.toLowerCase()}, and ${slots[2].genre.toLowerCase()} — primary aesthetic anchored in ${slots[0].sub || slots[0].genre.toLowerCase()}, with ${slots[1].sub || slots[1].genre.toLowerCase()} shaping the rhythm layer and ${slots[2].sub || slots[2].genre.toLowerCase()} coloring the texture.` });
+    const labels = slots.map(s => [s.genre, s.sub].filter(Boolean).join(" ").toLowerCase());
+    sentences.push({ priority: 1, text: `Genre: ${labels[0]}, blended with ${labels[1]} and ${labels[2]}.` });
   }
 
-  sentences.push({ priority: 2, text: `Tempo sits at ${bpm} BPM.` });
+  // ── LINE 2: TEMPO + GROOVE (single compact tempo line) ─────────────
+  const groove = useField(state.toggles.groove, state.groove !== "default" ? state.groove : null);
+  const tempoBits = [`${bpm} BPM`];
+  if (groove) tempoBits.push(`${groove.toLowerCase()} groove`);
+  sentences.push({ priority: 2, text: `Tempo: ${tempoBits.join(", ")}.` });
 
-  if (state.toggles.groove !== "off" && state.groove && state.groove !== "default") {
-    const gd = GROOVES.find(g => g.id === state.groove)?.desc || "";
-    sentences.push({ priority: 3,
-      text: `The groove is ${state.groove}${gd ? ` — ${gd.toLowerCase()}` : ""}.` });
-  }
-
-  const mood = useField(state.toggles.mood, state.mood);
-  if (mood) sentences.push({ priority: 3,
-    text: `Emotionally the piece inhabits a ${mood.toLowerCase()} register, maintained consistently across every section.` });
-
-  const energy = useField(state.toggles.energy, state.energy);
-  if (energy) sentences.push({ priority: 4,
-    text: `The energy arc is ${energy.toLowerCase()}, shaping how tension distributes from intro through final bar.` });
-
+  // ── LINE 3: VOCALS (explicit and early — critical for Suno) ────────
   if (lyricsOn) {
-    const vocal = useField(state.toggles.vocalist, state.vocalist) || "a clearly sung lead vocal, confident and forward in the mix";
+    const vocal = useField(state.toggles.vocalist, state.vocalist) || "clear lead vocal, confident and forward in the mix";
+    const langLabel = state.toggles.language !== "off"
+      ? (LANGUAGES.find(l => l.code === state.language)?.label || "English")
+      : null;
+    const langBit = langLabel ? `, ${langLabel.toLowerCase()} lyrics` : "";
     sentences.push({ priority: 3,
-      text: `This is a SUNG song with a real lead vocalist performing actual lyrics — ${vocal.toLowerCase()}, clearly audible and sitting forward in the mix.` });
-    if (state.toggles.language !== "off") {
-      const langLabel = LANGUAGES.find(l => l.code === state.language)?.label || "English";
-      sentences.push({ priority: 4,
-        text: `Lyrics are written and performed in ${langLabel}, with phrasing, cadence, and inflection native to that language rather than accented or translated.` });
-    }
-    const vibe = useField(state.toggles.lyricalVibe, state.lyricalVibe);
-    if (vibe) sentences.push({ priority: 5,
-      text: `The lyrical framing is ${vibe.toLowerCase()} — the overall tone and perspective the words should embody from first line to last.` });
+      text: `Vocals: ${vocal.toLowerCase()}${langBit}.` });
   } else {
     sentences.push({ priority: 3,
-      text: `This track has no vocals and no lyrics — a purely musical, wordless arrangement where melody is carried by instruments throughout.` });
+      text: `Vocals: none. Fully wordless arrangement, melody carried by instruments.` });
   }
 
+  // ── LINE 4: LYRICAL VIBE (only when lyrics on) ─────────────────────
+  if (lyricsOn) {
+    const vibe = useField(state.toggles.lyricalVibe, state.lyricalVibe);
+    if (vibe) sentences.push({ priority: 4,
+      text: `Lyrical tone: ${vibe.toLowerCase()}, using concrete imagery over abstract emotional labels.` });
+  }
+
+  // ── LINE 5: MOOD + ENERGY (combined, short) ────────────────────────
+  const mood = useField(state.toggles.mood, state.mood);
+  const energy = useField(state.toggles.energy, state.energy);
+  if (mood || energy) {
+    const bits = [];
+    if (mood)   bits.push(mood.toLowerCase());
+    if (energy) bits.push(`${energy.toLowerCase()} energy arc`);
+    sentences.push({ priority: 5, text: `Mood: ${bits.join(", ")}.` });
+  }
+
+  // ── LINE 6: INSTRUMENTATION (explicit list, Suno-parseable) ────────
   const si = resolveSpecificInstruments(state);
   if (si.length) {
-    const detailed = si.map(it => it.articulation ? `${it.name.toLowerCase()} with ${it.articulation.toLowerCase()}` : it.name.toLowerCase()).join(", ");
-    sentences.push({ priority: 5, text: `Specific instruments called out: ${detailed}.` });
+    const detailed = si.map(it =>
+      it.articulation
+        ? `${it.name.toLowerCase()} with ${it.articulation.toLowerCase()}`
+        : it.name.toLowerCase()
+    ).join(", ");
+    sentences.push({ priority: 6, text: `Instrumentation: ${detailed}.` });
   }
 
+  // ── LINE 7: HARMONY ────────────────────────────────────────────────
   const harm = useField(state.toggles.harmonic, state.harmonic);
-  if (harm) sentences.push({ priority: 6,
-    text: `Harmonic language leans into ${harm.toLowerCase()}, governing both chord voicings and melodic contour.` });
+  if (harm) sentences.push({ priority: 7,
+    text: `Harmony: ${harm.toLowerCase()} voicings and melodic contour.` });
 
+  // ── LINE 8: TEXTURE + MIX (combined) ───────────────────────────────
   const tex = useField(state.toggles.texture, state.texture);
-  if (tex) sentences.push({ priority: 7,
-    text: `Overall sound texture is ${tex.toLowerCase()} — a signature present across every layer of the arrangement.` });
-
   const mix = useField(state.toggles.mix, state.mix);
-  if (mix) sentences.push({ priority: 7,
-    text: `Mix character is ${mix.toLowerCase()}, defining both stereo width and front-to-back depth.` });
-
-  if (primary) {
-    sentences.push({ priority: 9,
-      text: `The arrangement should feel intentional — every instrumental choice justified by the stated aesthetic, nothing included purely for density.` });
-    sentences.push({ priority: 10,
-      text: `Avoid generic ${primary.genre.toLowerCase()} tropes; aim for the most distinctive expression of the style rather than a safe interpretation.` });
+  if (tex || mix) {
+    const bits = [];
+    if (tex) bits.push(tex.toLowerCase());
+    if (mix) bits.push(`${mix.toLowerCase()} mix`);
+    sentences.push({ priority: 8, text: `Sound: ${bits.join(", ")}.` });
   }
-  if (lyricsOn) sentences.push({ priority: 12,
-    text: `The lyrics should serve the mood rather than describe it — use concrete imagery and specific scenes rather than abstract emotional labels.` });
 
-  sentences.push({ priority: 13,
-    text: `Final output: single cohesive track, standard song length, fully mixed and mastered, ready for release.` });
-  sentences.push({ priority: 14,
-    text: `Arrangement should evolve across sections — no static 8-bar loop padded out to length; each section earns its place.` });
-  sentences.push({ priority: 15,
-    text: `Frequency spectrum balanced across low, mid, and high — every element audible in its intended register.` });
+  // ── LINE 9: STRUCTURE HINT (brief, Suno responds to this) ──────────
+  if (lyricsOn) {
+    sentences.push({ priority: 10,
+      text: `Structure: intro, verse, chorus, verse, chorus, bridge, chorus, outro.` });
+  } else {
+    sentences.push({ priority: 10,
+      text: `Structure: intro, main theme, development, climax, resolution.` });
+  }
+
+  // ── LINE 10: PRODUCTION DIRECTIVES (concrete, Suno-actionable) ─────
+  sentences.push({ priority: 11,
+    text: `Production: modern, professional, radio-ready, cohesive mix, full frequency balance.` });
+
+  // ── LINE 11: AVOID LIST (Suno negatives that improve output) ───────
+  if (primary) {
+    const genreLow = primary.genre.toLowerCase();
+    sentences.push({ priority: 12,
+      text: `Avoid: generic ${genreLow} tropes, MIDI-stock presets, thin mixing, loop-based repetition without variation.` });
+  }
 
   return sentences.sort((a, b) => a.priority - b.priority);
 }
@@ -892,7 +1050,7 @@ function buildDetailedSentences(state, lyricsOn) {
 function packSentencesToLimit(sentences, limit) {
   let current = "";
   for (const s of sentences) {
-    const cand = current ? `${current} ${s.text}` : s.text;
+    const cand = current ? `${current}\n${s.text}` : s.text;
     if (cand.length <= limit) current = cand;
   }
   if (!current && sentences.length > 0) return safeTruncate(sentences[0].text, limit);
@@ -913,19 +1071,24 @@ function safeTruncate(text, limit) {
 // cause prompt drift. This pass normalizes to Suno-friendly punctuation.
 // Note: hyphens inside words (Hip-Hop, TR-808, Lo-Fi, 12-string) are kept
 // because they are part of proper names — removing them would damage meaning.
+// Suno sanitizer: normalize punctuation to Suno-friendly forms, but
+// preserve structural newlines and label colons that Suno uses to parse
+// directives. Only convert mid-sentence em/en-dashes and semicolons.
 function sunoSanitize(text) {
   if (!text) return text;
   return text
-    .replace(/\s*—\s*/g, ", ")      // em-dash → comma
-    .replace(/\s*–\s*/g, ", ")      // en-dash → comma
-    .replace(/\s*;\s*/g, ", ")      // semicolon → comma
-    .replace(/\s*:\s*/g, ", ")      // colon → comma
-    .replace(/\(([^)]*)\)/g, "$1")  // remove parentheses, keep contents
-    .replace(/\s*,\s*,+/g, ", ")    // collapse double commas
-    .replace(/\s{2,}/g, " ")        // collapse extra whitespace
-    .replace(/,\s*\./g, ".")        // ", ." → "."
-    .replace(/,\s*$/g, "")          // trailing comma
-    .replace(/\.\s*\./g, ".")       // double period
+    .replace(/\s*—\s*/g, ", ")          // em-dash → comma
+    .replace(/\s*–\s*/g, ", ")          // en-dash → comma
+    .replace(/\s*;\s*/g, ", ")          // semicolon → comma
+    .replace(/\(([^)]*)\)/g, "$1")      // strip parentheses, keep contents
+    .replace(/\s*,\s*,+/g, ", ")        // collapse duplicate commas
+    .replace(/[ \t]{2,}/g, " ")         // collapse spaces/tabs but NOT newlines
+    .replace(/ *\n *\n+/g, "\n")        // collapse 2+ blank lines to 1
+    .replace(/ *\n */g, "\n")           // trim each line
+    .replace(/,\s*\./g, ".")            // ", ." → "."
+    .replace(/,\s*\n/g, "\n")           // trailing comma before newline
+    .replace(/,\s*$/g, "")              // trailing comma at end
+    .replace(/\.\s*\./g, ".")           // double period
     .trim();
 }
 
@@ -1325,7 +1488,7 @@ function HitLogo({ size = 96 }) {
   return (
     <span style={{
       display: "inline-block", verticalAlign: "baseline",
-      lineHeight: 1, fontFamily: T.font_sans,
+      lineHeight: 1, fontFamily: T.font_display,
     }}>
       <svg width={svgW} height={svgH} viewBox={`0 0 ${svgW} ${svgH}`}
         style={{ display: "block", overflow: "visible" }}>
@@ -1333,20 +1496,20 @@ function HitLogo({ size = 96 }) {
           <clipPath id="hit-text-clip">
             <text
               x="0" y={svgH * 0.82}
-              fontFamily={T.font_sans}
+              fontFamily={T.font_display}
               fontSize={fontSize}
-              fontWeight={700}
-              letterSpacing="-0.04em"
+              fontWeight={400}
+              letterSpacing="-0.02em"
             >HIT</text>
           </clipPath>
         </defs>
         {/* Black fill for letters */}
         <text
           x="0" y={svgH * 0.82}
-          fontFamily={T.font_sans}
+          fontFamily={T.font_display}
           fontSize={fontSize}
-          fontWeight={700}
-          letterSpacing="-0.04em"
+          fontWeight={400}
+          letterSpacing="-0.02em"
           fill="#000000"
           stroke={T.text}
           strokeWidth="1.5"
@@ -1383,9 +1546,10 @@ function EngineLogo({ size = 96 }) {
         }
       `}</style>
       <span className="engine-logo-text" style={{
-        fontSize: size, fontWeight: 700, letterSpacing: "-0.04em",
-        lineHeight: 1, fontFamily: T.font_sans,
-      }}>ENGINE</span>
+        fontSize: size, fontWeight: 400, letterSpacing: "-0.02em",
+        lineHeight: 1, fontFamily: T.font_display,
+        fontStyle: "italic",
+      }}>Engine</span>
     </>
   );
 }
@@ -1394,7 +1558,7 @@ function EngineLogo({ size = 96 }) {
 // NAV
 // ════════════════════════════════════════════════════════════════════════════
 
-function Nav({ page, onNavigate }) {
+function Nav({ page, onNavigate, headerImage }) {
   const links = [
     { id: "engine",  label: "Engine" },
     { id: "future",  label: "Future of Sound" },
@@ -1410,20 +1574,30 @@ function Nav({ page, onNavigate }) {
       display: "flex", alignItems: "center", justifyContent: "space-between",
       height: 56,
     }}>
-      <div style={{ display: "flex", alignItems: "center", gap: T.s3, cursor: "pointer" }}
+      <div style={{ display: "flex", alignItems: "center", gap: T.s2, cursor: "pointer" }}
         onClick={() => onNavigate("engine")}>
-        <div style={{
-          width: 22, height: 22,
-          border: `1px solid ${T.borderHi}`, borderRadius: T.r_sm,
-          display: "grid", placeItems: "center",
-          background: T.elevated,
-        }}>
-          <div style={{ width: 8, height: 8, borderRadius: 2, background: T.accent }} />
-        </div>
-        <span style={{
-          fontSize: T.fs_md, fontWeight: 600, letterSpacing: "-0.01em",
-          color: T.text, fontFamily: T.font_sans,
-        }}>Hit Engine</span>
+        {headerImage ? (
+          <img src={headerImage} alt="Hit Engine" style={{
+            height: 34, width: "auto",
+            display: "block",
+            imageRendering: "auto",
+          }} />
+        ) : (
+          <>
+            <div style={{
+              width: 22, height: 22,
+              border: `1px solid ${T.borderHi}`, borderRadius: T.r_sm,
+              display: "grid", placeItems: "center",
+              background: T.elevated,
+            }}>
+              <div style={{ width: 8, height: 8, borderRadius: 2, background: T.accent }} />
+            </div>
+            <span style={{
+              fontSize: T.fs_md, fontWeight: 600, letterSpacing: "-0.01em",
+              color: T.text, fontFamily: T.font_sans,
+            }}>Hit Engine</span>
+          </>
+        )}
       </div>
       <div style={{ display: "flex", gap: T.s1 }}>
         {links.map(l => (
@@ -2799,6 +2973,24 @@ function EnginePage() {
     setState(ENGINE_DEF);
   };
 
+  // Apply a preset config to the engine state — updates mode, lyricsOn, and
+  // merges the preset's state snapshot over the defaults.
+  const applyPreset = (preset) => {
+    if (!preset) return;
+    setMode(preset.mode || "moderated");
+    setLyricsOn(preset.lyricsOn !== false);
+    setState({
+      ...ENGINE_DEF,
+      ...preset.state,
+      // Reset all locks/favorites so the preset feels fresh
+      slotLocks: [false, false, false],
+      sectionLocks: { ...ENGINE_DEF.sectionLocks },
+      optionLocks: [],
+      favorites: [],
+      toggles: { ...ENGINE_DEF.toggles },
+    });
+  };
+
   // ─────────────────────────────────────────────────────────────────────
   const shortResult = useMemo(() => compressShortPrompt(state, lyricsOn, maxLen), [state, lyricsOn, maxLen]);
   const detailedResult = useMemo(() => compressDetailedPrompt(state, lyricsOn, maxLen), [state, lyricsOn, maxLen]);
@@ -2863,31 +3055,75 @@ function EnginePage() {
           borderRight: `1px solid ${T.border}`,
           padding: `${T.s8}px ${T.s7}px ${T.s10}px ${T.s8}px`,
         }}>
-          {/* HERO — steady banner */}
+          {/* HERO — full-width image banner */}
           <div style={{ marginBottom: T.s8 }}>
-            <Label color={T.textTer} style={{ display: "block", marginBottom: T.s4 }}>
-              Deterministic · Rule-based · Self-contained
-            </Label>
-            <h1 style={{
-              fontSize: "clamp(56px, 8vw, 112px)",
-              lineHeight: 0.95,
-              letterSpacing: "-0.04em",
-              margin: 0, marginBottom: T.s5,
-              fontFamily: T.font_sans,
-              fontWeight: 700,
-              display: "flex", alignItems: "baseline", gap: "0.15em", flexWrap: "wrap",
-            }}>
-              <HitLogo size={96} />
-              <span style={{ color: T.textMuted, fontWeight: 300, fontSize: "0.8em" }}>·</span>
-              <EngineLogo size={96} />
-            </h1>
+            <img src={headerImage} alt="Hit Engine" style={{
+              display: "block",
+              width: "100%", height: "auto",
+              marginBottom: T.s5,
+              filter: "drop-shadow(0 20px 40px rgba(0,0,0,0.5))",
+            }} />
             <p style={{
-              color: T.textSec, fontSize: T.fs_lg, lineHeight: 1.55,
-              maxWidth: 560, margin: 0, fontFamily: T.font_sans,
+              color: T.text, fontSize: T.fs_lg, lineHeight: 1.5,
+              maxWidth: 600, margin: 0, marginBottom: T.s3,
+              fontFamily: T.font_sans, fontWeight: 500,
             }}>
-              Configure up to three genre slots. Every section offers Off · Auto · On.
-              <span style={{ color: T.text }}> Click</span> to select, <span style={{ color: T.text }}>double-click</span> to favorite, <span style={{ color: V.neonGold }}>right-click</span> to lock against randomize.
+              Music prompt engine for Suno, Udio, and beyond.
             </p>
+            <p style={{
+              color: T.textSec, fontSize: T.fs_md, lineHeight: 1.55,
+              maxWidth: 600, margin: 0, marginBottom: T.s3,
+              fontFamily: T.font_sans,
+            }}>
+              Pick a genre, hit the red button, get a prompt tuned for how modern AI music models interpret language.
+            </p>
+            <p style={{
+              color: T.textTer, fontSize: T.fs_sm, lineHeight: 1.55,
+              maxWidth: 600, margin: 0, fontFamily: T.font_sans,
+            }}>
+              <span style={{ color: T.text, fontWeight: 500 }}>Click</span> to select
+              {" · "}
+              <span style={{ color: T.text, fontWeight: 500 }}>Double-click</span> to favorite
+              {" · "}
+              <span style={{ color: V.neonGold, fontWeight: 500 }}>Right-click</span> to lock against randomize
+            </p>
+          </div>
+
+          {/* ── PRESETS ─ quick-start configurations ──────────────────────── */}
+          <div style={{ marginBottom: T.s6 }}>
+            <Label color={T.textSec} style={{ display: "block", marginBottom: T.s3 }}>
+              Quick starts
+            </Label>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: T.s2 }}>
+              {PRESETS.map(p => (
+                <button key={p.id} type="button"
+                  onClick={() => applyPreset(p)}
+                  style={{
+                    display: "inline-flex", alignItems: "center", gap: T.s2,
+                    padding: `${T.s2}px ${T.s3}px`,
+                    background: T.surface,
+                    border: `1px solid ${T.border}`,
+                    borderRadius: T.r_md,
+                    color: T.textSec,
+                    fontFamily: T.font_sans, fontSize: T.fs_sm, fontWeight: 500,
+                    cursor: "pointer",
+                    transition: `all ${T.dur_fast} ${T.ease}`,
+                  }}
+                  onMouseEnter={e => {
+                    e.currentTarget.style.borderColor = T.borderFocus;
+                    e.currentTarget.style.color = T.text;
+                    e.currentTarget.style.background = T.elevated;
+                  }}
+                  onMouseLeave={e => {
+                    e.currentTarget.style.borderColor = T.border;
+                    e.currentTarget.style.color = T.textSec;
+                    e.currentTarget.style.background = T.surface;
+                  }}>
+                  <span style={{ fontSize: T.fs_base }}>{p.emoji}</span>
+                  {p.name}
+                </button>
+              ))}
+            </div>
           </div>
 
           <Section>
@@ -3223,177 +3459,640 @@ function FuturePage() {
 
 // Relative cultural weight (0-100) of genres by year. Editorial estimates,
 // not billboard chart data. Used as a visual narrative tool only.
+// ════════════════════════════════════════════════════════════════════════════
+// GENRE HISTORY — curated popularity curves + trend-index scoring
+// ════════════════════════════════════════════════════════════════════════════
+// Every entry: [[year, popularity 0-100], ...]. Curves hand-authored to
+// reflect cultural weight, not raw streams. Covers main genres + notable
+// subgenres across the full GENRE_TREE.
+// ────────────────────────────────────────────────────────────────────────────
+
 const GENRE_HISTORY = {
-  "Rock":      [[1960,85],[1965,100],[1970,98],[1975,88],[1980,82],[1985,90],[1990,86],[1995,88],[2000,75],[2005,65],[2010,50],[2015,38],[2020,30],[2025,26]],
-  "Hip-Hop":   [[1975,5],[1980,15],[1985,35],[1990,55],[1995,70],[2000,82],[2005,90],[2010,92],[2015,96],[2020,98],[2025,95]],
-  "Pop":       [[1960,70],[1965,82],[1970,75],[1975,70],[1980,88],[1985,95],[1990,88],[1995,90],[2000,92],[2005,88],[2010,90],[2015,95],[2020,92],[2025,90]],
-  "Electronic":[[1975,8],[1980,25],[1985,35],[1990,48],[1995,58],[2000,65],[2005,68],[2010,78],[2015,82],[2020,80],[2025,78]],
-  "R&B":       [[1960,60],[1970,65],[1980,72],[1990,78],[2000,80],[2010,70],[2020,68],[2025,66]],
-  "Country":   [[1960,55],[1975,60],[1990,65],[2000,68],[2010,62],[2020,58],[2025,55]],
-  "Jazz":      [[1960,70],[1965,55],[1975,40],[1985,32],[1995,26],[2005,22],[2015,18],[2025,15]],
-  "Metal":     [[1970,10],[1980,35],[1985,45],[1990,55],[2000,48],[2010,42],[2020,36],[2025,32]],
-  "Latin":     [[1970,25],[1985,32],[2000,45],[2010,60],[2015,72],[2020,85],[2025,88]],
-  "Afrobeats": [[2005,8],[2010,18],[2015,35],[2018,58],[2020,72],[2023,82],[2025,84]],
-  "K-Pop":     [[2005,5],[2010,20],[2013,35],[2015,52],[2018,68],[2020,78],[2023,85],[2025,82]],
-  "Amapiano":  [[2018,5],[2020,25],[2022,52],[2024,66],[2025,70]],
+  // ── HIP-HOP family ─────────────────────────────────────────────────────
+  "Hip-Hop":          [[1975,5],[1980,15],[1985,35],[1990,55],[1995,70],[2000,82],[2005,90],[2010,92],[2015,96],[2020,98],[2023,97],[2025,95],[2026,94]],
+  "Trap":             [[2003,5],[2008,25],[2012,55],[2015,80],[2018,92],[2020,95],[2022,96],[2024,94],[2026,92]],
+  "Melodic Rap":      [[2013,10],[2016,40],[2018,68],[2020,85],[2022,92],[2024,93],[2026,90]],
+  "Drill":            [[2012,10],[2016,35],[2019,62],[2021,82],[2023,88],[2025,85],[2026,82]],
+  "Boom Bap":         [[1988,40],[1993,90],[1996,95],[2000,75],[2010,40],[2018,32],[2022,38],[2026,42]],
+  "Conscious Hip-Hop":[[1988,30],[1994,65],[2000,55],[2010,48],[2015,58],[2020,52],[2026,48]],
+  "Lo-Fi Hip-Hop":    [[2010,8],[2015,35],[2018,65],[2020,75],[2022,68],[2024,60],[2026,55]],
+  "Phonk":            [[2014,5],[2018,18],[2020,38],[2022,72],[2023,85],[2024,78],[2026,65]],
+  "Rage Rap":         [[2019,5],[2021,28],[2022,55],[2023,72],[2024,78],[2025,70],[2026,62]],
+  "Plugg":            [[2015,5],[2018,18],[2020,35],[2022,50],[2024,58],[2026,52]],
+  "Cloud Rap":        [[2010,15],[2013,55],[2016,62],[2019,48],[2022,35],[2026,28]],
+  "Gangsta Rap":      [[1988,35],[1993,80],[1996,88],[2000,75],[2005,55],[2012,40],[2020,32],[2026,28]],
+  "Grime":            [[2002,5],[2006,45],[2010,38],[2015,62],[2018,55],[2022,42],[2026,38]],
+  "French Rap":       [[1990,25],[2000,52],[2010,68],[2015,80],[2020,85],[2024,88],[2026,85]],
+  "Latin Rap":        [[2000,15],[2010,30],[2015,55],[2020,78],[2024,82],[2026,80]],
+  "Jersey Drill":     [[2020,3],[2021,22],[2022,48],[2023,65],[2024,62],[2025,55],[2026,48]],
+
+  // ── R&B / SOUL family ──────────────────────────────────────────────────
+  "R&B / Soul":       [[1960,60],[1970,78],[1980,85],[1990,82],[2000,88],[2010,75],[2020,72],[2024,70],[2026,68]],
+  "Alt R&B":          [[2010,10],[2014,48],[2017,72],[2020,82],[2023,85],[2025,82],[2026,80]],
+  "Trap Soul":        [[2014,8],[2016,35],[2018,62],[2020,75],[2022,72],[2024,65],[2026,58]],
+  "Neo-Soul":         [[1996,35],[2000,72],[2005,70],[2012,55],[2018,60],[2022,62],[2026,58]],
+  "Contemporary R&B": [[1995,85],[2000,92],[2005,88],[2010,78],[2015,72],[2020,68],[2026,65]],
+  "Funk":             [[1972,85],[1976,95],[1982,72],[1990,45],[2000,30],[2015,45],[2020,50],[2026,48]],
+  "Disco":            [[1974,55],[1977,95],[1979,90],[1982,30],[2000,20],[2020,38],[2022,52],[2026,45]],
+  "New Jack Swing":   [[1987,25],[1990,72],[1993,80],[1996,48],[2000,22],[2015,18],[2026,15]],
+  "Motown Revival":   [[2005,35],[2010,48],[2015,40],[2020,32],[2026,28]],
+
+  // ── POP family ─────────────────────────────────────────────────────────
+  "Pop":              [[1960,70],[1970,75],[1980,88],[1985,95],[1995,90],[2005,88],[2015,95],[2020,92],[2024,93],[2026,92]],
+  "Dark Pop":         [[2010,8],[2014,25],[2017,55],[2020,72],[2023,82],[2025,78],[2026,75]],
+  "Bedroom Pop":      [[2015,12],[2018,48],[2020,72],[2022,82],[2024,70],[2026,62]],
+  "Hyperpop":         [[2017,5],[2019,22],[2021,58],[2022,75],[2023,68],[2025,52],[2026,45]],
+  "Synth-Pop":        [[1980,55],[1984,85],[1990,55],[2005,35],[2012,58],[2018,62],[2022,58],[2026,55]],
+  "Dance-Pop":        [[1985,55],[1990,78],[2000,82],[2010,95],[2015,88],[2020,82],[2026,80]],
+  "Art Pop":          [[2005,25],[2011,55],[2015,68],[2020,62],[2026,58]],
+  "Indie Pop":        [[2005,35],[2010,58],[2015,72],[2020,68],[2024,65],[2026,62]],
+  "Chamber Pop":      [[1998,35],[2005,55],[2012,48],[2020,38],[2026,35]],
+  "Power Pop":        [[1978,45],[1982,62],[1990,40],[2000,32],[2015,28],[2026,26]],
+  "Baroque Pop":      [[1965,50],[1968,62],[1975,35],[2008,35],[2015,32],[2026,28]],
+
+  // ── K-POP family ───────────────────────────────────────────────────────
+  "K-Pop":            [[2005,5],[2010,22],[2013,38],[2016,55],[2018,72],[2020,82],[2023,90],[2025,88],[2026,85]],
+  "K-Pop ballad":     [[2005,15],[2012,35],[2018,55],[2022,68],[2026,65]],
+
+  // ── LATIN family ───────────────────────────────────────────────────────
+  "Latin":            [[1970,25],[1985,35],[2000,48],[2010,62],[2015,75],[2020,88],[2024,92],[2026,90]],
+  "Reggaeton":        [[2002,15],[2005,45],[2010,52],[2017,82],[2020,92],[2023,94],[2026,92]],
+  "Latin Trap":       [[2016,8],[2018,45],[2020,72],[2022,82],[2024,80],[2026,76]],
+  "Bossa Nova":       [[1962,75],[1965,88],[1972,62],[1985,42],[2000,35],[2020,30],[2026,28]],
+  "Bachata":          [[1995,35],[2005,55],[2012,68],[2020,72],[2026,70]],
+  "Salsa":            [[1973,75],[1978,88],[1985,75],[1995,62],[2010,52],[2020,48],[2026,46]],
+  "Cumbia":           [[1970,45],[1985,55],[2005,62],[2018,72],[2024,75],[2026,74]],
+  "Regional Mexican": [[2000,42],[2010,48],[2018,58],[2022,82],[2024,92],[2026,90]],
+  "Música Urbana":    [[2015,25],[2018,55],[2020,78],[2022,88],[2024,92],[2026,91]],
+
+  // ── ELECTRONIC family ──────────────────────────────────────────────────
+  "Electronic":       [[1975,8],[1985,35],[1995,58],[2005,68],[2012,82],[2015,82],[2020,80],[2026,78]],
+  "House":            [[1984,20],[1990,58],[1997,72],[2005,68],[2012,88],[2016,85],[2020,82],[2024,85],[2026,88]],
+  "Deep House":       [[1988,18],[1995,48],[2005,42],[2012,72],[2016,82],[2020,75],[2026,70]],
+  "Tech-House":       [[2008,15],[2014,48],[2018,72],[2021,88],[2023,92],[2025,88],[2026,85]],
+  "Techno":           [[1988,25],[1995,65],[2005,48],[2012,55],[2018,72],[2022,82],[2024,85],[2026,82]],
+  "Melodic Techno":   [[2015,15],[2018,52],[2021,78],[2023,85],[2025,82],[2026,80]],
+  "Trance":           [[1995,45],[2000,85],[2005,72],[2012,52],[2020,42],[2026,45]],
+  "Dubstep":          [[2008,15],[2011,82],[2013,78],[2016,52],[2020,35],[2026,30]],
+  "Drum & Bass":      [[1995,48],[2000,62],[2008,48],[2018,55],[2022,68],[2024,72],[2026,75]],
+  "Garage":           [[1998,45],[2002,68],[2008,32],[2015,42],[2020,48],[2026,45]],
+  "UK Garage":        [[1998,52],[2002,78],[2008,28],[2020,48],[2024,62],[2026,60]],
+  "Ambient":          [[1978,18],[1995,35],[2010,42],[2018,52],[2022,55],[2026,55]],
+  "IDM":              [[1995,35],[2002,55],[2010,48],[2020,38],[2026,35]],
+  "Breakbeat":        [[1995,58],[2000,72],[2010,42],[2020,45],[2026,42]],
+  "Hardstyle":        [[2004,28],[2010,52],[2018,62],[2022,70],[2026,68]],
+
+  // ── ROCK family ────────────────────────────────────────────────────────
+  "Rock":             [[1960,85],[1970,98],[1980,82],[1995,88],[2005,65],[2015,38],[2020,30],[2026,26]],
+  "Alt-Rock":         [[1991,92],[1995,88],[2005,65],[2015,42],[2020,38],[2026,35]],
+  "Indie Rock":       [[2005,62],[2010,72],[2015,58],[2020,48],[2026,45]],
+  "Classic Rock":     [[1970,98],[1975,95],[1985,70],[2000,52],[2026,38]],
+  "Post-Rock":        [[1998,28],[2005,48],[2012,52],[2020,45],[2026,42]],
+  "Shoegaze":         [[1991,55],[1995,42],[2005,28],[2015,48],[2022,62],[2025,68],[2026,70]],
+  "Punk":             [[1977,62],[1982,55],[1995,72],[2003,78],[2012,52],[2020,38],[2026,35]],
+  "Emo":              [[2002,48],[2005,78],[2008,72],[2015,38],[2020,52],[2023,62],[2026,58]],
+  "Grunge":           [[1991,82],[1994,92],[1998,68],[2005,38],[2020,28],[2026,25]],
+  "Post-Punk":        [[1979,62],[1982,72],[1995,35],[2005,45],[2018,55],[2024,62],[2026,60]],
+  "Metal":            [[1980,35],[1988,55],[1995,62],[2008,52],[2018,45],[2026,38]],
+  "Black Metal":      [[1993,18],[2000,32],[2010,38],[2020,35],[2026,32]],
+  "Doom":             [[1980,15],[2000,28],[2012,42],[2020,45],[2026,42]],
+
+  // ── JAZZ family ────────────────────────────────────────────────────────
+  "Jazz":             [[1950,85],[1960,75],[1975,42],[1995,28],[2015,20],[2026,18]],
+  "Bebop":            [[1947,85],[1955,78],[1970,45],[1990,28],[2026,22]],
+  "Smooth Jazz":      [[1985,65],[1992,78],[2000,68],[2010,48],[2026,35]],
+  "Jazz Fusion":      [[1972,68],[1978,75],[1988,48],[2005,35],[2020,32],[2026,30]],
+  "Nu-Jazz":          [[2000,28],[2008,45],[2015,52],[2022,58],[2026,58]],
+
+  // ── FOLK / COUNTRY ─────────────────────────────────────────────────────
+  "Country":          [[1970,55],[1990,65],[2005,72],[2015,62],[2022,72],[2024,85],[2026,88]],
+  "Modern Country":   [[1998,62],[2010,78],[2015,75],[2022,78],[2026,85]],
+  "Americana":        [[2000,38],[2012,52],[2020,55],[2026,55]],
+  "Bluegrass":        [[1950,65],[1985,48],[2005,45],[2022,55],[2026,58]],
+  "Folk":             [[1963,78],[1970,68],[1995,42],[2012,55],[2020,48],[2026,45]],
+  "Indie Folk":       [[2008,42],[2012,68],[2018,62],[2024,55],[2026,52]],
+
+  // ── GLOBAL ─────────────────────────────────────────────────────────────
+  "Afrobeats":        [[2005,8],[2012,25],[2018,58],[2020,72],[2022,82],[2024,88],[2026,88]],
+  "Amapiano":         [[2018,5],[2020,28],[2022,55],[2024,75],[2025,82],[2026,85]],
+  "Dancehall":        [[1992,62],[2000,72],[2010,75],[2018,68],[2024,72],[2026,70]],
+  "Afrobeat (original)":[[1972,62],[1978,72],[1990,42],[2010,38],[2026,35]],
+  "J-Pop":            [[1990,55],[2005,62],[2015,58],[2020,68],[2024,75],[2026,75]],
+  "City Pop":         [[1982,72],[1986,85],[1990,55],[2018,52],[2023,72],[2026,78]],
+  "Bollywood":        [[1990,78],[2005,82],[2015,85],[2020,82],[2026,82]],
+  "Arabic Pop":       [[2000,55],[2012,62],[2020,68],[2026,70]],
+
+  // ── BLUES / GOSPEL ─────────────────────────────────────────────────────
+  "Blues":            [[1960,62],[1975,55],[1995,38],[2015,28],[2026,24]],
+  "Gospel":           [[1975,52],[1995,48],[2015,42],[2026,38]],
+  "Gospel Soul":      [[1970,65],[1985,55],[2010,42],[2026,38]],
 };
 
+// ── TREND-INDEX SCORING ────────────────────────────────────────────────
+// Time-decay based. A genre exploding RIGHT NOW scores highest. A genre
+// that peaked a month ago scores slightly lower. A year ago → much lower.
+// A decade ago → minimal. The scoring rewards both current value AND
+// recency of peak.
+const TREND_NOW_YEAR = 2026;
+
+function calcTrendIndex(curve) {
+  if (!curve || curve.length === 0) return 0;
+  const sorted = [...curve].sort((a, b) => a[0] - b[0]);
+
+  // Current value: linear-interpolated at TREND_NOW_YEAR
+  const currentVal = interpolateAt(sorted, TREND_NOW_YEAR);
+
+  // Peak value + year
+  const peak = sorted.reduce((a, pt) => pt[1] > a[1] ? pt : a, sorted[0]);
+  const peakYear = peak[0];
+  const peakVal = peak[1];
+  const yearsSincePeak = Math.max(0, TREND_NOW_YEAR - peakYear);
+
+  // Rate of change: recent momentum (last 2 points vs current)
+  const recent = sorted.filter(([y]) => y >= TREND_NOW_YEAR - 4);
+  let momentum = 0;
+  if (recent.length >= 2) {
+    momentum = recent[recent.length - 1][1] - recent[0][1];
+  }
+
+  // Time decay factor on peak: 1.0 at peak, 0.8 at 1yr, 0.5 at 5yr, 0.2 at 20yr
+  const peakDecay = Math.exp(-yearsSincePeak / 8);
+
+  // Final score: current value is primary, peak-decay weights it, momentum adds/subtracts
+  //   currentVal         weight 0.55
+  //   peakVal × decay    weight 0.30
+  //   momentum clamped   weight 0.15
+  const momScaled = Math.max(-20, Math.min(20, momentum));
+  const raw = currentVal * 0.55 + (peakVal * peakDecay) * 0.30 + (50 + momScaled * 1.5) * 0.15;
+  return Math.round(Math.max(0, Math.min(100, raw)));
+}
+
+function interpolateAt(sorted, year) {
+  if (year <= sorted[0][0]) return sorted[0][1];
+  if (year >= sorted[sorted.length - 1][0]) return sorted[sorted.length - 1][1];
+  for (let i = 0; i < sorted.length - 1; i++) {
+    const [y1, v1] = sorted[i];
+    const [y2, v2] = sorted[i + 1];
+    if (year >= y1 && year <= y2) {
+      const t = (year - y1) / (y2 - y1);
+      return v1 + (v2 - v1) * t;
+    }
+  }
+  return sorted[sorted.length - 1][1];
+}
+
+// Short context notes for major categories only
 const GENRE_CONTEXT = {
-  "Rock": "Peaks in the 1960s-1980s as the defining youth music. Gradual decentering follows as hip-hop and pop take over the mainstream in the 1990s-2000s.",
+  "Rock": "Peaks in the 1960s–1980s as the defining youth music. Gradual decentering follows as hip-hop and pop take over the mainstream.",
   "Hip-Hop": "Born in the Bronx in the mid-1970s, global dominance by the 2010s. First genre to overtake rock in both cultural weight and streaming volume.",
   "Pop": "The constant. Reshapes itself every decade to absorb the dominant adjacent genre — rock, R&B, hip-hop, EDM — never the originator, always the distributor.",
-  "Electronic": "Emerges from disco and synth-pop in the late 1970s. Consolidates as a distinct category in the 1990s-2010s. Now a substrate inside nearly every other genre.",
-  "R&B": "Long arc. Reshaped completely every generation — Motown, Quiet Storm, New Jack Swing, neo-soul, alternative R&B. The connective tissue of popular music.",
-  "Country": "The most culturally stable genre on this chart. Its audience barely shifts; the category barely expands. An argument for staying in one's own lane.",
-  "Jazz": "Was the popular music of the 1920s-1950s. Now preserved as an art form, not a popular form. A case study in how a genre can survive its own decline by becoming prestigious.",
-  "Metal": "Peaks in the late 1980s-early 1990s, contracts but never disappears. A genre whose audience is unusually loyal and whose boundary with other styles is unusually firm.",
-  "Latin": "Explosive rise after 2010, driven by reggaeton's mainstream breakthrough. Now among the top three streamed genres globally.",
+  "Electronic": "Emerges from disco and synth-pop in the late 1970s. Consolidates as a distinct category in the 1990s–2010s. Now a substrate inside nearly every other genre.",
+  "R&B / Soul": "Long arc. Reshaped completely every generation: Motown, Quiet Storm, New Jack Swing, neo-soul, alternative R&B. The connective tissue of popular music.",
+  "Country": "The most culturally stable genre on this chart. Its audience barely shifts; its category barely expands. A late-2020s commercial surge is reshaping that.",
+  "Jazz": "Was the popular music of the 1920s–1950s. Now preserved as an art form, not a popular form. A case study in how a genre survives decline by becoming prestigious.",
+  "Metal": "Peaks in the late 1980s–early 1990s, contracts but never disappears. A genre whose audience is unusually loyal and whose boundary with other styles is unusually firm.",
+  "Latin": "Explosive rise after 2010, driven by reggaeton's mainstream breakthrough and then Mexican regional music's late-2020s explosion. Among the top three streamed genres globally.",
   "Afrobeats": "From regional Nigerian pop to global category in under fifteen years. One of the fastest consolidations of a new genre in recorded music history.",
   "K-Pop": "Industrial scale cultural export. Combines boy-band and girl-group formats of earlier decades with modern production and transnational distribution.",
-  "Amapiano": "Johannesburg, South Africa, late 2010s. Log drum and piano over house tempos. Went from township sound to global club fixture in under five years.",
+  "Amapiano": "Johannesburg, late 2010s. Log drum and piano over house tempos. Township sound to global club fixture in under five years.",
+  "Trap": "Southern rap variant that became the dominant production template of 2010s pop. Its rhythmic DNA is now default in pop, R&B, and Latin production.",
+  "Reggaeton": "Puerto Rico, Panama roots. The 2017 global breakout made it the defining Latin sound of the late 2010s and the engine of Música Urbana.",
+  "Phonk": "Memphis-rap sample culture reinterpreted as TikTok workout/drift music in the early 2020s. Peaked fast, contracting now but still resident.",
+  "Regional Mexican": "Corridos tumbados, banda, norteño modernized by Peso Pluma, Fuerza Regida, and a wave of late-2020s artists. Currently the fastest-growing category in US Spanish-language streaming.",
+  "Tech-House": "Dance-floor-native blend of house and techno. The dominant club sound of the early-to-mid 2020s.",
+  "City Pop": "Early-1980s Japanese urban sophisti-pop. Rediscovered by YouTube algorithms and TikTok in the 2020s, now a steady revival.",
+  "Modern Country": "Country absorbed Americana, hip-hop cadence, and pop production. 2024–2026 was its biggest commercial moment since the late 1990s.",
+  "Drill": "UK-origin rap subgenre that spread globally via New York and spawned regional variants. A defining rap template of the early 2020s.",
 };
 
+// ════════════════════════════════════════════════════════════════════════════
+// HISTORY PAGE — expanded, scored, multi-chart view
+// ════════════════════════════════════════════════════════════════════════════
+
 function HistoryPage() {
-  const [selected, setSelected] = useState(["Rock","Hip-Hop","Pop","Electronic","Latin","K-Pop"]);
-  const width = 960, height = 460;
-  const padL = 56, padR = 28, padT = 32, padB = 40;
-  const plotW = width - padL - padR, plotH = height - padT - padB;
+  const ALL_GENRES = Object.keys(GENRE_HISTORY);
+  const [selected, setSelected] = useState(["Hip-Hop","Pop","Electronic","Latin","K-Pop","Afrobeats","Amapiano","Tech-House"]);
+  const [search, setSearch] = useState("");
+  const [sortMode, setSortMode] = useState("trend"); // "trend" | "az" | "category"
+  const [viewMode, setViewMode] = useState("grid"); // "grid" | "overlay"
+  const MAX_SELECTED = 25;
 
-  const years = [1960, 1970, 1980, 1990, 2000, 2010, 2020, 2025];
-  const xFor = (yr) => padL + ((yr - 1960) / (2025 - 1960)) * plotW;
-  const yFor = (v)  => padT + (1 - v / 100) * plotH;
-
-  // Use accent family tints rather than rainbow — one visual language
-  const LINE_COLORS = [T.text, T.accentHi, T.accent, T.textSec, T.warning, T.success, "#8B5CF6", "#06B6D4", T.danger, T.textTer];
+  // Trend-index pre-computed for all genres
+  const trendIndex = useMemo(() => {
+    const map = {};
+    ALL_GENRES.forEach(g => { map[g] = calcTrendIndex(GENRE_HISTORY[g]); });
+    return map;
+  }, []);
 
   const toggleGenre = (g) => {
-    setSelected(prev => prev.includes(g) ? prev.filter(x => x !== g) : prev.length < 8 ? [...prev, g] : prev);
+    setSelected(prev =>
+      prev.includes(g)
+        ? prev.filter(x => x !== g)
+        : prev.length < MAX_SELECTED ? [...prev, g] : prev
+    );
   };
 
-  const pathFor = (data) => {
-    const sorted = [...data].sort((a, b) => a[0] - b[0]);
-    return sorted.map((pt, i) => `${i === 0 ? "M" : "L"} ${xFor(pt[0]).toFixed(1)} ${yFor(pt[1]).toFixed(1)}`).join(" ");
+  const selectAllVisible = () => {
+    setSelected(filteredGenres.slice(0, MAX_SELECTED));
   };
+  const clearAll = () => setSelected([]);
+
+  const searchLower = search.trim().toLowerCase();
+  const filteredGenres = useMemo(() => {
+    let list = ALL_GENRES;
+    if (searchLower) list = list.filter(g => g.toLowerCase().includes(searchLower));
+    if (sortMode === "trend") list = [...list].sort((a, b) => trendIndex[b] - trendIndex[a]);
+    else if (sortMode === "az") list = [...list].sort((a, b) => a.localeCompare(b));
+    return list;
+  }, [searchLower, sortMode, trendIndex]);
+
+  // Top trending (for the featured panel)
+  const topTrending = useMemo(() =>
+    [...ALL_GENRES].sort((a, b) => trendIndex[b] - trendIndex[a]).slice(0, 10),
+    [trendIndex]
+  );
+
+  // Accent-family palette for lines
+  const LINE_COLORS = [T.accentHi, T.accent, T.text, T.warning, T.success, "#8B5CF6", "#06B6D4", T.danger, T.textSec, "#FF6B00", "#00E5FF", "#FF2D9C", "#FFD700", "#00FF88", "#E94FEF", "#F5A524", "#4ADE80", "#7C8BFF", "#5E6AD2", "#6B6E76", "#EF4444", "#8B5CF6", "#06B6D4", "#10B981", "#F59E0B"];
 
   return (
     <div style={{
-      maxWidth: 1200, margin: "0 auto",
-      padding: `${T.s9}px ${T.s7}px ${T.s10}px`,
+      maxWidth: 1440, margin: "0 auto",
+      padding: `${T.s8}px ${T.s7}px ${T.s10}px`,
     }}>
-      <Label color={T.textTer} style={{ display: "block", marginBottom: T.s4 }}>
-        Genre History · cultural weight over time
-      </Label>
-      <h1 style={{
-        fontSize: "clamp(32px, 4vw, 56px)",
-        lineHeight: 1.05, letterSpacing: "-0.025em",
-        margin: 0, marginBottom: T.s3,
-        fontFamily: T.font_sans, fontWeight: 600,
-      }}>
-        Sixty-five years of shifting dominance
-      </h1>
-      <p style={{
-        color: T.textSec, fontSize: T.fs_lg, lineHeight: 1.5,
-        maxWidth: 640, marginBottom: T.s8, fontFamily: T.font_sans,
-      }}>
-        Editorial estimates of how culturally prominent each genre has been, year over year. Not chart data — a narrative tool for thinking about momentum.
-      </p>
-
-      <div style={{
-        background: T.surface, border: `1px solid ${T.border}`,
-        borderRadius: T.r_lg, padding: T.s5,
-        marginBottom: T.s6,
-      }}>
-        <svg viewBox={`0 0 ${width} ${height}`} style={{ width: "100%", height: "auto", display: "block" }}>
-          {/* Y-axis gridlines */}
-          {[0, 25, 50, 75, 100].map(v => (
-            <g key={v}>
-              <line x1={padL} x2={width - padR} y1={yFor(v)} y2={yFor(v)}
-                stroke={T.border} strokeWidth={1} strokeDasharray="2 4" />
-              <text x={padL - 10} y={yFor(v) + 4} textAnchor="end"
-                fill={T.textTer} fontSize={T.fs_xs} fontFamily={T.font_mono}>{v}</text>
-            </g>
-          ))}
-          {/* X-axis labels */}
-          {years.map(yr => (
-            <text key={yr} x={xFor(yr)} y={height - padB + 20} textAnchor="middle"
-              fill={T.textTer} fontSize={T.fs_xs} fontFamily={T.font_mono}>{yr}</text>
-          ))}
-          {/* Axis baselines */}
-          <line x1={padL} x2={width - padR} y1={height - padB} y2={height - padB} stroke={T.borderHi} strokeWidth={1} />
-          <line x1={padL} x2={padL} y1={padT} y2={height - padB} stroke={T.borderHi} strokeWidth={1} />
-
-          {/* Data lines */}
-          {selected.map((g, i) => {
-            const data = GENRE_HISTORY[g] || [];
-            const color = LINE_COLORS[i % LINE_COLORS.length];
-            return (
-              <g key={g}>
-                <path d={pathFor(data)} fill="none" stroke={color} strokeWidth={1.5}
-                  strokeLinejoin="round" strokeLinecap="round" />
-                {data.map(([yr, v]) => (
-                  <circle key={yr} cx={xFor(yr)} cy={yFor(v)} r={2.5} fill={T.bg} stroke={color} strokeWidth={1.5} />
-                ))}
-              </g>
-            );
-          })}
-        </svg>
+      {/* ── HERO ─────────────────────────────────────────────────────── */}
+      <div style={{ marginBottom: T.s8 }}>
+        <Label color={T.textTer} style={{ display: "block", marginBottom: T.s4 }}>
+          Genre History · time-decay trend index
+        </Label>
+        <h1 style={{
+          fontSize: "clamp(32px, 4vw, 56px)",
+          lineHeight: 1.05, letterSpacing: "-0.025em",
+          margin: 0, marginBottom: T.s3,
+          fontFamily: T.font_sans, fontWeight: 600,
+        }}>
+          What's hot, what's cooling, what's over
+        </h1>
+        <p style={{
+          color: T.textSec, fontSize: T.fs_lg, lineHeight: 1.55,
+          maxWidth: 720, marginBottom: T.s3, fontFamily: T.font_sans,
+        }}>
+          Every genre and subgenre in the engine, plotted from 1960 to now. A time-decay scoring model ranks each by current momentum — genres peaking today score highest, genres that peaked a year ago score lower, a decade ago lower still.
+        </p>
+        <p style={{
+          color: T.textTer, fontSize: T.fs_sm, lineHeight: 1.5, fontFamily: T.font_sans,
+        }}>
+          Curated data, not real-time. Popularity curves are hand-authored estimates of cultural weight, revisited periodically.
+        </p>
       </div>
 
-      {/* Legend — genres */}
+      {/* ── TOP TRENDING LEADERBOARD ─────────────────────────────────── */}
       <div style={{
-        display: "flex", flexWrap: "wrap", gap: T.s2,
-        marginBottom: T.s7,
+        background: T.surface, border: `1px solid ${T.border}`,
+        borderRadius: T.r_lg, padding: T.s5, marginBottom: T.s6,
       }}>
-        {Object.keys(GENRE_HISTORY).map(g => {
-          const isOn = selected.includes(g);
-          const idx = selected.indexOf(g);
-          const color = idx >= 0 ? LINE_COLORS[idx % LINE_COLORS.length] : T.textTer;
-          return (
-            <button key={g} type="button" onClick={() => toggleGenre(g)}
-              style={{
-                display: "inline-flex", alignItems: "center", gap: T.s2,
-                padding: `${T.s2}px ${T.s3}px`,
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: T.s4 }}>
+          <Label color={T.text} size={T.fs_sm}>Top trending right now</Label>
+          <span style={{ fontSize: T.fs_xs, color: T.textTer, fontFamily: T.font_mono }}>
+            by trend-index score
+          </span>
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: T.s2 }}>
+          {topTrending.map((g, i) => {
+            const score = trendIndex[g];
+            const isOn = selected.includes(g);
+            const barColor = score >= 85 ? T.success : score >= 70 ? T.warning : T.accent;
+            return (
+              <div key={g} onClick={() => toggleGenre(g)} style={{
+                padding: T.s3, cursor: "pointer",
                 background: isOn ? T.elevated : "transparent",
                 border: `1px solid ${isOn ? T.borderHi : T.border}`,
                 borderRadius: T.r_md,
-                color: isOn ? T.text : T.textTer,
-                fontFamily: T.font_sans, fontSize: T.fs_md, fontWeight: 500,
-                cursor: "pointer",
                 transition: `all ${T.dur_fast} ${T.ease}`,
+                position: "relative",
               }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 6 }}>
+                  <span style={{
+                    fontSize: T.fs_xs, color: T.textTer,
+                    fontFamily: T.font_mono,
+                  }}>#{i + 1}</span>
+                  <span style={{
+                    fontSize: T.fs_base, fontWeight: 700,
+                    color: barColor, fontFamily: T.font_mono,
+                  }}>{score}</span>
+                </div>
+                <div style={{
+                  fontSize: T.fs_md, color: T.text, fontWeight: 500,
+                  fontFamily: T.font_sans, lineHeight: 1.2, marginBottom: 8,
+                }}>{g}</div>
+                <div style={{ height: 2, background: T.border, borderRadius: 1, overflow: "hidden" }}>
+                  <div style={{
+                    height: "100%", width: `${score}%`,
+                    background: barColor,
+                    transition: `width ${T.dur_slow} ${T.ease}`,
+                  }} />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* ── CONTROLS — search, sort, view mode, selection counter ───── */}
+      <div style={{
+        display: "flex", flexWrap: "wrap", gap: T.s3,
+        alignItems: "center", marginBottom: T.s4,
+      }}>
+        <input type="text" value={search} onChange={e => setSearch(e.target.value)}
+          placeholder="Search genres…"
+          style={{
+            flex: "1 1 240px", minWidth: 200,
+            background: T.surface, border: `1px solid ${T.border}`,
+            color: T.text, padding: `${T.s2}px ${T.s3}px`,
+            fontSize: T.fs_md, fontFamily: T.font_sans,
+            borderRadius: T.r_md, outline: "none",
+            transition: `border-color ${T.dur_fast} ${T.ease}`,
+          }}
+          onFocus={e => e.currentTarget.style.borderColor = T.borderFocus}
+          onBlur={e => e.currentTarget.style.borderColor = T.border}
+        />
+
+        {/* Sort picker */}
+        <div style={{
+          display: "flex", background: T.surface,
+          border: `1px solid ${T.border}`, borderRadius: T.r_md, padding: 2,
+        }}>
+          {[
+            { id: "trend", label: "By trend" },
+            { id: "az",    label: "A–Z" },
+          ].map(o => (
+            <button key={o.id} type="button" onClick={() => setSortMode(o.id)} style={{
+              background: sortMode === o.id ? T.elevated : "transparent",
+              border: "none",
+              color: sortMode === o.id ? T.text : T.textTer,
+              padding: `${T.s2}px ${T.s3}px`, cursor: "pointer",
+              fontSize: T.fs_sm, fontFamily: T.font_sans, fontWeight: 500,
+              borderRadius: T.r_sm,
+              transition: `all ${T.dur_fast} ${T.ease}`,
+            }}>{o.label}</button>
+          ))}
+        </div>
+
+        {/* View mode */}
+        <div style={{
+          display: "flex", background: T.surface,
+          border: `1px solid ${T.border}`, borderRadius: T.r_md, padding: 2,
+        }}>
+          {[
+            { id: "grid",    label: "Grid" },
+            { id: "overlay", label: "Overlay" },
+          ].map(o => (
+            <button key={o.id} type="button" onClick={() => setViewMode(o.id)} style={{
+              background: viewMode === o.id ? T.elevated : "transparent",
+              border: "none",
+              color: viewMode === o.id ? T.text : T.textTer,
+              padding: `${T.s2}px ${T.s3}px`, cursor: "pointer",
+              fontSize: T.fs_sm, fontFamily: T.font_sans, fontWeight: 500,
+              borderRadius: T.r_sm,
+              transition: `all ${T.dur_fast} ${T.ease}`,
+            }}>{o.label}</button>
+          ))}
+        </div>
+
+        <span style={{
+          fontSize: T.fs_sm, color: T.textSec, fontFamily: T.font_mono,
+          marginLeft: "auto",
+        }}>
+          {selected.length} / {MAX_SELECTED} selected
+        </span>
+
+        <Button variant="ghost" size="sm" onClick={selectAllVisible}>
+          Select top {Math.min(MAX_SELECTED, filteredGenres.length)}
+        </Button>
+        <Button variant="ghost" size="sm" onClick={clearAll}>Clear</Button>
+      </div>
+
+      {/* ── CHART AREA ─────────────────────────────────────────────── */}
+      {selected.length === 0 ? (
+        <div style={{
+          padding: `${T.s7}px ${T.s5}px`,
+          background: T.surface, border: `1px dashed ${T.border}`,
+          borderRadius: T.r_lg, textAlign: "center",
+          color: T.textTer, fontFamily: T.font_sans,
+          marginBottom: T.s6,
+        }}>
+          Select up to {MAX_SELECTED} genres below to see their popularity curves.
+        </div>
+      ) : viewMode === "overlay" ? (
+        <OverlayChart selected={selected} colors={LINE_COLORS} />
+      ) : (
+        <MiniChartGrid selected={selected} colors={LINE_COLORS} trendIndex={trendIndex} />
+      )}
+
+      {/* ── GENRE PICKER LIST ──────────────────────────────────────── */}
+      <Label color={T.textSec} style={{ display: "block", marginBottom: T.s3 }}>
+        All genres ({filteredGenres.length})
+      </Label>
+      <div style={{
+        display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))",
+        gap: T.s2, marginBottom: T.s7,
+      }}>
+        {filteredGenres.map(g => {
+          const isOn = selected.includes(g);
+          const score = trendIndex[g];
+          const idx = selected.indexOf(g);
+          const color = idx >= 0 ? LINE_COLORS[idx % LINE_COLORS.length] : T.textTer;
+          const disabled = !isOn && selected.length >= MAX_SELECTED;
+          return (
+            <button key={g} type="button"
+              onClick={() => !disabled && toggleGenre(g)}
+              disabled={disabled}
+              style={{
+                display: "flex", alignItems: "center", justifyContent: "space-between",
+                gap: T.s2, padding: `${T.s2}px ${T.s3}px`,
+                background: isOn ? T.elevated : T.surface,
+                border: `1px solid ${isOn ? T.borderHi : T.border}`,
+                borderRadius: T.r_md,
+                color: isOn ? T.text : T.textSec,
+                fontFamily: T.font_sans, fontSize: T.fs_sm, fontWeight: 500,
+                cursor: disabled ? "not-allowed" : "pointer",
+                opacity: disabled ? 0.35 : 1,
+                transition: `all ${T.dur_fast} ${T.ease}`,
+                textAlign: "left",
+              }}>
+              <span style={{ display: "inline-flex", alignItems: "center", gap: T.s2, flex: 1, minWidth: 0 }}>
+                <span style={{
+                  width: 8, height: 8, borderRadius: "50%",
+                  background: isOn ? color : T.border,
+                  flexShrink: 0,
+                }} />
+                <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{g}</span>
+              </span>
               <span style={{
-                width: 8, height: 8, borderRadius: "50%",
-                background: isOn ? color : T.border,
-                display: "inline-block",
-              }} />
-              {g}
+                fontSize: T.fs_xs, color: T.textTer,
+                fontFamily: T.font_mono, flexShrink: 0,
+              }}>{score}</span>
             </button>
           );
         })}
       </div>
 
-      {/* Context cards */}
-      <div style={{
-        display: "grid", gap: T.s3,
-        gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))",
-      }}>
-        {selected.map(g => (
-          <div key={g} style={{
-            padding: T.s4,
-            background: T.surface, border: `1px solid ${T.border}`,
-            borderRadius: T.r_md,
+      {/* ── CONTEXT CARDS ─────────────────────────────────────────── */}
+      {selected.filter(g => GENRE_CONTEXT[g]).length > 0 && (
+        <div>
+          <Label color={T.textSec} style={{ display: "block", marginBottom: T.s3 }}>
+            Context
+          </Label>
+          <div style={{
+            display: "grid", gap: T.s3,
+            gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))",
           }}>
-            <div style={{
-              fontSize: T.fs_base, color: T.text, fontWeight: 600,
-              marginBottom: T.s2, fontFamily: T.font_sans,
-            }}>{g}</div>
-            <div style={{
-              fontSize: T.fs_md, color: T.textSec, lineHeight: 1.55,
-              fontFamily: T.font_sans,
-            }}>{GENRE_CONTEXT[g] || ""}</div>
+            {selected.filter(g => GENRE_CONTEXT[g]).map(g => (
+              <div key={g} style={{
+                padding: T.s4,
+                background: T.surface, border: `1px solid ${T.border}`,
+                borderRadius: T.r_md,
+              }}>
+                <div style={{
+                  display: "flex", justifyContent: "space-between", alignItems: "baseline",
+                  marginBottom: T.s2,
+                }}>
+                  <span style={{
+                    fontSize: T.fs_base, color: T.text, fontWeight: 600,
+                    fontFamily: T.font_sans,
+                  }}>{g}</span>
+                  <span style={{
+                    fontSize: T.fs_sm, color: T.accentHi,
+                    fontFamily: T.font_mono, fontWeight: 600,
+                  }}>{trendIndex[g]}</span>
+                </div>
+                <div style={{
+                  fontSize: T.fs_md, color: T.textSec, lineHeight: 1.55,
+                  fontFamily: T.font_sans,
+                }}>{GENRE_CONTEXT[g]}</div>
+              </div>
+            ))}
           </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Overlay chart: single large SVG with all selected genres overlaid ──
+function OverlayChart({ selected, colors }) {
+  const width = 1000, height = 480;
+  const padL = 56, padR = 28, padT = 32, padB = 40;
+  const plotW = width - padL - padR, plotH = height - padT - padB;
+  const years = [1960, 1970, 1980, 1990, 2000, 2010, 2020, 2026];
+  const xFor = (yr) => padL + ((yr - 1960) / (2026 - 1960)) * plotW;
+  const yFor = (v) => padT + (1 - v / 100) * plotH;
+
+  const pathFor = (data) => {
+    const sorted = [...data].sort((a, b) => a[0] - b[0]);
+    return sorted.map((pt, i) =>
+      `${i === 0 ? "M" : "L"} ${xFor(pt[0]).toFixed(1)} ${yFor(pt[1]).toFixed(1)}`
+    ).join(" ");
+  };
+
+  return (
+    <div style={{
+      background: T.surface, border: `1px solid ${T.border}`,
+      borderRadius: T.r_lg, padding: T.s5, marginBottom: T.s6,
+    }}>
+      <svg viewBox={`0 0 ${width} ${height}`} style={{ width: "100%", height: "auto", display: "block" }}>
+        {[0, 25, 50, 75, 100].map(v => (
+          <g key={v}>
+            <line x1={padL} x2={width - padR} y1={yFor(v)} y2={yFor(v)}
+              stroke={T.border} strokeWidth={1} strokeDasharray="2 4" />
+            <text x={padL - 10} y={yFor(v) + 4} textAnchor="end"
+              fill={T.textTer} fontSize={T.fs_xs} fontFamily={T.font_mono}>{v}</text>
+          </g>
         ))}
+        {years.map(yr => (
+          <text key={yr} x={xFor(yr)} y={height - padB + 20} textAnchor="middle"
+            fill={T.textTer} fontSize={T.fs_xs} fontFamily={T.font_mono}>{yr}</text>
+        ))}
+        <line x1={padL} x2={width - padR} y1={height - padB} y2={height - padB} stroke={T.borderHi} strokeWidth={1} />
+        <line x1={padL} x2={padL} y1={padT} y2={height - padB} stroke={T.borderHi} strokeWidth={1} />
+
+        {selected.map((g, i) => {
+          const data = GENRE_HISTORY[g] || [];
+          const color = colors[i % colors.length];
+          return (
+            <g key={g}>
+              <path d={pathFor(data)} fill="none" stroke={color} strokeWidth={1.5}
+                strokeLinejoin="round" strokeLinecap="round" opacity={0.9} />
+            </g>
+          );
+        })}
+      </svg>
+    </div>
+  );
+}
+
+// ── Mini chart grid: small multiples, one chart per genre ──
+function MiniChartGrid({ selected, colors, trendIndex }) {
+  return (
+    <div style={{
+      display: "grid",
+      gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))",
+      gap: T.s3, marginBottom: T.s6,
+    }}>
+      {selected.map((g, i) => (
+        <MiniChart key={g} genre={g} data={GENRE_HISTORY[g] || []}
+          color={colors[i % colors.length]} score={trendIndex[g]} />
+      ))}
+    </div>
+  );
+}
+
+function MiniChart({ genre, data, color, score }) {
+  const width = 220, height = 120;
+  const padL = 8, padR = 8, padT = 28, padB = 20;
+  const plotW = width - padL - padR, plotH = height - padT - padB;
+  const xFor = (yr) => padL + ((yr - 1960) / (2026 - 1960)) * plotW;
+  const yFor = (v) => padT + (1 - v / 100) * plotH;
+
+  const sorted = [...data].sort((a, b) => a[0] - b[0]);
+  const path = sorted.map((pt, i) =>
+    `${i === 0 ? "M" : "L"} ${xFor(pt[0]).toFixed(1)} ${yFor(pt[1]).toFixed(1)}`
+  ).join(" ");
+  // Area fill
+  const areaPath = sorted.length > 0
+    ? `${path} L ${xFor(sorted[sorted.length - 1][0])} ${yFor(0)} L ${xFor(sorted[0][0])} ${yFor(0)} Z`
+    : "";
+
+  const barColor = score >= 85 ? T.success : score >= 70 ? T.warning : T.accent;
+
+  return (
+    <div style={{
+      padding: T.s3,
+      background: T.surface, border: `1px solid ${T.border}`,
+      borderRadius: T.r_md,
+    }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 6 }}>
+        <span style={{
+          fontSize: T.fs_sm, color: T.text, fontWeight: 600,
+          fontFamily: T.font_sans,
+          overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+          minWidth: 0, flex: 1,
+        }}>{genre}</span>
+        <span style={{
+          fontSize: T.fs_sm, color: barColor, fontFamily: T.font_mono,
+          fontWeight: 700, marginLeft: T.s2, flexShrink: 0,
+        }}>{score}</span>
       </div>
+      <svg viewBox={`0 0 ${width} ${height}`} style={{ width: "100%", height: "auto", display: "block" }}>
+        <path d={areaPath} fill={color} opacity={0.15} />
+        <path d={path} fill="none" stroke={color} strokeWidth={1.3}
+          strokeLinejoin="round" strokeLinecap="round" />
+        <line x1={padL} x2={width - padR} y1={height - padB} y2={height - padB}
+          stroke={T.border} strokeWidth={1} />
+        <text x={padL} y={height - 4} fill={T.textTer} fontSize={9} fontFamily={T.font_mono}>1960</text>
+        <text x={width - padR} y={height - 4} textAnchor="end"
+          fill={T.textTer} fontSize={9} fontFamily={T.font_mono}>2026</text>
+      </svg>
     </div>
   );
 }
@@ -3403,7 +4102,7 @@ function HistoryPage() {
 // ROOT APP
 // ════════════════════════════════════════════════════════════════════════════
 
-export default function App() {
+export default function app() {
   const [page, setPage] = useState("engine");
 
   useEffect(() => {
@@ -3422,7 +4121,7 @@ export default function App() {
   return (
     <>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&family=Instrument+Serif:ital@0;1&display=swap');
         * { box-sizing: border-box; }
         html, body, #root { margin: 0; padding: 0; background: ${T.bg}; }
         body { font-family: ${T.font_sans}; color: ${T.text}; }
@@ -3444,7 +4143,7 @@ export default function App() {
         ::selection { background: ${T.accent}; color: #FFFFFF; }
       `}</style>
       <div style={{ minHeight: "100vh", background: T.bg, color: T.text }}>
-        <Nav page={page} onNavigate={setPage} />
+        <Nav page={page} onNavigate={setPage} headerImage={headerImage} />
         <ErrorBoundary>
           {page === "engine"  && <EnginePage />}
           {page === "future"  && <FuturePage />}
