@@ -1,5 +1,4 @@
-import { useState, useEffect, useRef, useMemo, Component } from "react";
-import headerImage from "./assets/header.png";
+import { useState, useEffect, useRef, useMemo, Component, createContext, useContext } from "react";
 
 // ════════════════════════════════════════════════════════════════════════════
 // HIT-ENGINE — self-contained, deterministic music prompt engine.
@@ -61,6 +60,232 @@ const V = {
   feltGreen: "#0B3D1E",
   velvet:    "#1A0A1F",
 };
+
+// ────────────────────────────────────────────────────────────────────────────
+// USER TIERS — demo/honor system. Real auth is a separate build.
+// ────────────────────────────────────────────────────────────────────────────
+const TIERS = {
+  free:  { id: "free",  label: "Free",  color: "#6B6E76", description: "Try the engine" },
+  pro:   { id: "pro",   label: "Pro",   color: "#5E6AD2", description: "Full creative access" },
+  vip:   { id: "vip",   label: "VIP",   color: "#FFD700", description: "Everything + trend radar + exports" },
+  admin: { id: "admin", label: "Admin", color: "#EF4444", description: "Behind-the-scenes debug view" },
+};
+
+// Feature flags per tier — single source of truth
+const TIER_FEATURES = {
+  free: {
+    maxSlots: 1,
+    modes: ["simple", "moderated"],
+    maxInstruments: 5,
+    locks: false,
+    favorites: false,
+    presets: false,
+    popHitMeter: false,
+    casinoFlash: false,
+    historyMaxSelect: 8,
+    historyShowsAll: false,
+    trendRadar: false,
+    exports: false,
+    adminDebug: false,
+  },
+  pro: {
+    maxSlots: 3,
+    modes: ["simple", "moderated", "expanded", "vast", "chaos"],
+    maxInstruments: 10,
+    locks: true,
+    favorites: true,
+    presets: true,
+    popHitMeter: true,
+    casinoFlash: true,
+    historyMaxSelect: 25,
+    historyShowsAll: true,
+    trendRadar: false,
+    exports: false,
+    adminDebug: false,
+  },
+  vip: {
+    maxSlots: 3,
+    modes: ["simple", "moderated", "expanded", "vast", "chaos"],
+    maxInstruments: 10,
+    locks: true,
+    favorites: true,
+    presets: true,
+    popHitMeter: true,
+    casinoFlash: true,
+    historyMaxSelect: 25,
+    historyShowsAll: true,
+    trendRadar: true,
+    exports: true,
+    adminDebug: false,
+  },
+  admin: {
+    maxSlots: 3,
+    modes: ["simple", "moderated", "expanded", "vast", "chaos"],
+    maxInstruments: 10,
+    locks: true,
+    favorites: true,
+    presets: true,
+    popHitMeter: true,
+    casinoFlash: true,
+    historyMaxSelect: 25,
+    historyShowsAll: true,
+    trendRadar: true,
+    exports: true,
+    adminDebug: true,
+  },
+};
+
+const TierContext = createContext({ tier: "free", setTier: () => {}, features: TIER_FEATURES.free });
+
+function useTier() { return useContext(TierContext); }
+
+function TierLock({ feature, requiredTier = "pro", compact = false }) {
+  const t = TIERS[requiredTier];
+  if (compact) {
+    return (
+      <span style={{
+        display: "inline-flex", alignItems: "center", gap: 4,
+        padding: "2px 8px", fontFamily: T.font_mono, fontSize: 9,
+        letterSpacing: "0.15em", fontWeight: 700,
+        color: t.color, background: `${t.color}11`,
+        border: `1px solid ${t.color}44`, borderRadius: 4,
+        textShadow: `0 0 4px ${t.color}66`,
+      }}>
+        🔒 {t.label.toUpperCase()}
+      </span>
+    );
+  }
+  return (
+    <div style={{
+      padding: "14px 16px", marginBottom: T.s4,
+      background: `${t.color}08`,
+      border: `1px dashed ${t.color}44`,
+      borderRadius: 8,
+      display: "flex", alignItems: "center", gap: 12,
+    }}>
+      <span style={{
+        fontSize: 16, color: t.color,
+        textShadow: `0 0 8px ${t.color}`,
+      }}>🔒</span>
+      <div style={{ flex: 1 }}>
+        <div style={{
+          fontSize: 11, fontFamily: T.font_mono, fontWeight: 700,
+          letterSpacing: "0.2em", color: t.color,
+          textShadow: `0 0 6px ${t.color}66`,
+          marginBottom: 2,
+        }}>
+          {t.label.toUpperCase()} TIER
+        </div>
+        <div style={{
+          color: T.textSec, fontSize: 12, fontFamily: T.font_sans,
+        }}>
+          {feature} is available in the {t.label} tier or higher.
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function TierProvider({ children }) {
+  const [tier, setTier] = useState("pro"); // default new users to Pro so the site feels unlocked
+  const features = TIER_FEATURES[tier] || TIER_FEATURES.free;
+  const value = useMemo(() => ({ tier, setTier, features }), [tier, features]);
+  return <TierContext.Provider value={value}>{children}</TierContext.Provider>;
+}
+
+function TierSwitcher({ tier, onChange }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+  useEffect(() => {
+    if (!open) return;
+    const onClick = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener("mousedown", onClick);
+    return () => document.removeEventListener("mousedown", onClick);
+  }, [open]);
+
+  const current = TIERS[tier];
+  return (
+    <div ref={ref} style={{ position: "relative", flexShrink: 0 }}>
+      <button type="button" onClick={() => setOpen(!open)} style={{
+        display: "inline-flex", alignItems: "center", gap: 6,
+        background: "transparent",
+        border: `1px solid ${current.color}66`,
+        color: current.color,
+        padding: "6px 12px", borderRadius: 6, cursor: "pointer",
+        fontFamily: T.font_mono, fontSize: 10,
+        fontWeight: 700, letterSpacing: "0.15em",
+        textShadow: `0 0 6px ${current.color}66`,
+        transition: "all 120ms ease-out",
+      }}>
+        <span style={{
+          width: 6, height: 6, borderRadius: "50%",
+          background: current.color,
+          boxShadow: `0 0 6px ${current.color}`,
+        }} />
+        {current.label.toUpperCase()}
+        <span style={{ opacity: 0.5, fontSize: 9 }}>{open ? "▴" : "▾"}</span>
+      </button>
+      {open && (
+        <div style={{
+          position: "absolute", top: "100%", right: 0, marginTop: 6,
+          minWidth: 260, padding: 6,
+          background: "#0b0c10",
+          border: `1px solid ${T.borderHi}`, borderRadius: 8,
+          boxShadow: "0 12px 40px rgba(0,0,0,0.8), 0 0 0 1px rgba(255,255,255,0.03)",
+          zIndex: 200,
+        }}>
+          {Object.values(TIERS).map(t => {
+            const isActive = t.id === tier;
+            return (
+              <button key={t.id} type="button"
+                onClick={() => { onChange(t.id); setOpen(false); }}
+                style={{
+                  display: "block", width: "100%",
+                  padding: "10px 12px",
+                  background: isActive ? "#16181d" : "transparent",
+                  border: "none",
+                  borderRadius: 6,
+                  textAlign: "left", cursor: "pointer",
+                  transition: "background 120ms ease-out",
+                }}
+                onMouseEnter={e => e.currentTarget.style.background = "#16181d"}
+                onMouseLeave={e => e.currentTarget.style.background = isActive ? "#16181d" : "transparent"}>
+                <div style={{
+                  display: "flex", alignItems: "center", gap: 8, marginBottom: 2,
+                }}>
+                  <span style={{
+                    width: 8, height: 8, borderRadius: "50%",
+                    background: t.color,
+                    boxShadow: `0 0 8px ${t.color}`,
+                  }} />
+                  <span style={{
+                    color: t.color, fontFamily: T.font_mono, fontSize: 10,
+                    fontWeight: 700, letterSpacing: "0.15em",
+                  }}>{t.label.toUpperCase()}</span>
+                  {isActive && (
+                    <span style={{ marginLeft: "auto", color: T.textTer, fontSize: 10 }}>●</span>
+                  )}
+                </div>
+                <div style={{
+                  color: T.textTer, fontSize: 11, fontFamily: T.font_sans,
+                  lineHeight: 1.4,
+                }}>{t.description}</div>
+              </button>
+            );
+          })}
+          <div style={{
+            padding: "8px 12px", marginTop: 4,
+            borderTop: `1px solid ${T.border}`,
+            color: T.textMuted, fontSize: 10, fontFamily: T.font_mono,
+            lineHeight: 1.4,
+          }}>
+            Demo tiers. No real auth. Switch freely.
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -1465,35 +1690,48 @@ class ErrorBoundary extends Component {
 // ════════════════════════════════════════════════════════════════════════════
 
 function HitLogo({ size = 96 }) {
-  // 80 deterministic star positions inside the text bounding box
+  // Rich starfield: two layers (bright nearby stars + dim distant stars)
   const stars = useMemo(() => {
-    const count = 80;
+    const bright = 60;
+    const dim = 120;
     let seed = 1337;
     const rand = () => { seed = (seed * 9301 + 49297) % 233280; return seed / 233280; };
-    return Array.from({ length: count }, () => ({
-      x: rand() * 240,
-      y: rand() * 100,
-      r: 0.4 + rand() * 1.2,
-      o: 0.5 + rand() * 0.5,
+    const layer1 = Array.from({ length: bright }, () => ({
+      x: rand() * 260, y: rand() * 110,
+      r: 0.7 + rand() * 1.6, o: 0.7 + rand() * 0.3,
+      twinkle: rand() * 2,
     }));
+    const layer2 = Array.from({ length: dim }, () => ({
+      x: rand() * 260, y: rand() * 110,
+      r: 0.3 + rand() * 0.5, o: 0.3 + rand() * 0.3,
+      twinkle: rand() * 2,
+    }));
+    return { layer1, layer2 };
   }, []);
 
-  // Render "HIT" via SVG text with a clipPath referencing that same text.
-  // Stars are drawn inside the clip so they ONLY appear inside letter interiors.
-  // Outline stroke on the text creates the white border that defines the letters.
   const fontSize = size;
-  const svgW = size * 2.6; // roughly fits "HIT" at this weight
-  const svgH = size * 1.1;
+  const svgW = size * 2.6;
+  const svgH = size * 1.15;
+  const clipId = useMemo(() => `hit-clip-${Math.random().toString(36).slice(2, 9)}`, []);
+  const nebulaId = useMemo(() => `hit-neb-${Math.random().toString(36).slice(2, 9)}`, []);
+  const chromeId = useMemo(() => `hit-chrome-${Math.random().toString(36).slice(2, 9)}`, []);
 
   return (
     <span style={{
       display: "inline-block", verticalAlign: "baseline",
       lineHeight: 1, fontFamily: T.font_display,
     }}>
+      <style>{`
+        @keyframes hitTwinkle {
+          0%,100% { opacity: 1; }
+          50%     { opacity: 0.3; }
+        }
+      `}</style>
       <svg width={svgW} height={svgH} viewBox={`0 0 ${svgW} ${svgH}`}
         style={{ display: "block", overflow: "visible" }}>
         <defs>
-          <clipPath id="hit-text-clip">
+          {/* Clip path from letter shapes */}
+          <clipPath id={clipId}>
             <text
               x="0" y={svgH * 0.82}
               fontFamily={T.font_display}
@@ -1502,54 +1740,130 @@ function HitLogo({ size = 96 }) {
               letterSpacing="-0.02em"
             >HIT</text>
           </clipPath>
+          {/* Nebula gradient — deep purple → black core with blue tint */}
+          <radialGradient id={nebulaId} cx="50%" cy="40%" r="70%">
+            <stop offset="0%"  stopColor="#1a0f3e" stopOpacity="0.95" />
+            <stop offset="40%" stopColor="#0a0524" stopOpacity="1" />
+            <stop offset="100%" stopColor="#000000" stopOpacity="1" />
+          </radialGradient>
+          {/* Chrome stroke gradient — bright silver top, darker steel bottom */}
+          <linearGradient id={chromeId} x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%"   stopColor="#FFFFFF" />
+            <stop offset="25%"  stopColor="#D8DFE8" />
+            <stop offset="55%"  stopColor="#8A95A5" />
+            <stop offset="100%" stopColor="#3D4552" />
+          </linearGradient>
         </defs>
-        {/* Black fill for letters */}
+
+        {/* Layer 1: nebula fill inside letters */}
+        <g clipPath={`url(#${clipId})`}>
+          <rect x="0" y="0" width={svgW} height={svgH} fill={`url(#${nebulaId})`} />
+          {/* Dim background stars */}
+          {stars.layer2.map((s, i) => (
+            <circle key={`d-${i}`} cx={s.x} cy={s.y} r={s.r}
+              fill="#9EB8FF" opacity={s.o}
+              style={{
+                animation: `hitTwinkle ${3 + s.twinkle * 2}s ease-in-out infinite`,
+                animationDelay: `${s.twinkle}s`,
+              }} />
+          ))}
+          {/* Bright foreground stars */}
+          {stars.layer1.map((s, i) => (
+            <g key={`b-${i}`}>
+              <circle cx={s.x} cy={s.y} r={s.r * 2} fill="#FFFFFF" opacity={s.o * 0.2} />
+              <circle cx={s.x} cy={s.y} r={s.r} fill="#FFFFFF" opacity={s.o}
+                style={{
+                  animation: `hitTwinkle ${2 + s.twinkle * 1.5}s ease-in-out infinite`,
+                  animationDelay: `${s.twinkle * 0.7}s`,
+                }} />
+            </g>
+          ))}
+        </g>
+
+        {/* Layer 2: chrome stroke on letters — no fill, just the beveled edge */}
         <text
           x="0" y={svgH * 0.82}
           fontFamily={T.font_display}
           fontSize={fontSize}
           fontWeight={400}
           letterSpacing="-0.02em"
-          fill="#000000"
-          stroke={T.text}
-          strokeWidth="1.5"
+          fill="none"
+          stroke={`url(#${chromeId})`}
+          strokeWidth="2.5"
+          paintOrder="stroke"
+          style={{
+            filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.8))",
+          }}
         >HIT</text>
-        {/* Stars clipped to letter interiors */}
-        <g clipPath="url(#hit-text-clip)">
-          {stars.map((s, i) => (
-            <circle key={i} cx={s.x} cy={s.y} r={s.r} fill="#FFFFFF" opacity={s.o} />
-          ))}
-        </g>
+        {/* Thin inner highlight stroke */}
+        <text
+          x="0" y={svgH * 0.82}
+          fontFamily={T.font_display}
+          fontSize={fontSize}
+          fontWeight={400}
+          letterSpacing="-0.02em"
+          fill="none"
+          stroke="rgba(255,255,255,0.5)"
+          strokeWidth="0.5"
+        >HIT</text>
       </svg>
     </span>
   );
 }
 
 function EngineLogo({ size = 96 }) {
+  const id = useMemo(() => `eng-${Math.random().toString(36).slice(2, 9)}`, []);
   return (
     <>
       <style>{`
-        @keyframes engineSweep {
-          0%   { background-position:   0% 50%; }
-          100% { background-position: 200% 50%; }
+        @keyframes engineHalo-${id} {
+          0%   { color: #1E40AF; }
+          33%  { color: #D946EF; }
+          66%  { color: #FB923C; }
+          100% { color: #1E40AF; }
         }
-        .engine-logo-text {
-          background-image: linear-gradient(
-            90deg,
-            ${T.accent} 0%, ${T.accentHi} 25%, ${T.text} 50%,
-            ${T.accentHi} 75%, ${T.accent} 100%
-          );
-          background-size: 200% 100%;
-          -webkit-background-clip: text; background-clip: text;
+        @keyframes engineChromeSweep-${id} {
+          0%   { background-position: 0% 50%; }
+          100% { background-position: 0% 150%; }
+        }
+        .engine-chrome-wrap-${id} {
+          position: relative;
+          display: inline-block;
+          font-family: ${T.font_display};
+          font-style: italic;
+          font-weight: 400;
+          line-height: 1;
+          letter-spacing: -0.02em;
+        }
+        .engine-chrome-halo-${id} {
+          position: absolute;
+          inset: 0;
+          color: #1E40AF;
+          animation: engineHalo-${id} 7s linear infinite;
+          filter: blur(16px);
+          opacity: 0.85;
+          z-index: 0;
+          pointer-events: none;
+        }
+        .engine-chrome-fill-${id} {
+          position: relative;
+          z-index: 1;
+          background-image: linear-gradient(180deg,
+            #FFFFFF 0%, #E5EAF3 18%, #B4BFCE 38%,
+            #6A7385 52%, #B4BFCE 68%, #E5EAF3 88%, #FFFFFF 100%);
+          background-size: 100% 220%;
+          background-position: 0% 50%;
+          -webkit-background-clip: text;
+          background-clip: text;
           -webkit-text-fill-color: transparent;
-          animation: engineSweep 8s linear infinite;
+          animation: engineChromeSweep-${id} 5s ease-in-out infinite alternate;
+          filter: drop-shadow(0 2px 4px rgba(0,0,0,0.9));
         }
       `}</style>
-      <span className="engine-logo-text" style={{
-        fontSize: size, fontWeight: 400, letterSpacing: "-0.02em",
-        lineHeight: 1, fontFamily: T.font_display,
-        fontStyle: "italic",
-      }}>Engine</span>
+      <span className={`engine-chrome-wrap-${id}`} style={{ fontSize: size }}>
+        <span className={`engine-chrome-halo-${id}`} aria-hidden="true">ENGINE</span>
+        <span className={`engine-chrome-fill-${id}`}>ENGINE</span>
+      </span>
     </>
   );
 }
@@ -1558,7 +1872,8 @@ function EngineLogo({ size = 96 }) {
 // NAV
 // ════════════════════════════════════════════════════════════════════════════
 
-function Nav({ page, onNavigate, headerImage }) {
+function Nav({ page, onNavigate }) {
+  const { tier, setTier } = useTier();
   const links = [
     { id: "engine",  label: "Engine" },
     { id: "future",  label: "Future of Sound" },
@@ -1572,34 +1887,17 @@ function Nav({ page, onNavigate, headerImage }) {
       backdropFilter: "blur(20px) saturate(150%)",
       position: "sticky", top: 0, zIndex: 100,
       display: "flex", alignItems: "center", justifyContent: "space-between",
-      height: 56,
+      height: 56, gap: T.s4,
     }}>
-      <div style={{ display: "flex", alignItems: "center", gap: T.s2, cursor: "pointer" }}
+      {/* Mini chrome HIT-ENGINE logo */}
+      <div style={{ display: "flex", alignItems: "baseline", gap: 8, cursor: "pointer", flexShrink: 0 }}
         onClick={() => onNavigate("engine")}>
-        {headerImage ? (
-          <img src={headerImage} alt="Hit Engine" style={{
-            height: 34, width: "auto",
-            display: "block",
-            imageRendering: "auto",
-          }} />
-        ) : (
-          <>
-            <div style={{
-              width: 22, height: 22,
-              border: `1px solid ${T.borderHi}`, borderRadius: T.r_sm,
-              display: "grid", placeItems: "center",
-              background: T.elevated,
-            }}>
-              <div style={{ width: 8, height: 8, borderRadius: 2, background: T.accent }} />
-            </div>
-            <span style={{
-              fontSize: T.fs_md, fontWeight: 600, letterSpacing: "-0.01em",
-              color: T.text, fontFamily: T.font_sans,
-            }}>Hit Engine</span>
-          </>
-        )}
+        <HitLogo size={22} />
+        <span style={{ color: T.textMuted, fontSize: 18, fontStyle: "italic", fontFamily: T.font_display }}>·</span>
+        <EngineLogo size={22} />
       </div>
-      <div style={{ display: "flex", gap: T.s1 }}>
+
+      <div style={{ display: "flex", gap: T.s1, flex: 1, justifyContent: "center" }}>
         {links.map(l => (
           <button key={l.id} type="button" onClick={() => onNavigate(l.id)}
             style={{
@@ -1616,6 +1914,9 @@ function Nav({ page, onNavigate, headerImage }) {
           >{l.label}</button>
         ))}
       </div>
+
+      {/* Tier switcher — honor system, demo tiers */}
+      <TierSwitcher tier={tier} onChange={setTier} />
     </nav>
   );
 }
@@ -1624,7 +1925,7 @@ function Nav({ page, onNavigate, headerImage }) {
 // MODE SELECTOR — 5 segmented tabs, Linear-style
 // ════════════════════════════════════════════════════════════════════════════
 
-function ModeSelector({ value, onChange }) {
+function ModeSelector({ value, onChange, allowedModes }) {
   const activeIdx = MODES.findIndex(m => m.id === value);
   return (
     <div>
@@ -1654,18 +1955,26 @@ function ModeSelector({ value, onChange }) {
         }} />
         {MODES.map(m => {
           const active = value === m.id;
+          const locked = allowedModes && !allowedModes.includes(m.id);
           return (
-            <button key={m.id} type="button" onClick={() => onChange(m.id)}
+            <button key={m.id} type="button"
+              onClick={() => !locked && onChange(m.id)}
+              disabled={locked}
+              title={locked ? "Pro tier unlocks all modes" : ""}
               style={{
                 position: "relative", zIndex: 1,
                 background: "transparent", border: "none",
-                color: active ? T.text : T.textTer,
+                color: locked ? T.textMuted : active ? T.text : T.textTer,
                 padding: `${T.s3}px ${T.s2}px`,
-                cursor: "pointer",
+                cursor: locked ? "not-allowed" : "pointer",
                 fontFamily: T.font_sans, fontSize: T.fs_sm, fontWeight: 500,
                 transition: `color ${T.dur_fast} ${T.ease}`,
                 textAlign: "center",
-              }}>{m.label}</button>
+                display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 4,
+              }}>
+              {m.label}
+              {locked && <span style={{ fontSize: 9, opacity: 0.6 }}>🔒</span>}
+            </button>
           );
         })}
       </div>
@@ -2116,7 +2425,7 @@ function HitButton({ onRandomize, isRolling, disabled }) {
 // GENRE SLOT PICKER — allows main-only, main+sub, or main+sub+micro commits
 // ════════════════════════════════════════════════════════════════════════════
 
-function GenreSlotPicker({ slots, onChange, slotLocks, onToggleSlotLock }) {
+function GenreSlotPicker({ slots, onChange, slotLocks, onToggleSlotLock, maxSlots = 3 }) {
   const [activeSlot, setActiveSlot] = useState(null);
   const [activeCat, setActiveCat] = useState(null);
   const [activeGenre, setActiveGenre] = useState(null);
@@ -2151,6 +2460,23 @@ function GenreSlotPicker({ slots, onChange, slotLocks, onToggleSlotLock }) {
     <div>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: T.s2 }}>
         {[0, 1, 2].map(i => {
+          // If this slot is beyond tier max, show a locked placeholder
+          if (i >= maxSlots) {
+            return (
+              <div key={i} style={{
+                position: "relative", minHeight: 82, padding: T.s3,
+                background: T.surface,
+                border: `1px dashed ${T.border}`,
+                borderRadius: T.r_md,
+                display: "flex", flexDirection: "column",
+                justifyContent: "center", alignItems: "flex-start",
+                gap: 6, opacity: 0.65,
+              }}>
+                <Label color={T.textTer}>Slot {i + 1}</Label>
+                <TierLock feature="" requiredTier="pro" compact={true} />
+              </div>
+            );
+          }
           const slot = slots[i]; const isActive = activeSlot === i;
           const isLocked = slotLocks?.[i];
           return (
@@ -2534,7 +2860,7 @@ function SpecificInstrumentsPicker({ state, setState, favorites, onFavorite, cas
 // POP-HIT METER — probability of current selection becoming a modern pop hit
 // ════════════════════════════════════════════════════════════════════════════
 
-function PopHitMeter({ score, verdict, notes }) {
+function PopHitMeter({ score, verdict, notes, showDebug, state, lyricsOn }) {
   const color = score >= 70 ? T.success : score >= 40 ? T.warning : T.danger;
   return (
     <div style={{
@@ -2591,6 +2917,56 @@ function PopHitMeter({ score, verdict, notes }) {
               <span>{n}</span>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* ADMIN DEBUG — raw scoring math exposed */}
+      {showDebug && state && (
+        <div style={{
+          marginTop: T.s4, padding: T.s3,
+          background: "#100205", border: `1px dashed ${T.danger}55`,
+          borderRadius: T.r_md,
+        }}>
+          <div style={{
+            display: "flex", alignItems: "center", gap: 6,
+            marginBottom: 8,
+          }}>
+            <span style={{
+              color: T.danger, fontFamily: T.font_mono, fontSize: 9,
+              fontWeight: 700, letterSpacing: "0.25em",
+              textShadow: `0 0 4px ${T.danger}88`,
+            }}>⚡ ADMIN DEBUG</span>
+          </div>
+          <div style={{
+            display: "grid", gridTemplateColumns: "auto 1fr", gap: "4px 14px",
+            fontSize: 11, fontFamily: T.font_mono, color: T.textSec,
+          }}>
+            <span style={{ color: T.textTer }}>GENRES:</span>
+            <span>{(state.slots || []).filter(Boolean).map(s => s.genre).join(" + ") || "—"}</span>
+            <span style={{ color: T.textTer }}>BPM:</span>
+            <span>{inferBPM(state)}</span>
+            <span style={{ color: T.textTer }}>MOOD:</span>
+            <span>{state.mood || "—"}</span>
+            <span style={{ color: T.textTer }}>LYRICS:</span>
+            <span>{lyricsOn ? `on · ${state.language || "en"}` : "off"}</span>
+            <span style={{ color: T.textTer }}>VIBE:</span>
+            <span>{state.lyricalVibe || "—"}</span>
+            <span style={{ color: T.textTer }}>GROOVE:</span>
+            <span>{state.groove || "—"}</span>
+            <span style={{ color: T.textTer }}>MIX:</span>
+            <span>{state.mix || "—"}</span>
+            <span style={{ color: T.textTer }}>FINAL:</span>
+            <span style={{ color, fontWeight: 700 }}>{score} / 100 → {verdict}</span>
+          </div>
+          <div style={{
+            marginTop: 10, padding: "8px 10px",
+            background: "rgba(239,68,68,0.06)", border: `1px solid ${T.danger}22`,
+            borderRadius: 4,
+            fontSize: 10, fontFamily: T.font_mono, color: T.textTer,
+            lineHeight: 1.5,
+          }}>
+            weights: genre 22% · bpm 10% · vocals+lang+vibe 18% · mood 8% · groove 4% · mix 3% · baseline 35%
+          </div>
         </div>
       )}
     </div>
@@ -2867,6 +3243,7 @@ function CasinoParticles({ isRolling }) {
 // ════════════════════════════════════════════════════════════════════════════
 
 function EnginePage() {
+  const { tier, features } = useTier();
   const [state, setState] = useState(ENGINE_DEF);
   const [lyricsOn, setLyricsOn] = useState(true);
   const [mode, setMode] = useState("moderated");
@@ -2874,6 +3251,41 @@ function EnginePage() {
   const [isRolling, setIsRolling] = useState(false);
   const [casinoOutlines, setCasinoOutlines] = useState(new Map());
   const rollTimersRef = useRef([]);
+
+  // ── TIER ENFORCEMENT ─────────────────────────────────────────────────
+  // If user's current mode is outside their allowed modes, bump to the
+  // highest allowed. Keeps the UI consistent when they downgrade tiers.
+  useEffect(() => {
+    if (!features.modes.includes(mode)) {
+      const fallback = features.modes[features.modes.length - 1];
+      setMode(fallback);
+    }
+  }, [features, mode]);
+
+  // Cap instrument count to tier max
+  useEffect(() => {
+    if ((state.specificCount || 3) > features.maxInstruments) {
+      setState(s => ({ ...s, specificCount: features.maxInstruments }));
+    }
+    // Trim selected instruments if user has more than allowed
+    if ((state.specificInstruments || []).length > features.maxInstruments) {
+      setState(s => ({
+        ...s,
+        specificInstruments: s.specificInstruments.slice(0, features.maxInstruments),
+      }));
+    }
+  }, [features.maxInstruments]);
+
+  // Cap genre slots: hide slots beyond tier max by nulling them
+  useEffect(() => {
+    if (features.maxSlots < 3) {
+      setState(s => {
+        const newSlots = [...s.slots];
+        for (let i = features.maxSlots; i < 3; i++) newSlots[i] = null;
+        return { ...s, slots: newSlots };
+      });
+    }
+  }, [features.maxSlots]);
 
   const maxLen = getModeById(mode).limit;
   const set = (k, v) => setState(s => ({ ...s, [k]: v }));
@@ -3251,14 +3663,24 @@ function EnginePage() {
           borderRight: `1px solid ${T.border}`,
           padding: `${T.s8}px ${T.s7}px ${T.s10}px ${T.s8}px`,
         }}>
-          {/* HERO — full-width image banner */}
+          {/* HERO — chrome HIT-ENGINE type */}
           <div style={{ marginBottom: T.s8 }}>
-            <img src={headerImage} alt="Hit Engine" style={{
-              display: "block",
-              width: "100%", height: "auto",
-              marginBottom: T.s5,
-              filter: "drop-shadow(0 20px 40px rgba(0,0,0,0.5))",
-            }} />
+            <h1 style={{
+              display: "flex", alignItems: "baseline", gap: "0.25em",
+              flexWrap: "wrap",
+              fontSize: "clamp(64px, 9.5vw, 132px)",
+              lineHeight: 1,
+              margin: 0, marginBottom: T.s5,
+              fontFamily: T.font_display,
+              letterSpacing: "-0.02em",
+            }}>
+              <HitLogo size={112} />
+              <span style={{
+                color: "#5A6275", fontStyle: "italic",
+                fontSize: "0.68em", fontWeight: 300,
+              }}>·</span>
+              <EngineLogo size={112} />
+            </h1>
             <p style={{
               color: T.text, fontSize: T.fs_lg, lineHeight: 1.5,
               maxWidth: 600, margin: 0, marginBottom: T.s3,
@@ -3286,41 +3708,45 @@ function EnginePage() {
           </div>
 
           {/* ── PRESETS ─ quick-start configurations ──────────────────────── */}
-          <div style={{ marginBottom: T.s6 }}>
-            <Label color={T.textSec} style={{ display: "block", marginBottom: T.s3 }}>
-              Quick starts
-            </Label>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: T.s2 }}>
-              {PRESETS.map(p => (
-                <button key={p.id} type="button"
-                  onClick={() => applyPreset(p)}
-                  style={{
-                    display: "inline-flex", alignItems: "center", gap: T.s2,
-                    padding: `${T.s2}px ${T.s3}px`,
-                    background: T.surface,
-                    border: `1px solid ${T.border}`,
-                    borderRadius: T.r_md,
-                    color: T.textSec,
-                    fontFamily: T.font_sans, fontSize: T.fs_sm, fontWeight: 500,
-                    cursor: "pointer",
-                    transition: `all ${T.dur_fast} ${T.ease}`,
-                  }}
-                  onMouseEnter={e => {
-                    e.currentTarget.style.borderColor = T.borderFocus;
-                    e.currentTarget.style.color = T.text;
-                    e.currentTarget.style.background = T.elevated;
-                  }}
-                  onMouseLeave={e => {
-                    e.currentTarget.style.borderColor = T.border;
-                    e.currentTarget.style.color = T.textSec;
-                    e.currentTarget.style.background = T.surface;
-                  }}>
-                  <span style={{ fontSize: T.fs_base }}>{p.emoji}</span>
-                  {p.name}
-                </button>
-              ))}
+          {features.presets ? (
+            <div style={{ marginBottom: T.s6 }}>
+              <Label color={T.textSec} style={{ display: "block", marginBottom: T.s3 }}>
+                Quick starts
+              </Label>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: T.s2 }}>
+                {PRESETS.map(p => (
+                  <button key={p.id} type="button"
+                    onClick={() => applyPreset(p)}
+                    style={{
+                      display: "inline-flex", alignItems: "center", gap: T.s2,
+                      padding: `${T.s2}px ${T.s3}px`,
+                      background: T.surface,
+                      border: `1px solid ${T.border}`,
+                      borderRadius: T.r_md,
+                      color: T.textSec,
+                      fontFamily: T.font_sans, fontSize: T.fs_sm, fontWeight: 500,
+                      cursor: "pointer",
+                      transition: `all ${T.dur_fast} ${T.ease}`,
+                    }}
+                    onMouseEnter={e => {
+                      e.currentTarget.style.borderColor = T.borderFocus;
+                      e.currentTarget.style.color = T.text;
+                      e.currentTarget.style.background = T.elevated;
+                    }}
+                    onMouseLeave={e => {
+                      e.currentTarget.style.borderColor = T.border;
+                      e.currentTarget.style.color = T.textSec;
+                      e.currentTarget.style.background = T.surface;
+                    }}>
+                    <span style={{ fontSize: T.fs_base }}>{p.emoji}</span>
+                    {p.name}
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
+          ) : (
+            <TierLock feature="Quick-start presets" requiredTier="pro" />
+          )}
 
           <Section>
             <LyricalSwitch value={lyricsOn} onChange={setLyricsOn} />
@@ -3328,7 +3754,8 @@ function EnginePage() {
 
           <Section title="Genre slots" hint="pick up to 3 · main genre alone is fine · instant commit · lock per slot">
             <GenreSlotPicker slots={state.slots} onChange={v => set("slots", v)}
-              slotLocks={state.slotLocks} onToggleSlotLock={toggleSlotLock} />
+              slotLocks={state.slotLocks} onToggleSlotLock={toggleSlotLock}
+              maxSlots={features.maxSlots} />
           </Section>
 
           <Section title="Mood"
@@ -3521,12 +3948,17 @@ function EnginePage() {
           </div>
 
           <div style={{ marginBottom: T.s5 }}>
-            <ModeSelector value={mode} onChange={setMode} />
+            <ModeSelector value={mode} onChange={setMode} allowedModes={features.modes} />
           </div>
 
           {hasMinimum ? (
             <div style={{ display: "flex", flexDirection: "column", gap: T.s4 }}>
-              <PopHitMeter score={popHitScore.score} verdict={popHitScore.verdict} notes={popHitScore.notes} />
+              {features.popHitMeter ? (
+                <PopHitMeter score={popHitScore.score} verdict={popHitScore.verdict} notes={popHitScore.notes}
+                  showDebug={features.adminDebug} state={state} lyricsOn={lyricsOn} />
+              ) : (
+                <TierLock feature="Pop-hit probability meter" requiredTier="pro" />
+              )}
 
               <OutputBlock title="Short prompt" subtitle="comma-separated tags for a style field"
                 text={shortResult.text} length={shortResult.text.length} limit={maxLen}
@@ -4338,14 +4770,16 @@ export default function app() {
         .pane-scroll::-webkit-scrollbar-thumb:hover { background: ${T.borderHi}; }
         ::selection { background: ${T.accent}; color: #FFFFFF; }
       `}</style>
-      <div style={{ minHeight: "100vh", background: T.bg, color: T.text }}>
-        <Nav page={page} onNavigate={setPage} headerImage={headerImage} />
-        <ErrorBoundary>
-          {page === "engine"  && <EnginePage />}
-          {page === "future"  && <FuturePage />}
-          {page === "history" && <HistoryPage />}
-        </ErrorBoundary>
-      </div>
+      <TierProvider>
+        <div style={{ minHeight: "100vh", background: T.bg, color: T.text }}>
+          <Nav page={page} onNavigate={setPage} />
+          <ErrorBoundary>
+            {page === "engine"  && <EnginePage />}
+            {page === "future"  && <FuturePage />}
+            {page === "history" && <HistoryPage />}
+          </ErrorBoundary>
+        </div>
+      </TierProvider>
     </>
   );
 }
