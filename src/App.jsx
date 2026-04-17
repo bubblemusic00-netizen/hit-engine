@@ -74,70 +74,509 @@ const TIERS = {
 // Feature flags per tier — single source of truth
 const TIER_FEATURES = {
   free: {
+    // Engine capabilities
     maxSlots: 1,
-    modes: ["simple", "moderated"],
+    modes: ["simple", "moderated", "chaos"],
     maxInstruments: 5,
+    maxOptionsPerSection: 5,   // NEW: free sees only first 5 options of each section
+    showOptionNames: false,    // NEW: option names hidden, shown as ??? placeholders
+    hasOnToggle: false,        // NEW: toggles limited to Off / Auto
     locks: false,
     favorites: false,
     presets: false,
     popHitMeter: false,
     casinoFlash: false,
-    historyMaxSelect: 8,
-    historyShowsAll: false,
-    trendRadar: false,
-    exports: false,
+    // Daily fuel allocation
+    dailyFuel: { free: Infinity, pro: 1, trend: 0 },
+    // Genre History access
+    historyAccess: "main-yearly",   // only main genres, yearly graph only
+    historyMaxSelect: 3,
+    historyShowsTrendBar: false,
+    // Pages
+    vipSecretsPage: false,
     adminDebug: false,
   },
   pro: {
     maxSlots: 3,
     modes: ["simple", "moderated", "expanded", "vast", "chaos"],
     maxInstruments: 10,
+    maxOptionsPerSection: Infinity,
+    showOptionNames: true,
+    hasOnToggle: true,
     locks: true,
     favorites: true,
     presets: true,
     popHitMeter: true,
     casinoFlash: true,
-    historyMaxSelect: 25,
-    historyShowsAll: true,
-    trendRadar: false,
-    exports: false,
+    dailyFuel: { free: Infinity, pro: 99, trend: 0 },
+    historyAccess: "full-yearly",  // full tree, yearly graph only, 5-graph compare
+    historyMaxSelect: 5,
+    historyShowsTrendBar: true,
+    vipSecretsPage: false,
     adminDebug: false,
   },
   vip: {
     maxSlots: 3,
     modes: ["simple", "moderated", "expanded", "vast", "chaos"],
     maxInstruments: 10,
+    maxOptionsPerSection: Infinity,
+    showOptionNames: true,
+    hasOnToggle: true,
     locks: true,
     favorites: true,
     presets: true,
     popHitMeter: true,
     casinoFlash: true,
+    dailyFuel: { free: Infinity, pro: 500, trend: 50 },
+    historyAccess: "full-monthly", // full tree, monthly+weekly, 25-graph compare
     historyMaxSelect: 25,
-    historyShowsAll: true,
-    trendRadar: true,
-    exports: true,
+    historyShowsTrendBar: true,
+    vipSecretsPage: true,
     adminDebug: false,
   },
   admin: {
     maxSlots: 3,
     modes: ["simple", "moderated", "expanded", "vast", "chaos"],
     maxInstruments: 10,
+    maxOptionsPerSection: Infinity,
+    showOptionNames: true,
+    hasOnToggle: true,
     locks: true,
     favorites: true,
     presets: true,
     popHitMeter: true,
     casinoFlash: true,
+    dailyFuel: { free: Infinity, pro: 9999, trend: 9999 },
+    historyAccess: "full-monthly",
     historyMaxSelect: 25,
-    historyShowsAll: true,
-    trendRadar: true,
-    exports: true,
+    historyShowsTrendBar: true,
+    vipSecretsPage: true,
     adminDebug: true,
   },
 };
 
+// ────────────────────────────────────────────────────────────────────────────
+// FUEL SYSTEM — three fuel types. Daily counters persist via localStorage.
+// ────────────────────────────────────────────────────────────────────────────
+const FUEL_TYPES = {
+  free:  { id: "free",  label: "Free Hit",  color: "#00FF88", emoji: "🟢" },
+  pro:   { id: "pro",   label: "Pro Hit",   color: "#FF1744", emoji: "🔴" },
+  trend: { id: "trend", label: "Trend Hit", color: "#1E90FF", emoji: "🔵" },
+};
+
+// Free-tier subgenre whitelist: the 3 most mainstream subgenres under each main
+// genre. Free users can only roll these when using Free Hit Fuel. Pro+ fuel
+// unlocks the full tree.
+const FREE_SUBGENRES = {
+  "Hip-Hop":              ["Trap", "Boom Bap", "Drill"],
+  "R&B / Soul":           ["Contemporary R&B", "Neo-Soul", "Alt R&B"],
+  "Pop":                  ["Dance-Pop", "Indie Pop", "Synth-Pop"],
+  "Disco / Dance":        ["Disco", "Nu-Disco", "Dance-Pop"],
+  "Electronic":           ["House", "Techno", "Dubstep"],
+  "Latin":                ["Reggaeton", "Latin Trap", "Bachata"],
+  "Rock":                 ["Alt-Rock", "Indie Rock", "Classic Rock"],
+  "Metal":                ["Heavy Metal", "Metalcore", "Progressive Metal"],
+  "World / Global":       ["Afrobeats", "Amapiano", "K-Pop"],
+  "Blues":                ["Chicago Blues", "Delta Blues", "Electric Blues"],
+  "Country / Americana":  ["Modern Country", "Country Pop", "Americana"],
+  "Folk / Acoustic":      ["Indie Folk", "Folk Rock", "Acoustic Singer-Songwriter"],
+  "Jazz":                 ["Smooth Jazz", "Jazz Fusion", "Bebop"],
+  "Ambient / New Age":    ["Ambient", "Drone", "New Age"],
+  "Soundtrack / Score":   ["Cinematic Orchestral", "Lo-fi Chill", "Synthwave Score"],
+  "Classical / Orchestral":["Romantic-era","Baroque","Modern Minimalist"],
+  "Gospel / Spiritual":   ["Gospel", "Contemporary Christian", "Gospel Soul"],
+  "Experimental":         ["Glitch", "Noise", "Drone"],
+};
+
+const FuelContext = createContext({});
+function useFuel() { return useContext(FuelContext); }
+
+function todayKey() {
+  const d = new Date();
+  return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
+}
+
+function FuelProvider({ children }) {
+  const { tier, features } = useTier();
+  const [fuels, setFuels] = useState(() => ({ ...features.dailyFuel }));
+  const [activeFuel, setActiveFuel] = useState("free");
+  const [lastReset, setLastReset] = useState(todayKey());
+
+  // Load persisted fuel state on mount
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const raw = localStorage.getItem("he-fuel-v1");
+      if (!raw) return;
+      const parsed = JSON.parse(raw);
+      if (parsed.date === todayKey() && parsed.tier === tier) {
+        setFuels(parsed.fuels);
+        setActiveFuel(parsed.activeFuel || "free");
+      } else {
+        // New day or tier changed → reset to fresh allocation
+        setFuels({ ...features.dailyFuel });
+        setLastReset(todayKey());
+      }
+    } catch {}
+    // eslint-disable-next-line
+  }, [tier]);
+
+  // Persist on every change
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      localStorage.setItem("he-fuel-v1", JSON.stringify({
+        date: todayKey(), tier, fuels, activeFuel,
+      }));
+    } catch {}
+  }, [fuels, activeFuel, tier]);
+
+  // Reset fuel allocation whenever tier changes
+  useEffect(() => {
+    setFuels({ ...features.dailyFuel });
+  }, [tier]);
+
+  // If user tries to use a fuel type their tier can't access, bounce to free
+  useEffect(() => {
+    if (fuels[activeFuel] === 0 && fuels.free > 0) {
+      setActiveFuel("free");
+    }
+  }, [fuels, activeFuel]);
+
+  const consumeFuel = (type) => {
+    const t = type || activeFuel;
+    if (!Number.isFinite(fuels[t])) return true; // Infinity → no decrement, always allow
+    if (fuels[t] <= 0) return false;
+    setFuels(prev => ({ ...prev, [t]: Math.max(0, prev[t] - 1) }));
+    return true;
+  };
+
+  const refillAll = () => setFuels({ ...features.dailyFuel });
+  const setFuel = (type, v) => setFuels(prev => ({ ...prev, [type]: v }));
+
+  const value = useMemo(() => ({
+    fuels, activeFuel, setActiveFuel, consumeFuel, refillAll, setFuel,
+  }), [fuels, activeFuel]);
+
+  return <FuelContext.Provider value={value}>{children}</FuelContext.Provider>;
+}
+
+function fuelDisplay(v) {
+  if (!Number.isFinite(v)) return "∞";
+  return String(v);
+}
+
 const TierContext = createContext({ tier: "free", setTier: () => {}, features: TIER_FEATURES.free });
 
 function useTier() { return useContext(TierContext); }
+
+// ────────────────────────────────────────────────────────────────────────────
+// LAYOUT CONTEXT — auto-detect phone vs desktop, allow manual override
+// ────────────────────────────────────────────────────────────────────────────
+const LayoutContext = createContext({ layout: "desktop", setLayout: () => {}, auto: true, setAuto: () => {} });
+function useLayout() { return useContext(LayoutContext); }
+
+function LayoutProvider({ children }) {
+  // Start with a best-guess default so SSR/first paint works; real detection happens in effect
+  const detect = () => {
+    if (typeof window === "undefined") return "desktop";
+    const narrow = window.matchMedia && window.matchMedia("(max-width: 820px)").matches;
+    const ua = navigator.userAgent || "";
+    const mobileUA = /iPhone|iPad|Android|Mobile|iPod/i.test(ua);
+    return (narrow || mobileUA) ? "mobile" : "desktop";
+  };
+
+  const [layout, setLayoutState] = useState("desktop");
+  const [auto, setAuto] = useState(true);
+
+  // Run detection once on mount
+  useEffect(() => {
+    setLayoutState(detect());
+  }, []);
+
+  // While auto is on, re-run detection on resize so rotating the phone or resizing updates
+  useEffect(() => {
+    if (!auto) return;
+    const handler = () => setLayoutState(detect());
+    window.addEventListener("resize", handler);
+    return () => window.removeEventListener("resize", handler);
+  }, [auto]);
+
+  // Manual override: user clicked the toggle
+  const setLayout = (next) => {
+    setAuto(false);            // lock to manual choice
+    setLayoutState(next);
+  };
+  const resetAuto = () => { setAuto(true); setLayoutState(detect()); };
+
+  const value = useMemo(() => ({ layout, setLayout, auto, setAuto: resetAuto }), [layout, auto]);
+  return <LayoutContext.Provider value={value}>{children}</LayoutContext.Provider>;
+}
+
+function LayoutToggle() {
+  const { layout, setLayout, auto, setAuto } = useLayout();
+  return (
+    <div style={{
+      display: "inline-flex", alignItems: "center",
+      background: T.surface, border: `1px solid ${T.border}`,
+      borderRadius: 6, padding: 2, flexShrink: 0,
+    }}>
+      <button type="button"
+        onClick={() => setLayout("desktop")}
+        title="Desktop layout"
+        style={{
+          background: layout === "desktop" ? T.elevated : "transparent",
+          border: "none",
+          color: layout === "desktop" ? T.text : T.textTer,
+          padding: "5px 9px", borderRadius: 4, cursor: "pointer",
+          fontSize: 13, lineHeight: 1,
+          transition: "all 120ms ease-out",
+        }}>🖥</button>
+      <button type="button"
+        onClick={() => setLayout("mobile")}
+        title="Mobile layout"
+        style={{
+          background: layout === "mobile" ? T.elevated : "transparent",
+          border: "none",
+          color: layout === "mobile" ? T.text : T.textTer,
+          padding: "5px 9px", borderRadius: 4, cursor: "pointer",
+          fontSize: 13, lineHeight: 1,
+          transition: "all 120ms ease-out",
+        }}>📱</button>
+      {!auto && (
+        <button type="button"
+          onClick={setAuto}
+          title="Revert to auto-detect"
+          style={{
+            background: "transparent", border: "none",
+            color: T.textMuted,
+            padding: "5px 6px", cursor: "pointer",
+            fontSize: 10, fontFamily: T.font_mono, fontWeight: 700,
+          }}>⟲</button>
+      )}
+    </div>
+  );
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// FUEL GEARSHIFT — car-style gearshift for choosing active fuel
+// ────────────────────────────────────────────────────────────────────────────
+function FuelGearshift({ compact = false }) {
+  const { fuels, activeFuel, setActiveFuel, setFuel, refillAll } = useFuel();
+  const { tier, features } = useTier();
+  const isAdmin = tier === "admin";
+
+  const options = [
+    { id: "free",  ...FUEL_TYPES.free,  angle: 0 },
+    { id: "pro",   ...FUEL_TYPES.pro,   angle: 0 },
+    { id: "trend", ...FUEL_TYPES.trend, angle: 0 },
+  ];
+
+  return (
+    <div style={{
+      background: "linear-gradient(145deg, #1a1d24 0%, #0b0d12 100%)",
+      border: `1px solid ${T.borderHi}`,
+      borderRadius: compact ? 10 : 14,
+      padding: compact ? 10 : 14,
+      boxShadow: "inset 0 1px 0 rgba(255,255,255,0.06), 0 8px 24px rgba(0,0,0,0.6)",
+    }}>
+      <div style={{
+        display: "flex", justifyContent: "space-between", alignItems: "center",
+        marginBottom: compact ? 8 : 10,
+      }}>
+        <span style={{
+          fontSize: 9, letterSpacing: "0.25em", fontWeight: 700,
+          color: T.textTer, fontFamily: T.font_mono,
+        }}>FUEL SELECT</span>
+        <span style={{
+          fontSize: 8, letterSpacing: "0.2em", fontWeight: 700,
+          color: FUEL_TYPES[activeFuel]?.color || T.textTer,
+          textShadow: `0 0 6px ${FUEL_TYPES[activeFuel]?.color || T.textTer}88`,
+          fontFamily: T.font_mono,
+        }}>● ENGAGED</span>
+      </div>
+      <div style={{
+        display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 6,
+      }}>
+        {options.map(o => {
+          const active = activeFuel === o.id;
+          const fuelLeft = fuels[o.id];
+          const empty = Number.isFinite(fuelLeft) && fuelLeft <= 0;
+          return (
+            <button key={o.id} type="button"
+              onClick={() => !empty && setActiveFuel(o.id)}
+              disabled={empty}
+              style={{
+                position: "relative",
+                background: active
+                  ? `linear-gradient(145deg, ${o.color}33 0%, ${o.color}11 100%)`
+                  : "rgba(0,0,0,0.4)",
+                border: `2px solid ${active ? o.color : empty ? T.borderMuted : T.border}`,
+                boxShadow: active
+                  ? `0 0 12px ${o.color}88, inset 0 1px 0 rgba(255,255,255,0.08)`
+                  : "inset 0 1px 0 rgba(255,255,255,0.04)",
+                color: active ? o.color : empty ? T.textMuted : T.textSec,
+                padding: compact ? "10px 8px" : "12px 10px",
+                borderRadius: 8,
+                cursor: empty ? "not-allowed" : "pointer",
+                transition: "all 180ms cubic-bezier(0.16, 1, 0.3, 1)",
+                opacity: empty ? 0.5 : 1,
+                display: "flex", flexDirection: "column", alignItems: "center", gap: 4,
+                fontFamily: T.font_mono,
+              }}
+              onMouseEnter={e => {
+                if (active || empty) return;
+                e.currentTarget.style.borderColor = `${o.color}88`;
+                e.currentTarget.style.boxShadow = `0 0 8px ${o.color}44`;
+              }}
+              onMouseLeave={e => {
+                if (active || empty) return;
+                e.currentTarget.style.borderColor = T.border;
+                e.currentTarget.style.boxShadow = "inset 0 1px 0 rgba(255,255,255,0.04)";
+              }}>
+              {/* Color-dot indicator */}
+              <span style={{
+                width: compact ? 10 : 12, height: compact ? 10 : 12, borderRadius: "50%",
+                background: o.color,
+                boxShadow: active
+                  ? `0 0 8px ${o.color}, 0 0 16px ${o.color}AA`
+                  : empty ? "none" : `0 0 4px ${o.color}66`,
+                filter: empty ? "grayscale(100%)" : "none",
+              }} />
+              <span style={{
+                fontSize: compact ? 9 : 10, fontWeight: 700, letterSpacing: "0.1em",
+                textShadow: active ? `0 0 6px ${o.color}88` : "none",
+              }}>{o.label.split(" ")[0].toUpperCase()}</span>
+              <span style={{
+                fontSize: compact ? 11 : 13, fontWeight: 700,
+                color: empty ? T.textMuted : active ? o.color : T.text,
+              }}>{fuelDisplay(fuelLeft)}</span>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* ADMIN FUEL EDITOR — only visible to admin tier */}
+      {isAdmin && (
+        <div style={{
+          marginTop: 10, padding: "10px 12px",
+          background: "#100205",
+          border: `1px dashed ${T.danger}55`,
+          borderRadius: 8,
+        }}>
+          <div style={{
+            display: "flex", justifyContent: "space-between", alignItems: "center",
+            marginBottom: 8,
+          }}>
+            <span style={{
+              color: T.danger, fontFamily: T.font_mono, fontSize: 9,
+              fontWeight: 700, letterSpacing: "0.25em",
+              textShadow: `0 0 4px ${T.danger}88`,
+            }}>⚡ ADMIN FUEL EDITOR</span>
+            <button type="button" onClick={refillAll} style={{
+              background: "transparent", border: `1px solid ${T.danger}66`,
+              color: T.danger, padding: "3px 8px", borderRadius: 4,
+              fontFamily: T.font_mono, fontSize: 9, letterSpacing: "0.15em",
+              fontWeight: 700, cursor: "pointer",
+            }}>REFILL ALL</button>
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            {options.map(o => {
+              const v = fuels[o.id];
+              const isInf = !Number.isFinite(v);
+              return (
+                <div key={o.id} style={{
+                  display: "grid", gridTemplateColumns: "auto 1fr auto", gap: 8,
+                  alignItems: "center",
+                }}>
+                  <span style={{
+                    color: o.color, fontFamily: T.font_mono, fontSize: 10,
+                    fontWeight: 700, letterSpacing: "0.15em",
+                    textShadow: `0 0 4px ${o.color}66`,
+                    minWidth: 48,
+                  }}>{o.label.split(" ")[0].toUpperCase()}</span>
+                  <input type="number"
+                    value={isInf ? "" : v}
+                    placeholder={isInf ? "∞" : ""}
+                    onChange={e => {
+                      const raw = e.target.value;
+                      setFuel(o.id, raw === "" ? Infinity : parseInt(raw, 10) || 0);
+                    }}
+                    style={{
+                      background: "rgba(0,0,0,0.5)",
+                      border: `1px solid ${o.color}44`,
+                      color: T.text,
+                      padding: "4px 8px", borderRadius: 4,
+                      fontFamily: T.font_mono, fontSize: 11,
+                      outline: "none", width: "100%",
+                    }}/>
+                  <div style={{ display: "flex", gap: 4 }}>
+                    <button type="button"
+                      onClick={() => setFuel(o.id, isInf ? 0 : Math.max(0, v - 1))}
+                      style={{
+                        background: "transparent", border: `1px solid ${T.border}`,
+                        color: T.textSec, width: 22, height: 22, borderRadius: 3,
+                        fontFamily: T.font_mono, fontSize: 11, cursor: "pointer",
+                      }}>−</button>
+                    <button type="button"
+                      onClick={() => setFuel(o.id, isInf ? 1 : v + 1)}
+                      style={{
+                        background: "transparent", border: `1px solid ${T.border}`,
+                        color: T.textSec, width: 22, height: 22, borderRadius: 3,
+                        fontFamily: T.font_mono, fontSize: 11, cursor: "pointer",
+                      }}>+</button>
+                    <button type="button"
+                      onClick={() => setFuel(o.id, Infinity)}
+                      title="Set to infinite"
+                      style={{
+                        background: "transparent", border: `1px solid ${T.border}`,
+                        color: T.textSec, width: 22, height: 22, borderRadius: 3,
+                        fontFamily: T.font_mono, fontSize: 11, cursor: "pointer",
+                      }}>∞</button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Compact fuel badges for the nav — just the remaining counts
+function FuelBadgesNav() {
+  const { fuels, activeFuel } = useFuel();
+  return (
+    <div style={{
+      display: "inline-flex", alignItems: "center", gap: 4,
+      padding: "4px 8px",
+      background: T.surface, border: `1px solid ${T.border}`,
+      borderRadius: 6, fontFamily: T.font_mono, fontSize: 10, fontWeight: 700,
+    }}>
+      {Object.values(FUEL_TYPES).map(f => {
+        const active = activeFuel === f.id;
+        const v = fuels[f.id];
+        return (
+          <span key={f.id} title={f.label} style={{
+            display: "inline-flex", alignItems: "center", gap: 3,
+            color: active ? f.color : T.textTer,
+            textShadow: active ? `0 0 4px ${f.color}66` : "none",
+            padding: "2px 4px", borderRadius: 3,
+            background: active ? `${f.color}14` : "transparent",
+          }}>
+            <span style={{
+              width: 6, height: 6, borderRadius: "50%",
+              background: f.color,
+              boxShadow: active ? `0 0 4px ${f.color}` : "none",
+            }} />
+            {fuelDisplay(v)}
+          </span>
+        );
+      })}
+    </div>
+  );
+}
 
 function TierLock({ feature, requiredTier = "pro", compact = false }) {
   const t = TIERS[requiredTier];
@@ -1538,7 +1977,16 @@ function Button({ children, variant = "secondary", size = "md", onClick, disable
 // Chip — single select / multi-select option. Casino outline randomly applied during rolling.
 function Chip({ label, selected, onClick, onDoubleClick, onLockToggle, favorite, locked, disabled, size = "md", casinoOutline }) {
   const [hover, setHover] = useState(false);
-  const sizes = {
+  const { layout } = useLayout();
+  const { features } = useTier();
+  const isMobile = layout === "mobile";
+  // Free tier hides option names and shows ??? placeholders. Click still works.
+  const hideName = features && features.showOptionNames === false;
+  const displayLabel = hideName ? "???" : label;
+  const sizes = isMobile ? {
+    sm: { padding: "9px 14px", fontSize: T.fs_md, minHeight: 36 },
+    md: { padding: "11px 16px", fontSize: T.fs_md, minHeight: 44 },
+  } : {
     sm: { padding: "4px 10px", fontSize: T.fs_sm, height: 24 },
     md: { padding: "6px 12px", fontSize: T.fs_md, height: 28 },
   };
@@ -1567,10 +2015,16 @@ function Chip({ label, selected, onClick, onDoubleClick, onLockToggle, favorite,
         if (onLockToggle) { e.preventDefault(); onLockToggle(); }
       }}
       onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}
-      title={onLockToggle ? "Click: select · Double-click: favorite · Right-click: lock" : undefined}
+      title={hideName
+        ? `Upgrade to Pro to see option names`
+        : onLockToggle
+          ? "Click: select · Double-click: favorite · Right-click: lock"
+          : undefined}
       style={{
         ...sizes[size], ...base,
-        fontFamily: T.font_sans, fontWeight: 450,
+        fontFamily: hideName ? T.font_mono : T.font_sans,
+        fontWeight: 450,
+        letterSpacing: hideName ? "0.15em" : "normal",
         cursor: disabled ? "not-allowed" : "pointer",
         borderRadius: T.r_md, userSelect: "none",
         display: "inline-flex", alignItems: "center", gap: 6,
@@ -1587,18 +2041,25 @@ function Chip({ label, selected, onClick, onDoubleClick, onLockToggle, favorite,
       {favorite && !locked && (
         <span style={{ color: T.warning, fontSize: T.fs_xs, lineHeight: 1 }}>●</span>
       )}
-      {label}
+      {displayLabel}
     </span>
   );
 }
 
 // TriToggle — Off / Auto / On. Linear-style segmented control.
 function TriToggle({ value, onChange }) {
+  const { features } = useTier();
+  const onAllowed = features ? features.hasOnToggle !== false : true;
   const states = [
-    { id: "off",  label: "Off" },
-    { id: "auto", label: "Auto" },
-    { id: "on",   label: "On" },
+    { id: "off",  label: "Off",  locked: false },
+    { id: "auto", label: "Auto", locked: false },
+    { id: "on",   label: "On",   locked: !onAllowed },
   ];
+  // If current value is "on" but tier blocks it, fall back to auto
+  useEffect(() => {
+    if (!onAllowed && value === "on") onChange("auto");
+  }, [onAllowed, value]);
+
   const activeIdx = states.findIndex(s => s.id === value);
   return (
     <div style={{
@@ -1618,16 +2079,25 @@ function TriToggle({ value, onChange }) {
       {states.map(s => {
         const active = s.id === value;
         return (
-          <button key={s.id} type="button" onClick={() => onChange(s.id)}
+          <button key={s.id} type="button"
+            onClick={() => !s.locked && onChange(s.id)}
+            disabled={s.locked}
+            title={s.locked ? "Upgrade to Pro to use the On state" : undefined}
             style={{
               position: "relative", zIndex: 1,
               background: "transparent", border: "none",
-              color: active ? (s.id === "on" ? "#FFFFFF" : T.text) : T.textTer,
+              color: s.locked
+                ? T.textMuted
+                : active ? (s.id === "on" ? "#FFFFFF" : T.text) : T.textTer,
               padding: "0 12px", fontSize: T.fs_xs, minWidth: 46,
               fontFamily: T.font_sans, fontWeight: 500,
-              cursor: "pointer",
+              cursor: s.locked ? "not-allowed" : "pointer",
               transition: `color ${T.dur_fast} ${T.ease}`,
-            }}>{s.label}</button>
+              display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 3,
+            }}>
+            {s.label}
+            {s.locked && <span style={{ fontSize: 8, opacity: 0.6 }}>🔒</span>}
+          </button>
         );
       })}
     </div>
@@ -1873,50 +2343,106 @@ function EngineLogo({ size = 96 }) {
 // ════════════════════════════════════════════════════════════════════════════
 
 function Nav({ page, onNavigate }) {
-  const { tier, setTier } = useTier();
+  const { tier, setTier, features } = useTier();
+  const { layout } = useLayout();
+  const [menuOpen, setMenuOpen] = useState(false);
+  const isMobile = layout === "mobile";
   const links = [
     { id: "engine",  label: "Engine" },
-    { id: "future",  label: "Future of Sound" },
+    { id: "trend",   label: "Trend Engine" },
     { id: "history", label: "Genre History" },
+    { id: "future",  label: "Future of Sound" },
+    ...(features.vipSecretsPage ? [{ id: "secrets", label: "VIP Secrets 🤫" }] : []),
   ];
+
   return (
     <nav style={{
-      padding: `${T.s3}px ${T.s6}px`,
+      padding: isMobile ? `${T.s2}px ${T.s4}px` : `${T.s3}px ${T.s6}px`,
       borderBottom: `1px solid ${T.border}`,
       background: "rgba(8,9,11,0.88)",
       backdropFilter: "blur(20px) saturate(150%)",
       position: "sticky", top: 0, zIndex: 100,
       display: "flex", alignItems: "center", justifyContent: "space-between",
-      height: 56, gap: T.s4,
+      height: isMobile ? 52 : 56, gap: isMobile ? T.s2 : T.s4,
     }}>
       {/* Mini chrome HIT-ENGINE logo */}
-      <div style={{ display: "flex", alignItems: "baseline", gap: 8, cursor: "pointer", flexShrink: 0 }}
-        onClick={() => onNavigate("engine")}>
-        <HitLogo size={22} />
-        <span style={{ color: T.textMuted, fontSize: 18, fontStyle: "italic", fontFamily: T.font_display }}>·</span>
-        <EngineLogo size={22} />
+      <div style={{ display: "flex", alignItems: "baseline", gap: 6, cursor: "pointer", flexShrink: 0 }}
+        onClick={() => { onNavigate("engine"); setMenuOpen(false); }}>
+        <HitLogo size={isMobile ? 18 : 22} />
+        <span style={{ color: T.textMuted, fontSize: isMobile ? 14 : 18, fontStyle: "italic", fontFamily: T.font_display }}>·</span>
+        <EngineLogo size={isMobile ? 18 : 22} />
       </div>
 
-      <div style={{ display: "flex", gap: T.s1, flex: 1, justifyContent: "center" }}>
-        {links.map(l => (
-          <button key={l.id} type="button" onClick={() => onNavigate(l.id)}
+      {/* Page links — desktop inline, mobile hamburger */}
+      {!isMobile ? (
+        <div style={{ display: "flex", gap: T.s1, flex: 1, justifyContent: "center" }}>
+          {links.map(l => (
+            <button key={l.id} type="button" onClick={() => onNavigate(l.id)}
+              style={{
+                background: page === l.id ? T.elevated : "transparent",
+                border: "none",
+                color: page === l.id ? T.text : T.textSec,
+                padding: `${T.s2}px ${T.s3}px`, cursor: "pointer",
+                fontSize: T.fs_md, fontFamily: T.font_sans, fontWeight: 500,
+                borderRadius: T.r_md,
+                transition: `all ${T.dur_fast} ${T.ease}`,
+              }}
+              onMouseEnter={e => { if (page !== l.id) e.currentTarget.style.color = T.text; }}
+              onMouseLeave={e => { if (page !== l.id) e.currentTarget.style.color = T.textSec; }}
+            >{l.label}</button>
+          ))}
+        </div>
+      ) : (
+        <div style={{ flex: 1 }} />
+      )}
+
+      {/* Right side — fuel badges + layout toggle + tier switcher + (mobile) hamburger */}
+      <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
+        {!isMobile && <FuelBadgesNav />}
+        <LayoutToggle />
+        <TierSwitcher tier={tier} onChange={setTier} />
+        {isMobile && (
+          <button type="button"
+            onClick={() => setMenuOpen(!menuOpen)}
             style={{
-              background: page === l.id ? T.elevated : "transparent",
-              border: "none",
-              color: page === l.id ? T.text : T.textSec,
-              padding: `${T.s2}px ${T.s3}px`, cursor: "pointer",
-              fontSize: T.fs_md, fontFamily: T.font_sans, fontWeight: 500,
-              borderRadius: T.r_md,
-              transition: `all ${T.dur_fast} ${T.ease}`,
-            }}
-            onMouseEnter={e => { if (page !== l.id) e.currentTarget.style.color = T.text; }}
-            onMouseLeave={e => { if (page !== l.id) e.currentTarget.style.color = T.textSec; }}
-          >{l.label}</button>
-        ))}
+              background: menuOpen ? T.elevated : T.surface,
+              border: `1px solid ${menuOpen ? T.borderFocus : T.border}`,
+              color: T.text,
+              width: 36, height: 32,
+              borderRadius: 6, cursor: "pointer",
+              display: "grid", placeItems: "center",
+              fontSize: 16, lineHeight: 1,
+            }}>{menuOpen ? "×" : "≡"}</button>
+        )}
       </div>
 
-      {/* Tier switcher — honor system, demo tiers */}
-      <TierSwitcher tier={tier} onChange={setTier} />
+      {/* Mobile menu overlay */}
+      {isMobile && menuOpen && (
+        <div style={{
+          position: "absolute", top: "100%", left: 0, right: 0,
+          background: "rgba(8,9,11,0.98)",
+          borderBottom: `1px solid ${T.border}`,
+          backdropFilter: "blur(20px) saturate(150%)",
+          padding: T.s2,
+          display: "flex", flexDirection: "column", gap: 2,
+          zIndex: 99,
+        }}>
+          {links.map(l => (
+            <button key={l.id} type="button"
+              onClick={() => { onNavigate(l.id); setMenuOpen(false); }}
+              style={{
+                background: page === l.id ? T.elevated : "transparent",
+                border: "none",
+                color: page === l.id ? T.text : T.textSec,
+                padding: "14px 18px",
+                cursor: "pointer",
+                fontSize: 15, fontFamily: T.font_sans, fontWeight: 500,
+                borderRadius: 8,
+                textAlign: "left",
+              }}>{l.label}</button>
+          ))}
+        </div>
+      )}
     </nav>
   );
 }
@@ -2075,10 +2601,14 @@ function CountStepper({ value, onChange, min = 1, max = 10 }) {
 // HIT BUTTON — Vegas slot machine pull-lever with marquee lights + LEDs
 // ════════════════════════════════════════════════════════════════════════════
 
-function HitButton({ onRandomize, isRolling, disabled }) {
+function HitButton({ onRandomize, isRolling, disabled, compact = false, fuelType = "pro" }) {
   const [hover, setHover] = useState(false);
   const [pressing, setPressing] = useState(false);
   const [burstKey, setBurstKey] = useState(0); // remount burst on each press
+  const ledCount = compact ? 10 : 16;
+  const btnPad = compact ? "22px 16px" : "34px 20px";
+  const btnFontSize = compact ? 52 : 72;
+  const fuelColor = FUEL_TYPES[fuelType]?.color || V.red;
 
   const handleClick = () => {
     if (disabled || isRolling) return;
@@ -2168,7 +2698,39 @@ function HitButton({ onRandomize, isRolling, disabled }) {
         .hit-core:active:not(:disabled) { transform: translateY(4px) scale(0.97); }
       `}</style>
 
-      <div className="hit-wrapper">
+      <div className="hit-wrapper" style={{ position: "relative" }}>
+        {/* ── EXCLAMATION BADGE — top-right notification dot ──────────── */}
+        <div style={{
+          position: "absolute",
+          top: -14, right: -14,
+          width: 36, height: 36,
+          borderRadius: "50%",
+          background: `radial-gradient(circle at 35% 30%, ${V.neonGold} 0%, ${V.orange} 70%, ${V.darkRed} 100%)`,
+          border: `2px solid ${V.neonGold}`,
+          boxShadow: `0 0 12px ${V.neonGold}, 0 0 24px ${V.orange}88, inset 0 2px 4px rgba(255,255,255,0.4)`,
+          display: "grid", placeItems: "center",
+          fontSize: 20, fontWeight: 900, fontFamily: T.font_display,
+          fontStyle: "italic",
+          color: "#4A0000",
+          textShadow: "0 1px 1px rgba(255,255,255,0.4)",
+          zIndex: 10,
+          animation: "hitGlowPulse 1.8s ease-in-out infinite",
+          pointerEvents: "none",
+        }}>!</div>
+
+        {/* ── FUEL-COLOR CORONA — outer ring tinted by active fuel ────── */}
+        <div style={{
+          position: "absolute",
+          inset: -22,
+          borderRadius: 26,
+          background: `radial-gradient(ellipse at center, ${fuelColor}44 0%, ${fuelColor}00 70%)`,
+          filter: "blur(8px)",
+          pointerEvents: "none",
+          zIndex: -1,
+          opacity: isRolling ? 1 : hover ? 0.8 : 0.55,
+          transition: "opacity 180ms ease-out",
+        }} />
+
         {/* ── OUTER CONIC HALO ─────────────────────────────────────── */}
         <div style={{
           position: "absolute",
@@ -2208,7 +2770,7 @@ function HitButton({ onRandomize, isRolling, disabled }) {
             display: "flex", justifyContent: "space-between", alignItems: "center",
             padding: "10px 14px 4px", gap: 6,
           }}>
-            {Array.from({ length: 16 }).map((_, i) => {
+            {Array.from({ length: ledCount }).map((_, i) => {
               const color = MARQUEE_COLORS[i % MARQUEE_COLORS.length];
               return (
                 <span key={i} style={{
@@ -2307,13 +2869,13 @@ function HitButton({ onRandomize, isRolling, disabled }) {
               onMouseUp={() => setPressing(false)}
               style={{
                 width: "100%",
-                padding: "34px 20px",
+                padding: btnPad,
                 background: isRolling
                   ? `radial-gradient(circle at 50% 30%, #FF7070 0%, ${V.red} 45%, #5a0000 100%)`
                   : `radial-gradient(circle at 50% 25%, #FF4848 0%, ${V.red} 45%, #6a0000 100%)`,
                 border: `4px solid ${V.neonGold}`,
                 color: "#FFFFFF",
-                fontSize: 72,
+                fontSize: btnFontSize,
                 fontWeight: 900,
                 letterSpacing: "0.15em",
                 fontFamily: T.font_display,
@@ -2402,7 +2964,7 @@ function HitButton({ onRandomize, isRolling, disabled }) {
             display: "flex", justifyContent: "space-between", alignItems: "center",
             padding: "4px 14px 10px", gap: 6,
           }}>
-            {Array.from({ length: 16 }).map((_, i) => {
+            {Array.from({ length: ledCount }).map((_, i) => {
               const color = MARQUEE_COLORS[(i + 3) % MARQUEE_COLORS.length];
               return (
                 <span key={i} style={{
@@ -2425,7 +2987,9 @@ function HitButton({ onRandomize, isRolling, disabled }) {
 // GENRE SLOT PICKER — allows main-only, main+sub, or main+sub+micro commits
 // ════════════════════════════════════════════════════════════════════════════
 
-function GenreSlotPicker({ slots, onChange, slotLocks, onToggleSlotLock, maxSlots = 3 }) {
+function GenreSlotPicker({ slots, onChange, slotLocks, onToggleSlotLock, maxSlots = 3, restrictSubgenres = false }) {
+  const { layout } = useLayout();
+  const isMobile = layout === "mobile";
   const [activeSlot, setActiveSlot] = useState(null);
   const [activeCat, setActiveCat] = useState(null);
   const [activeGenre, setActiveGenre] = useState(null);
@@ -2458,7 +3022,11 @@ function GenreSlotPicker({ slots, onChange, slotLocks, onToggleSlotLock, maxSlot
 
   return (
     <div>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: T.s2 }}>
+      <div style={{
+        display: "grid",
+        gridTemplateColumns: isMobile ? "1fr" : "repeat(3, 1fr)",
+        gap: T.s2,
+      }}>
         {[0, 1, 2].map(i => {
           // If this slot is beyond tier max, show a locked placeholder
           if (i >= maxSlots) {
@@ -2579,26 +3147,30 @@ function GenreSlotPicker({ slots, onChange, slotLocks, onToggleSlotLock, maxSlot
           {activeCat && (
             <div style={{ marginBottom: T.s4 }}>
               <Label color={T.textTer} style={{ display: "block", marginBottom: T.s2 }}>
-                Subgenre <span style={{ color: T.textMuted, textTransform: "none", letterSpacing: 0 }}>(optional · refines your selection)</span>
+                Subgenre <span style={{ color: T.textMuted, textTransform: "none", letterSpacing: 0 }}>
+                  (optional · refines your selection){restrictSubgenres ? " · free-fuel list" : ""}
+                </span>
               </Label>
               <div style={{ display: "flex", flexWrap: "wrap", gap: T.s1 }}>
-                {Object.keys(GENRE_TREE[activeCat]).map(g => (
-                  <Chip key={g} label={g} selected={activeGenre === g}
-                    onClick={() => {
-                      if (activeGenre === g) {
-                        setActiveGenre(null); setActiveMicro(null);
-                        commitSlot(activeCat, null, null);
-                      } else {
-                        setActiveGenre(g); setActiveMicro(null);
-                        commitSlot(activeCat, g, null); // INSTANT refine
-                      }
-                    }} size="sm" />
-                ))}
+                {Object.keys(GENRE_TREE[activeCat])
+                  .filter(g => !restrictSubgenres || (FREE_SUBGENRES[activeCat] || []).includes(g))
+                  .map(g => (
+                    <Chip key={g} label={g} selected={activeGenre === g}
+                      onClick={() => {
+                        if (activeGenre === g) {
+                          setActiveGenre(null); setActiveMicro(null);
+                          commitSlot(activeCat, null, null);
+                        } else {
+                          setActiveGenre(g); setActiveMicro(null);
+                          commitSlot(activeCat, g, null);
+                        }
+                      }} size="sm" />
+                  ))}
               </div>
             </div>
           )}
 
-          {activeCat && activeGenre && (
+          {activeCat && activeGenre && !restrictSubgenres && (
             <div>
               <Label color={T.textTer} style={{ display: "block", marginBottom: T.s2 }}>
                 Microstyle <span style={{ color: T.textMuted, textTransform: "none", letterSpacing: 0 }}>(optional)</span>
@@ -3244,6 +3816,9 @@ function CasinoParticles({ isRolling }) {
 
 function EnginePage() {
   const { tier, features } = useTier();
+  const { layout } = useLayout();
+  const { fuels, activeFuel, consumeFuel } = useFuel();
+  const isMobile = layout === "mobile";
   const [state, setState] = useState(ENGINE_DEF);
   const [lyricsOn, setLyricsOn] = useState(true);
   const [mode, setMode] = useState("moderated");
@@ -3252,40 +3827,55 @@ function EnginePage() {
   const [casinoOutlines, setCasinoOutlines] = useState(new Map());
   const rollTimersRef = useRef([]);
 
-  // ── TIER ENFORCEMENT ─────────────────────────────────────────────────
-  // If user's current mode is outside their allowed modes, bump to the
-  // highest allowed. Keeps the UI consistent when they downgrade tiers.
-  useEffect(() => {
-    if (!features.modes.includes(mode)) {
-      const fallback = features.modes[features.modes.length - 1];
-      setMode(fallback);
-    }
-  }, [features, mode]);
+  // ── EFFECTIVE LIMITS — combines tier features + active fuel constraints ──
+  // Active fuel TIGHTENS limits further than tier alone. A Pro-tier user
+  // rolling Free Fuel gets Free-fuel output: 1 slot, 3 modes, 5 options,
+  // free-subgenre whitelist only. Pro Fuel unlocks everything the tier allows.
+  const effectiveLimits = useMemo(() => {
+    const isFreeFuel = activeFuel === "free";
+    return {
+      maxSlots: isFreeFuel ? 1 : features.maxSlots,
+      modes: isFreeFuel
+        ? features.modes.filter(m => ["simple","moderated","chaos"].includes(m))
+        : features.modes,
+      maxInstruments: isFreeFuel ? Math.min(5, features.maxInstruments) : features.maxInstruments,
+      maxOptionsPerSection: isFreeFuel ? 5 : features.maxOptionsPerSection,
+      restrictSubgenres: isFreeFuel,   // when true, only FREE_SUBGENRES allowed per main
+    };
+  }, [activeFuel, features]);
 
-  // Cap instrument count to tier max
+  // ── TIER + FUEL ENFORCEMENT ─────────────────────────────────────────
+  // Mode fallback if outside allowed list
   useEffect(() => {
-    if ((state.specificCount || 3) > features.maxInstruments) {
-      setState(s => ({ ...s, specificCount: features.maxInstruments }));
+    if (!effectiveLimits.modes.includes(mode)) {
+      const fallback = effectiveLimits.modes[effectiveLimits.modes.length - 1];
+      if (fallback) setMode(fallback);
     }
-    // Trim selected instruments if user has more than allowed
-    if ((state.specificInstruments || []).length > features.maxInstruments) {
+  }, [effectiveLimits.modes, mode]);
+
+  // Cap instrument count
+  useEffect(() => {
+    if ((state.specificCount || 3) > effectiveLimits.maxInstruments) {
+      setState(s => ({ ...s, specificCount: effectiveLimits.maxInstruments }));
+    }
+    if ((state.specificInstruments || []).length > effectiveLimits.maxInstruments) {
       setState(s => ({
         ...s,
-        specificInstruments: s.specificInstruments.slice(0, features.maxInstruments),
+        specificInstruments: s.specificInstruments.slice(0, effectiveLimits.maxInstruments),
       }));
     }
-  }, [features.maxInstruments]);
+  }, [effectiveLimits.maxInstruments]);
 
-  // Cap genre slots: hide slots beyond tier max by nulling them
+  // Null out slots beyond max
   useEffect(() => {
-    if (features.maxSlots < 3) {
+    if (effectiveLimits.maxSlots < 3) {
       setState(s => {
         const newSlots = [...s.slots];
-        for (let i = features.maxSlots; i < 3; i++) newSlots[i] = null;
+        for (let i = effectiveLimits.maxSlots; i < 3; i++) newSlots[i] = null;
         return { ...s, slots: newSlots };
       });
     }
-  }, [features.maxSlots]);
+  }, [effectiveLimits.maxSlots]);
 
   const maxLen = getModeById(mode).limit;
   const set = (k, v) => setState(s => ({ ...s, [k]: v }));
@@ -3538,6 +4128,12 @@ function EnginePage() {
   // ─────────────────────────────────────────────────────────────────────
   const triggerHit = () => {
     if (isRolling) return;
+    // Fuel gate: consume one unit of active fuel before rolling
+    const ok = consumeFuel();
+    if (!ok) {
+      // Out of this fuel type — flash a soft warning, bail out
+      return;
+    }
     setIsRolling(true);
 
     // Build the full pool of chip identifiers that could receive outlines
@@ -3615,8 +4211,9 @@ function EnginePage() {
     <div className={isRolling ? "engine-shake" : ""} style={{
       position: "relative",
       display: "flex", flexDirection: "column",
-      height: "calc(100vh - 57px)",
-      overflow: "hidden",
+      height: isMobile ? "auto" : "calc(100vh - 57px)",
+      minHeight: isMobile ? "calc(100vh - 53px)" : "auto",
+      overflow: isMobile ? "visible" : "hidden",
     }}>
       {/* Casino particle canvas — always-on floating glitter */}
       <CasinoParticles isRolling={isRolling} />
@@ -3653,33 +4250,37 @@ function EnginePage() {
       `}</style>
       <div style={{
         flex: 1, minHeight: 0,
-        display: "grid", gridTemplateColumns: "1.1fr 1fr",
-        overflow: "hidden",
+        display: "grid",
+        gridTemplateColumns: isMobile ? "1fr" : "1.1fr 1fr",
+        overflow: isMobile ? "visible" : "hidden",
         position: "relative", zIndex: 1,
       }}>
         {/* LEFT PANE */}
-        <div className="pane-scroll" style={{
-          overflowY: "auto", overflowX: "hidden",
-          borderRight: `1px solid ${T.border}`,
-          padding: `${T.s8}px ${T.s7}px ${T.s10}px ${T.s8}px`,
+        <div className={isMobile ? "" : "pane-scroll"} style={{
+          overflowY: isMobile ? "visible" : "auto",
+          overflowX: "hidden",
+          borderRight: isMobile ? "none" : `1px solid ${T.border}`,
+          borderBottom: isMobile ? `1px solid ${T.border}` : "none",
+          padding: isMobile
+            ? `${T.s5}px ${T.s4}px ${T.s6}px`
+            : `${T.s8}px ${T.s7}px ${T.s10}px ${T.s8}px`,
         }}>
           {/* HERO — chrome HIT-ENGINE type */}
-          <div style={{ marginBottom: T.s8 }}>
+          <div style={{ marginBottom: isMobile ? T.s5 : T.s8 }}>
             <h1 style={{
-              display: "flex", alignItems: "baseline", gap: "0.25em",
+              display: "flex", alignItems: "baseline", gap: "0.2em",
               flexWrap: "wrap",
-              fontSize: "clamp(64px, 9.5vw, 132px)",
               lineHeight: 1,
-              margin: 0, marginBottom: T.s5,
+              margin: 0, marginBottom: isMobile ? T.s3 : T.s5,
               fontFamily: T.font_display,
               letterSpacing: "-0.02em",
             }}>
-              <HitLogo size={112} />
+              <HitLogo size={isMobile ? 56 : 112} />
               <span style={{
                 color: "#5A6275", fontStyle: "italic",
-                fontSize: "0.68em", fontWeight: 300,
+                fontSize: isMobile ? 36 : 80, fontWeight: 300,
               }}>·</span>
-              <EngineLogo size={112} />
+              <EngineLogo size={isMobile ? 56 : 112} />
             </h1>
             <p style={{
               color: T.text, fontSize: T.fs_lg, lineHeight: 1.5,
@@ -3719,7 +4320,8 @@ function EnginePage() {
                     onClick={() => applyPreset(p)}
                     style={{
                       display: "inline-flex", alignItems: "center", gap: T.s2,
-                      padding: `${T.s2}px ${T.s3}px`,
+                      padding: isMobile ? `10px 14px` : `${T.s2}px ${T.s3}px`,
+                      minHeight: isMobile ? 44 : "auto",
                       background: T.surface,
                       border: `1px solid ${T.border}`,
                       borderRadius: T.r_md,
@@ -3755,7 +4357,8 @@ function EnginePage() {
           <Section title="Genre slots" hint="pick up to 3 · main genre alone is fine · instant commit · lock per slot">
             <GenreSlotPicker slots={state.slots} onChange={v => set("slots", v)}
               slotLocks={state.slotLocks} onToggleSlotLock={toggleSlotLock}
-              maxSlots={features.maxSlots} />
+              maxSlots={effectiveLimits.maxSlots}
+              restrictSubgenres={effectiveLimits.restrictSubgenres} />
           </Section>
 
           <Section title="Mood"
@@ -3936,19 +4539,38 @@ function EnginePage() {
         </div>
 
         {/* RIGHT PANE */}
-        <div className="pane-scroll" style={{
-          overflowY: "auto", overflowX: "hidden",
-          padding: `${T.s8}px ${T.s8}px ${T.s10}px ${T.s7}px`,
+        <div className={isMobile ? "" : "pane-scroll"} style={{
+          overflowY: isMobile ? "visible" : "auto",
+          overflowX: "hidden",
+          padding: isMobile
+            ? `${T.s6}px ${T.s4}px ${T.s8}px`
+            : `${T.s8}px ${T.s8}px ${T.s10}px ${T.s7}px`,
         }}>
           <div style={{ marginBottom: T.s5, display: "flex", flexDirection: "column", gap: T.s3 }}>
-            <HitButton onRandomize={triggerHit} isRolling={isRolling} disabled={false} />
+            <FuelGearshift compact={isMobile} />
+            <HitButton onRandomize={triggerHit} isRolling={isRolling}
+              disabled={Number.isFinite(fuels[activeFuel]) && fuels[activeFuel] <= 0}
+              compact={isMobile} fuelType={activeFuel} />
+            {Number.isFinite(fuels[activeFuel]) && fuels[activeFuel] <= 0 && (
+              <div style={{
+                padding: "8px 12px",
+                background: `${FUEL_TYPES[activeFuel].color}11`,
+                border: `1px dashed ${FUEL_TYPES[activeFuel].color}55`,
+                borderRadius: 6,
+                fontSize: 11, fontFamily: T.font_mono, fontWeight: 700,
+                color: FUEL_TYPES[activeFuel].color,
+                textAlign: "center", letterSpacing: "0.15em",
+              }}>
+                OUT OF {FUEL_TYPES[activeFuel].label.toUpperCase()} · RESETS TOMORROW
+              </div>
+            )}
             <Button variant="ghost" size="sm" onClick={clearAll} style={{ alignSelf: "flex-start" }}>
               Clear all
             </Button>
           </div>
 
           <div style={{ marginBottom: T.s5 }}>
-            <ModeSelector value={mode} onChange={setMode} allowedModes={features.modes} />
+            <ModeSelector value={mode} onChange={setMode} allowedModes={effectiveLimits.modes} />
           </div>
 
           {hasMinimum ? (
@@ -3984,6 +4606,8 @@ function EnginePage() {
 // ════════════════════════════════════════════════════════════════════════════
 
 function FuturePage() {
+  const { layout } = useLayout();
+  const isMobile = layout === "mobile";
   const sections = [
     {
       num: "I",
@@ -4029,7 +4653,9 @@ function FuturePage() {
   return (
     <div style={{
       maxWidth: 820, margin: "0 auto",
-      padding: `${T.s10}px ${T.s7}px ${T.s10}px`,
+      padding: isMobile
+        ? `${T.s6}px ${T.s4}px ${T.s8}px`
+        : `${T.s10}px ${T.s7}px ${T.s10}px`,
     }}>
       <Label color={T.textTer} style={{ display: "block", marginBottom: T.s4 }}>
         Future of Sound · Volume 01
@@ -4298,12 +4924,35 @@ const GENRE_CONTEXT = {
 // ════════════════════════════════════════════════════════════════════════════
 
 function HistoryPage() {
-  const ALL_GENRES = Object.keys(GENRE_HISTORY);
-  const [selected, setSelected] = useState(["Hip-Hop","Pop","Electronic","Latin","K-Pop","Afrobeats","Amapiano","Tech-House"]);
+  const { layout } = useLayout();
+  const { features } = useTier();
+  const isMobile = layout === "mobile";
+  const historyMainOnly = features.historyAccess === "main-yearly";
+  const allowMonthly    = features.historyAccess === "full-monthly";
+
+  // Main genre families — kept minimal for the free tier
+  const MAIN_GENRES = ["Hip-Hop","R&B / Soul","Pop","Electronic","Rock","Metal","Latin","K-Pop","Country","Jazz","Afrobeats","Amapiano","Blues","Folk","Gospel"];
+  const AVAILABLE = historyMainOnly
+    ? Object.keys(GENRE_HISTORY).filter(g => MAIN_GENRES.includes(g))
+    : Object.keys(GENRE_HISTORY);
+
+  const ALL_GENRES = AVAILABLE;
+  const defaultSelected = historyMainOnly
+    ? AVAILABLE.slice(0, Math.min(3, AVAILABLE.length))
+    : ["Hip-Hop","Pop","Electronic","Latin","K-Pop","Afrobeats","Amapiano","Tech-House"].filter(g => AVAILABLE.includes(g));
+
+  const [selected, setSelected] = useState(defaultSelected);
   const [search, setSearch] = useState("");
-  const [sortMode, setSortMode] = useState("trend"); // "trend" | "az" | "category"
-  const [viewMode, setViewMode] = useState("grid"); // "grid" | "overlay"
-  const MAX_SELECTED = 25;
+  const [sortMode, setSortMode] = useState("trend");
+  const [viewMode, setViewMode] = useState("grid");
+  const [resolution, setResolution] = useState("yearly"); // yearly|monthly|weekly
+  const MAX_SELECTED = features.historyMaxSelect || 3;
+
+  // Enforce cap if tier changes and user had too many selected
+  useEffect(() => {
+    setSelected(prev => prev.filter(g => AVAILABLE.includes(g)).slice(0, MAX_SELECTED));
+    if (!allowMonthly && resolution !== "yearly") setResolution("yearly");
+  }, [features.historyAccess]);
 
   // Trend-index pre-computed for all genres
   const trendIndex = useMemo(() => {
@@ -4346,7 +4995,9 @@ function HistoryPage() {
   return (
     <div style={{
       maxWidth: 1440, margin: "0 auto",
-      padding: `${T.s8}px ${T.s7}px ${T.s10}px`,
+      padding: isMobile
+        ? `${T.s5}px ${T.s4}px ${T.s8}px`
+        : `${T.s8}px ${T.s7}px ${T.s10}px`,
     }}>
       {/* ── HERO ─────────────────────────────────────────────────────── */}
       <div style={{ marginBottom: T.s8 }}>
@@ -4726,6 +5377,352 @@ function MiniChart({ genre, data, color, score }) {
 }
 
 
+
+
+
+// ════════════════════════════════════════════════════════════════════════════
+// TREND ENGINE PAGE — exclusive to Trend Hit fuel. Pulls from the trend-index
+// scoring to propose high-momentum genre combinations the user can roll.
+// ════════════════════════════════════════════════════════════════════════════
+
+function TrendEnginePage({ onNavigate }) {
+  const { layout } = useLayout();
+  const { features, tier } = useTier();
+  const { fuels, activeFuel, setActiveFuel, consumeFuel } = useFuel();
+  const isMobile = layout === "mobile";
+
+  const [result, setResult] = useState(null);
+  const [isRolling, setIsRolling] = useState(false);
+
+  // Compute trending genres on mount
+  const trendingGenres = useMemo(() => {
+    const scored = Object.keys(GENRE_HISTORY).map(g => ({
+      name: g, score: calcTrendIndex(GENRE_HISTORY[g]),
+    }));
+    return scored.sort((a, b) => b.score - a.score);
+  }, []);
+
+  // When entering this page, auto-select Trend fuel if available
+  useEffect(() => {
+    if (fuels.trend > 0 && activeFuel !== "trend") setActiveFuel("trend");
+  }, []);
+
+  const canRoll = fuels.trend > 0 && !isRolling;
+
+  const rollTrend = () => {
+    if (!canRoll) return;
+    if (!consumeFuel("trend")) return;
+    setIsRolling(true);
+    setTimeout(() => {
+      // Pick from top 15 weighted by score
+      const top = trendingGenres.slice(0, 15);
+      const weights = top.map(t => t.score);
+      const total = weights.reduce((a, b) => a + b, 0);
+      let roll = Math.random() * total;
+      let picked = top[0];
+      for (const t of top) {
+        roll -= t.score;
+        if (roll <= 0) { picked = t; break; }
+      }
+      // Suggest a vocal + mood that's currently hot
+      const hotMoods = ["Confident", "Melancholic", "Euphoric", "Sensual", "Dark & brooding", "Nostalgic"];
+      const hotVocals = ["Auto-tuned melodic rapper", "Breathy pop vocal", "Anthemic clear lead", "Whispered intimate vocal"];
+      const hotGrooves = ["halftime trap", "afrobeats log-drum", "4-on-the-floor", "amapiano log-drum bounce"];
+
+      setResult({
+        genre: picked.name,
+        score: picked.score,
+        mood: hotMoods[Math.floor(Math.random() * hotMoods.length)],
+        vocal: hotVocals[Math.floor(Math.random() * hotVocals.length)],
+        groove: hotGrooves[Math.floor(Math.random() * hotGrooves.length)],
+        bpm: 80 + Math.floor(Math.random() * 80),
+      });
+      setIsRolling(false);
+    }, 900);
+  };
+
+  if (fuels.trend <= 0 && features.dailyFuel.trend === 0) {
+    // User doesn't have trend fuel access at all
+    return (
+      <div style={{
+        maxWidth: 720, margin: "0 auto",
+        padding: isMobile ? `${T.s6}px ${T.s4}px ${T.s10}px` : `${T.s10}px ${T.s7}px ${T.s10}px`,
+      }}>
+        <Label color={T.textTer} style={{ display: "block", marginBottom: T.s4 }}>
+          Trend Engine · real-time momentum rolls
+        </Label>
+        <h1 style={{
+          fontSize: "clamp(32px, 4vw, 48px)",
+          lineHeight: 1.05, letterSpacing: "-0.025em",
+          margin: 0, marginBottom: T.s4,
+          fontFamily: T.font_sans, fontWeight: 600,
+        }}>
+          What's hot, rolled for you
+        </h1>
+        <p style={{
+          color: T.textSec, fontSize: T.fs_lg, lineHeight: 1.55,
+          marginBottom: T.s6, fontFamily: T.font_sans,
+        }}>
+          The Trend Engine uses live time-decay scoring to roll genre + vibe combinations that are actually trending right now — not evergreen picks. Each roll uses one Trend Hit fuel.
+        </p>
+        <TierLock feature="Trend Engine rolls" requiredTier="vip" />
+      </div>
+    );
+  }
+
+  return (
+    <div style={{
+      maxWidth: 860, margin: "0 auto",
+      padding: isMobile ? `${T.s6}px ${T.s4}px ${T.s10}px` : `${T.s10}px ${T.s7}px ${T.s10}px`,
+    }}>
+      <Label color={T.textTer} style={{ display: "block", marginBottom: T.s4 }}>
+        Trend Engine · real-time momentum rolls
+      </Label>
+      <h1 style={{
+        fontSize: "clamp(32px, 4vw, 48px)",
+        lineHeight: 1.05, letterSpacing: "-0.025em",
+        margin: 0, marginBottom: T.s4,
+        fontFamily: T.font_sans, fontWeight: 600,
+      }}>
+        What's hot, rolled for you
+      </h1>
+      <p style={{
+        color: T.textSec, fontSize: T.fs_lg, lineHeight: 1.55,
+        marginBottom: T.s7, fontFamily: T.font_sans, maxWidth: 600,
+      }}>
+        Each roll samples from the top 15 genres by live trend-index score, weighted by momentum. Uses one Trend Hit fuel per roll.
+      </p>
+
+      {/* Current top 5 */}
+      <div style={{ marginBottom: T.s7 }}>
+        <Label color={T.textSec} style={{ display: "block", marginBottom: T.s3 }}>
+          Top 5 trending right now
+        </Label>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: T.s2 }}>
+          {trendingGenres.slice(0, 5).map((t, i) => (
+            <div key={t.name} style={{
+              padding: T.s3,
+              background: T.surface, border: `1px solid ${T.border}`,
+              borderRadius: T.r_md,
+            }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+                <span style={{ fontSize: T.fs_xs, color: T.textTer, fontFamily: T.font_mono }}>#{i + 1}</span>
+                <span style={{ color: FUEL_TYPES.trend.color, fontFamily: T.font_mono, fontSize: T.fs_sm, fontWeight: 700 }}>{t.score}</span>
+              </div>
+              <div style={{ color: T.text, fontSize: T.fs_md, fontWeight: 500, marginTop: 4 }}>{t.name}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Roll area */}
+      <div style={{
+        background: `linear-gradient(180deg, ${T.surface} 0%, ${T.bg} 100%)`,
+        border: `1px solid ${FUEL_TYPES.trend.color}55`,
+        borderRadius: T.r_lg, padding: T.s6, marginBottom: T.s6,
+        boxShadow: `0 0 40px ${FUEL_TYPES.trend.color}22`,
+      }}>
+        <button type="button" onClick={rollTrend} disabled={!canRoll}
+          style={{
+            width: "100%",
+            padding: "20px 24px",
+            background: canRoll
+              ? `radial-gradient(circle at 50% 25%, #4FB0FF 0%, ${FUEL_TYPES.trend.color} 50%, #0052CC 100%)`
+              : "#1a1d24",
+            border: `3px solid ${canRoll ? FUEL_TYPES.trend.color : T.border}`,
+            color: canRoll ? "#FFFFFF" : T.textMuted,
+            fontSize: 36, fontWeight: 900, letterSpacing: "0.1em",
+            fontFamily: T.font_display, fontStyle: "italic",
+            cursor: canRoll ? "pointer" : "not-allowed",
+            borderRadius: 12,
+            boxShadow: canRoll ? `0 0 30px ${FUEL_TYPES.trend.color}88` : "none",
+            textShadow: canRoll ? `0 0 12px rgba(255,255,255,0.6), 0 0 24px ${FUEL_TYPES.trend.color}` : "none",
+            transition: "all 180ms cubic-bezier(0.16,1,0.3,1)",
+          }}>
+          {isRolling ? "ROLLING…" : canRoll ? "ROLL TREND" : "OUT OF FUEL"}
+        </button>
+        <div style={{
+          marginTop: T.s3, textAlign: "center",
+          fontSize: T.fs_xs, color: T.textTer, fontFamily: T.font_mono, letterSpacing: "0.2em",
+        }}>
+          {fuelDisplay(fuels.trend)} TREND FUEL REMAINING
+        </div>
+      </div>
+
+      {/* Result panel */}
+      {result && (
+        <div style={{
+          background: T.surface, border: `1px solid ${FUEL_TYPES.trend.color}44`,
+          borderRadius: T.r_lg, padding: T.s5,
+        }}>
+          <Label color={FUEL_TYPES.trend.color} style={{ display: "block", marginBottom: T.s3 }}>
+            Trend roll · {result.score} score
+          </Label>
+          <div style={{
+            fontSize: 28, color: T.text, fontWeight: 700, marginBottom: T.s4,
+            fontFamily: T.font_sans, letterSpacing: "-0.02em",
+          }}>
+            {result.genre}
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: T.s3 }}>
+            <TrendDetail label="Mood" value={result.mood} />
+            <TrendDetail label="Vocal" value={result.vocal} />
+            <TrendDetail label="Groove" value={result.groove} />
+            <TrendDetail label="Tempo" value={`${result.bpm} BPM`} />
+          </div>
+          <div style={{
+            marginTop: T.s4, padding: T.s3,
+            background: T.bg, border: `1px solid ${T.border}`, borderRadius: T.r_md,
+            fontFamily: T.font_mono, fontSize: T.fs_sm, color: T.textSec, lineHeight: 1.5,
+          }}>
+            <span style={{ color: FUEL_TYPES.trend.color, fontWeight: 700 }}>PROMPT</span>
+            <div style={{ marginTop: 6, color: T.text }}>
+              {result.genre.toLowerCase()}, {result.mood.toLowerCase()}, {result.vocal.toLowerCase()}, {result.groove} groove, {result.bpm} BPM, modern production, radio-ready.
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function TrendDetail({ label, value }) {
+  return (
+    <div style={{
+      padding: T.s3, background: T.bg, border: `1px solid ${T.border}`,
+      borderRadius: T.r_md,
+    }}>
+      <div style={{ fontSize: T.fs_xs, color: T.textTer, fontFamily: T.font_mono, letterSpacing: "0.15em", marginBottom: 4 }}>
+        {label.toUpperCase()}
+      </div>
+      <div style={{ color: T.text, fontSize: T.fs_md, fontWeight: 500 }}>{value}</div>
+    </div>
+  );
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// VIP SECRETS PAGE — guides to maximize use of Hit Engine
+// ════════════════════════════════════════════════════════════════════════════
+
+const VIP_SECRETS = [
+  {
+    icon: "🎯",
+    title: "Prompt depth matters more than prompt length",
+    body: "Suno and Udio don't reward essays — they reward well-structured lists. Use Expanded mode (499 chars) as your default. Simple mode cuts useful detail; Chaos mode often bloats with filler that confuses the model. When in doubt, Expanded.",
+  },
+  {
+    icon: "🔒",
+    title: "Lock one genre slot, randomize the rest",
+    body: "The best fusions come from holding one element steady while the others rotate. Pick your anchor genre (e.g., Trap), right-click to lock, then keep hitting. You'll discover fusions you wouldn't have thought to combine manually.",
+  },
+  {
+    icon: "🎙",
+    title: "Always pair vocal style with a specific language",
+    body: "Suno interprets \"Breathy female vocal\" + \"English\" very differently from just \"Breathy female vocal.\" Specifying the language reshapes phrasing, cadence, and diction. For non-English, lock the language before rolling.",
+  },
+  {
+    icon: "⚡",
+    title: "Halftime trap beats most drum selections",
+    body: "When in doubt about rhythm, halftime trap is the most versatile groove for vocal-forward tracks. It works under R&B, hip-hop, pop, dark pop, alt R&B. It's the pocket default of modern production.",
+  },
+  {
+    icon: "🎨",
+    title: "Use favorites to build your signature palette",
+    body: "Double-click any chip to add to favorites. Do this over a week while rolling. By day 7 you'll have 20-30 favorited options across sections — that's your taste fingerprint. The randomizer weights favorites more heavily.",
+  },
+  {
+    icon: "🔥",
+    title: "Pop-hit meter isn't a judge — it's a predictor",
+    body: "A 40% score doesn't mean your track is bad. It means the feature combination is less aligned with mainstream pop DNA. Experimental, art-pop, and niche genres will always score lower. Use the meter to know where on the spectrum you're landing, not whether it's good.",
+  },
+  {
+    icon: "📐",
+    title: "Specific instruments beat generic descriptions",
+    body: "\"Rhodes electric piano with vibrato on\" produces vastly better results than \"electric piano\". Suno's training includes thousands of instrument-specific references. Use the articulation layer — it's what separates amateur prompts from pro ones.",
+  },
+  {
+    icon: "🧭",
+    title: "Trend Engine is for when you don't know what's hot",
+    body: "Use Trend Engine (costs Trend fuel) when you're out of creative ideas but know you want something currently in the culture. It won't give you niche genres — it rolls from the top 15 by momentum. Good for commercial or viral-leaning tracks.",
+  },
+];
+
+function VipSecretsPage() {
+  const { layout } = useLayout();
+  const isMobile = layout === "mobile";
+  return (
+    <div style={{
+      maxWidth: 860, margin: "0 auto",
+      padding: isMobile ? `${T.s6}px ${T.s4}px ${T.s10}px` : `${T.s10}px ${T.s7}px ${T.s10}px`,
+    }}>
+      <Label color={V.neonGold} style={{ display: "block", marginBottom: T.s4 }}>
+        VIP Secrets 🤫
+      </Label>
+      <h1 style={{
+        fontSize: "clamp(32px, 4vw, 56px)",
+        lineHeight: 1.0, letterSpacing: "-0.03em",
+        margin: 0, marginBottom: T.s4,
+        fontFamily: T.font_sans, fontWeight: 600,
+      }}>
+        Maximize what you get from Hit Engine
+      </h1>
+      <p style={{
+        color: T.textSec, fontSize: T.fs_lg, lineHeight: 1.55,
+        maxWidth: 640, marginBottom: T.s8, fontFamily: T.font_sans,
+      }}>
+        Field-tested techniques for extracting the best possible output from Suno, Udio, and other music AIs — learned the hard way so you don't have to.
+      </p>
+      <div style={{ display: "flex", flexDirection: "column", gap: T.s3 }}>
+        {VIP_SECRETS.map((s, i) => (
+          <div key={i} style={{
+            padding: T.s5,
+            background: T.surface, border: `1px solid ${T.border}`,
+            borderRadius: T.r_lg,
+            display: "flex", gap: T.s4, alignItems: "flex-start",
+          }}>
+            <div style={{
+              fontSize: 28, lineHeight: 1, flexShrink: 0,
+              width: 48, height: 48, display: "grid", placeItems: "center",
+              background: T.elevated, border: `1px solid ${T.borderHi}`,
+              borderRadius: T.r_md,
+            }}>{s.icon}</div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{
+                fontSize: T.fs_lg, color: T.text, fontWeight: 600,
+                fontFamily: T.font_sans, marginBottom: T.s2, letterSpacing: "-0.01em",
+              }}>
+                <span style={{
+                  color: V.neonGold, fontFamily: T.font_mono, fontSize: T.fs_xs,
+                  fontWeight: 700, letterSpacing: "0.25em", marginRight: 10,
+                }}>#{String(i + 1).padStart(2, "0")}</span>
+                {s.title}
+              </div>
+              <div style={{
+                color: T.textSec, fontSize: T.fs_md, lineHeight: 1.6,
+                fontFamily: T.font_sans,
+              }}>{s.body}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+      <div style={{
+        marginTop: T.s8, padding: T.s5,
+        background: `${V.neonGold}08`, border: `1px dashed ${V.neonGold}44`,
+        borderRadius: T.r_lg, textAlign: "center",
+      }}>
+        <div style={{
+          fontSize: T.fs_xs, fontFamily: T.font_mono, letterSpacing: "0.25em",
+          color: V.neonGold, fontWeight: 700, marginBottom: T.s2,
+          textShadow: `0 0 6px ${V.neonGold}66`,
+        }}>VIP THANKS</div>
+        <div style={{ color: T.textSec, fontSize: T.fs_md, fontFamily: T.font_sans }}>
+          More secrets added as we learn them. Your feedback shapes the guide — what's working for you?
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ════════════════════════════════════════════════════════════════════════════
 // ROOT APP
 // ════════════════════════════════════════════════════════════════════════════
@@ -4771,14 +5768,20 @@ export default function app() {
         ::selection { background: ${T.accent}; color: #FFFFFF; }
       `}</style>
       <TierProvider>
-        <div style={{ minHeight: "100vh", background: T.bg, color: T.text }}>
-          <Nav page={page} onNavigate={setPage} />
-          <ErrorBoundary>
-            {page === "engine"  && <EnginePage />}
-            {page === "future"  && <FuturePage />}
-            {page === "history" && <HistoryPage />}
-          </ErrorBoundary>
-        </div>
+        <LayoutProvider>
+          <FuelProvider>
+            <div style={{ minHeight: "100vh", background: T.bg, color: T.text }}>
+              <Nav page={page} onNavigate={setPage} />
+              <ErrorBoundary>
+                {page === "engine"  && <EnginePage />}
+                {page === "future"  && <FuturePage />}
+                {page === "history" && <HistoryPage />}
+                {page === "trend"   && <TrendEnginePage onNavigate={setPage} />}
+                {page === "secrets" && <VipSecretsPage />}
+              </ErrorBoundary>
+            </div>
+          </FuelProvider>
+        </LayoutProvider>
       </TierProvider>
     </>
   );
