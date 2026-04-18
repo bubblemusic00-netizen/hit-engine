@@ -67,91 +67,149 @@ const V = {
 const TIERS = {
   free:  { id: "free",  label: "Free",  color: "#6B6E76", description: "Try the engine" },
   pro:   { id: "pro",   label: "Pro",   color: "#5E6AD2", description: "Full creative access" },
-  vip:   { id: "vip",   label: "VIP",   color: "#FFD700", description: "Everything + trend radar + exports" },
+  vip:   { id: "vip",   label: "VIP",   color: "#FFD700", description: "Everything + premium perks + exports" },
   admin: { id: "admin", label: "Admin", color: "#EF4444", description: "Behind-the-scenes debug view" },
 };
 
-// Feature flags per tier — single source of truth
+// Ordered rank for tier comparison (higher number = higher tier)
+const TIER_RANK = { free: 0, pro: 1, vip: 2, admin: 3 };
+
+// Subscription pricing in USD — monthly. Annual is 35% off (~7.8 months cost).
+// These are simulated demo prices; real payments are not processed.
+const TIER_PRICE = {
+  free:  { monthly: 0,    yearly: 0    },
+  pro:   { monthly: 4.99, yearly: 39   },
+  vip:   { monthly: 9.99, yearly: 79   },
+  admin: null, // dev-only tier
+};
+
+// Helper — compute the effective monthly price on the yearly plan (for "save X%" math)
+const yearlyMonthlyRate = (tier) => TIER_PRICE[tier]?.yearly / 12;
+const yearlySavingsPct = (tier) => {
+  const t = TIER_PRICE[tier];
+  if (!t || !t.monthly) return 0;
+  return Math.round((1 - (t.yearly / 12) / t.monthly) * 100);
+};
+
+// Feature flags per tier — single source of truth.
+// PHILOSOPHY: Free should feel like a "demo that works" — useful but clearly
+// incomplete. Pro should feel like "unlocking the full tool." VIP should feel
+// like "getting ahead of everyone else" (premium perks, deep analytics).
 const TIER_FEATURES = {
   free: {
-    // Engine capabilities
-    maxSlots: 1,
-    modes: ["simple", "moderated", "chaos"],
-    maxInstruments: 5,
-    maxOptionsPerSection: 5,   // NEW: free sees only first 5 options of each section
-    showOptionNames: false,    // NEW: option names hidden, shown as ??? placeholders
-    hasOnToggle: false,        // NEW: toggles limited to Off / Auto
-    locks: false,
-    favorites: false,
-    presets: false,
-    popHitMeter: false,
-    casinoFlash: false,
-    // Daily fuel allocation
-    dailyFuel: { free: Infinity, pro: 1, trend: 0 },
-    // Genre History access
-    historyAccess: "main-yearly",   // only main genres, yearly graph only
+    // ── Engine capabilities
+    maxSlots: 1,                   // only 1 genre slot
+    modes: ["simple", "moderated", "chaos"],  // 3 of 5 modes
+    maxInstruments: 10,            // 10 per category (generous taste)
+    maxOptionsPerSection: 5,       // first 5 options per section, rest blurred
+    showOptionNames: true,         // labels shown (but blurred past index 5)
+    hasOnToggle: false,            // tri-toggle capped at Off/Auto (no forced include)
+    // ── Power-user tools (all Pro+)
+    locks: false,                  // NO slot locks, section locks, option locks
+    favorites: false,              // no favoriting chips
+    presets: false,                // cannot save configurations
+    // ── Analytics + visuals
+    popHitMeter: false,            // Pop profile match meter hidden
+    casinoFlash: false,            // no sparkle animation during roll
+    // ── Output
+    maxPromptVariants: 1,          // single prompt per roll
+    shareableLinks: false,         // no copy-shareable-link button
+    exportJSON: false,             // no JSON export
+    // ── Daily Hit allocation — Free gets 10/day, paid tiers get unlimited
+    dailyFuel: { free: 10, pro: 0, vip: 0 },
+    // ── Genre History
+    historyAccess: "main-yearly",  // only main genres, yearly graph only
     historyMaxSelect: 3,
-    historyShowsTrendBar: false,
-    // Pages
+    // ── Pages
     vipSecretsPage: false,
     adminDebug: false,
+    // ── Commercial
+    upgradeNudges: true,           // show "Upgrade to Pro" messaging
   },
   pro: {
+    // ── Engine capabilities — fully unlocked
     maxSlots: 3,
     modes: ["simple", "moderated", "expanded", "vast", "chaos"],
-    maxInstruments: 10,
+    maxInstruments: Infinity,
     maxOptionsPerSection: Infinity,
     showOptionNames: true,
     hasOnToggle: true,
-    locks: true,
+    // ── Power-user tools — all unlocked
+    locks: true,                   // slot/section/option locks all work
     favorites: true,
     presets: true,
-    popHitMeter: true,
-    casinoFlash: true,
-    dailyFuel: { free: Infinity, pro: 99, trend: 0 },
-    historyAccess: "full-yearly",  // full tree, yearly graph only, 5-graph compare
+    maxPresetSlots: 10,
+    // ── Analytics
+    popHitMeter: true,             // Pop profile match meter visible
+    casinoFlash: true,             // premium roll animation
+    // ── Output
+    maxPromptVariants: 1,
+    shareableLinks: true,          // copy-to-clipboard share URLs
+    exportJSON: false,             // JSON export reserved for VIP
+    // ── Fuel — Pro is unlimited
+    dailyFuel: { free: Infinity, pro: Infinity, vip: 0 },
+    // ── History
+    historyAccess: "full-yearly",
     historyMaxSelect: 5,
-    historyShowsTrendBar: true,
+    // ── Pages
     vipSecretsPage: false,
     adminDebug: false,
+    // ── Commercial
+    upgradeNudges: false,          // clean UI, no upsell noise
   },
   vip: {
+    // ── Engine — everything Pro has
     maxSlots: 3,
     modes: ["simple", "moderated", "expanded", "vast", "chaos"],
-    maxInstruments: 10,
+    maxInstruments: Infinity,
     maxOptionsPerSection: Infinity,
     showOptionNames: true,
     hasOnToggle: true,
     locks: true,
     favorites: true,
     presets: true,
+    maxPresetSlots: 50,            // 5x more preset slots
+    // ── Analytics + visuals
     popHitMeter: true,
     casinoFlash: true,
-    dailyFuel: { free: Infinity, pro: 500, trend: 50 },
-    historyAccess: "full-monthly", // full tree, monthly+weekly, 25-graph compare
-    historyMaxSelect: 25,
-    historyShowsTrendBar: true,
-    vipSecretsPage: true,
-    adminDebug: false,
-  },
-  admin: {
-    maxSlots: 3,
-    modes: ["simple", "moderated", "expanded", "vast", "chaos"],
-    maxInstruments: 10,
-    maxOptionsPerSection: Infinity,
-    showOptionNames: true,
-    hasOnToggle: true,
-    locks: true,
-    favorites: true,
-    presets: true,
-    popHitMeter: true,
-    casinoFlash: true,
-    dailyFuel: { free: Infinity, pro: 9999, trend: 9999 },
+    // ── Output — VIP-exclusive extras
+    maxPromptVariants: 5,          // batch generate 5 variants per roll
+    shareableLinks: true,
+    exportJSON: true,              // export configurations as JSON
+    // ── Fuel — VIP gets its own premium fuel type with full allocation
+    dailyFuel: { free: Infinity, pro: Infinity, vip: Infinity },
+    // ── History — full depth
     historyAccess: "full-monthly",
     historyMaxSelect: 25,
-    historyShowsTrendBar: true,
+    // ── Pages
+    vipSecretsPage: true,
+    adminDebug: false,
+    // ── Commercial
+    upgradeNudges: false,
+  },
+  admin: {
+    // All unlocked, all infinite — dev only
+    maxSlots: 3,
+    modes: ["simple", "moderated", "expanded", "vast", "chaos"],
+    maxInstruments: Infinity,
+    maxOptionsPerSection: Infinity,
+    showOptionNames: true,
+    hasOnToggle: true,
+    locks: true,
+    favorites: true,
+    presets: true,
+    maxPresetSlots: Infinity,
+    popHitMeter: true,
+    casinoFlash: true,
+    maxPromptVariants: 5,
+    shareableLinks: true,
+    exportJSON: true,
+    dailyFuel: { free: Infinity, pro: Infinity, vip: Infinity },
+    historyAccess: "full-monthly",
+    historyMaxSelect: Infinity,
     vipSecretsPage: true,
     adminDebug: true,
+    upgradeNudges: false,
   },
 };
 
@@ -161,7 +219,7 @@ const TIER_FEATURES = {
 const FUEL_TYPES = {
   free:  { id: "free",  label: "Free Hit",  color: "#00FF88", emoji: "🟢" },
   pro:   { id: "pro",   label: "Pro Hit",   color: "#FF1744", emoji: "🔴" },
-  trend: { id: "trend", label: "Trend Hit", color: "#1E90FF", emoji: "🔵" },
+  vip:   { id: "vip",   label: "VIP Hit",   color: "#C792EA", emoji: "🟣" },
 };
 
 // Free-tier subgenre whitelist: the 3 most mainstream subgenres under each main
@@ -231,17 +289,24 @@ function FuelProvider({ children }) {
     } catch {}
   }, [fuels, activeFuel, tier]);
 
-  // Reset fuel allocation whenever tier changes
-  useEffect(() => {
-    setFuels({ ...features.dailyFuel });
-  }, [tier]);
+  // IMPORTANT: Fuel must NOT reset on manual tier switching.
+  // Fuel is refilled only in two cases:
+  //   (1) The day rolls over (handled by the localStorage bootstrap above,
+  //       which reseeds from features.dailyFuel when the stored date differs)
+  //   (2) A tier is purchased through the shop (handled by refillForTier,
+  //       called explicitly from the purchase flow)
+  // Switching tiers by itself should never change the user's remaining fuel.
 
-  // If user tries to use a fuel type their tier can't access, bounce to free
+  // If the user's current active fuel is a type their tier doesn't have ANY
+  // allocation for (e.g. free user was on VIP fuel then tier dropped),
+  // fall back to free fuel — but don't touch the fuel counts themselves.
   useEffect(() => {
-    if (fuels[activeFuel] === 0 && fuels.free > 0) {
+    const allocation = features.dailyFuel[activeFuel];
+    if (allocation === 0 || allocation === undefined) {
+      // This fuel isn't available at all for the current tier — bounce to free
       setActiveFuel("free");
     }
-  }, [fuels, activeFuel]);
+  }, [tier, activeFuel, features]);
 
   const consumeFuel = (type) => {
     const t = type || activeFuel;
@@ -254,8 +319,15 @@ function FuelProvider({ children }) {
   const refillAll = () => setFuels({ ...features.dailyFuel });
   const setFuel = (type, v) => setFuels(prev => ({ ...prev, [type]: v }));
 
+  // Refill to a SPECIFIC tier's daily allocation. Called by the purchase flow
+  // when a user buys a tier upgrade. Grants full daily fuel for the new tier.
+  const refillForTier = (tierId) => {
+    const alloc = TIER_FEATURES[tierId]?.dailyFuel;
+    if (alloc) setFuels({ ...alloc });
+  };
+
   const value = useMemo(() => ({
-    fuels, activeFuel, setActiveFuel, consumeFuel, refillAll, setFuel,
+    fuels, activeFuel, setActiveFuel, consumeFuel, refillAll, setFuel, refillForTier,
   }), [fuels, activeFuel]);
 
   return <FuelContext.Provider value={value}>{children}</FuelContext.Provider>;
@@ -266,7 +338,15 @@ function fuelDisplay(v) {
   return String(v);
 }
 
-const TierContext = createContext({ tier: "free", setTier: () => {}, features: TIER_FEATURES.free });
+const TierContext = createContext({
+  tier: "free", setTier: () => {}, features: TIER_FEATURES.free,
+  ownedTiers: new Set(["free"]), purchaseTier: () => ({ ok: false }),
+  revokeTier: () => {},
+  streak: 0, dailyBonus: null, dismissDailyBonus: () => {},
+  isDebug: false,
+  toggleDevMode: () => {},
+  devModeActive: false,
+});
 
 function useTier() { return useContext(TierContext); }
 
@@ -369,7 +449,7 @@ function FuelGearshift({ compact = false }) {
   const options = [
     { id: "free",  ...FUEL_TYPES.free,  angle: 0 },
     { id: "pro",   ...FUEL_TYPES.pro,   angle: 0 },
-    { id: "trend", ...FUEL_TYPES.trend, angle: 0 },
+    { id: "vip", ...FUEL_TYPES.vip, angle: 0 },
   ];
 
   return (
@@ -625,10 +705,177 @@ function TierLock({ feature, requiredTier = "pro", compact = false }) {
   );
 }
 
+// Storage key uses versioning so future schema changes don't silently break.
+// Bumping to v2 because the v1 shape (if any existed in user browsers) didn't
+// have persistent tier/credits data. On first v2 load we start fresh.
+const TIER_STORAGE_KEY = "he-tier-v2";
+
+// isDebugMode — enables admin features when URL contains ?debug=1
+// Developer-only. Not user-facing.
+function isDebugMode() {
+  if (typeof window === "undefined") return false;
+  try {
+    const params = new URLSearchParams(window.location.search);
+    return params.get("debug") === "1";
+  } catch { return false; }
+}
+
 function TierProvider({ children }) {
-  const [tier, setTier] = useState("pro"); // default new users to Pro so the site feels unlocked
+  // Bootstrap from localStorage if available, else defaults
+  const bootstrap = () => {
+    if (typeof window === "undefined") return null;
+    try {
+      const raw = localStorage.getItem(TIER_STORAGE_KEY);
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      return {
+        tier: parsed.tier || "free",
+        owned: Array.isArray(parsed.owned) ? parsed.owned : ["free"],
+        lastVisit: parsed.lastVisit || null,
+        streak: typeof parsed.streak === "number" ? parsed.streak : 0,
+      };
+    } catch { return null; }
+  };
+
+  const seed = bootstrap();
+  const [tier, _setTierInternal] = useState(seed?.tier || "free");
+  const [ownedTiers, setOwnedTiers] = useState(new Set(seed?.owned || ["free"]));
+  const [lastVisit, setLastVisit] = useState(seed?.lastVisit || null);
+  const [streak, setStreak] = useState(seed?.streak || 0);
+  // Daily bonus toast — streak-based welcome back UI
+  const [dailyBonus, setDailyBonus] = useState(null);
+
+  // Persist on every change
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      localStorage.setItem(TIER_STORAGE_KEY, JSON.stringify({
+        tier, owned: [...ownedTiers], lastVisit, streak,
+      }));
+    } catch { /* storage quota / privacy mode — ignore */ }
+  }, [tier, ownedTiers, lastVisit, streak]);
+
+  // ── LOGIN STREAK — one daily bonus per calendar day ──────────────────
+  // Runs once on mount. Compares today's key to lastVisit:
+  //   - Same day: no bonus, no change
+  //   - Next day: streak +1, bonus = 5 + min(streak, 5) extra (caps at +10)
+  //   - Gap > 1 day: streak resets to 1
+  useEffect(() => {
+    const today = todayKey();
+    if (lastVisit === today) return; // already awarded today
+
+    let newStreak = 1;
+    if (lastVisit) {
+      const [y, m, d] = lastVisit.split("-").map(Number);
+      const yesterday = new Date(Date.UTC(y, m - 1, d));
+      yesterday.setUTCDate(yesterday.getUTCDate() + 1);
+      const yesterdayKey = `${yesterday.getUTCFullYear()}-${String(yesterday.getUTCMonth() + 1).padStart(2, "0")}-${String(yesterday.getUTCDate()).padStart(2, "0")}`;
+      newStreak = yesterdayKey === today ? streak + 1 : 1;
+    }
+
+    // Streak is purely engagement/retention metric now — no credit reward
+    setStreak(newStreak);
+    setLastVisit(today);
+    // Only show the toast on day 2+ (day 1 is just "hello")
+    if (newStreak > 1) {
+      setDailyBonus({ streak: newStreak });
+      const timer = setTimeout(() => setDailyBonus(null), 4000);
+      return () => clearTimeout(timer);
+    }
+  }, []); // once per mount
+
+  // Only allow switching to an owned tier
+  const setTier = (t) => {
+    if (ownedTiers.has(t)) _setTierInternal(t);
+  };
+
+  // Subscribe to a tier — simulated monthly or yearly subscription.
+  // Returns {ok, error}. billing is "monthly" | "yearly".
+  const purchaseTier = (t, billing = "monthly") => {
+    if (t === "admin") {
+      return { ok: false, error: "Admin tier isn't for sale." };
+    }
+    if (ownedTiers.has(t)) {
+      return { ok: false, error: "You're already subscribed to this tier." };
+    }
+    // Can't downgrade-buy a lower tier when you have higher
+    const currentHighestOwned = Math.max(...[...ownedTiers].map(x => TIER_RANK[x] ?? 0));
+    if ((TIER_RANK[t] ?? 0) < currentHighestOwned) {
+      return { ok: false, error: "You're on a higher tier — downgrade from account settings instead." };
+    }
+    // In demo mode we don't actually charge — just activate
+    setOwnedTiers(prev => {
+      const next = new Set(prev);
+      next.add(t);
+      return next;
+    });
+    _setTierInternal(t);
+    return { ok: true };
+  };
+
+  // Revoke a tier — used for refunds or if admin debug is toggled off.
+  // Cannot revoke free. If the currently-active tier is revoked, fall back
+  // to the highest remaining owned tier.
+  const revokeTier = (t) => {
+    if (t === "free") return;
+    setOwnedTiers(prev => {
+      const next = new Set(prev);
+      next.delete(t);
+      return next;
+    });
+    if (tier === t) {
+      // Pick the highest remaining tier
+      const remaining = [...ownedTiers].filter(x => x !== t);
+      const best = remaining.sort((a, b) => (TIER_RANK[b] ?? 0) - (TIER_RANK[a] ?? 0))[0] || "free";
+      _setTierInternal(best);
+    }
+  };
+
+  // Auto-grant admin when ?debug=1 is in the URL. Non-persisted — comes and
+  // goes with the query param.
+  useEffect(() => {
+    if (isDebugMode() && !ownedTiers.has("admin")) {
+      setOwnedTiers(prev => {
+        const next = new Set(prev);
+        next.add("admin");
+        return next;
+      });
+    }
+  }, []);
+
+  // DEV MODE — easy-access admin toggle via nav button.
+  // REMOVE BEFORE PUBLIC LAUNCH.
+  const toggleDevMode = () => {
+    if (ownedTiers.has("admin")) {
+      setOwnedTiers(prev => {
+        const next = new Set(prev);
+        next.delete("admin");
+        return next;
+      });
+      if (tier === "admin") {
+        const remaining = [...ownedTiers].filter(x => x !== "admin");
+        const best = remaining.sort((a, b) => (TIER_RANK[b] ?? 0) - (TIER_RANK[a] ?? 0))[0] || "free";
+        _setTierInternal(best);
+      }
+    } else {
+      setOwnedTiers(prev => {
+        const next = new Set(prev);
+        next.add("admin");
+        return next;
+      });
+      _setTierInternal("admin");
+    }
+  };
+
   const features = TIER_FEATURES[tier] || TIER_FEATURES.free;
-  const value = useMemo(() => ({ tier, setTier, features }), [tier, features]);
+  const value = useMemo(() => ({
+    tier, setTier, features,
+    ownedTiers, purchaseTier, revokeTier,
+    streak, dailyBonus, dismissDailyBonus: () => setDailyBonus(null),
+    isDebug: isDebugMode() || ownedTiers.has("admin"),
+    toggleDevMode,
+    devModeActive: ownedTiers.has("admin"),
+  }), [tier, features, ownedTiers, streak, dailyBonus]);
   return <TierContext.Provider value={value}>{children}</TierContext.Provider>;
 }
 
@@ -723,6 +970,363 @@ function TierSwitcher({ tier, onChange }) {
         </div>
       )}
     </div>
+  );
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// TIER LEVER — mechanical pulling-stick UI for tier selection
+// ────────────────────────────────────────────────────────────────────────────
+// Positions are arranged vertically (like a gear shift / airplane throttle).
+// Free at bottom (lowest), Admin at top (highest). Click a position to snap
+// the stick there. Uses absolute-positioned stick with transition on `top`.
+// ────────────────────────────────────────────────────────────────────────────
+// TierLever — compact horizontal badge showing current tier with crown-tier
+// indicator. Fits cleanly in the nav height (36px). Click opens shop.
+// Not interactive for switching — tier only changes through purchase.
+function TierLever({ tier, onChange, onOpenShop }) {
+  const { ownedTiers, isDebug } = useTier();
+  const { layout } = useLayout();
+  const isMobile = layout === "mobile";
+  const [hover, setHover] = useState(false);
+  const t = TIERS[tier];
+
+  // Tier icons — small visual indicator of rank
+  const tierIcon = {
+    free: "○",
+    pro:  "◆",
+    vip:  "♛",
+    admin: "⚡",
+  }[tier] || "○";
+
+  // Tier ladder tooltip: shows what's owned vs what's available.
+  // Desktop: hover to open. Mobile: tap-to-toggle (hover is unreliable on touch).
+  const [tooltipOpen, setTooltipOpen] = useState(false);
+
+  // On mobile, close tooltip on outside tap
+  useEffect(() => {
+    if (!isMobile || !tooltipOpen) return;
+    const handler = () => setTooltipOpen(false);
+    // Delay so the opening tap doesn't immediately close
+    const t = setTimeout(() => document.addEventListener("click", handler, { once: true }), 0);
+    return () => { clearTimeout(t); document.removeEventListener("click", handler); };
+  }, [isMobile, tooltipOpen]);
+
+  return (
+    <div
+      onMouseEnter={() => { if (!isMobile) { setHover(true); setTooltipOpen(true); } }}
+      onMouseLeave={() => { if (!isMobile) { setHover(false); setTooltipOpen(false); } }}
+      style={{ position: "relative", flexShrink: 0 }}
+    >
+      <button type="button"
+        onClick={(e) => {
+          if (isMobile) {
+            // First tap: open tooltip. If already open: go to shop.
+            e.stopPropagation();
+            if (tooltipOpen) { setTooltipOpen(false); onOpenShop?.(); }
+            else setTooltipOpen(true);
+          } else {
+            onOpenShop?.();
+          }
+        }}
+        title="View tier details and upgrades"
+        style={{
+          display: "inline-flex", alignItems: "center", gap: 6,
+          padding: isMobile ? "6px 12px" : "5px 10px",
+          height: isMobile ? 34 : 32,
+          background: hover
+            ? `linear-gradient(180deg, ${t.color}22 0%, ${t.color}11 100%)`
+            : `linear-gradient(180deg, ${t.color}14 0%, ${t.color}06 100%)`,
+          border: `1px solid ${t.color}${hover ? "77" : "44"}`,
+          borderRadius: 6,
+          cursor: "pointer",
+          transition: "all 180ms ease-out",
+          boxShadow: hover
+            ? `0 0 16px ${t.color}55, inset 0 1px 0 ${t.color}33`
+            : `0 0 8px ${t.color}22, inset 0 1px 0 ${t.color}22`,
+        }}
+      >
+        <span style={{
+          color: t.color, fontSize: 13, lineHeight: 1,
+          textShadow: `0 0 6px ${t.color}aa`,
+        }}>{tierIcon}</span>
+        <span style={{
+          color: t.color,
+          fontFamily: T.font_mono,
+          fontSize: 10, fontWeight: 700,
+          letterSpacing: "0.18em",
+          textShadow: `0 0 6px ${t.color}66`,
+        }}>{t.label.toUpperCase()}</span>
+      </button>
+
+      {/* Hover tooltip — ladder of tiers with owned/not-owned indicators */}
+      {tooltipOpen && (
+        <div style={{
+          position: "absolute",
+          top: "calc(100% + 6px)", right: 0,
+          background: "rgba(8,9,11,0.96)",
+          backdropFilter: "blur(20px) saturate(150%)",
+          border: `1px solid ${T.border}`,
+          borderRadius: 8,
+          padding: "10px 12px",
+          minWidth: 180,
+          maxWidth: "calc(100vw - 24px)", // never wider than viewport minus margins
+          boxShadow: "0 12px 40px rgba(0,0,0,0.6), 0 2px 8px rgba(0,0,0,0.4)",
+          zIndex: 1000,
+          animation: "tierTooltipIn 160ms cubic-bezier(0.16, 1, 0.3, 1)",
+        }}>
+          <style>{`
+            @keyframes tierTooltipIn {
+              from { opacity: 0; transform: translateY(-4px); }
+              to   { opacity: 1; transform: translateY(0); }
+            }
+          `}</style>
+          <div style={{
+            fontSize: 9, fontFamily: T.font_mono, fontWeight: 700,
+            letterSpacing: "0.2em", color: T.textMuted,
+            marginBottom: 8,
+          }}>TIER LADDER</div>
+          {(isDebug ? ["admin","vip","pro","free"] : ["vip","pro","free"]).map(p => {
+            const tp = TIERS[p];
+            const owned = ownedTiers.has(p);
+            const isCurrent = p === tier;
+            return (
+              <div key={p} style={{
+                display: "flex", alignItems: "center", justifyContent: "space-between",
+                padding: "4px 0",
+                opacity: owned ? 1 : 0.55,
+              }}>
+                <span style={{
+                  display: "inline-flex", alignItems: "center", gap: 6,
+                  color: isCurrent ? tp.color : T.textSec,
+                  fontSize: 11, fontFamily: T.font_mono, fontWeight: 600,
+                  letterSpacing: "0.12em",
+                  textShadow: isCurrent ? `0 0 6px ${tp.color}77` : "none",
+                }}>
+                  <span style={{ color: tp.color, width: 10, textAlign: "center" }}>
+                    {isCurrent ? "▸" : " "}
+                  </span>
+                  {tp.label.toUpperCase()}
+                </span>
+                <span style={{
+                  fontSize: 9, fontFamily: T.font_mono,
+                  color: owned ? tp.color : T.textMuted,
+                  letterSpacing: "0.1em",
+                }}>
+                  {owned ? "OWNED" : p === "admin" ? "DEV" : "LOCKED"}
+                </span>
+              </div>
+            );
+          })}
+          <div style={{
+            borderTop: `1px solid ${T.border}`,
+            marginTop: 8, paddingTop: 8,
+            fontSize: 10, color: T.textMuted, fontFamily: T.font_sans,
+            lineHeight: 1.4,
+          }}>
+            Click to view all perks & upgrade.
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+
+// ────────────────────────────────────────────────────────────────────────────
+// FUEL LEVER — tactile gear-shift: FREE (green) · PRO (red) · VIP (purple)
+// ────────────────────────────────────────────────────────────────────────────
+function FuelLever({ currentPage, onNavigate }) {
+  const { activeFuel, setActiveFuel, fuels } = useFuel();
+  const { tier } = useTier();
+  const [shakeKey, setShakeKey] = useState(0);
+
+  // Horizontal gear box:
+  //   green  = free (0)
+  //   red    = pro  (1)
+  //   purple = vip  (2)
+  const positions = ["free", "pro", "vip"];
+  const activeIdx = positions.indexOf(activeFuel);
+  const slotW = 30;
+  const gateH = 38;
+  const trackPadding = 12;
+  const trackInner = positions.length * slotW;
+  const housingW = trackInner + trackPadding * 2;
+  const activeColor = FUEL_TYPES[activeFuel]?.color || "#888";
+
+  const handleSelect = (fuelId) => {
+    if (fuelId === activeFuel) return;
+    const allocation = TIER_FEATURES[tier]?.dailyFuel?.[fuelId] ?? 0;
+    if (allocation === 0) return; // locked
+
+    setShakeKey(k => k + 1);
+    setActiveFuel(fuelId);
+  };
+
+  const knobX = trackPadding + activeIdx * slotW + slotW / 2 - 12; // 12 = knob half width
+
+  return (
+    <>
+      <style>{`
+        @keyframes gearShiftShake-${shakeKey % 100} {
+          0%,100% { transform: translate(0,0) rotate(0deg); }
+          25%     { transform: translate(0.5px, -0.5px) rotate(0.4deg); }
+          50%     { transform: translate(-0.5px, 0.5px) rotate(-0.3deg); }
+          75%     { transform: translate(0.3px, 0.3px) rotate(0.2deg); }
+        }
+        @keyframes gearKnobPulse {
+          0%,100% { filter: brightness(1); }
+          50%     { filter: brightness(1.15); }
+        }
+      `}</style>
+      <div style={{
+        position: "relative",
+        display: "inline-flex", alignItems: "center",
+        padding: "4px",
+        background: `
+          linear-gradient(180deg, #14161c 0%, #0a0b10 50%, #050608 100%)`,
+        border: `1px solid #1f232b`,
+        borderRadius: 10,
+        boxShadow: `
+          inset 0 1px 0 rgba(255,255,255,0.04),
+          inset 0 -1px 0 rgba(0,0,0,0.6),
+          0 2px 6px rgba(0,0,0,0.5),
+          0 0 20px ${activeColor}22`,
+        transition: "box-shadow 260ms cubic-bezier(0.34, 1.56, 0.64, 1)",
+      }}>
+        {/* ── HOUSING / GATE ────────────────────────────────────── */}
+        <div style={{
+          position: "relative",
+          width: housingW, height: gateH,
+          background: `
+            linear-gradient(180deg, #0a0b0e 0%, #1a1c22 40%, #0a0b0e 100%)`,
+          borderRadius: 6,
+          border: "1px solid #2a2d36",
+          boxShadow: `
+            inset 0 2px 4px rgba(0,0,0,0.9),
+            inset 0 -1px 0 rgba(255,255,255,0.05)`,
+          overflow: "hidden",
+        }}>
+          {/* Deep horizontal channel the stick slides in */}
+          <div style={{
+            position: "absolute",
+            left: trackPadding, right: trackPadding,
+            top: "50%", height: 3, marginTop: -1.5,
+            background: `
+              linear-gradient(180deg, #000 0%, #0a0b0e 50%, #1a1c22 100%)`,
+            borderRadius: 2,
+            boxShadow: `inset 0 1px 2px rgba(0,0,0,1)`,
+          }} />
+          {/* Three gate notches — subtle dimples where stick locks */}
+          {positions.map((_, i) => (
+            <div key={i} style={{
+              position: "absolute",
+              left: trackPadding + i * slotW + slotW / 2 - 4,
+              top: "50%", marginTop: -5,
+              width: 8, height: 10,
+              background: "radial-gradient(ellipse, rgba(0,0,0,0.6) 0%, transparent 70%)",
+              borderRadius: "50%",
+            }} />
+          ))}
+
+          {/* ── THE KNOB (gear-shift ball) ─────────────────────── */}
+          <div
+            key={`knob-shake-${shakeKey}`}
+            style={{
+              position: "absolute",
+              left: knobX,
+              top: "50%", marginTop: -12,
+              width: 24, height: 24,
+              animation: `gearShiftShake-${shakeKey % 100} 200ms ease-out`,
+              transition: "left 320ms cubic-bezier(0.34, 1.56, 0.64, 1)",
+              zIndex: 2,
+              pointerEvents: "none",
+            }}>
+            {/* Emissive glow halo — matches active fuel color */}
+            <div style={{
+              position: "absolute", inset: -6,
+              borderRadius: "50%",
+              background: `radial-gradient(circle, ${activeColor}88 0%, ${activeColor}00 70%)`,
+              filter: "blur(4px)",
+              animation: "gearKnobPulse 2.4s ease-in-out infinite",
+            }} />
+            {/* Stick shaft — small chrome connector visible below knob */}
+            <div style={{
+              position: "absolute",
+              left: "50%", marginLeft: -2,
+              top: "80%", width: 4, height: 6,
+              background: "linear-gradient(90deg, #444 0%, #999 50%, #444 100%)",
+              borderRadius: 1,
+            }} />
+            {/* Ball / knob head */}
+            <div style={{
+              position: "relative",
+              width: 24, height: 24, borderRadius: "50%",
+              background: `
+                radial-gradient(circle at 28% 28%,
+                  ${activeColor}FF 0%,
+                  ${activeColor}DD 25%,
+                  ${activeColor}77 55%,
+                  #1a1a1a 100%)`,
+              boxShadow: `
+                inset 0 1px 3px rgba(255,255,255,0.45),
+                inset 0 -3px 4px rgba(0,0,0,0.6),
+                0 0 14px ${activeColor}AA,
+                0 0 28px ${activeColor}55,
+                0 3px 5px rgba(0,0,0,0.8)`,
+              border: `1px solid rgba(0,0,0,0.5)`,
+            }}>
+              {/* Specular highlight dot */}
+              <div style={{
+                position: "absolute",
+                top: 3, left: 5,
+                width: 5, height: 4,
+                background: "radial-gradient(ellipse, rgba(255,255,255,0.7) 0%, rgba(255,255,255,0) 80%)",
+                borderRadius: "50%",
+                filter: "blur(0.5px)",
+              }} />
+            </div>
+          </div>
+
+          {/* ── CLICK ZONES (invisible) for each position ──────── */}
+          {positions.map((p, i) => {
+            const locked = (TIER_FEATURES[tier]?.dailyFuel?.[p] ?? 0) === 0;
+            const f = FUEL_TYPES[p];
+            const isActive = p === activeFuel;
+            return (
+              <button key={p} type="button"
+                onClick={() => handleSelect(p)}
+                disabled={locked}
+                title={locked
+                  ? `${f.label} · Locked — upgrade tier`
+                  : `${f.label} · ${fuels[p] === Infinity ? "∞" : fuels[p]} left today`}
+                style={{
+                  position: "absolute",
+                  left: trackPadding + i * slotW, top: 0,
+                  width: slotW, height: "100%",
+                  background: "transparent", border: "none",
+                  cursor: locked ? "not-allowed" : "pointer",
+                  zIndex: 3,
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  justifyContent: "flex-end",
+                  padding: 0, paddingBottom: 3,
+                }}>
+                <span style={{
+                  color: locked ? T.textMuted : (isActive ? f.color : T.textTer),
+                  fontFamily: T.font_mono,
+                  fontSize: 7, fontWeight: 700, letterSpacing: "0.15em",
+                  textShadow: isActive && !locked ? `0 0 4px ${f.color}` : "none",
+                  opacity: locked ? 0.3 : (isActive ? 1 : 0.5),
+                  transition: "all 240ms ease-out",
+                  lineHeight: 1,
+                }}>{f.label.split(" ")[0].toUpperCase()}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    </>
   );
 }
 
@@ -1142,6 +1746,45 @@ const SPECIFIC_INSTRUMENTS = {
     "Operatic soprano": ["coloratura fioritura","sustained legato","vibrato heavy"],
     "Bulgarian women's choir": ["open-throat harmony","dissonant clusters","folk modal"],
     "Vocalise wordless": ["ahh sustained","ooh legato","scatting"],
+    "Orchestral choir stab": ["cinematic hit","dramatic sforzando","trailer-style"],
+  },
+  "Folk": {
+    "Banjo": ["clawhammer","bluegrass 3-finger","fingerpicked melodic","strummed rhythm"],
+    "Mandolin": ["tremolo sustained","chopped chord","bluegrass lead","Celtic jig"],
+    "Harmonica": ["blues cross-harp","folk melodic","chromatic jazz","country first-position"],
+    "Dobro resonator": ["Delta blues slide","country lap-style","bluegrass lead"],
+    "Accordion": ["French musette","Cajun zydeco","Italian folk","tango bandoneón","polka bellows"],
+    "Fiddle": ["bluegrass breakdown","Celtic reel","country shuffle","Cajun double-stops"],
+    "Ukulele": ["soft strumming","fingerpicked","Hawaiian slack-key","indie jangle"],
+    "Autoharp": ["strummed chords","arpeggiated","Appalachian folk"],
+  },
+  "Latin": {
+    "Cuatro": ["Puerto Rican jibaro","Venezuelan llanero","strummed rhythm"],
+    "Charango": ["Andean folk","tremolo melody","strummed rhythm"],
+    "Timbales": ["cascara rim","mambo bell","salsa fills"],
+    "Guiro": ["salsa scrape","cumbia shuffle","merengue"],
+    "Marimbula": ["Caribbean bass","Cuban son","kalimba-like tuning"],
+    "Bandoneon": ["tango lament","milonga rhythm","nuevo tango atmospheric"],
+    "Pandeiro": ["samba groove","choro lilt","capoeira rhythm"],
+  },
+  "Modern / Trap": {
+    "808 melodic bells": ["trap bell melody","detuned chimes","pitched bells","arp pattern"],
+    "Pluck lead": ["trap pluck","future-bass pluck","dancehall pluck","staccato melody"],
+    "Supersaw lead": ["big-room unison","trance detune","hyperpop harsh","EDM anthem"],
+    "Vocal chop synth": ["pitched-up chop","future-bass chop","deep house vocal","chopped hook"],
+    "Hip-hop drum loop": ["boom-bap loop","trap hi-hats","drill sliding 808","plugg flutters"],
+    "House piano stabs": ["chicago piano","french house filtered","deep house chord","rave stab"],
+    "Amapiano log drum": ["sliding log drum","melodic log sub","amapiano signature"],
+    "Reese bass": ["dnb reese","dubstep wub","detuned growl"],
+    "Drill slide 808": ["NY drill slide","UK drill 808","Jersey drill clipped"],
+  },
+  "Afrobeats / Global": {
+    "Shekere": ["afrobeats shaker","gourd rattle","yoruba pattern"],
+    "Talking drum": ["dùndún pitch-bend","yoruba talking","call-response"],
+    "Udu": ["clay pot bass","West-African pattern","ambient low-end"],
+    "Log drum": ["amapiano signature","melodic sub","South African house"],
+    "Mbira / Thumb piano": ["Zimbabwean mbira","kalimba-like","cyclic pattern"],
+    "Balafon": ["West-African marimba","pentatonic melody","Griot tradition"],
   },
   "FX": {
     "Granular texture": ["dense cloud","sparse grains","pitch-shifted grains"],
@@ -1151,12 +1794,136 @@ const SPECIFIC_INSTRUMENTS = {
     "Reverse cymbals": ["pre-downbeat swell","snare reverse","long reverse crash"],
     "Field recording": ["urban ambience","nature field","crowd noise","rain"],
     "Sound design hit": ["cinematic boom","sub-drop","metallic clang"],
+    "Impact / braam": ["trailer braam","orchestral hit","cinematic tension"],
+    "Atmosphere pad": ["dark drone","ethereal wash","sub-bass drone","noise textural"],
   },
 };
 
 const SPECIFIC_INSTRUMENT_FLAT = Object.entries(SPECIFIC_INSTRUMENTS).flatMap(
   ([cat, insts]) => Object.keys(insts).map(i => ({ cat, name: i }))
 );
+
+// ── INSTRUMENT ESSENTIALS — curated starter picks ─────────────────────
+// These are the "no-brainer" instruments users reach for most often.
+// Organized by use-case rather than category so users pick intent first.
+// Each combo includes 3-5 instruments that work well together.
+const INSTRUMENT_COMBOS = [
+  {
+    id: "modern-pop",
+    label: "Modern pop",
+    desc: "Radio-ready production",
+    icon: "◉",
+    instruments: ["Grand piano", "Acoustic kit close-mic", "Precision bass", "Supersaw lead", "Vocal chop synth"],
+  },
+  {
+    id: "trap",
+    label: "Trap / drill",
+    desc: "Dark, hi-hat rolls, 808s",
+    icon: "◆",
+    instruments: ["808 sub bass", "Hip-hop drum loop", "808 melodic bells", "Pluck lead"],
+  },
+  {
+    id: "boom-bap",
+    label: "Boom-bap",
+    desc: "Classic head-nod hip-hop",
+    icon: "▣",
+    instruments: ["SP-1200 sampler", "MPC-style drums", "Jazz guitar hollowbody", "Upright acoustic bass"],
+  },
+  {
+    id: "rnb",
+    label: "R&B / neo-soul",
+    desc: "Warm, organic groove",
+    icon: "♡",
+    instruments: ["Rhodes electric piano", "Bass", "Acoustic kit close-mic", "Saxophone tenor"],
+  },
+  {
+    id: "afrobeats",
+    label: "Afrobeats",
+    desc: "Global dance energy",
+    icon: "●",
+    instruments: ["Log drum", "Shekere", "Talking drum", "Synth bass", "Pluck lead"],
+  },
+  {
+    id: "amapiano",
+    label: "Amapiano",
+    desc: "South-African house",
+    icon: "◊",
+    instruments: ["Amapiano log drum", "Shekere", "House piano stabs", "Synth bass"],
+  },
+  {
+    id: "indie-folk",
+    label: "Indie folk",
+    desc: "Intimate, acoustic",
+    icon: "✦",
+    instruments: ["Acoustic steel-string", "Banjo", "Mandolin", "Brushes on snare", "Upright acoustic bass"],
+  },
+  {
+    id: "rock",
+    label: "Rock",
+    desc: "Guitars, drums, attitude",
+    icon: "▲",
+    instruments: ["Les Paul distortion", "Fender Strat clean", "Precision bass", "Acoustic kit close-mic"],
+  },
+  {
+    id: "house",
+    label: "House / tech house",
+    desc: "4-on-the-floor dance",
+    icon: "◆",
+    instruments: ["TR-909", "House piano stabs", "Synth bass", "Supersaw lead", "Vocal chop synth"],
+  },
+  {
+    id: "dubstep-bass",
+    label: "Dubstep / bass music",
+    desc: "Heavy wobble & drops",
+    icon: "▼",
+    instruments: ["Reese bass", "TR-909", "Pluck lead", "Sound design hit"],
+  },
+  {
+    id: "cinematic",
+    label: "Cinematic / trailer",
+    desc: "Epic orchestral weight",
+    icon: "⬢",
+    instruments: ["Full string section", "Full brass section", "Taiko drums", "Impact / braam", "Orchestral choir stab"],
+  },
+  {
+    id: "jazz",
+    label: "Jazz",
+    desc: "Real-instrument trio",
+    icon: "♪",
+    instruments: ["Grand piano", "Upright acoustic bass", "Brushes on snare", "Saxophone tenor"],
+  },
+  {
+    id: "country",
+    label: "Country",
+    desc: "Nashville session",
+    icon: "✧",
+    instruments: ["Telecaster twang", "Pedal steel", "Fiddle", "Acoustic steel-string", "Acoustic kit close-mic"],
+  },
+  {
+    id: "latin",
+    label: "Latin / reggaeton",
+    desc: "Perreo / dembow",
+    icon: "♛",
+    instruments: ["Timbales", "Congas", "Guiro", "Synth bass", "Pluck lead"],
+  },
+];
+
+// The 12 most universal "reach-first" instruments — works across many genres
+const INSTRUMENT_ESSENTIALS = [
+  "Grand piano",
+  "Acoustic steel-string",
+  "Fender Strat clean",
+  "Les Paul distortion",
+  "Rhodes electric piano",
+  "Moog sub bass",
+  "Precision bass",
+  "808 sub bass",
+  "Acoustic kit close-mic",
+  "TR-808",
+  "Full string section",
+  "Saxophone tenor",
+];
+
 
 // Lookup: instrument name → its articulation list (flattened across categories)
 const ARTICULATIONS_BY_INSTRUMENT = Object.entries(SPECIFIC_INSTRUMENTS).reduce(
@@ -1258,7 +2025,52 @@ const MODES = [
   { id: "moderated", label: "Moderated", limit: 250, sub: "balanced detail",      level: 2 },
   { id: "expanded",  label: "Expanded",  limit: 499, sub: "rich description",     level: 3 },
   { id: "vast",      label: "Vast",      limit: 600, sub: "full production brief",level: 4 },
-  { id: "chaos",     label: "Chaos",     limit: 800, sub: "maximum narrative",    level: 5 },
+  { id: "chaos",     label: "Chaos",     limit: 800, sub: "unhinged creative mode — weird fusions, wild imagery", level: 5 },
+];
+
+// ────────────────────────────────────────────────────────────────────────────
+// CHAOS INJECTIONS — Bank of unhinged creative imagery to spike Chaos mode
+// with. Randomly selects 2–4 of these and weaves them into the prompt.
+// These are not genre-specific — the jarring decontextualization is the point.
+// ────────────────────────────────────────────────────────────────────────────
+const CHAOS_ATMOSPHERES = [
+  "recorded in an empty cathedral at 4am",
+  "as if playing through a broken car radio from 1983",
+  "muffled through the wall of a neighboring apartment",
+  "at the end of a long tunnel, reverb swallowing the upper frequencies",
+  "broadcast from a rotating radio tower on a foggy coast",
+  "played backwards at first, then reversed halfway through the verse",
+  "with the sound of distant thunder and rain pooling under every phrase",
+  "inside a submerged submarine, instruments warped by pressure",
+  "from a tape left in the sun, warbled and stretched",
+  "with crowd noise bleeding in from an unseen party next door",
+  "as if recorded on the last day of a long summer",
+  "underwater, then surfacing for the chorus",
+  "at the bottom of an empty swimming pool, concrete echo",
+  "through the walls of a moving train",
+  "in a room with one lightbulb swinging, captured on a handheld mic",
+];
+const CHAOS_TEXTURES = [
+  "with subharmonic bass that shakes the foundations",
+  "layered with field recordings of a coastal storm",
+  "with tape hiss, vinyl crackle, and AM-radio drift folded into every bar",
+  "interrupted briefly by silence, as if the signal cut out",
+  "harmonized by a choir that only appears in the final chorus",
+  "with a distant, half-remembered melody ghosting beneath the lead",
+  "punctuated by the sound of heavy industrial machinery at key moments",
+  "drenched in analog warmth, like a Rhodes through a cracked amp",
+  "surgical in its mix — no reverb, everything bone dry",
+  "with granular-synthesis textures that shimmer and dissolve",
+];
+const CHAOS_CHARACTERS = [
+  "told from the perspective of someone who just lost everything",
+  "as a conversation between two ghosts",
+  "imagined as the last song before the world ends",
+  "as if the protagonist is running out of time",
+  "from the point of view of a letter never sent",
+  "as a lullaby for someone who can no longer hear it",
+  "as a confession delivered through a broken phone line",
+  "as a memory slowly dissolving in real time",
 ];
 
 const MODE_SECTION_LIMITS = {
@@ -1601,11 +2413,11 @@ function shortPromptL4(state, lyricsOn) {
   return parts.join(", ");
 }
 
-// Suno-format detailed prompt: structured, compact, label-driven.
-// Suno's description field responds best to clear declarative lines, not
+// Detailed prompt format: structured, compact, label-driven.
+// The target generator's description field responds best to clear declarative lines, not
 // flowing prose. Each line is a self-contained instruction. No meta-
 // commentary about what the AI should aim for — just facts.
-function buildDetailedSentences(state, lyricsOn) {
+function buildDetailedSentences(state, lyricsOn, mode) {
   const slots = state.slots.filter(Boolean);
   const primary = slots[0];
   const bpm = inferBPM(state);
@@ -1631,7 +2443,7 @@ function buildDetailedSentences(state, lyricsOn) {
   if (groove) tempoBits.push(`${groove.toLowerCase()} groove`);
   sentences.push({ priority: 2, text: `Tempo: ${tempoBits.join(", ")}.` });
 
-  // ── LINE 3: VOCALS (explicit and early — critical for Suno) ────────
+  // ── LINE 3: VOCALS (explicit and early — critical for the generator) ────────
   if (lyricsOn) {
     const vocal = useField(state.toggles.vocalist, state.vocalist) || "clear lead vocal, confident and forward in the mix";
     const langLabel = state.toggles.language !== "off"
@@ -1662,7 +2474,7 @@ function buildDetailedSentences(state, lyricsOn) {
     sentences.push({ priority: 5, text: `Mood: ${bits.join(", ")}.` });
   }
 
-  // ── LINE 6: INSTRUMENTATION (explicit list, Suno-parseable) ────────
+  // ── LINE 6: INSTRUMENTATION (explicit list, generator-parseable) ────────
   const si = resolveSpecificInstruments(state);
   if (si.length) {
     const detailed = si.map(it =>
@@ -1688,7 +2500,7 @@ function buildDetailedSentences(state, lyricsOn) {
     sentences.push({ priority: 8, text: `Sound: ${bits.join(", ")}.` });
   }
 
-  // ── LINE 9: STRUCTURE HINT (brief, Suno responds to this) ──────────
+  // ── LINE 9: STRUCTURE HINT (brief, the generator responds to this) ──────────
   if (lyricsOn) {
     sentences.push({ priority: 10,
       text: `Structure: intro, verse, chorus, verse, chorus, bridge, chorus, outro.` });
@@ -1697,15 +2509,30 @@ function buildDetailedSentences(state, lyricsOn) {
       text: `Structure: intro, main theme, development, climax, resolution.` });
   }
 
-  // ── LINE 10: PRODUCTION DIRECTIVES (concrete, Suno-actionable) ─────
+  // ── LINE 10: PRODUCTION DIRECTIVES (concrete, generator-actionable) ─────
   sentences.push({ priority: 11,
     text: `Production: modern, professional, radio-ready, cohesive mix, full frequency balance.` });
 
-  // ── LINE 11: AVOID LIST (Suno negatives that improve output) ───────
+  // ── LINE 11: AVOID LIST (Negatives that improve output) ───────
   if (primary) {
     const genreLow = primary.genre.toLowerCase();
     sentences.push({ priority: 12,
       text: `Avoid: generic ${genreLow} tropes, MIDI-stock presets, thin mixing, loop-based repetition without variation.` });
+  }
+
+  // ── CHAOS MODE — unhinged creative injections ───────────────────────
+  // Pick one atmosphere + one texture + one character angle. Each adds a
+  // jarring imaginative frame the generator will try to interpret — which pushes
+  // the generation toward weirder, more distinctive results.
+  if (mode === "chaos") {
+    const atm = CHAOS_ATMOSPHERES[Math.floor(Math.random() * CHAOS_ATMOSPHERES.length)];
+    const tex = CHAOS_TEXTURES[Math.floor(Math.random() * CHAOS_TEXTURES.length)];
+    sentences.push({ priority: 13, text: `Atmosphere: ${atm}.` });
+    sentences.push({ priority: 14, text: `Texture: ${tex}.` });
+    if (lyricsOn) {
+      const chr = CHAOS_CHARACTERS[Math.floor(Math.random() * CHAOS_CHARACTERS.length)];
+      sentences.push({ priority: 15, text: `Narrative frame: ${chr}.` });
+    }
   }
 
   return sentences.sort((a, b) => a.priority - b.priority);
@@ -1729,14 +2556,14 @@ function safeTruncate(text, limit) {
   const cutAt = lp > limit - 60 ? lp + 1 : lc > limit - 30 ? lc : ls > limit - 15 ? ls : limit;
   return slice.slice(0, cutAt).trim();
 }
-// ── Suno-grammar sanitizer ────────────────────────────────────────────────
-// Suno and similar music generators parse commas, periods, and plain words
+// ── Grammar sanitizer ────────────────────────────────────────────────
+// AI music generators parse commas, periods, and plain words
 // well. Em-dashes, semicolons, parentheticals, and bracket notation can
-// cause prompt drift. This pass normalizes to Suno-friendly punctuation.
+// cause prompt drift. This pass normalizes to generator-friendly punctuation.
 // Note: hyphens inside words (Hip-Hop, TR-808, Lo-Fi, 12-string) are kept
 // because they are part of proper names — removing them would damage meaning.
-// Suno sanitizer: normalize punctuation to Suno-friendly forms, but
-// preserve structural newlines and label colons that Suno uses to parse
+// Sanitizer: normalize punctuation to generator-friendly forms, but
+// preserve structural newlines and label colons that generators use to parse
 // directives. Only convert mid-sentence em/en-dashes and semicolons.
 function sunoSanitize(text) {
   if (!text) return text;
@@ -1756,8 +2583,8 @@ function sunoSanitize(text) {
     .trim();
 }
 
-function compressDetailedPrompt(state, lyricsOn, limit) {
-  const sentences = buildDetailedSentences(state, lyricsOn);
+function compressDetailedPrompt(state, lyricsOn, limit, mode) {
+  const sentences = buildDetailedSentences(state, lyricsOn, mode);
   const packed = packSentencesToLimit(sentences, limit);
   const raw = packed.length > limit ? safeTruncate(packed, limit) : packed;
   const finalText = sunoSanitize(raw);
@@ -1975,16 +2802,16 @@ function Button({ children, variant = "secondary", size = "md", onClick, disable
 }
 
 // Chip — single select / multi-select option. Casino outline randomly applied during rolling.
-function Chip({ label, selected, onClick, onDoubleClick, onLockToggle, favorite, locked, disabled, size = "md", casinoOutline }) {
+// tierLocked: option exists in the catalog but is hidden behind a tier gate. Displayed
+// with the label blurred and completely non-interactive — cannot be clicked, favorited,
+// locked, or included in random rolls.
+function Chip({ label, selected, onClick, onDoubleClick, onLockToggle, favorite, locked, disabled, size = "md", casinoOutline, tierLocked }) {
   const [hover, setHover] = useState(false);
   const { layout } = useLayout();
-  const { features } = useTier();
   const isMobile = layout === "mobile";
-  // Free tier hides option names and shows ??? placeholders. Click still works.
-  const hideName = features && features.showOptionNames === false;
-  const displayLabel = hideName ? "???" : label;
+  const inactive = disabled || tierLocked;
   const sizes = isMobile ? {
-    sm: { padding: "9px 14px", fontSize: T.fs_md, minHeight: 36 },
+    sm: { padding: "9px 14px", fontSize: T.fs_md, minHeight: 40 },
     md: { padding: "11px 16px", fontSize: T.fs_md, minHeight: 44 },
   } : {
     sm: { padding: "4px 10px", fontSize: T.fs_sm, height: 24 },
@@ -1998,50 +2825,84 @@ function Chip({ label, selected, onClick, onDoubleClick, onLockToggle, favorite,
         ? T.accentBorder
         : T.border;
   const base = {
-    background: selected ? T.accentBg : (hover && !disabled ? T.hover : "transparent"),
-    color: selected ? T.accentHi : (hover && !disabled ? T.text : T.textSec),
-    border: `1px solid ${borderColor}`,
-    boxShadow: casinoOutline
-      ? `0 0 0 1px ${casinoOutline}, 0 0 12px ${casinoOutline}66`
-      : locked
-        ? `0 0 0 1px ${V.neonGold}, 0 0 10px ${V.neonGold}55`
-        : "none",
+    background: selected ? T.accentBg : (hover && !inactive ? T.hover : "transparent"),
+    color: selected ? T.accentHi : (hover && !inactive ? T.text : T.textSec),
+    border: `1px solid ${tierLocked ? T.border : borderColor}`,
+    boxShadow: tierLocked
+      ? "none"
+      : casinoOutline
+        ? `0 0 0 1px ${casinoOutline}, 0 0 12px ${casinoOutline}66`
+        : locked
+          ? `0 0 0 1px ${V.neonGold}, 0 0 10px ${V.neonGold}55`
+          : "none",
   };
   return (
     <span
-      onClick={disabled ? undefined : onClick}
-      onDoubleClick={disabled ? undefined : onDoubleClick}
-      onContextMenu={disabled ? undefined : (e) => {
+      onClick={inactive ? undefined : onClick}
+      onDoubleClick={inactive ? undefined : onDoubleClick}
+      onContextMenu={inactive ? undefined : (e) => {
         if (onLockToggle) { e.preventDefault(); onLockToggle(); }
       }}
-      onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}
-      title={hideName
-        ? `Upgrade to Pro to see option names`
+      onMouseEnter={() => !inactive && setHover(true)} onMouseLeave={() => setHover(false)}
+      title={tierLocked
+        ? "Upgrade tier to unlock this option"
         : onLockToggle
           ? "Click: select · Double-click: favorite · Right-click: lock"
           : undefined}
       style={{
         ...sizes[size], ...base,
-        fontFamily: hideName ? T.font_mono : T.font_sans,
+        fontFamily: T.font_sans,
         fontWeight: 450,
-        letterSpacing: hideName ? "0.15em" : "normal",
-        cursor: disabled ? "not-allowed" : "pointer",
+        cursor: inactive ? "not-allowed" : "pointer",
         borderRadius: T.r_md, userSelect: "none",
         display: "inline-flex", alignItems: "center", gap: 6,
         transition: `background ${T.dur_fast} ${T.ease}, color ${T.dur_fast} ${T.ease}, border-color ${T.dur_fast} ${T.ease}, box-shadow ${T.dur_fast} ${T.ease}`,
-        opacity: disabled ? 0.35 : 1,
-        position: "relative",
-      }}>
-      {locked && (
+        opacity: tierLocked ? 0.7 : disabled ? 0.35 : 1,
+        position: "relative", overflow: "hidden",
+        pointerEvents: tierLocked ? "none" : "auto",
+      }}
+      aria-label={tierLocked ? "Locked option — upgrade tier to unlock" : undefined}>
+      {/* Diagonal-stripe overlay for locked state — visually distinct from loading */}
+      {tierLocked && (
+        <span aria-hidden="true" style={{
+          position: "absolute", inset: 0,
+          backgroundImage: `repeating-linear-gradient(135deg,
+            rgba(148,158,182,0.06) 0 4px,
+            transparent 4px 8px)`,
+          pointerEvents: "none",
+        }} />
+      )}
+      {locked && !tierLocked && (
         <span style={{
           color: V.neonGold, fontSize: T.fs_xs, lineHeight: 1,
           textShadow: `0 0 6px ${V.neonGold}`,
         }}>🔒</span>
       )}
-      {favorite && !locked && (
+      {favorite && !locked && !tierLocked && (
         <span style={{ color: T.warning, fontSize: T.fs_xs, lineHeight: 1 }}>●</span>
       )}
-      {displayLabel}
+      {tierLocked && (
+        <span aria-hidden="true" style={{
+          color: T.accentHi, fontSize: T.fs_xs, lineHeight: 1,
+          fontFamily: T.font_mono, fontWeight: 700, letterSpacing: "0.08em",
+          padding: "1px 4px", borderRadius: 2,
+          background: `${T.accent}22`,
+          border: `1px solid ${T.accent}55`,
+          textShadow: `0 0 4px ${T.accent}66`,
+          position: "relative", zIndex: 1,
+          flexShrink: 0,
+        }}>🔒 PRO</span>
+      )}
+      <span
+        aria-hidden={tierLocked ? "true" : undefined}
+        style={{
+          filter: tierLocked ? "blur(5px)" : "none",
+          transition: "filter 180ms ease-out",
+          userSelect: tierLocked ? "none" : "auto",
+          position: "relative", zIndex: 1,
+        }}>
+        {label}
+      </span>
     </span>
   );
 }
@@ -2343,16 +3204,28 @@ function EngineLogo({ size = 96 }) {
 // ════════════════════════════════════════════════════════════════════════════
 
 function Nav({ page, onNavigate }) {
-  const { tier, setTier, features } = useTier();
+  const { tier, setTier, features, devModeActive, toggleDevMode } = useTier();
+  const { refillForTier } = useFuel();
   const { layout } = useLayout();
   const [menuOpen, setMenuOpen] = useState(false);
   const isMobile = layout === "mobile";
+
+  // Wrap DEV MODE toggle to also refill fuel when turning admin ON
+  // (so the admin "unlimited fuel" state is reflected immediately).
+  const handleDevToggle = () => {
+    const wasActive = devModeActive;
+    toggleDevMode();
+    if (!wasActive) {
+      // Was off, now turning ON — grant admin fuel
+      refillForTier("admin");
+    }
+  };
   const links = [
     { id: "engine",  label: "Engine" },
-    { id: "trend",   label: "Trend Engine" },
     { id: "history", label: "Genre History" },
     { id: "future",  label: "Future of Sound" },
-    ...(features.vipSecretsPage ? [{ id: "secrets", label: "VIP Secrets 🤫" }] : []),
+    { id: "shop",    label: "Shop ★" },
+    ...(features.vipSecretsPage ? [{ id: "secrets", label: "The Playbook" }] : []),
   ];
 
   return (
@@ -2396,11 +3269,56 @@ function Nav({ page, onNavigate }) {
         <div style={{ flex: 1 }} />
       )}
 
-      {/* Right side — fuel badges + layout toggle + tier switcher + (mobile) hamburger */}
-      <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
-        {!isMobile && <FuelBadgesNav />}
-        <LayoutToggle />
-        <TierSwitcher tier={tier} onChange={setTier} />
+      {/* Right side — DEV toggle, layout, gear-shift, tier on desktop; hamburger on mobile */}
+      <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+        {/* DEV MODE toggle — desktop shows label, mobile shows icon only */}
+        {/* TODO: REMOVE BEFORE PUBLIC LAUNCH */}
+        <button type="button"
+          onClick={handleDevToggle}
+          title={devModeActive ? "DEV MODE ACTIVE — click to disable" : "Enable DEV MODE (grants admin tier)"}
+          style={{
+            display: "inline-flex", alignItems: "center", gap: 5,
+            padding: isMobile ? "6px 8px" : "5px 10px",
+            height: isMobile ? 34 : 32,
+            minWidth: isMobile ? 34 : "auto",
+            justifyContent: "center",
+            background: devModeActive
+              ? "linear-gradient(180deg, rgba(255,23,68,0.22) 0%, rgba(255,23,68,0.10) 100%)"
+              : "linear-gradient(180deg, rgba(255,23,68,0.06) 0%, rgba(255,23,68,0.02) 100%)",
+            border: `1px ${devModeActive ? "solid" : "dashed"} ${devModeActive ? "#FF1744" : "#FF174477"}`,
+            borderRadius: 6,
+            color: "#FF5577",
+            cursor: "pointer",
+            transition: "all 180ms ease-out",
+            boxShadow: devModeActive
+              ? "0 0 12px rgba(255,23,68,0.45), inset 0 1px 0 rgba(255,100,120,0.3)"
+              : "none",
+            animation: devModeActive ? "devModePulse 2.2s ease-in-out infinite" : "none",
+          }}>
+          <style>{`
+            @keyframes devModePulse {
+              0%, 100% { box-shadow: 0 0 12px rgba(255,23,68,0.45), inset 0 1px 0 rgba(255,100,120,0.3); }
+              50%      { box-shadow: 0 0 20px rgba(255,23,68,0.7),  inset 0 1px 0 rgba(255,100,120,0.5); }
+            }
+          `}</style>
+          <span style={{ fontSize: isMobile ? 13 : 10, lineHeight: 1 }}>⚡</span>
+          {!isMobile && (
+            <span style={{
+              fontFamily: T.font_mono, fontSize: 9, fontWeight: 700,
+              letterSpacing: "0.18em", textShadow: "0 0 4px rgba(255,23,68,0.6)",
+            }}>DEV</span>
+          )}
+        </button>
+        {!isMobile && <LayoutToggle />}
+        {!isMobile && (
+          <>
+            <FuelLever currentPage={page} onNavigate={onNavigate} />
+            <TierLever tier={tier} onChange={setTier} onOpenShop={() => onNavigate("shop")} />
+          </>
+        )}
+        {isMobile && (
+          <TierLever tier={tier} onChange={setTier} onOpenShop={() => onNavigate("shop")} />
+        )}
         {isMobile && (
           <button type="button"
             onClick={() => setMenuOpen(!menuOpen)}
@@ -2408,25 +3326,28 @@ function Nav({ page, onNavigate }) {
               background: menuOpen ? T.elevated : T.surface,
               border: `1px solid ${menuOpen ? T.borderFocus : T.border}`,
               color: T.text,
-              width: 36, height: 32,
+              width: 44, height: 34,
               borderRadius: 6, cursor: "pointer",
               display: "grid", placeItems: "center",
-              fontSize: 16, lineHeight: 1,
+              fontSize: 18, lineHeight: 1,
             }}>{menuOpen ? "×" : "≡"}</button>
         )}
       </div>
 
-      {/* Mobile menu overlay */}
+      {/* Mobile menu overlay — nav links + fuel lever + layout toggle */}
       {isMobile && menuOpen && (
         <div style={{
           position: "absolute", top: "100%", left: 0, right: 0,
           background: "rgba(8,9,11,0.98)",
           borderBottom: `1px solid ${T.border}`,
           backdropFilter: "blur(20px) saturate(150%)",
-          padding: T.s2,
+          padding: T.s3,
           display: "flex", flexDirection: "column", gap: 2,
           zIndex: 99,
+          maxHeight: "calc(100vh - 52px)",
+          overflowY: "auto",
         }}>
+          {/* Nav links */}
           {links.map(l => (
             <button key={l.id} type="button"
               onClick={() => { onNavigate(l.id); setMenuOpen(false); }}
@@ -2435,12 +3356,34 @@ function Nav({ page, onNavigate }) {
                 border: "none",
                 color: page === l.id ? T.text : T.textSec,
                 padding: "14px 18px",
+                minHeight: 48, // thumb target
                 cursor: "pointer",
                 fontSize: 15, fontFamily: T.font_sans, fontWeight: 500,
                 borderRadius: 8,
                 textAlign: "left",
               }}>{l.label}</button>
           ))}
+
+          {/* Separator */}
+          <div style={{ height: 1, background: T.border, margin: `${T.s2}px 0` }} />
+
+          {/* Fuel selector — in mobile menu since nav is too tight */}
+          <div style={{ padding: "8px 12px" }}>
+            <div style={{
+              fontSize: 10, fontFamily: T.font_mono, fontWeight: 700,
+              letterSpacing: "0.2em", color: T.textMuted, marginBottom: 8,
+            }}>FUEL SELECTOR</div>
+            <FuelLever currentPage={page} onNavigate={(p) => { onNavigate(p); setMenuOpen(false); }} />
+          </div>
+
+          {/* Layout toggle — in mobile menu */}
+          <div style={{ padding: "8px 12px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+            <span style={{
+              fontSize: 10, fontFamily: T.font_mono, fontWeight: 700,
+              letterSpacing: "0.2em", color: T.textMuted,
+            }}>VIEW AS</span>
+            <LayoutToggle />
+          </div>
         </div>
       )}
     </nav>
@@ -2452,17 +3395,21 @@ function Nav({ page, onNavigate }) {
 // ════════════════════════════════════════════════════════════════════════════
 
 function ModeSelector({ value, onChange, allowedModes }) {
+  const { layout } = useLayout();
+  const isMobile = layout === "mobile";
   const activeIdx = MODES.findIndex(m => m.id === value);
   return (
     <div>
       <div style={{
         display: "flex", justifyContent: "space-between", alignItems: "baseline",
-        marginBottom: T.s3,
+        marginBottom: T.s3, gap: T.s2,
       }}>
         <Label color={T.textSec}>Prompt depth</Label>
-        <span style={{ fontSize: T.fs_sm, color: T.textTer, fontFamily: T.font_sans }}>
-          {getModeById(value).sub}
-        </span>
+        {!isMobile && (
+          <span style={{ fontSize: T.fs_sm, color: T.textTer, fontFamily: T.font_sans, textAlign: "right" }}>
+            {getModeById(value).sub}
+          </span>
+        )}
       </div>
       <div style={{
         display: "grid", gridTemplateColumns: "repeat(5, 1fr)",
@@ -2491,9 +3438,10 @@ function ModeSelector({ value, onChange, allowedModes }) {
                 position: "relative", zIndex: 1,
                 background: "transparent", border: "none",
                 color: locked ? T.textMuted : active ? T.text : T.textTer,
-                padding: `${T.s3}px ${T.s2}px`,
+                padding: isMobile ? `${T.s2}px 2px` : `${T.s3}px ${T.s2}px`,
+                minHeight: isMobile ? 40 : "auto",
                 cursor: locked ? "not-allowed" : "pointer",
-                fontFamily: T.font_sans, fontSize: T.fs_sm, fontWeight: 500,
+                fontFamily: T.font_sans, fontSize: isMobile ? 12 : T.fs_sm, fontWeight: 500,
                 transition: `color ${T.dur_fast} ${T.ease}`,
                 textAlign: "center",
                 display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 4,
@@ -2504,6 +3452,14 @@ function ModeSelector({ value, onChange, allowedModes }) {
           );
         })}
       </div>
+      {isMobile && (
+        <div style={{
+          fontSize: T.fs_sm, color: T.textTer, fontFamily: T.font_sans,
+          marginTop: T.s2, textAlign: "center",
+        }}>
+          {getModeById(value).sub}
+        </div>
+      )}
     </div>
   );
 }
@@ -2987,7 +3943,7 @@ function HitButton({ onRandomize, isRolling, disabled, compact = false, fuelType
 // GENRE SLOT PICKER — allows main-only, main+sub, or main+sub+micro commits
 // ════════════════════════════════════════════════════════════════════════════
 
-function GenreSlotPicker({ slots, onChange, slotLocks, onToggleSlotLock, maxSlots = 3, restrictSubgenres = false }) {
+function GenreSlotPicker({ slots, onChange, slotLocks, onToggleSlotLock, maxSlots = 3, restrictSubgenres = false, locksDisabled = false }) {
   const { layout } = useLayout();
   const isMobile = layout === "mobile";
   const [activeSlot, setActiveSlot] = useState(null);
@@ -3062,22 +4018,23 @@ function GenreSlotPicker({ slots, onChange, slotLocks, onToggleSlotLock, maxSlot
                 <Label color={isLocked ? V.neonGold : slot ? T.accentHi : T.textTer}>
                   Slot {i + 1}{isLocked ? " · LOCKED" : ""}
                 </Label>
-                {/* Per-slot lock button */}
+                {/* Per-slot lock button — dimmed + shows upgrade hint for Free tier */}
                 <button type="button"
                   onClick={e => { e.stopPropagation(); onToggleSlotLock?.(i); }}
-                  title={isLocked ? "Unlock slot" : "Lock slot against randomize"}
+                  title={locksDisabled ? "Pro feature — locks preserve slots during randomize" : (isLocked ? "Unlock slot" : "Lock slot against randomize")}
                   style={{
                     background: isLocked ? `${V.neonGold}22` : "transparent",
-                    border: `1px solid ${isLocked ? V.neonGold : T.border}`,
-                    color: isLocked ? V.neonGold : T.textTer,
+                    border: `1px ${locksDisabled ? "dashed" : "solid"} ${isLocked ? V.neonGold : T.border}`,
+                    color: isLocked ? V.neonGold : (locksDisabled ? T.textMuted : T.textTer),
                     padding: "2px 8px", cursor: "pointer",
                     fontSize: T.fs_xs, fontFamily: T.font_mono, fontWeight: 700,
                     letterSpacing: "0.15em",
                     textShadow: isLocked ? `0 0 6px ${V.neonGold}` : "none",
                     borderRadius: T.r_sm,
                     transition: `all ${T.dur_fast} ${T.ease}`,
+                    opacity: locksDisabled ? 0.5 : 1,
                   }}>
-                  {isLocked ? "🔒" : "🔓"}
+                  {locksDisabled ? "🔒" : (isLocked ? "🔒" : "🔓")}
                 </button>
               </div>
               {slot ? (
@@ -3197,7 +4154,9 @@ function GenreSlotPicker({ slots, onChange, slotLocks, onToggleSlotLock, maxSlot
 // SPECIFIC INSTRUMENTS PICKER
 // ════════════════════════════════════════════════════════════════════════════
 
-function SpecificInstrumentsPicker({ state, setState, favorites, onFavorite, casinoOutlines }) {
+function SpecificInstrumentsPicker({ state, setState, favorites, onFavorite, casinoOutlines, maxPerCategory = Infinity }) {
+  const { layout } = useLayout();
+  const isMobile = layout === "mobile";
   const [expanded, setExpanded] = useState(null);
   const [openCategories, setOpenCategories] = useState(() => new Set(["Keys"]));
   const [search, setSearch] = useState("");
@@ -3228,15 +4187,24 @@ function SpecificInstrumentsPicker({ state, setState, favorites, onFavorite, cas
 
   return (
     <div>
-      <div style={{ display: "flex", gap: T.s2, alignItems: "center", marginBottom: T.s3 }}>
+      <div style={{
+        display: "flex", gap: T.s2, alignItems: "center",
+        marginBottom: T.s3,
+        flexWrap: isMobile ? "wrap" : "nowrap",
+      }}>
         <input type="text" value={search} onChange={e => setSearch(e.target.value)}
           placeholder="Search instruments"
           style={{
-            flex: 1, minWidth: 140,
+            flex: isMobile ? "1 1 100%" : 1, minWidth: 140,
             background: T.surface, border: `1px solid ${T.border}`,
-            color: T.text, padding: `${T.s2}px ${T.s3}px`, fontSize: T.fs_md,
+            color: T.text,
+            padding: isMobile ? "10px 12px" : `${T.s2}px ${T.s3}px`,
+            fontSize: isMobile ? 16 : T.fs_md, // 16px prevents iOS auto-zoom
             fontFamily: T.font_sans, outline: "none",
-            borderRadius: T.r_md, height: 32,
+            borderRadius: T.r_md,
+            height: isMobile ? 40 : 32,
+            boxSizing: "border-box",
+            WebkitAppearance: "none",
           }}
           onFocus={e => e.currentTarget.style.borderColor = T.borderFocus}
           onBlur={e => e.currentTarget.style.borderColor = T.border}
@@ -3250,6 +4218,153 @@ function SpecificInstrumentsPicker({ state, setState, favorites, onFavorite, cas
           Collapse
         </Button>
       </div>
+
+      {/* ── ESSENTIALS + COMBOS — quick-pick section ─────────────────────
+          Appears at the top when the user is NOT searching. Two parts:
+          1. "Starter combos" — genre-based presets that add 3-5 instruments at once
+          2. "Essentials" — universal instruments that work across most genres
+          Both are collapsible via the ⌵ button so power users can hide them. */}
+      {!isSearching && selected.length === 0 && (
+        <div style={{ marginBottom: T.s4 }}>
+          {/* ── QUICK COMBOS ────────────────────────────────────────── */}
+          <div style={{
+            padding: isMobile ? T.s3 : T.s4,
+            background: `linear-gradient(180deg, ${T.accent}0d 0%, transparent 100%)`,
+            border: `1px solid ${T.accentBorder}`,
+            borderRadius: T.r_md,
+            marginBottom: T.s3,
+          }}>
+            <div style={{
+              display: "flex", alignItems: "baseline", justifyContent: "space-between",
+              marginBottom: T.s3, gap: T.s2, flexWrap: "wrap",
+            }}>
+              <Label color={T.accentHi}>
+                ✨ Starter combos
+              </Label>
+              <span style={{
+                fontSize: 11, color: T.textTer, fontFamily: T.font_mono, letterSpacing: "0.08em",
+              }}>
+                Tap to add 3–5 instruments at once
+              </span>
+            </div>
+            <div style={{
+              display: "grid",
+              gridTemplateColumns: isMobile ? "repeat(2, 1fr)" : "repeat(auto-fill, minmax(180px, 1fr))",
+              gap: T.s2,
+            }}>
+              {INSTRUMENT_COMBOS.map(combo => (
+                <button key={combo.id} type="button"
+                  onClick={() => {
+                    // Add any combo instruments that exist in SPECIFIC_INSTRUMENT_FLAT and aren't already selected
+                    const available = combo.instruments.filter(i =>
+                      SPECIFIC_INSTRUMENT_FLAT.some(x => x.name === i)
+                    );
+                    const toAdd = available.filter(i => !selected.includes(i));
+                    if (toAdd.length === 0) return;
+                    setState(prev => ({
+                      ...prev,
+                      specificInstruments: [...(prev.specificInstruments || []), ...toAdd],
+                    }));
+                  }}
+                  style={{
+                    display: "flex", flexDirection: "column", alignItems: "flex-start",
+                    padding: isMobile ? "10px 12px" : "11px 14px",
+                    minHeight: 60,
+                    background: T.surface,
+                    border: `1px solid ${T.border}`,
+                    borderRadius: T.r_md,
+                    cursor: "pointer",
+                    transition: `all ${T.dur_fast} ${T.ease}`,
+                    textAlign: "left",
+                    gap: 2,
+                  }}
+                  onMouseEnter={e => {
+                    e.currentTarget.style.background = T.elevated;
+                    e.currentTarget.style.borderColor = T.accent;
+                  }}
+                  onMouseLeave={e => {
+                    e.currentTarget.style.background = T.surface;
+                    e.currentTarget.style.borderColor = T.border;
+                  }}>
+                  <span style={{
+                    display: "flex", alignItems: "center", gap: 6,
+                    fontSize: T.fs_md, fontWeight: 600, color: T.text,
+                    fontFamily: T.font_sans,
+                  }}>
+                    <span style={{ color: T.accent, fontSize: 13 }}>{combo.icon}</span>
+                    {combo.label}
+                  </span>
+                  <span style={{
+                    fontSize: 11, color: T.textTer, fontFamily: T.font_sans,
+                    lineHeight: 1.3,
+                  }}>
+                    {combo.desc}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* ── ESSENTIALS — 12 universal no-brainer picks ──────────── */}
+          <div style={{
+            padding: isMobile ? T.s3 : T.s4,
+            background: T.surface,
+            border: `1px solid ${T.border}`,
+            borderRadius: T.r_md,
+          }}>
+            <div style={{
+              display: "flex", alignItems: "baseline", justifyContent: "space-between",
+              marginBottom: T.s3, gap: T.s2, flexWrap: "wrap",
+            }}>
+              <Label color={T.text}>
+                ⚡ Essentials
+              </Label>
+              <span style={{
+                fontSize: 11, color: T.textTer, fontFamily: T.font_mono, letterSpacing: "0.08em",
+              }}>
+                Works across most genres
+              </span>
+            </div>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: T.s2 }}>
+              {INSTRUMENT_ESSENTIALS.map(inst => {
+                const isSel = selected.includes(inst);
+                return (
+                  <button key={inst} type="button"
+                    onClick={() => toggleInst(inst)}
+                    style={{
+                      display: "inline-flex", alignItems: "center", gap: 6,
+                      padding: isMobile ? "9px 14px" : "7px 12px",
+                      minHeight: isMobile ? 38 : "auto",
+                      background: isSel ? T.accentBg : "transparent",
+                      border: `1px solid ${isSel ? T.accentBorder : T.border}`,
+                      borderRadius: T.r_md,
+                      color: isSel ? T.accentHi : T.textSec,
+                      fontSize: isMobile ? 13 : T.fs_sm,
+                      fontFamily: T.font_sans, fontWeight: 450,
+                      cursor: "pointer",
+                      transition: `all ${T.dur_fast} ${T.ease}`,
+                    }}
+                    onMouseEnter={e => { if (!isSel) { e.currentTarget.style.background = T.hover; e.currentTarget.style.color = T.text; } }}
+                    onMouseLeave={e => { if (!isSel) { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = T.textSec; } }}>
+                    <span style={{ fontSize: 10, color: isSel ? T.accentHi : T.textMuted, opacity: 0.7 }}>{isSel ? "✓" : "+"}</span>
+                    {inst}
+                  </button>
+                );
+              })}
+            </div>
+            <div style={{
+              marginTop: T.s3, paddingTop: T.s3,
+              borderTop: `1px dashed ${T.border}`,
+              fontSize: 11, color: T.textTer, fontFamily: T.font_sans,
+              lineHeight: 1.5,
+            }}>
+              Need something specific? Scroll down to browse all{" "}
+              <strong style={{ color: T.textSec }}>{SPECIFIC_INSTRUMENT_FLAT.length}</strong>{" "}
+              instruments by category.
+            </div>
+          </div>
+        </div>
+      )}
 
       {selected.length > 0 && (
         <div style={{
@@ -3328,27 +4443,43 @@ function SpecificInstrumentsPicker({ state, setState, favorites, onFavorite, cas
                 }}>
                   {/* Group 1: unselected chips in a dense row */}
                   <div style={{ display: "flex", flexWrap: "wrap", gap: T.s1 }}>
-                    {matching.filter(([inst]) => !selected.includes(inst)).map(([inst]) => {
+                    {matching.filter(([inst]) => !selected.includes(inst)).map(([inst], idx) => {
                       const isFav = favorites ? favorites.has(inst) : false;
                       const co = casinoOutlines ? casinoOutlines.get(`si:${inst}`) : null;
+                      const tierLocked = idx >= maxPerCategory;
                       return (
                         <span key={inst}
-                          onClick={() => toggleInst(inst)}
-                          onDoubleClick={() => onFavorite && onFavorite(inst)}
+                          onClick={tierLocked ? undefined : () => toggleInst(inst)}
+                          onDoubleClick={tierLocked ? undefined : () => onFavorite && onFavorite(inst)}
+                          aria-label={tierLocked ? "Locked instrument — upgrade tier to unlock" : undefined}
                           style={{
                             display: "inline-flex", alignItems: "center", gap: 6,
-                            padding: "5px 10px", cursor: "pointer",
+                            padding: isMobile ? "9px 12px" : "5px 10px",
+                            minHeight: isMobile ? 38 : "auto",
+                            cursor: tierLocked ? "not-allowed" : "pointer",
                             background: "transparent",
                             border: `1px solid ${co || T.border}`,
                             boxShadow: co ? `0 0 0 1px ${co}, 0 0 12px ${co}66` : "none",
                             color: T.textSec,
-                            fontSize: T.fs_sm, fontFamily: T.font_sans, fontWeight: 450,
+                            fontSize: isMobile ? 13 : T.fs_sm,
+                            fontFamily: T.font_sans, fontWeight: 450,
                             borderRadius: T.r_md,
                             transition: `all ${T.dur_fast} ${T.ease}`,
                             userSelect: "none",
+                            opacity: tierLocked ? 0.55 : 1,
+                            pointerEvents: tierLocked ? "none" : "auto",
                           }}>
-                          {isFav && <span style={{ color: T.warning, fontSize: T.fs_xs }}>●</span>}
-                          {inst}
+                          {tierLocked && (
+                            <span aria-hidden="true" style={{
+                              color: T.textMuted, fontSize: T.fs_xs, lineHeight: 1,
+                            }}>🔒</span>
+                          )}
+                          {isFav && !tierLocked && <span style={{ color: T.warning, fontSize: T.fs_xs }}>●</span>}
+                          <span style={{
+                            filter: tierLocked ? "blur(5px)" : "none",
+                            transition: "filter 180ms ease-out",
+                            userSelect: tierLocked ? "none" : "auto",
+                          }}>{inst}</span>
                         </span>
                       );
                     })}
@@ -3443,10 +4574,10 @@ function PopHitMeter({ score, verdict, notes, showDebug, state, lyricsOn }) {
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: T.s3, gap: T.s3 }}>
         <div>
           <div style={{ fontSize: T.fs_base, color: T.text, fontWeight: 600, fontFamily: T.font_sans, marginBottom: 2 }}>
-            Pop hit probability
+            Pop profile match
           </div>
           <span style={{ fontSize: T.fs_sm, color: T.textTer, fontFamily: T.font_sans }}>
-            rule based estimate of mainstream potential worldwide
+            how closely this config matches mainstream pop conventions
           </span>
         </div>
         <div style={{ textAlign: "right", flexShrink: 0 }}>
@@ -3462,10 +4593,20 @@ function PopHitMeter({ score, verdict, notes, showDebug, state, lyricsOn }) {
       <div style={{
         height: 6, background: T.bg, border: `1px solid ${T.border}`,
         borderRadius: 3, overflow: "hidden", marginBottom: T.s3,
+        position: "relative",
       }}>
+        {/* 100% baseline — faint striped background showing the full possible range */}
         <div style={{
+          position: "absolute", inset: 0,
+          backgroundImage: `repeating-linear-gradient(90deg, ${T.border} 0 4px, transparent 4px 8px)`,
+          opacity: 0.5,
+        }} />
+        {/* Actual score fill */}
+        <div style={{
+          position: "relative", zIndex: 1,
           height: "100%", width: `${score}%`,
           background: color,
+          boxShadow: `0 0 8px ${color}66`,
           transition: `width ${T.dur_slow} ${T.ease}, background ${T.dur_slow} ${T.ease}`,
         }} />
       </div>
@@ -3491,6 +4632,17 @@ function PopHitMeter({ score, verdict, notes, showDebug, state, lyricsOn }) {
           ))}
         </div>
       )}
+
+      {/* Honesty microcopy — this isn't a real chart prediction */}
+      <div style={{
+        marginTop: T.s3, paddingTop: T.s3,
+        borderTop: `1px solid ${T.border}`,
+        fontSize: 10, color: T.textMuted,
+        fontFamily: T.font_mono, letterSpacing: "0.05em",
+        lineHeight: 1.5,
+      }}>
+        Heuristic score based on genre / BPM / vocal / mood rules. Not a prediction of actual chart performance.
+      </div>
 
       {/* ADMIN DEBUG — raw scoring math exposed */}
       {showDebug && state && (
@@ -3605,21 +4757,17 @@ function OutputBlock({ title, subtitle, text, onCopy, copyState, multiline, leng
 
 function WorkflowGuide() {
   const steps = [
-    { n: "01", t: "Choose your depth mode", b: "Pick Simple / Moderated / Expanded / Vast / Chaos. This is a hard character ceiling for both outputs and also enforces how many sections appear in the prompt." },
-    { n: "02", t: "Add at least one genre slot", b: "Click a slot. Pick a main genre and optionally drill into subgenre and microstyle. You can commit with just a main genre — no need to go deep." },
-    { n: "03", t: "Decide Song vs Instrumental", b: "Instrumental auto-disables all vocal sections. Song auto-enables them. You can still override per-section with Off / Auto / On." },
-    { n: "04", t: "Anchor the emotion", b: "Pick a Mood and Energy Arc. These do the heaviest lifting toward vibe. If you pick nothing else, pick these." },
-    { n: "05", t: "Lock the rhythm", b: "Groove sets feel. BPM is inferred from groove + energy. Leave on Default for flexibility." },
-    { n: "06", t: "Name specific instruments sparingly", b: "Select 1–10 instruments with optional articulations. Fewer calls with clear articulation beat long undifferentiated lists." },
-    { n: "07", t: "Use Off / Auto / On to shape output", b: "Off suppresses a section entirely. Auto includes it if you've selected something. On forces it in with a fallback if empty." },
-    { n: "08", t: "Hit Randomize to explore", b: "The randomizer respects every toggle, fills the exact section count your mode requires, and biases toward your starred favorites." },
-    { n: "09", t: "Two outputs, two destinations", b: "Short Prompt is comma-separated tags for a style field. Detailed is natural-language for a description field. Both are hard-validated." },
+    { n: "01", t: "Pick a genre.", b: "One slot, one genre — that's the minimum. Add subgenres or a second genre for fusion. Stop there if you want." },
+    { n: "02", t: "Set song vs. instrumental.", b: "Instrumental hides vocal sections. Song shows them. Override per-section with Off / Auto / On if you need to." },
+    { n: "03", t: "Anchor the mood and the energy.", b: "These two do the heaviest lifting. If you change nothing else, change these." },
+    { n: "04", t: "Pick a mode, then hit randomize.", b: "Mode sets depth — Simple is tight, Vast is long, Chaos is wild. Randomize fills everything else; locked slots survive." },
+    { n: "05", t: "Copy the output that matches your field.", b: "Short prompt for style fields. Detailed prompt for description fields. Both are hard-validated against the character limit." },
   ];
   return (
     <div>
-      <Label color={T.textSec} style={{ display: "block", marginBottom: T.s3 }}>How to build a prompt</Label>
+      <Label color={T.textSec} style={{ display: "block", marginBottom: T.s3 }}>How to use the engine</Label>
       <p style={{ color: T.textSec, fontSize: T.fs_base, lineHeight: 1.6, marginBottom: T.s5, maxWidth: 520, fontFamily: T.font_sans }}>
-        A sequenced guide to getting a usable prompt out of the engine. Follow in order on your first pass; skip around after.
+        Five steps from empty state to a finished prompt. Go in order the first time. Skip around after.
       </p>
       <div style={{ display: "flex", flexDirection: "column", gap: T.s2 }}>
         {steps.map(s => (
@@ -3644,9 +4792,9 @@ function WorkflowGuide() {
         marginTop: T.s5, padding: T.s4,
         background: T.surface, border: `1px solid ${T.border}`, borderRadius: T.r_md,
       }}>
-        <Label color={T.textSec} style={{ display: "block", marginBottom: 6 }}>Self-contained guarantee</Label>
+        <Label color={T.textSec} style={{ display: "block", marginBottom: 6 }}>Fully local. Fully deterministic.</Label>
         <div style={{ fontSize: T.fs_md, color: T.textSec, lineHeight: 1.6, fontFamily: T.font_sans }}>
-          No network calls. No external models. No probabilistic outputs. Every character of every prompt is produced by local, deterministic rules.
+          No network calls. No external models. Every prompt is built by local rules. The same inputs always produce the same output.
         </div>
       </div>
     </div>
@@ -3825,24 +4973,57 @@ function EnginePage() {
   const [copyState, setCopyState] = useState({ short: "idle", detailed: "idle" });
   const [isRolling, setIsRolling] = useState(false);
   const [casinoOutlines, setCasinoOutlines] = useState(new Map());
+  const [toast, setToast] = useState(null); // { kind: "warn" | "info", text }
   const rollTimersRef = useRef([]);
 
+  // showToast — transient notification near HIT button. Auto-dismiss 3.4s.
+  const showToast = (text, kind = "warn") => {
+    setToast({ text, kind });
+    setTimeout(() => setToast(null), 3400);
+  };
+
   // ── EFFECTIVE LIMITS — combines tier features + active fuel constraints ──
-  // Active fuel TIGHTENS limits further than tier alone. A Pro-tier user
-  // rolling Free Fuel gets Free-fuel output: 1 slot, 3 modes, 5 options,
-  // free-subgenre whitelist only. Pro Fuel unlocks everything the tier allows.
+  // Fuel behaves as a "session upgrade" — using Pro/VIP fuel gives expanded
+  // depth for that roll even if base tier is Free. Fuel TIGHTENS only when
+  // more restrictive than tier (Pro user on Free fuel gets Free-fuel output).
   const effectiveLimits = useMemo(() => {
     const isFreeFuel = activeFuel === "free";
+
+    // Mode access:
+    //   Free fuel → Simple, Moderated, Chaos (intersected with tier)
+    //   Pro/VIP fuel → all 5 modes unlocked regardless of tier
+    let allowedModes;
+    if (isFreeFuel) {
+      const tierModes = new Set(features.modes);
+      allowedModes = ["simple", "moderated", "chaos"].filter(m => tierModes.has(m));
+    } else {
+      allowedModes = ["simple", "moderated", "expanded", "vast", "chaos"];
+    }
+
     return {
       maxSlots: isFreeFuel ? 1 : features.maxSlots,
-      modes: isFreeFuel
-        ? features.modes.filter(m => ["simple","moderated","chaos"].includes(m))
-        : features.modes,
+      modes: allowedModes,
       maxInstruments: isFreeFuel ? Math.min(5, features.maxInstruments) : features.maxInstruments,
-      maxOptionsPerSection: isFreeFuel ? 5 : features.maxOptionsPerSection,
-      restrictSubgenres: isFreeFuel,   // when true, only FREE_SUBGENRES allowed per main
+      maxOptionsPerSection: isFreeFuel
+        ? Math.min(5, features.maxOptionsPerSection)
+        : Math.max(features.maxOptionsPerSection, 999),
+      restrictSubgenres: isFreeFuel,
+      // LOCKS — available to Pro+ tiers always, OR when user bought Pro/VIP fuel
+      // (even for Free tier users). Matches the "fuel as session upgrade" model.
+      locksAvailable: features.locks || !isFreeFuel,
+      favoritesAvailable: features.favorites || !isFreeFuel,
     };
   }, [activeFuel, features]);
+
+  // isOptionLocked: returns true when option at index is beyond the tier's
+  // allowed count for this section. Used to blur + fully disable locked chips.
+  // Also guarantees minimum 5 options per section even if the caller passes
+  // a smaller list. Callers pass the TOTAL option count — the cap is computed
+  // here so we never lock below the floor of 5.
+  const isOptionLocked = (idx) => {
+    const cap = Math.max(5, effectiveLimits.maxOptionsPerSection);
+    return idx >= cap;
+  };
 
   // ── TIER + FUEL ENFORCEMENT ─────────────────────────────────────────
   // Mode fallback if outside allowed list
@@ -3883,6 +5064,10 @@ function EnginePage() {
   const toggleLanguageLock = () => setState(s => ({ ...s, languageLocked: !s.languageLocked }));
 
   const toggleFavorite = (sectionKey, value) => {
+    if (!effectiveLimits.favoritesAvailable) {
+      showToast("Favorites are a Pro feature — upgrade to boost specific options in rolls.", "warn");
+      return;
+    }
     if (!value) return;
     const key = `${sectionKey}:${value}`;
     setState(s => {
@@ -3898,20 +5083,37 @@ function EnginePage() {
   );
 
   // Per-slot lock toggle (genre slots 0-2)
-  const toggleSlotLock = (i) => setState(s => {
-    const next = [...(s.slotLocks || [false, false, false])];
-    next[i] = !next[i];
-    return { ...s, slotLocks: next };
-  });
+  // Free tier: locks disabled entirely. Click is a no-op + triggers upgrade toast.
+  const toggleSlotLock = (i) => {
+    if (!effectiveLimits.locksAvailable) {
+      showToast("Locks are a Pro feature — upgrade to preserve values during randomize.", "warn");
+      return;
+    }
+    setState(s => {
+      const next = [...(s.slotLocks || [false, false, false])];
+      next[i] = !next[i];
+      return { ...s, slotLocks: next };
+    });
+  };
 
   // Per-section lock toggle — when true, section's current value is preserved
-  const toggleSectionLock = (sectionKey) => setState(s => ({
-    ...s,
-    sectionLocks: { ...s.sectionLocks, [sectionKey]: !s.sectionLocks?.[sectionKey] },
-  }));
+  const toggleSectionLock = (sectionKey) => {
+    if (!effectiveLimits.locksAvailable) {
+      showToast("Locks are a Pro feature — upgrade to preserve values during randomize.", "warn");
+      return;
+    }
+    setState(s => ({
+      ...s,
+      sectionLocks: { ...s.sectionLocks, [sectionKey]: !s.sectionLocks?.[sectionKey] },
+    }));
+  };
 
   // Per-option lock toggle — stored as "sectionKey:value" in optionLocks array
   const toggleOptionLock = (sectionKey, value) => {
+    if (!effectiveLimits.locksAvailable) {
+      showToast("Locks are a Pro feature — upgrade to force specific options in rolls.", "warn");
+      return;
+    }
     if (!value) return;
     const key = `${sectionKey}:${value}`;
     setState(s => {
@@ -3927,7 +5129,29 @@ function EnginePage() {
   );
 
   // Renders a 🔒/🔓 button as a section's `extra` slot. Pass sectionKey.
+  // Free tier: button shows a padlock with "PRO" badge, clicks open shop nudge.
   const renderLockBtn = (sectionKey) => {
+    if (!effectiveLimits.locksAvailable) {
+      return (
+        <button type="button"
+          onClick={() => showToast("Locks are a Pro feature — upgrade to preserve values during randomize.", "warn")}
+          title="Pro feature — click to learn more"
+          style={{
+            background: "transparent",
+            border: `1px dashed ${T.border}`,
+            color: T.textMuted,
+            padding: "4px 10px", cursor: "pointer",
+            fontSize: T.fs_xs, fontFamily: T.font_mono, fontWeight: 700,
+            letterSpacing: "0.15em",
+            borderRadius: T.r_sm,
+            transition: `all ${T.dur_fast} ${T.ease}`,
+            display: "inline-flex", alignItems: "center", gap: 4,
+            opacity: 0.55,
+          }}>
+          🔒 PRO
+        </button>
+      );
+    }
     const isLocked = state.sectionLocks?.[sectionKey];
     return (
       <button type="button"
@@ -3981,6 +5205,11 @@ function EnginePage() {
     const targetSections = minSec + Math.floor(Math.random() * (maxSec - minSec + 1));
     const slotLocks = state.slotLocks || [false, false, false];
     const secLocks  = state.sectionLocks || {};
+
+    // clipPool — respects tier maxOptionsPerSection (floor 5) so tier-locked
+    // options are never chosen by randomizer.
+    const poolCap = Math.max(5, effectiveLimits.maxOptionsPerSection);
+    const clipPool = (pool) => pool.slice(0, poolCap);
 
     const eligible = RANDOMIZER_SECTIONS.filter(s => {
       if (s.lyricsOnly && !lyricsOn) return false;
@@ -4098,24 +5327,24 @@ function EnginePage() {
       slots: nextSlots,
       slotLocks,
       toggles: { ...state.toggles },
-      mood:      maybe("mood",     () => favPick("mood", MOODS)),
-      energy:    maybe("energy",   () => favPick("energy", ENERGIES)),
-      groove:    maybe("groove",   () => favPick("groove", GROOVES.slice(1).map(g => g.id)), "default"),
-      vocalist:  maybe("vocalist", () => favPick("vocalist", VOCALISTS)),
+      mood:      maybe("mood",     () => favPick("mood", clipPool(MOODS))),
+      energy:    maybe("energy",   () => favPick("energy", clipPool(ENERGIES))),
+      groove:    maybe("groove",   () => favPick("groove", clipPool(GROOVES.slice(1).map(g => g.id))), "default"),
+      vocalist:  maybe("vocalist", () => favPick("vocalist", clipPool(VOCALISTS))),
       // Language: sectionLock OR legacy languageLocked both preserve
       language:  (secLocks.language || state.languageLocked)
                    ? state.language
                    : (chosen.has("language")
-                       ? favPick("language", LANGUAGES.map(l => l.code))
+                       ? favPick("language", clipPool(LANGUAGES.map(l => l.code)))
                        : "en"),
       languageLocked: state.languageLocked,
-      lyricalVibe: maybe("lyricalVibe", () => favPick("lyricalVibe", LYRICAL_VIBES)),
+      lyricalVibe: maybe("lyricalVibe", () => favPick("lyricalVibe", clipPool(LYRICAL_VIBES))),
       specificInstruments:   specInsts,
       specificArticulations: specArts,
       specificCount:         specCount,
-      mix:       maybe("mix",      () => favPick("mix", MIX_CHARS)),
-      harmonic:  maybe("harmonic", () => favPick("harmonic", HARMONIC_STYLES)),
-      texture:   maybe("texture",  () => favPick("texture", SOUND_TEXTURES)),
+      mix:       maybe("mix",      () => favPick("mix", clipPool(MIX_CHARS))),
+      harmonic:  maybe("harmonic", () => favPick("harmonic", clipPool(HARMONIC_STYLES))),
+      texture:   maybe("texture",  () => favPick("texture", clipPool(SOUND_TEXTURES))),
       favorites: state.favorites || [],
       sectionLocks: state.sectionLocks,
       optionLocks:  state.optionLocks,
@@ -4131,7 +5360,8 @@ function EnginePage() {
     // Fuel gate: consume one unit of active fuel before rolling
     const ok = consumeFuel();
     if (!ok) {
-      // Out of this fuel type — flash a soft warning, bail out
+      const fuelName = FUEL_TYPES[activeFuel]?.label || "fuel";
+      showToast(`Out of ${fuelName} today. Come back tomorrow or upgrade your tier.`, "warn");
       return;
     }
     setIsRolling(true);
@@ -4197,7 +5427,7 @@ function EnginePage() {
 
   // ─────────────────────────────────────────────────────────────────────
   const shortResult = useMemo(() => compressShortPrompt(state, lyricsOn, maxLen), [state, lyricsOn, maxLen]);
-  const detailedResult = useMemo(() => compressDetailedPrompt(state, lyricsOn, maxLen), [state, lyricsOn, maxLen]);
+  const detailedResult = useMemo(() => compressDetailedPrompt(state, lyricsOn, maxLen, mode), [state, lyricsOn, maxLen, mode]);
   const popHitScore = useMemo(() => calcPopHitScore(state, lyricsOn), [state, lyricsOn]);
   const hasMinimum = state.slots.some(Boolean);
 
@@ -4287,14 +5517,14 @@ function EnginePage() {
               maxWidth: 600, margin: 0, marginBottom: T.s3,
               fontFamily: T.font_sans, fontWeight: 500,
             }}>
-              Music prompt engine for Suno, Udio, and beyond.
+              Deterministic prompt engine for modern AI music generators.
             </p>
             <p style={{
               color: T.textSec, fontSize: T.fs_md, lineHeight: 1.55,
               maxWidth: 600, margin: 0, marginBottom: T.s3,
               fontFamily: T.font_sans,
             }}>
-              Pick a genre, hit the red button, get a prompt tuned for how modern AI music models interpret language.
+              Pick a genre. Hit the red button. Get a prompt engineered for how the models actually read language.
             </p>
             <p style={{
               color: T.textTer, fontSize: T.fs_sm, lineHeight: 1.55,
@@ -4304,7 +5534,7 @@ function EnginePage() {
               {" · "}
               <span style={{ color: T.text, fontWeight: 500 }}>Double-click</span> to favorite
               {" · "}
-              <span style={{ color: V.neonGold, fontWeight: 500 }}>Right-click</span> to lock against randomize
+              <span style={{ color: V.neonGold, fontWeight: 500 }}>Right-click</span> to lock from randomize
             </p>
           </div>
 
@@ -4312,7 +5542,7 @@ function EnginePage() {
           {features.presets ? (
             <div style={{ marginBottom: T.s6 }}>
               <Label color={T.textSec} style={{ display: "block", marginBottom: T.s3 }}>
-                Quick starts
+                Presets
               </Label>
               <div style={{ display: "flex", flexWrap: "wrap", gap: T.s2 }}>
                 {PRESETS.map(p => (
@@ -4354,21 +5584,23 @@ function EnginePage() {
             <LyricalSwitch value={lyricsOn} onChange={setLyricsOn} />
           </Section>
 
-          <Section title="Genre slots" hint="pick up to 3 · main genre alone is fine · instant commit · lock per slot">
+          <Section title="Genre slots" hint="Up to 3. Main genre alone is fine.">
             <GenreSlotPicker slots={state.slots} onChange={v => set("slots", v)}
               slotLocks={state.slotLocks} onToggleSlotLock={toggleSlotLock}
               maxSlots={effectiveLimits.maxSlots}
-              restrictSubgenres={effectiveLimits.restrictSubgenres} />
+              restrictSubgenres={effectiveLimits.restrictSubgenres}
+              locksDisabled={!effectiveLimits.locksAvailable} />
           </Section>
 
           <Section title="Mood"
             toggle={state.toggles.mood} onToggleChange={v => setToggle("mood", v)}
             extra={renderLockBtn("mood")}>
             <div style={{ display: "flex", flexWrap: "wrap", gap: T.s1 }}>
-              {MOODS.map(o => (
+              {MOODS.map((o, i) => (
                 <Chip key={o} label={o} selected={state.mood === o}
                   favorite={favSetFor("mood").has(o)}
                   locked={optionLockSetFor("mood").has(o)}
+                  tierLocked={isOptionLocked(i)}
                   casinoOutline={casinoOutlines.get(`mood:${o}`)}
                   onClick={() => set("mood", state.mood === o ? "" : o)}
                   onDoubleClick={() => toggleFavorite("mood", o)}
@@ -4381,10 +5613,11 @@ function EnginePage() {
             toggle={state.toggles.energy} onToggleChange={v => setToggle("energy", v)}
             extra={renderLockBtn("energy")}>
             <div style={{ display: "flex", flexWrap: "wrap", gap: T.s1 }}>
-              {ENERGIES.map(o => (
+              {ENERGIES.map((o, i) => (
                 <Chip key={o} label={o} selected={state.energy === o}
                   favorite={favSetFor("energy").has(o)}
                   locked={optionLockSetFor("energy").has(o)}
+                  tierLocked={isOptionLocked(i)}
                   casinoOutline={casinoOutlines.get(`energy:${o}`)}
                   onClick={() => set("energy", state.energy === o ? "" : o)}
                   onDoubleClick={() => toggleFavorite("energy", o)}
@@ -4393,14 +5626,15 @@ function EnginePage() {
             </div>
           </Section>
 
-          <Section title="Groove" hint={`${GROOVES.length} options`}
+          <Section title="Groove" hint="Sets the rhythmic feel."
             toggle={state.toggles.groove} onToggleChange={v => setToggle("groove", v)}
             extra={renderLockBtn("groove")}>
             <div style={{ display: "flex", flexWrap: "wrap", gap: T.s1 }}>
-              {GROOVES.map(g => (
+              {GROOVES.map((g, i) => (
                 <Chip key={g.id} label={g.label} selected={state.groove === g.id}
                   favorite={favSetFor("groove").has(g.id)}
                   locked={optionLockSetFor("groove").has(g.id)}
+                  tierLocked={isOptionLocked(i)}
                   casinoOutline={casinoOutlines.get(`groove:${g.id}`)}
                   onClick={() => set("groove", g.id)}
                   onDoubleClick={() => toggleFavorite("groove", g.id)}
@@ -4415,10 +5649,11 @@ function EnginePage() {
                 toggle={state.toggles.vocalist} onToggleChange={v => setToggle("vocalist", v)}
                 extra={renderLockBtn("vocalist")}>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: T.s1 }}>
-                  {VOCALISTS.map(o => (
+                  {VOCALISTS.map((o, i) => (
                     <Chip key={o} label={o} selected={state.vocalist === o}
                       favorite={favSetFor("vocalist").has(o)}
                       locked={optionLockSetFor("vocalist").has(o)}
+                      tierLocked={isOptionLocked(i)}
                       casinoOutline={casinoOutlines.get(`vocalist:${o}`)}
                       onClick={() => set("vocalist", state.vocalist === o ? "" : o)}
                       onDoubleClick={() => toggleFavorite("vocalist", o)}
@@ -4427,7 +5662,7 @@ function EnginePage() {
                 </div>
               </Section>
 
-              <Section title="Language" hint={`${LANGUAGES.length} options`}
+              <Section title="Language" hint="Shifts vocal phrasing and cadence."
                 toggle={state.toggles.language} onToggleChange={v => setToggle("language", v)}
                 extra={renderLockBtn("language")}>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: T.s1 }}>
@@ -4443,14 +5678,15 @@ function EnginePage() {
                 </div>
               </Section>
 
-              <Section title="Lyrical vibe" hint="framing of the words"
+              <Section title="Lyrical vibe" hint="How the words frame the song."
                 toggle={state.toggles.lyricalVibe} onToggleChange={v => setToggle("lyricalVibe", v)}
                 extra={renderLockBtn("lyricalVibe")}>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: T.s1 }}>
-                  {LYRICAL_VIBES.map(o => (
+                  {LYRICAL_VIBES.map((o, i) => (
                     <Chip key={o} label={o} selected={state.lyricalVibe === o}
                       favorite={favSetFor("lyricalVibe").has(o)}
                       locked={optionLockSetFor("lyricalVibe").has(o)}
+                      tierLocked={isOptionLocked(i)}
                       casinoOutline={casinoOutlines.get(`lyricalVibe:${o}`)}
                       onClick={() => set("lyricalVibe", state.lyricalVibe === o ? "" : o)}
                       onDoubleClick={() => toggleFavorite("lyricalVibe", o)}
@@ -4463,10 +5699,10 @@ function EnginePage() {
 
           <Section title="Specific instruments"
             hint={
-              state.toggles.specificInstruments === "off" ? "excluded"
+              state.toggles.specificInstruments === "off" ? "Excluded."
               : state.toggles.specificInstruments === "on"
-                ? `${state.specificInstruments.length} selected · forced count ${state.specificCount}`
-                : `${state.specificInstruments.length} selected · auto`
+                ? `${state.specificInstruments.length} selected. Forced count: ${state.specificCount}.`
+                : `${state.specificInstruments.length} selected. Auto.`
             }
             toggle={state.toggles.specificInstruments}
             onToggleChange={v => setToggle("specificInstruments", v)}
@@ -4486,17 +5722,19 @@ function EnginePage() {
               onFavorite={v => toggleFavorite("specificInstruments", v)}
               optionLocks={optionLockSetFor("specificInstruments")}
               onLockToggle={v => toggleOptionLock("specificInstruments", v)}
-              casinoOutlines={casinoOutlines} />
+              casinoOutlines={casinoOutlines}
+              maxPerCategory={Math.max(5, effectiveLimits.maxOptionsPerSection)} />
           </Section>
 
           <Section title="Harmonic style"
             toggle={state.toggles.harmonic} onToggleChange={v => setToggle("harmonic", v)}
             extra={renderLockBtn("harmonic")}>
             <div style={{ display: "flex", flexWrap: "wrap", gap: T.s1 }}>
-              {HARMONIC_STYLES.map(o => (
+              {HARMONIC_STYLES.map((o, i) => (
                 <Chip key={o} label={o} selected={state.harmonic === o}
                   favorite={favSetFor("harmonic").has(o)}
                   locked={optionLockSetFor("harmonic").has(o)}
+                  tierLocked={isOptionLocked(i)}
                   casinoOutline={casinoOutlines.get(`harmonic:${o}`)}
                   onClick={() => set("harmonic", state.harmonic === o ? "" : o)}
                   onDoubleClick={() => toggleFavorite("harmonic", o)}
@@ -4509,10 +5747,11 @@ function EnginePage() {
             toggle={state.toggles.texture} onToggleChange={v => setToggle("texture", v)}
             extra={renderLockBtn("texture")}>
             <div style={{ display: "flex", flexWrap: "wrap", gap: T.s1 }}>
-              {SOUND_TEXTURES.map(o => (
+              {SOUND_TEXTURES.map((o, i) => (
                 <Chip key={o} label={o} selected={state.texture === o}
                   favorite={favSetFor("texture").has(o)}
                   locked={optionLockSetFor("texture").has(o)}
+                  tierLocked={isOptionLocked(i)}
                   casinoOutline={casinoOutlines.get(`texture:${o}`)}
                   onClick={() => set("texture", state.texture === o ? "" : o)}
                   onDoubleClick={() => toggleFavorite("texture", o)}
@@ -4525,10 +5764,11 @@ function EnginePage() {
             toggle={state.toggles.mix} onToggleChange={v => setToggle("mix", v)}
             extra={renderLockBtn("mix")}>
             <div style={{ display: "flex", flexWrap: "wrap", gap: T.s1 }}>
-              {MIX_CHARS.map(o => (
+              {MIX_CHARS.map((o, i) => (
                 <Chip key={o} label={o} selected={state.mix === o}
                   favorite={favSetFor("mix").has(o)}
                   locked={optionLockSetFor("mix").has(o)}
+                  tierLocked={isOptionLocked(i)}
                   casinoOutline={casinoOutlines.get(`mix:${o}`)}
                   onClick={() => set("mix", state.mix === o ? "" : o)}
                   onDoubleClick={() => toggleFavorite("mix", o)}
@@ -4551,6 +5791,21 @@ function EnginePage() {
             <HitButton onRandomize={triggerHit} isRolling={isRolling}
               disabled={Number.isFinite(fuels[activeFuel]) && fuels[activeFuel] <= 0}
               compact={isMobile} fuelType={activeFuel} />
+            {/* Transient toast — shows when user clicks HIT with 0 fuel */}
+            {toast && (
+              <div style={{
+                padding: "10px 14px",
+                background: toast.kind === "warn" ? `${T.danger}15` : `${T.accent}15`,
+                border: `1px solid ${toast.kind === "warn" ? T.danger : T.accent}44`,
+                borderRadius: 6,
+                fontSize: 12, fontFamily: T.font_sans,
+                color: toast.kind === "warn" ? T.danger : T.accent,
+                fontWeight: 500, lineHeight: 1.4,
+                animation: "pageFadeIn 220ms cubic-bezier(0.16, 1, 0.3, 1)",
+              }}>
+                {toast.text}
+              </div>
+            )}
             {Number.isFinite(fuels[activeFuel]) && fuels[activeFuel] <= 0 && (
               <div style={{
                 padding: "8px 12px",
@@ -4561,7 +5816,7 @@ function EnginePage() {
                 color: FUEL_TYPES[activeFuel].color,
                 textAlign: "center", letterSpacing: "0.15em",
               }}>
-                OUT OF {FUEL_TYPES[activeFuel].label.toUpperCase()} · RESETS TOMORROW
+                {FUEL_TYPES[activeFuel].label.toUpperCase()} EMPTY · REFILLS TOMORROW
               </div>
             )}
             <Button variant="ghost" size="sm" onClick={clearAll} style={{ alignSelf: "flex-start" }}>
@@ -4579,15 +5834,15 @@ function EnginePage() {
                 <PopHitMeter score={popHitScore.score} verdict={popHitScore.verdict} notes={popHitScore.notes}
                   showDebug={features.adminDebug} state={state} lyricsOn={lyricsOn} />
               ) : (
-                <TierLock feature="Pop-hit probability meter" requiredTier="pro" />
+                <TierLock feature="Pop-hit match meter" requiredTier="pro" />
               )}
 
-              <OutputBlock title="Short prompt" subtitle="comma-separated tags for a style field"
+              <OutputBlock title="Short prompt" subtitle="Comma-separated tags. For style fields."
                 text={shortResult.text} length={shortResult.text.length} limit={maxLen}
                 compressed={shortResult.compressed} compressionLevel={shortResult.level}
                 onCopy={() => doCopy("short", shortResult.text)} copyState={copyState.short} />
 
-              <OutputBlock title="Detailed producer prompt" subtitle="natural language for a description field"
+              <OutputBlock title="Detailed producer prompt" subtitle="Natural language. For description fields."
                 text={detailedResult.text} length={detailedResult.text.length} limit={maxLen}
                 compressed={detailedResult.compressed} compressionLevel={detailedResult.level}
                 onCopy={() => doCopy("detailed", detailedResult.text)} copyState={copyState.detailed} multiline />
@@ -4720,6 +5975,1673 @@ function FuturePage() {
 // reflect cultural weight, not raw streams. Covers main genres + notable
 // subgenres across the full GENRE_TREE.
 // ────────────────────────────────────────────────────────────────────────────
+
+// ────────────────────────────────────────────────────────────────────────────
+// GENRE LINEAGE — parent/child evolutionary relationships with context.
+// Each node has: era (year range), description, traits, key artists, parent(s).
+// Multiple parents allowed for hybrid genres (e.g., Tech House = House + Techno).
+// A genre's roots are what fed INTO it; children are what grew OUT of it.
+// ────────────────────────────────────────────────────────────────────────────
+const GENRE_LINEAGE = {
+  // ── ROOTS (no parents — foundational genres) ────────────────────────────
+  "Blues":               { parents: [], era: "1900s–", description: "The emotional foundation of American popular music. Call-and-response vocals, 12-bar structure, bent notes.", traits: ["12-bar form","blue notes","call-and-response"], artists: ["Robert Johnson","Muddy Waters","B.B. King"] },
+  "Jazz":                { parents: ["Blues"], era: "1910s–", description: "Improvisation as art form. Swing, syncopation, and harmonic sophistication born in New Orleans.", traits: ["improvisation","swing rhythm","complex harmony"], artists: ["Louis Armstrong","Miles Davis","John Coltrane"] },
+  "Gospel":              { parents: [], era: "1920s–", description: "Sacred music with emotional intensity. Vocal power, call-and-response, organ-driven.", traits: ["vocal power","call-and-response","church organ"], artists: ["Mahalia Jackson","Kirk Franklin"] },
+  "Folk":                { parents: [], era: "Pre-1900s–", description: "Acoustic storytelling traditions passed orally. Protest, narrative, and community song.", traits: ["acoustic","narrative lyrics","tradition"], artists: ["Woody Guthrie","Bob Dylan","Joan Baez"] },
+  "Country":             { parents: ["Folk","Blues"], era: "1920s–", description: "American rural storytelling — twang, steel guitar, fiddle, narrative.", traits: ["twang vocals","pedal steel","storytelling"], artists: ["Hank Williams","Dolly Parton","Johnny Cash"] },
+
+  // ── R&B / SOUL family ──────────────────────────────────────────────────
+  "R&B / Soul":          { parents: ["Blues","Gospel","Jazz"], era: "1940s–", description: "Rhythm-and-blues married gospel feel to blues structure. Later became 'soul'.", traits: ["groove-based","emotional vocals","horn sections"], artists: ["Ray Charles","Aretha Franklin","Stevie Wonder"] },
+  "Funk":                { parents: ["R&B / Soul","Jazz"], era: "1967–", description: "The one. Emphasis on groove over melody, syncopated bass, tight horns.", traits: ["syncopated bass","the one","horn stabs"], artists: ["James Brown","Parliament","Sly Stone"] },
+  "Disco":               { parents: ["Funk","R&B / Soul"], era: "1974–1980", description: "Four-on-the-floor dance music from clubs. Strings, hi-hats, lush production.", traits: ["four-on-the-floor","lush strings","open hi-hats"], artists: ["Donna Summer","Chic","Bee Gees"] },
+  "Neo-Soul":            { parents: ["R&B / Soul","Funk","Hip-Hop"], era: "1994–", description: "Soul music filtered through hip-hop's lens. Live instruments, organic grooves.", traits: ["organic production","jazz harmony","head-nod tempo"], artists: ["D'Angelo","Erykah Badu","Jill Scott"] },
+  "Contemporary R&B":    { parents: ["R&B / Soul","Hip-Hop","Pop"], era: "1990s–", description: "Mainstream R&B with hip-hop production and pop songcraft.", traits: ["polished vocals","programmed drums","melismatic runs"], artists: ["Usher","Beyoncé","Mariah Carey"] },
+  "Alt R&B":             { parents: ["Contemporary R&B","Electronic"], era: "2010–", description: "Moody, atmospheric R&B with electronic textures and space.", traits: ["dark mood","pitched vocals","sparse arrangement"], artists: ["The Weeknd","Frank Ocean","Jhené Aiko"] },
+  "Trap Soul":           { parents: ["Alt R&B","Trap"], era: "2014–", description: "R&B vocals over trap drum programming. Bryson Tiller's invention.", traits: ["trap drums","soulful vocals","auto-tune"], artists: ["Bryson Tiller","6LACK","PartyNextDoor"] },
+  "New Jack Swing":      { parents: ["R&B / Soul","Hip-Hop"], era: "1987–1996", description: "Teddy Riley's fusion of hip-hop beats with R&B singing.", traits: ["swing 16ths","synth stabs","R&B hooks"], artists: ["Bobby Brown","Guy","Teddy Riley"] },
+
+  // ── HIP-HOP family ──────────────────────────────────────────────────────
+  "Hip-Hop":             { parents: ["Funk","Disco"], era: "1973–", description: "DJ Kool Herc's party loops became rhythmic spoken word. Born in the Bronx.", traits: ["sampled drums","rhyming cadence","turntablism"], artists: ["Run-DMC","Nas","Kendrick Lamar"] },
+  "Boom Bap":            { parents: ["Hip-Hop"], era: "1988–1996", description: "Golden-era east-coast sound. Punchy drums, jazz samples, lyricism-first.", traits: ["SP-1200 drums","jazz loops","complex lyricism"], artists: ["A Tribe Called Quest","Wu-Tang","DJ Premier"] },
+  "Gangsta Rap":         { parents: ["Hip-Hop"], era: "1988–", description: "West coast street narratives. Hard drums, funk samples, confrontational.", traits: ["street narratives","funk samples","explicit lyrics"], artists: ["N.W.A","Dr. Dre","Ice Cube"] },
+  "Conscious Hip-Hop":   { parents: ["Hip-Hop"], era: "1988–", description: "Politically engaged hip-hop. Social commentary over beats.", traits: ["political lyrics","jazz samples","spoken word feel"], artists: ["Public Enemy","Common","Mos Def"] },
+  "Trap":                { parents: ["Gangsta Rap","Crunk"], era: "2003–", description: "Atlanta's street sound. Rolling 808s, hi-hat triplets, dark synths.", traits: ["808 bass","hi-hat rolls","dark synths"], artists: ["T.I.","Gucci Mane","Young Thug"] },
+  "Melodic Rap":         { parents: ["Trap","Auto-Tune R&B"], era: "2013–", description: "Rap where the hook is sung, not rapped. Trap drums + melody.", traits: ["sung hooks","auto-tune","melodic flow"], artists: ["Future","Juice WRLD","Lil Uzi Vert"] },
+  "Drill":               { parents: ["Trap"], era: "2012–", description: "Chicago's minimalist menace. Sparse beats, sliding 808s, monotone flows.", traits: ["sliding 808s","half-time","monotone flow"], artists: ["Chief Keef","Pop Smoke","Fivio Foreign"] },
+  "Jersey Drill":        { parents: ["Drill","Jersey Club"], era: "2020–", description: "Drill mixed with Jersey club bounce. Breakbeats under drill bars.", traits: ["breakbeat drums","drill bars","high BPM"], artists: ["Sha Ek","Bandmanrill"] },
+  "Phonk":               { parents: ["Trap","Memphis Rap"], era: "2014–", description: "Viral TikTok genre. Cowbells, Memphis vocal chops, distorted 808s.", traits: ["cowbell","vocal chops","distortion"], artists: ["DVRST","Kordhell"] },
+  "Rage Rap":            { parents: ["Trap","Hyperpop"], era: "2019–", description: "Distorted synths + aggressive energy. Playboi Carti's influence.", traits: ["distorted synths","aggressive vocals","fast tempo"], artists: ["Playboi Carti","Yeat","Ken Carson"] },
+  "Cloud Rap":           { parents: ["Trap"], era: "2010–2019", description: "Hazy, dreamlike rap. Ethereal samples, reverb-drenched vocals.", traits: ["ethereal samples","reverb","dreamy mood"], artists: ["Clams Casino","A$AP Rocky","Lil B"] },
+  "Lo-Fi Hip-Hop":       { parents: ["Boom Bap","Jazz"], era: "2010–", description: "Study-session hip-hop. Jazzy chops, vinyl crackle, head-nod tempo.", traits: ["vinyl crackle","jazz chops","low tempo"], artists: ["Nujabes","J Dilla","ChilledCow"] },
+  "Grime":               { parents: ["Hip-Hop","UK Garage"], era: "2002–", description: "UK's aggressive electronic rap. 140 BPM, dystopian synths.", traits: ["140 BPM","square-wave bass","UK slang"], artists: ["Dizzee Rascal","Skepta","Stormzy"] },
+  "French Rap":          { parents: ["Hip-Hop"], era: "1990–", description: "France's thriving rap scene. Diverse styles, multilingual.", traits: ["diverse production","French lyricism","afro-influences"], artists: ["IAM","Booba","Ninho"] },
+  "Latin Rap":           { parents: ["Hip-Hop"], era: "1989–", description: "Spanish-language hip-hop. Roots in bilingual NYC, now global.", traits: ["Spanish lyrics","Latin percussion","reggaeton crossover"], artists: ["Cypress Hill","Daddy Yankee","Bad Bunny"] },
+  "Memphis Rap":         { parents: ["Hip-Hop","Gangsta Rap"], era: "1989–", description: "Dark, horror-influenced southern rap. Seminal for phonk.", traits: ["horror samples","808 kicks","slowed vocals"], artists: ["Three 6 Mafia","DJ Screw"] },
+  "Crunk":               { parents: ["Gangsta Rap","Miami Bass"], era: "1993–", description: "Party-ready southern rap. Shouted hooks, 808 stomp.", traits: ["shouted hooks","808 stomp","call-and-response"], artists: ["Lil Jon","Three 6 Mafia"] },
+  "Plugg":               { parents: ["Trap"], era: "2015–", description: "Dreamy trap subgenre. Plucky synths, lo-fi drums.", traits: ["plucky synths","dreamy pads","lo-fi drums"], artists: ["MexikoDro","StoopidXool"] },
+
+  // ── ELECTRONIC family ──────────────────────────────────────────────────
+  "Electronic":          { parents: ["Disco","Funk"], era: "1970s–", description: "Umbrella for synthesizer-driven dance music.", traits: ["synthesizers","programmed drums","dance-floor focus"], artists: ["Kraftwerk","Giorgio Moroder"] },
+  "House":               { parents: ["Disco"], era: "1984–", description: "Chicago's 4/4 dance music. Drum machine + disco soul.", traits: ["4/4 kick","soulful vocals","128 BPM"], artists: ["Frankie Knuckles","Larry Heard"] },
+  "Deep House":          { parents: ["House","Jazz"], era: "1986–", description: "House with jazz chords and warmer moods.", traits: ["jazz chords","pads","warm bass"], artists: ["Larry Heard","KDJ","Moodymann"] },
+  "Tech-House":          { parents: ["House","Techno"], era: "1993–", description: "House grooves with techno's mechanical precision.", traits: ["driving groove","mechanical","125 BPM"], artists: ["Jamie Jones","Hot Since 82"] },
+  "Afro House":          { parents: ["House","Afrobeats"], era: "1998–", description: "House music with African percussion and vocals.", traits: ["African percussion","tribal vocals","120-125 BPM"], artists: ["Black Coffee","Themba"] },
+  "Amapiano":            { parents: ["House","Kwaito"], era: "2012–", description: "South African piano-house. Log drums, jazzy piano, deep bass.", traits: ["log drum","jazz piano","110 BPM"], artists: ["Kabza De Small","DJ Maphorisa"] },
+  "Techno":              { parents: ["Electro","House"], era: "1985–", description: "Detroit's industrial dance music. Machine funk.", traits: ["mechanical","minimal","130+ BPM"], artists: ["Jeff Mills","Richie Hawtin","Robert Hood"] },
+  "Minimal Techno":      { parents: ["Techno"], era: "1992–", description: "Stripped-down techno. Repetition and subtle variation.", traits: ["minimalism","hypnotic","subtle changes"], artists: ["Plastikman","Villalobos"] },
+  "Trance":              { parents: ["Techno","Ambient"], era: "1990–", description: "Euphoric electronic music. Rising arpeggios, big breakdowns.", traits: ["arpeggios","big breakdowns","140 BPM"], artists: ["Paul van Dyk","Tiësto","Armin van Buuren"] },
+  "Drum & Bass":         { parents: ["Jungle","Breakbeat"], era: "1993–", description: "High-tempo breakbeat music. Amen break derivatives.", traits: ["Amen break","170 BPM","sub bass"], artists: ["Goldie","LTJ Bukem","Sub Focus"] },
+  "Jungle":              { parents: ["Breakbeat","Reggae"], era: "1991–", description: "UK breakbeat with reggae bass. Precursor to D&B.", traits: ["chopped breaks","reggae bass","ragga vocals"], artists: ["A Guy Called Gerald","Shy FX"] },
+  "Dubstep":             { parents: ["UK Garage","Jungle","Dub"], era: "2002–", description: "UK bass music. Half-time drums, wobbling bass.", traits: ["wobble bass","half-time","140 BPM"], artists: ["Skream","Benga","Skrillex"] },
+  "UK Garage":           { parents: ["House","Jungle"], era: "1995–", description: "UK's syncopated dance music. Swing, 2-step drum patterns.", traits: ["2-step drums","swing","pitched vocals"], artists: ["MJ Cole","Artful Dodger"] },
+  "Jersey Club":         { parents: ["Baltimore Club"], era: "2001–", description: "NJ dance music. Bed-squeak samples, triplet drums.", traits: ["triplet drums","bed squeak","call-and-response"], artists: ["DJ Sliink","UNIIQU3"] },
+  "Baltimore Club":      { parents: ["House","Breakbeat"], era: "1991–", description: "Baltimore's party music. Breakbeat + 8-bar vocal loops.", traits: ["breakbeat","8-bar loops","party chants"], artists: ["DJ Technics","Rod Lee"] },
+  "Electro":             { parents: ["Funk","Disco"], era: "1982–", description: "Robotic funk. Drum machines, vocoders, Kraftwerk-influenced.", traits: ["drum machines","vocoder","robotic feel"], artists: ["Afrika Bambaataa","Egyptian Lover"] },
+  "Ambient":             { parents: ["Electronic"], era: "1978–", description: "Music as atmosphere. Eno's founding concept — meant for background.", traits: ["atmospheric","slow evolution","minimal rhythm"], artists: ["Brian Eno","Aphex Twin","Tim Hecker"] },
+  "Breakbeat":           { parents: ["Hip-Hop","Funk"], era: "1986–", description: "Dance music built on funk drum breaks.", traits: ["funk breaks","140 BPM","sample-heavy"], artists: ["The Prodigy","Fatboy Slim"] },
+
+  // ── POP family ─────────────────────────────────────────────────────────
+  "Pop":                 { parents: ["R&B / Soul","Rock"], era: "1950s–", description: "Mainstream commercial music. Hook-driven, broad appeal.", traits: ["strong hooks","polished production","3-4 min songs"], artists: ["The Beatles","Michael Jackson","Taylor Swift"] },
+  "Dark Pop":            { parents: ["Pop","Alt R&B"], era: "2010–", description: "Moody, cinematic pop. Minor keys, atmospheric production.", traits: ["minor keys","atmospheric","brooding"], artists: ["Billie Eilish","Lana Del Rey","Lorde"] },
+  "Bedroom Pop":         { parents: ["Pop","Indie"], era: "2015–", description: "Home-recorded intimate pop. DIY aesthetics.", traits: ["lo-fi production","intimate vocals","DIY feel"], artists: ["Clairo","Gus Dapperton","Beabadoobee"] },
+  "Hyperpop":            { parents: ["Pop","Electronic"], era: "2017–", description: "Maximalist pop. Abrasive, pitched vocals, PC Music aesthetic.", traits: ["abrasive synths","pitched vocals","high BPM"], artists: ["100 gecs","Charli XCX","SOPHIE"] },
+  "K-Pop":               { parents: ["Pop","Hip-Hop","R&B / Soul"], era: "1992–", description: "Korean pop with global production ambition. Genre-fluid.", traits: ["genre-fluid","choreographed","idol system"], artists: ["BTS","BLACKPINK","NewJeans"] },
+  "J-Pop":               { parents: ["Pop","Rock"], era: "1990–", description: "Japanese pop with idiosyncratic songwriting traditions.", traits: ["complex chords","idol culture","genre-blending"], artists: ["Utada Hikaru","Arashi"] },
+  "City Pop":            { parents: ["Funk","Disco","J-Pop"], era: "1978–1989", description: "Japanese 80s sophisticated pop. Revived globally via YouTube.", traits: ["slap bass","jazz chords","80s polish"], artists: ["Tatsuro Yamashita","Mariya Takeuchi"] },
+  "Auto-Tune R&B":       { parents: ["Contemporary R&B","Electronic"], era: "2008–", description: "R&B where auto-tune is the lead texture, not correction.", traits: ["pitched vocals","auto-tune melodies","atmospheric"], artists: ["T-Pain","Kanye (808s)","Travis Scott"] },
+
+  // ── ROCK family ────────────────────────────────────────────────────────
+  "Rock":                { parents: ["Blues","Country","R&B / Soul"], era: "1954–", description: "Amplified guitar-based music. The dominant pop form of 20th century.", traits: ["electric guitar","backbeat","verse-chorus"], artists: ["The Rolling Stones","Led Zeppelin","Nirvana"] },
+  "Punk":                { parents: ["Rock"], era: "1976–", description: "Stripped-down, fast, angry. Anti-virtuosity as politics.", traits: ["power chords","fast tempo","short songs"], artists: ["Ramones","Sex Pistols","The Clash"] },
+  "Grunge":              { parents: ["Punk","Metal"], era: "1989–1994", description: "Seattle's heavy-punk sound. Distortion + melody + angst.", traits: ["distorted guitar","loud-quiet dynamics","angsty lyrics"], artists: ["Nirvana","Pearl Jam","Soundgarden"] },
+  "Indie Rock":          { parents: ["Punk","Rock"], era: "1986–", description: "Independent-label rock with DIY ethos. Later a radio genre.", traits: ["jangly guitars","introspective lyrics","DIY ethos"], artists: ["R.E.M.","Arcade Fire","Arctic Monkeys"] },
+  "Indie":               { parents: ["Indie Rock"], era: "1990s–", description: "Broader indie aesthetic — not just rock. Alternative attitude.", traits: ["alternative","DIY","eclectic"], artists: ["Bon Iver","Sufjan Stevens","Mitski"] },
+
+  // ── METAL family ───────────────────────────────────────────────────────
+  "Metal":               { parents: ["Rock","Blues"], era: "1970–", description: "Heavier, louder rock. Distortion, power, aggression.", traits: ["distortion","virtuosity","dark themes"], artists: ["Black Sabbath","Metallica","Iron Maiden"] },
+  "Thrash Metal":        { parents: ["Metal","Punk"], era: "1983–", description: "Fast, aggressive metal. Metallica's invention.", traits: ["fast tempo","palm muting","shredding"], artists: ["Metallica","Slayer","Megadeth"] },
+  "Death Metal":         { parents: ["Thrash Metal"], era: "1985–", description: "Extreme metal. Growled vocals, blast beats.", traits: ["growled vocals","blast beats","tritones"], artists: ["Death","Cannibal Corpse"] },
+
+  // ── LATIN family ───────────────────────────────────────────────────────
+  "Latin":               { parents: [], era: "Pre-1900s–", description: "Umbrella for Latin American musical traditions. Vast and diverse.", traits: ["Latin percussion","Spanish/Portuguese","dance-centric"], artists: ["Celia Cruz","Tito Puente"] },
+  "Reggaeton":           { parents: ["Dancehall","Hip-Hop","Latin"], era: "1994–", description: "Puerto Rico's dembow-driven Latin rap. Now global dominant.", traits: ["dembow rhythm","Spanish rap","pop hooks"], artists: ["Daddy Yankee","Bad Bunny","J Balvin"] },
+  "Latin Trap":          { parents: ["Trap","Reggaeton"], era: "2016–", description: "Spanish-language trap. Bad Bunny's breakout genre.", traits: ["trap drums","Spanish vocals","reggaeton crossover"], artists: ["Bad Bunny","Anuel AA","Ozuna"] },
+  "Bachata":             { parents: ["Latin"], era: "1960s–", description: "Dominican guitar-based romance music. Modern versions hit global.", traits: ["lead guitar","bolero feel","romantic lyrics"], artists: ["Romeo Santos","Aventura"] },
+  "Salsa":               { parents: ["Latin","Jazz"], era: "1960s–", description: "NYC-born Cuban/Puerto Rican dance music. Complex polyrhythms.", traits: ["polyrhythm","montuno piano","brass"], artists: ["Héctor Lavoe","Marc Anthony"] },
+  "Cumbia":              { parents: ["Latin"], era: "Pre-1900s–", description: "Colombian folk dance. Now a pan-Latin genre.", traits: ["accordion","gaita","rolling rhythm"], artists: ["Grupo Niche","Los Ángeles Azules"] },
+
+  // ── AFRICAN family ─────────────────────────────────────────────────────
+  "Afrobeats":           { parents: ["Afrobeat","Hip-Hop","Dancehall"], era: "2010–", description: "Nigerian/Ghanaian pop with global reach. Melodic, rhythmic.", traits: ["talking drum","melodic hooks","afro-percussion"], artists: ["Wizkid","Burna Boy","Tems"] },
+  "Afrobeat":            { parents: ["Funk","Jazz","Yoruba Music"], era: "1968–", description: "Fela Kuti's political fusion. Long-form jams, horn sections.", traits: ["long grooves","horn section","political lyrics"], artists: ["Fela Kuti","Tony Allen"] },
+  "Yoruba Music":        { parents: [], era: "Traditional", description: "Nigerian traditional music — talking drums, praise song.", traits: ["talking drums","praise vocals","call-and-response"], artists: ["King Sunny Adé"] },
+  "Kwaito":              { parents: ["House","Hip-Hop"], era: "1990–", description: "South African house derivative. Slower tempo, local vocals.", traits: ["slow house tempo","Zulu vocals","township feel"], artists: ["Mandoza","Arthur Mafokate"] },
+
+  // ── JAMAICAN family ────────────────────────────────────────────────────
+  "Reggae":              { parents: ["Ska","R&B / Soul"], era: "1968–", description: "Jamaican music with off-beat skank. Rastafarian culture.", traits: ["skank rhythm","bass-led","conscious lyrics"], artists: ["Bob Marley","Peter Tosh"] },
+  "Dancehall":           { parents: ["Reggae"], era: "1980–", description: "Digital-era reggae. Faster, harder, riddim-based.", traits: ["digital riddims","DJ toasting","dance-ready"], artists: ["Shabba Ranks","Sean Paul","Vybz Kartel"] },
+  "Dub":                 { parents: ["Reggae"], era: "1968–", description: "Studio-as-instrument reggae. Massive reverb, echo, bass focus.", traits: ["heavy reverb","dub echoes","bass-forward"], artists: ["King Tubby","Lee 'Scratch' Perry"] },
+  "Ska":                 { parents: ["R&B / Soul","Mento"], era: "1959–", description: "Jamaica's pre-reggae. Upstroke guitar, horn-heavy.", traits: ["upstroke guitar","horns","fast tempo"], artists: ["The Skatalites","Toots and the Maytals"] },
+  "Mento":               { parents: [], era: "1940s–", description: "Jamaican folk music — precursor to ska and reggae.", traits: ["acoustic","calypso-like","storytelling"], artists: ["Lord Flea"] },
+
+  // ── MISC ────────────────────────────────────────────────────────────────
+  "Miami Bass":          { parents: ["Electro","Hip-Hop"], era: "1984–", description: "Florida's sub-bass party music. Proto-crunk.", traits: ["sub bass","electro drums","party chants"], artists: ["2 Live Crew","DJ Magic Mike"] },
+};
+
+// Helper: compute children for each node by reversing the parents map.
+// Runs once at module load and stays stable.
+const GENRE_CHILDREN = (() => {
+  const map = {};
+  Object.keys(GENRE_LINEAGE).forEach(name => { map[name] = []; });
+  Object.entries(GENRE_LINEAGE).forEach(([name, node]) => {
+    (node.parents || []).forEach(p => {
+      if (map[p]) map[p].push(name);
+    });
+  });
+  return map;
+})();
+
+// Root genres (no parents) — entry points into the tree.
+const GENRE_ROOTS = Object.keys(GENRE_LINEAGE).filter(k => GENRE_LINEAGE[k].parents.length === 0);
+
+// ── GENRE_DEEP_INFO ────────────────────────────────────────────────────
+// Enriched data for the most popular genres: traits with explanations,
+// artists with their signature work. Falls back to GENRE_LINEAGE.traits
+// and GENRE_LINEAGE.artists for genres not covered here.
+// Researched April 2026.
+
+// ── GENRE_DEEP_INFO ────────────────────────────────────────────────────
+// Enriched data for the most popular genres: traits with explanations,
+// artists with their signature work. Falls back to GENRE_LINEAGE.traits
+// and GENRE_LINEAGE.artists for genres not covered here.
+// Tier A — 10 main genre families, 10+ artists each, researched April 2026.
+const GENRE_DEEP_INFO = {
+  "Hip-Hop": {
+    tagline: "Born in the Bronx when DJ Kool Herc looped breakbeats at block parties in 1973. Now the global lingua franca of youth culture.",
+    traitDetails: [
+      { trait: "Sampled drum breaks", detail: "Classic breaks from James Brown ('Funky Drummer'), the Winstons ('Amen Brother'), and the Honey Drippers form the DNA. SP-1200 and MPC chopping define the aesthetic." },
+      { trait: "Rhymed cadence as instrument", detail: "Rhythmic spoken-word over beats. Internal rhymes, multisyllabic flows, triplet patterns — the voice is played like a drum." },
+      { trait: "Turntablism", detail: "Scratching, cutting, juggling — DJ Grand Wizzard Theodore invented the scratch by accident in 1975. The turntable became the first hip-hop instrument." },
+      { trait: "808 kick and bass", detail: "Sub-bass from the Roland TR-808 drum machine — felt more than heard. South African, Atlanta, and drill producers all built their sounds around it." },
+      { trait: "Sample-based harmony", detail: "Before trap, hip-hop's chords came from soul and jazz samples — not written, but excavated. DJ Premier, Pete Rock, Madlib turned sampling into composition." },
+    ],
+    artistDetails: [
+      { name: "Run-DMC", signature: "Raising Hell (1986)", why: "Brought hip-hop to rock audiences with 'Walk This Way'; first rap group on MTV" },
+      { name: "Public Enemy", signature: "It Takes a Nation of Millions (1988)", why: "Politicized the genre; the Bomb Squad's dense productions reinvented what a sample could do" },
+      { name: "N.W.A", signature: "Straight Outta Compton (1988)", why: "Defined West Coast gangsta rap; kicked off decades of coastal rivalry" },
+      { name: "Nas", signature: "Illmatic (1994)", why: "Gold standard of lyricism and NY boom-bap — the album every rapper studies" },
+      { name: "The Notorious B.I.G.", signature: "Ready to Die (1994)", why: "Storytelling perfection; flow and cadence every rapper since has copied" },
+      { name: "2Pac", signature: "All Eyez on Me (1996)", why: "Hip-hop's Shakespeare — emotional range no rapper has matched" },
+      { name: "OutKast", signature: "Aquemini (1998)", why: "Expanded what Southern hip-hop could sound like; bridged rap and funk" },
+      { name: "Jay-Z", signature: "The Blueprint (2001)", why: "Mogul-era hip-hop; Kanye's production on this record changed rap" },
+      { name: "Eminem", signature: "The Marshall Mathers LP (2000)", why: "Technical peak of rap; biggest-selling rapper of all time" },
+      { name: "Kanye West", signature: "My Beautiful Dark Twisted Fantasy (2010)", why: "Sonic maximalism; made hip-hop an art-music genre" },
+      { name: "Kendrick Lamar", signature: "To Pimp a Butterfly (2015)", why: "Jazz-fusion hip-hop that won a Pulitzer Prize" },
+      { name: "Drake", signature: "Take Care (2011)", why: "Defined 2010s melodic hip-hop and streaming-era dominance" },
+      { name: "J Dilla", signature: "Donuts (2006)", why: "Producer's producer; his drunken-drum feel shaped a generation of beat-making" },
+    ],
+  },
+
+  "Pop": {
+    tagline: "Mainstream popular music — whatever that means in any given year. Pop eats every other genre and spits it back out four years later as 'pop.'",
+    traitDetails: [
+      { trait: "Hook-first songwriting", detail: "Every section (intro, verse, pre-chorus, chorus, bridge) competes to be memorable. Pop fears boredom above all." },
+      { trait: "Production polish", detail: "Every element compressed, tuned, placed with precision. Pop sounds 'finished' in a way other genres don't — no loose ends." },
+      { trait: "Universal lyrical themes", detail: "Love, heartbreak, partying, empowerment, self-worth — themes that translate across languages and cultures." },
+      { trait: "Tempo sweet spot (~90-120 BPM)", detail: "Fast enough to dance to, slow enough to sing along with — the commercial center of tempo." },
+      { trait: "Genre absorption", detail: "Pop borrows from whatever is bubbling up — disco in '79, hip-hop in '90, EDM in '10, country-pop and Afrobeats in '25. Pop is a formula applied to sounds, not a sound itself." },
+    ],
+    artistDetails: [
+      { name: "The Beatles", signature: "Revolver (1966) / Abbey Road (1969)", why: "Invented modern pop album-making; every pop structure comes from them" },
+      { name: "Michael Jackson", signature: "Thriller (1982)", why: "Best-selling album of all time; defined pop as visual/theatrical spectacle" },
+      { name: "Madonna", signature: "Like a Prayer (1989)", why: "Reinvention-as-career; template for every female pop star since" },
+      { name: "Whitney Houston", signature: "The Bodyguard Soundtrack (1992)", why: "Peak vocal pop; 'I Will Always Love You' defined the diva ballad" },
+      { name: "Britney Spears", signature: "Baby One More Time (1999)", why: "Defined Y2K teen pop; Max Martin's first global blueprint" },
+      { name: "Beyoncé", signature: "Lemonade (2016)", why: "Pop as visual/conceptual event; genre-spanning mainstream auteur" },
+      { name: "Taylor Swift", signature: "1989 (2014) / Midnights (2022)", why: "Genre-shifting from country to pure pop; current most commercially dominant artist" },
+      { name: "Rihanna", signature: "Anti (2016)", why: "Hit machine across a dozen genres; defined 2010s pop mood" },
+      { name: "Lady Gaga", signature: "The Fame Monster (2009)", why: "Theatrical electro-pop; brought disco back into the mainstream" },
+      { name: "Ariana Grande", signature: "Thank U, Next (2019)", why: "Current-era pop vocalist; R&B-pop hybrid that defined 2020s sound" },
+      { name: "The Weeknd", signature: "After Hours (2020)", why: "'Blinding Lights' is Billboard's #1 all-time song; alt-R&B into pure pop" },
+      { name: "Dua Lipa", signature: "Future Nostalgia (2020)", why: "Defined disco revival; made dance-pop the pandemic soundtrack" },
+      { name: "Olivia Rodrigo", signature: "SOUR (2021)", why: "Gen Z pop-punk revival with millennial pop sensibilities" },
+      { name: "Billie Eilish", signature: "When We All Fall Asleep (2019)", why: "Whispered bedroom-pop; redefined pop loudness conventions" },
+    ],
+  },
+
+  "R&B / Soul": {
+    tagline: "Rhythm-and-blues married gospel emotion to blues structure; 'soul' added introspection. The emotional core of Black American music.",
+    traitDetails: [
+      { trait: "Groove-driven arrangement", detail: "Bass and drums lock into a deep pocket. Everything else (guitar, horns, keys) comments on the groove — call-and-response at the arrangement level." },
+      { trait: "Gospel-trained vocals", detail: "Melisma, runs, call-and-response, testifying — church vocal technique carried into secular music by Ray Charles, Sam Cooke, Aretha Franklin." },
+      { trait: "Horn section punctuation", detail: "Tight stabs (Stax/Memphis sound) or lush pads (Philly International) — horns punctuate climactic moments without overwhelming the vocal." },
+      { trait: "Hammond B3 organ", detail: "The signature keyboard — soulful, churchy, can growl (Leslie speaker) or sing sustained chords. Booker T. Jones made it iconic." },
+      { trait: "Emotional nakedness", detail: "Lyrics about love, loss, longing, sexuality, and spirituality delivered with unfiltered vulnerability — the genre's emotional contract with listeners." },
+    ],
+    artistDetails: [
+      { name: "Ray Charles", signature: "The Genius of Ray Charles (1959)", why: "Fused gospel and blues into what became soul music — 'I Got a Woman' is the original template" },
+      { name: "Sam Cooke", signature: "Live at the Harlem Square Club (1963)", why: "Template for every male soul voice that followed; 'A Change Is Gonna Come' is a civil-rights anthem" },
+      { name: "Aretha Franklin", signature: "I Never Loved a Man (1967)", why: "The Queen of Soul; defined feminine vocal power in popular music forever" },
+      { name: "Otis Redding", signature: "Dictionary of Soul (1966)", why: "Stax Memphis sound; raw emotional delivery; died at 26 with his biggest hit pending release" },
+      { name: "Marvin Gaye", signature: "What's Going On (1971)", why: "Concept-album soul that tackled race, war, and ecology; changed the genre's ambition" },
+      { name: "Stevie Wonder", signature: "Songs in the Key of Life (1976)", why: "Composed, produced, played everything — soul's renaissance genius" },
+      { name: "James Brown", signature: "Live at the Apollo (1963)", why: "The Godfather of Soul; invented funk out of soul; one-chord grooves predate modern beat-making" },
+      { name: "Al Green", signature: "Let's Stay Together (1972)", why: "Hi Records' Memphis sound; silkiest falsetto in soul" },
+      { name: "Curtis Mayfield", signature: "Super Fly (1972)", why: "Political soul with cinematic orchestration; proto-funk guitar playing" },
+      { name: "Prince", signature: "Sign o' the Times (1987)", why: "Played every instrument; fused funk, rock, pop, R&B; most innovative Black artist of his era" },
+      { name: "Sade", signature: "Love Deluxe (1992)", why: "Cool, smoky British soul; defined quiet-storm R&B" },
+      { name: "D'Angelo", signature: "Voodoo (2000)", why: "Kicked off neo-soul; slow-dragged drum feel copied ever since" },
+      { name: "Beyoncé", signature: "B'Day (2006)", why: "R&B's biggest contemporary star; 'Love on Top' is modern soul-pop" },
+    ],
+  },
+
+  "Rock": {
+    tagline: "Born from blues via rock-and-roll in the 1950s. Splintered into a thousand subgenres but the power-chord-and-backbeat DNA persists.",
+    traitDetails: [
+      { trait: "Guitar-bass-drums-vocal core", detail: "The classic four-piece — defines rock even when keys or synths are added. The lineup itself is the genre." },
+      { trait: "Backbeat emphasis", detail: "Snare hits on beats 2 and 4 — the foundational rock groove inherited from blues shuffle. Charlie Watts made it gospel." },
+      { trait: "Power chords", detail: "Root + 5th (no 3rd) played with distortion — harmonically ambiguous, works in major or minor, sits well in the loud mix." },
+      { trait: "Verse-chorus form", detail: "3-4 minute structure built around a hook chorus — rock inherited this from blues and country, weaponized it with loud dynamics." },
+      { trait: "Amplifier as instrument", detail: "The Fender/Marshall tube-amp sound is itself part of the composition. Distortion, feedback, saturation — not accidents but colors." },
+    ],
+    artistDetails: [
+      { name: "Chuck Berry", signature: "The Great Twenty-Eight (1982)", why: "Invented rock guitar vocabulary; 'Johnny B. Goode' is the ur-text" },
+      { name: "The Beatles", signature: "Sgt. Pepper's Lonely Hearts Club Band (1967)", why: "Reinvented the album as art form; expanded rock's possibilities infinitely" },
+      { name: "The Rolling Stones", signature: "Exile on Main St. (1972)", why: "Blues-rock authenticity across 60 years; kept rock's roots visible" },
+      { name: "Led Zeppelin", signature: "IV (1971)", why: "Defined hard rock and proto-metal; 'Stairway to Heaven' is rock's 'Bohemian Rhapsody'" },
+      { name: "Jimi Hendrix", signature: "Electric Ladyland (1968)", why: "Reinvented what electric guitar could do; template for every lead guitarist after" },
+      { name: "Pink Floyd", signature: "The Dark Side of the Moon (1973)", why: "Progressive rock peak; 45 million copies sold, 900+ weeks on Billboard" },
+      { name: "David Bowie", signature: "The Rise and Fall of Ziggy Stardust (1972)", why: "Persona-as-album; bridged glam, art-rock, electronic, soul" },
+      { name: "Queen", signature: "A Night at the Opera (1975)", why: "Theatrical rock; Freddie Mercury's vocal range remains unmatched" },
+      { name: "The Who", signature: "Who's Next (1971)", why: "Invented arena rock; Pete Townshend's windmill and synthesizer innovations" },
+      { name: "Black Sabbath", signature: "Paranoid (1970)", why: "Invented heavy metal; first band to play downtuned and doomy" },
+      { name: "Bruce Springsteen", signature: "Born to Run (1975)", why: "Defined American heartland rock; storytelling anthems" },
+      { name: "Nirvana", signature: "Nevermind (1991)", why: "Grunge breakthrough that killed hair metal and rebirthed alt-rock" },
+      { name: "Radiohead", signature: "OK Computer (1997) / Kid A (2000)", why: "Late-90s rock innovator; bridged rock and electronic music" },
+      { name: "Foo Fighters", signature: "The Colour and the Shape (1997)", why: "Kept arena rock alive into the 21st century" },
+    ],
+  },
+
+  "Electronic": {
+    tagline: "Music made with machines as the primary instrument. From 1970s Kraftwerk to 2020s hyperpop, a half-century of sonic futures.",
+    traitDetails: [
+      { trait: "Machine as voice", detail: "Synthesizers, drum machines, samplers aren't hidden — they're the sound. Electronic music celebrates artifice instead of simulating instruments." },
+      { trait: "Sequenced precision", detail: "Drum machines and sequencers lock to grid perfectly. The inhuman tightness is the feature, not a bug." },
+      { trait: "Repetition as composition", detail: "Tracks build over 6-10 minutes through subtle variation — filter sweeps, element swaps, long arcs. Patience is the genre's ethic." },
+      { trait: "Sub-bass dominance", detail: "Below 100Hz matters. Electronic music is designed for club sound systems where sub-bass is felt, not just heard." },
+      { trait: "Genre-splitting instinct", detail: "Electronic's tree branches faster than any other genre: house → deep house → tech house → minimal → ambient house → tropical house, all within one decade." },
+    ],
+    artistDetails: [
+      { name: "Kraftwerk", signature: "Trans-Europe Express (1977) / The Man-Machine (1978)", why: "Pioneered electronic pop; DNA of hip-hop, techno, synth-pop, EDM — all of it starts here" },
+      { name: "Giorgio Moroder", signature: "Donna Summer's 'I Feel Love' (1977)", why: "First fully electronic disco track; invented the synth-bass groove" },
+      { name: "Brian Eno", signature: "Ambient 1: Music for Airports (1978)", why: "Invented ambient music; pioneered generative and atmospheric electronic approaches" },
+      { name: "Juan Atkins / Cybotron", signature: "Clear (1983)", why: "Detroit techno founder; coined the term 'techno' itself" },
+      { name: "Frankie Knuckles", signature: "Tears (1989)", why: "The Godfather of House; his Warehouse residency named the genre" },
+      { name: "Aphex Twin", signature: "Selected Ambient Works 85-92 (1992)", why: "Redefined experimental electronic music; bridged techno and ambient" },
+      { name: "The Prodigy", signature: "The Fat of the Land (1997)", why: "Brought big beat to rock audiences; made electronic music dangerous" },
+      { name: "Daft Punk", signature: "Discovery (2001)", why: "Defined French house; sample-based filter-house became a global template" },
+      { name: "The Chemical Brothers", signature: "Surrender (1999)", why: "Big beat's commercial peak; brought electronic to festival stages" },
+      { name: "Björk", signature: "Vespertine (2001)", why: "Art-pop electronic auteur; pushed glitch and micro-sound into pop" },
+      { name: "Burial", signature: "Untrue (2007)", why: "Defined post-dubstep; ghostly UK night-bus electronica" },
+      { name: "Deadmau5", signature: "For Lack of a Better Name (2009)", why: "Pioneered 2010s progressive-house mainstream EDM era" },
+      { name: "Skrillex", signature: "Scary Monsters and Nice Sprites (2010)", why: "Brought dubstep/brostep to US mainstream; defined 'drop' culture" },
+      { name: "Flume", signature: "Skin (2016)", why: "Future-bass peak; defined streaming-era melodic electronic" },
+      { name: "Fred again..", signature: "Actual Life trilogy (2021-2023)", why: "Current-era house; voice-note sampling and emotional UK sound" },
+    ],
+  },
+
+  "Jazz": {
+    tagline: "Early-20th-century fusion of blues, ragtime, and European harmony born in New Orleans. America's classical music.",
+    traitDetails: [
+      { trait: "Improvisation as composition", detail: "Solos are the heart of jazz — performers compose in real-time over chord changes. The tune (the 'head') is just a launchpad." },
+      { trait: "Swing rhythm", detail: "Triplet subdivision (dotted-eighth-sixteenth feel) gives jazz its forward motion. Straight eighths sound square, swung eighths sound jazz." },
+      { trait: "Complex harmony", detail: "7ths, 9ths, 11ths, 13ths, altered chords, tritone substitutions — jazz harmony lives on tension-and-release." },
+      { trait: "Rhythm section interplay", detail: "Bass + drums + piano/guitar have a three-way conversation under the soloist. It's not accompaniment — it's dialogue." },
+      { trait: "Cultural memory", detail: "Standards (Gershwin, Porter, Ellington tunes) are shared vocabulary. A jazz musician can sit in with strangers anywhere because they all know 'Autumn Leaves.'" },
+    ],
+    artistDetails: [
+      { name: "Louis Armstrong", signature: "Hot Fives and Sevens (1925-28)", why: "Invented the jazz solo; defined what a trumpet could do in popular music" },
+      { name: "Duke Ellington", signature: "Ellington at Newport (1956)", why: "Greatest composer in jazz history; 1,000+ compositions across 50 years" },
+      { name: "Billie Holiday", signature: "Lady in Satin (1958)", why: "Defined jazz vocal phrasing; turned lived suffering into musical art" },
+      { name: "Count Basie", signature: "The Atomic Mr. Basie (1958)", why: "Big-band swing peak; defined the Kansas City sound" },
+      { name: "Ella Fitzgerald", signature: "Ella Fitzgerald Sings the Cole Porter Song Book (1956)", why: "Perfect pitch, perfect time; the Songbook series codified the American Songbook canon" },
+      { name: "Charlie Parker", signature: "Savoy and Dial Sessions (1944-48)", why: "Bebop architect; redefined jazz melodic and harmonic vocabulary" },
+      { name: "Dizzy Gillespie", signature: "Groovin' High (1945)", why: "Bebop co-founder; invented Afro-Cuban jazz" },
+      { name: "Thelonious Monk", signature: "Brilliant Corners (1957)", why: "Angular, dissonant, rhythmically unpredictable; the architect" },
+      { name: "Miles Davis", signature: "Kind of Blue (1959) / Bitches Brew (1970)", why: "Led 5 major jazz revolutions across 40 years; endless reinvention" },
+      { name: "John Coltrane", signature: "A Love Supreme (1965) / Giant Steps (1960)", why: "Spiritual jazz; 'sheets of sound' approach to improvisation" },
+      { name: "Ornette Coleman", signature: "The Shape of Jazz to Come (1959)", why: "Free jazz pioneer; abandoned chord changes entirely" },
+      { name: "Herbie Hancock", signature: "Head Hunters (1973)", why: "Jazz-funk fusion; 'Chameleon' became every bassist's training exercise" },
+      { name: "Weather Report", signature: "Heavy Weather (1977)", why: "Jazz fusion peak; Jaco Pastorius redefined electric bass" },
+      { name: "Kamasi Washington", signature: "The Epic (2015)", why: "Current-era spiritual jazz; jazz's contemporary mainstream moment" },
+    ],
+  },
+
+  "Country": {
+    tagline: "American rural storytelling — twang, steel guitar, fiddle, narrative. From Appalachian porch music to modern Nashville pop.",
+    traitDetails: [
+      { trait: "Narrative songwriting", detail: "Story-centered lyrics — characters, places, concrete detail are central. Country doesn't do abstract emotion; it does specific people in specific situations." },
+      { trait: "Pedal steel guitar", detail: "The signature sound — legato slides and volume-pedal swells evoke country's crying quality. Buddy Emmons made it iconic." },
+      { trait: "Twang vocals", detail: "Regional American dialect, nasal placement — country vocalists cultivate the 'country accent' as genre marker." },
+      { trait: "Acoustic roots foundation", detail: "Even modern country keeps fiddle, banjo, mandolin, or acoustic guitar as signifiers — the rural instrumentation code." },
+      { trait: "Chord simplicity, melodic focus", detail: "I-IV-V progressions dominate; country invests its complexity in melody and lyric, not harmony." },
+    ],
+    artistDetails: [
+      { name: "Jimmie Rodgers", signature: "The Singing Brakeman recordings (1927-33)", why: "First country star; the template for the singer-songwriter format" },
+      { name: "Hank Williams", signature: "40 Greatest Hits collections", why: "Country music's Mozart; 40 hits in 6 years before dying at 29" },
+      { name: "Patsy Cline", signature: "Showcase (1961)", why: "Defined countrypolitan; vocal phrasing every female country singer studies" },
+      { name: "Johnny Cash", signature: "At Folsom Prison (1968)", why: "Outlaw country; crossed over to rock audiences without losing country credibility" },
+      { name: "Loretta Lynn", signature: "Coal Miner's Daughter (1970)", why: "Working-class country feminism; autobiographical songwriting" },
+      { name: "Willie Nelson", signature: "Red Headed Stranger (1975)", why: "Outlaw country's heart; songwriter's songwriter" },
+      { name: "Dolly Parton", signature: "Jolene (1974) / Coat of Many Colors (1971)", why: "Greatest country songwriter of all time; cultural icon beyond genre" },
+      { name: "Merle Haggard", signature: "Branded Man (1967)", why: "Bakersfield sound; working-class anthems that defined the genre" },
+      { name: "Garth Brooks", signature: "No Fences (1990)", why: "Stadium country; best-selling solo artist in US history" },
+      { name: "Shania Twain", signature: "Come On Over (1997)", why: "Pop-country crossover; best-selling female country album ever" },
+      { name: "Alan Jackson", signature: "Don't Rock the Jukebox (1991)", why: "Neo-traditionalist country; kept honky-tonk alive" },
+      { name: "Kacey Musgraves", signature: "Golden Hour (2018)", why: "Modern country-folk auteur; Grammy Album of the Year win" },
+      { name: "Morgan Wallen", signature: "Dangerous: The Double Album (2021)", why: "Current-era country's biggest commercial force; streaming-era dominance" },
+      { name: "Zach Bryan", signature: "American Heartbreak (2022)", why: "Alternative country-folk revival; TikTok-to-arenas pipeline" },
+    ],
+  },
+
+  "Latin": {
+    tagline: "An umbrella for dozens of distinct musics from Latin America — salsa, merengue, bachata, bossa nova, reggaeton, Latin trap, tango, mariachi. United by Spanish/Portuguese language and Afro-Caribbean/Indigenous/European fusion.",
+    traitDetails: [
+      { trait: "Clave rhythm foundation", detail: "The 'clave' (a 3-2 or 2-3 syncopated pattern) underpins son, salsa, rumba — it's the rhythmic DNA of Afro-Cuban music." },
+      { trait: "Afro-Caribbean percussion", detail: "Congas, bongos, timbales, güiro, maracas, cowbell — percussion does not sit behind but drives the music." },
+      { trait: "Call-and-response vocals", detail: "Lead singer (sonero) + coro (chorus) trade lines; often improvised in the 'montuno' section after the main song." },
+      { trait: "Spanish/Portuguese lyrical dominance", detail: "Language is part of the genre identity. Reggaeton stars who sing in Spanish outsell most English-language pop globally now." },
+      { trait: "Dance-music integration", detail: "Latin genres are inseparable from specific dances — salsa, bachata, merengue, tango, reggaeton perreo. The music is designed to move bodies." },
+    ],
+    artistDetails: [
+      { name: "Tito Puente", signature: "Dance Mania (1958)", why: "'El Rey de los Timbales'; brought mambo and Latin jazz to international stages" },
+      { name: "Celia Cruz", signature: "Celia & Johnny (1974)", why: "The Queen of Salsa; larger-than-life vocal presence across 5 decades" },
+      { name: "Antônio Carlos Jobim", signature: "Getz/Gilberto (1964)", why: "Bossa nova architect; 'The Girl from Ipanema' is the global Latin jazz standard" },
+      { name: "João Gilberto", signature: "Chega de Saudade (1959)", why: "Bossa nova's vocal/guitar template; invented the style single-handedly" },
+      { name: "Héctor Lavoe", signature: "La Voz (1975)", why: "Fania-era salsa voice; Willie Colón's partner in Nuyorican salsa's peak" },
+      { name: "Rubén Blades", signature: "Siembra (1978, w/ Willie Colón)", why: "Salsa's poet-sociologist; 'Pedro Navaja' is the genre's most literary song" },
+      { name: "Juan Gabriel", signature: "Recuerdos, Vol. II (1984)", why: "Mexican ballad king; his catalog is the Latin American Songbook" },
+      { name: "Gloria Estefan", signature: "Mi Tierra (1993)", why: "Cuban-American pop; bridged Latin and English-language mainstream" },
+      { name: "Selena", signature: "Amor Prohibido (1994)", why: "Tejano icon; brought regional Mexican to global audiences before her murder at 23" },
+      { name: "Shakira", signature: "Laundry Service (2001)", why: "Colombian pop-rock; biggest Latin female artist's crossover" },
+      { name: "Daddy Yankee", signature: "Barrio Fino (2004)", why: "'Gasolina' broke reggaeton globally; the King of Reggaeton" },
+      { name: "Marc Anthony", signature: "Todo a Su Tiempo (1995)", why: "Best-selling salsa artist of all time; defined salsa romántica" },
+      { name: "Romeo Santos", signature: "Formula, Vol. 1 (2011)", why: "Modern bachata king; fronted Aventura, went solo to greater heights" },
+      { name: "J Balvin", signature: "Energía (2016)", why: "Led the 2015+ reggaeton globalization wave; 'Mi Gente' defined the era" },
+      { name: "Bad Bunny", signature: "Un Verano Sin Ti (2022)", why: "Most-streamed artist globally 2020-23; Spanish-language dominance" },
+      { name: "Karol G", signature: "Mañana Será Bonito (2023)", why: "Biggest female Latin artist; reggaeton + bachata + trap fusion" },
+      { name: "Peso Pluma", signature: "Génesis (2023)", why: "Mexican corridos tumbados globalization; Billboard Hot 100 breakthrough for regional Mexican" },
+    ],
+  },
+
+  "Afrobeats": {
+    tagline: "Nigerian and Ghanaian urban pop that became a global force in the 2010s-20s. Distinct from Fela Kuti's 'Afrobeat' (1970s funk) — this is the pop evolution.",
+    traitDetails: [
+      { trait: "Log drum bass (Afropiano crossover)", detail: "Deep, sliding bass programmed on log drum synths — emotional sub-bass that feels organic, not electronic. 2020s fusion with Amapiano intensified this." },
+      { trait: "Pidgin + local language mix", detail: "Lyrics code-switch between English, Pidgin, Yoruba, Igbo — global reach without losing local identity. Part of the genre's charm." },
+      { trait: "Polyrhythmic percussion", detail: "Shekere (gourd rattle), talking drum, sometimes programmed percussion create the syncopated dance groove. Dense but never cluttered." },
+      { trait: "Melodic chant choruses", detail: "Hooks are designed for crowd-singing — simple melodic phrases repeated, often with call-and-response. Club and wedding music." },
+      { trait: "~105-115 BPM sweet spot", detail: "Mid-tempo sits between dance and hip-hop feel — works in clubs, works on radio, works in TikTok dances." },
+    ],
+    artistDetails: [
+      { name: "Fela Kuti", signature: "Zombie (1976) / Expensive Shit (1975)", why: "Invented the original Afrobeat (singular) — 1970s political funk that Afrobeats descends from" },
+      { name: "King Sunny Adé", signature: "Juju Music (1982)", why: "Brought Nigerian juju music to international audiences; a Fela-era giant" },
+      { name: "D'banj", signature: "The Entertainer (2008)", why: "Early-2010s Afrobeats pioneer; 'Oliver Twist' was the genre's first global hit" },
+      { name: "Wizkid", signature: "Made in Lagos (2020)", why: "Took Afrobeats global; 'Essence' with Tems was the breakout moment" },
+      { name: "Davido", signature: "A Better Time (2020)", why: "Afrobeats' most consistent hitmaker; 'FALL' was genre's first viral global hit" },
+      { name: "Burna Boy", signature: "African Giant (2019) / Twice As Tall (2020)", why: "Grammy-winning pan-African sound fusing dancehall, reggae, and Afrobeats" },
+      { name: "Mr Eazi", signature: "Life is Eazi, Vol. 1 (2017)", why: "Banku music fusion; Ghana-Nigeria cross-pollination pioneer" },
+      { name: "Tiwa Savage", signature: "Celia (2020)", why: "Queen of Afrobeats; brought R&B sensibilities into the genre" },
+      { name: "Tems", signature: "For Broken Ears EP (2020)", why: "Afro-fusion vocalist; Grammy-winning introspective side of Afrobeats" },
+      { name: "CKay", signature: "Love Nwantiti (2019)", why: "TikTok era's biggest African hit; emo Afrobeats subgenre leader" },
+      { name: "Fireboy DML", signature: "Playboy (2022)", why: "Melodic Afrobeats crossover; 'Peru' with Ed Sheeran" },
+      { name: "Rema", signature: "Rave & Roses (2022)", why: "'Calm Down' became the biggest Afrobeats single ever — #1 in 15+ countries" },
+      { name: "Asake", signature: "Mr. Money With The Vibe (2022)", why: "Current-era leader; fuses Afrobeats with fuji and amapiano" },
+      { name: "Ayra Starr", signature: "19 & Dangerous (2021)", why: "Mavin star; Afropop's Gen Z face" },
+      { name: "Omah Lay", signature: "Boy Alone (2022)", why: "Afro-depression subgenre; introspective new-wave Afrobeats" },
+    ],
+  },
+
+  "Classical": {
+    tagline: "Western art music tradition spanning ~1000 years — medieval chant to modern composition. The ancestor of Western harmony.",
+    traitDetails: [
+      { trait: "Written notation", detail: "Compositions are authoritative texts transmitted via notation. The score, not the performance, is primary — different from most other traditions." },
+      { trait: "Large-scale form", detail: "Sonata form, symphony, concerto, string quartet, opera, mass — classical built multi-movement architectures that other genres borrow from" },
+      { trait: "Functional harmony", detail: "Tonic-dominant relationships, key modulation, cadential patterns — the chord-progression vocabulary all Western music uses traces here" },
+      { trait: "Orchestral coloration", detail: "Strings + woodwinds + brass + percussion form a unified palette; orchestration (which instrument plays what) is its own craft" },
+      { trait: "Historical periods", detail: "Medieval → Renaissance → Baroque → Classical (Haydn/Mozart) → Romantic (Beethoven/Brahms) → Modern (Stravinsky) → Contemporary each have distinct sounds" },
+    ],
+    artistDetails: [
+      { name: "J.S. Bach", signature: "The Well-Tempered Clavier (1722)", why: "Baroque peak; all Western counterpoint and harmony studies lead back to him" },
+      { name: "W.A. Mozart", signature: "Symphony No. 40 (1788) / Don Giovanni (1787)", why: "Classical era embodiment; operas, symphonies, concertos all at peak form" },
+      { name: "Ludwig van Beethoven", signature: "Symphony No. 9 (1824)", why: "Bridged Classical and Romantic; expanded what music could express" },
+      { name: "Johannes Brahms", signature: "Symphony No. 4 (1885)", why: "Romantic German master; dense contrapuntal composition" },
+      { name: "Frédéric Chopin", signature: "Nocturnes / Preludes (1830s)", why: "Defined Romantic piano literature; poetic miniatures" },
+      { name: "Richard Wagner", signature: "Ring Cycle (1876)", why: "Reinvented opera; leitmotif technique shaped film scoring" },
+      { name: "Pyotr Tchaikovsky", signature: "Swan Lake (1877) / Symphony No. 6 (1893)", why: "Russian Romantic peak; ballet and symphonic standards" },
+      { name: "Claude Debussy", signature: "Prélude à l'après-midi d'un faune (1894)", why: "Impressionist master; expanded harmonic palette toward modernism" },
+      { name: "Igor Stravinsky", signature: "The Rite of Spring (1913)", why: "Modernist rupture; caused literal riots at premiere" },
+      { name: "Maurice Ravel", signature: "Boléro (1928)", why: "French orchestral colorist; 'Pavane' and 'Boléro' in cultural bloodstream" },
+      { name: "Dmitri Shostakovich", signature: "Symphony No. 5 (1937)", why: "Soviet-era composer; political ambiguity coded into symphonic language" },
+      { name: "John Williams", signature: "Star Wars (1977) / Schindler's List (1993)", why: "Modern film composer who kept classical tradition in popular culture" },
+      { name: "Philip Glass", signature: "Einstein on the Beach (1976)", why: "Minimalist founder; influential on rock, electronic, and film scoring" },
+      { name: "Steve Reich", signature: "Music for 18 Musicians (1978)", why: "Minimalism's most influential composer; phasing technique copied everywhere" },
+    ],
+  },
+
+  // ═══════════════════ TIER B — 30 KEY SUBGENRES ═══════════════════════
+  // 5-7 artists each, detailed traits. These are the subgenres most users
+  // will actually pick when building prompts.
+
+  // ── HIP-HOP family ─────────────────────────────────────────────
+  "Trap": {
+    tagline: "Atlanta street sound built on rolling 808s and hi-hat triplets. Went from regional subgenre to the default sound of mainstream rap.",
+    traitDetails: [
+      { trait: "Rolling 808 bass", detail: "The 808 sub-bass is both kick and bass, sliding between notes; long sustained 808s define 'southern feel'." },
+      { trait: "Hi-hat triplets", detail: "Machine-gun triplet patterns (usually 1/16 or 1/32 notes) — Roland TR-808 or modern sample packs." },
+      { trait: "Dark pad atmospheres", detail: "Cinematic minor-key pads provide the emotional weight — often one chord progression looped." },
+      { trait: "Half-time feel", detail: "Drums feel slow (~70 BPM) despite the 140 BPM hi-hats, creating hypnotic space for vocals." },
+    ],
+    artistDetails: [
+      { name: "T.I.", signature: "Trap Muzik (2003)", why: "Coined the term 'trap' and defined the Atlanta street narrative" },
+      { name: "Gucci Mane", signature: "Trap House (2005)", why: "Archetypal trap rapper; Zaytoven's work built the Atlanta sound" },
+      { name: "Future", signature: "DS2 (2015)", why: "Pioneered auto-tune melodic trap" },
+      { name: "Young Thug", signature: "Slime Season 3 (2016)", why: "Voice-as-instrument approach broke rap vocal conventions" },
+      { name: "Migos", signature: "Culture (2017)", why: "Popularized triplet flow globally with 'Bad and Boujee'" },
+      { name: "Lil Baby", signature: "My Turn (2020)", why: "Current-era Atlanta trap at its most commercially dominant" },
+      { name: "21 Savage", signature: "Savage Mode II (2020, w/ Metro Boomin)", why: "Minimalist menacing trap; defined the late-2010s sound" },
+    ],
+  },
+
+  "Drill": {
+    tagline: "Chicago's minimalist menace, reborn through UK grime sensibilities and NY breakbeat variants. The sound of 2020s street realism.",
+    traitDetails: [
+      { trait: "Sliding 808 bass", detail: "Gliding 808 lines that bend between notes — almost melodic. Especially prominent in UK and NY drill." },
+      { trait: "Sparse drum programming", detail: "Minimalist patterns with heavy use of rim shots, half-time snares, and syncopated hi-hats. Space is part of the aesthetic." },
+      { trait: "Monotone flow", detail: "Emotionally flat, reporting-style delivery that emphasizes threat over melody." },
+      { trait: "Dark minor-key piano", detail: "Repeating piano or bell melodies, often detuned or lo-fi — provides the emotional core." },
+    ],
+    artistDetails: [
+      { name: "Chief Keef", signature: "Finally Rich (2012)", why: "Originated Chicago drill with 'I Don't Like' and 'Love Sosa'" },
+      { name: "Pop Smoke", signature: "Meet the Woo 2 (2020)", why: "Fused NY drill with pop hooks; killed before full breakthrough" },
+      { name: "Fivio Foreign", signature: "B.I.B.L.E. (2022)", why: "Carried the NY drill torch with Kanye collaborations" },
+      { name: "Central Cee", signature: "23 (2022) / Can't Rush Greatness (2025)", why: "UK drill's melodic face; made drill palatable to global pop audiences" },
+      { name: "Headie One", signature: "EDNA (2020)", why: "UK drill's lyricist-in-chief; bridged drill and melodic rap" },
+      { name: "Lil Durk", signature: "The Voice (2020)", why: "Chicago drill's emotional evolution; melodic storytelling" },
+      { name: "King Von", signature: "Welcome to O'Block (2020)", why: "Drill's great storyteller; murdered at 26" },
+    ],
+  },
+
+  "Melodic Rap": {
+    tagline: "Rap where the hook is sung, not rapped. The subgenre that became the genre for Gen Z.",
+    traitDetails: [
+      { trait: "Auto-Tune as instrument", detail: "Pitch correction used expressively — not to fix, but to create the signature plasticky melodic quality." },
+      { trait: "Sing-rapping hybrid", detail: "Verses rap, hooks sing; vocals float between the two modes freely." },
+      { trait: "Trap drum foundation", detail: "Hi-hat rolls and 808s remain from trap, but pitched melodic elements dominate the mix." },
+      { trait: "Emotional vulnerability", detail: "Lyrical themes lean depressive, romantic, introspective — a shift from street-narrative trap." },
+    ],
+    artistDetails: [
+      { name: "Future", signature: "Pluto 3D (2012) / DS2 (2015)", why: "Pioneered the auto-tune melodic flow template" },
+      { name: "Juice WRLD", signature: "Goodbye & Good Riddance (2018)", why: "Emo-rap emotional tone; freestyle melody over pop-punk samples" },
+      { name: "Lil Uzi Vert", signature: "Luv Is Rage 2 (2017)", why: "Vocal energy and melodic variety that expanded the template" },
+      { name: "Post Malone", signature: "Hollywood's Bleeding (2019)", why: "Crossover success that normalized melodic rap to pop audiences" },
+      { name: "Lil Baby", signature: "My Turn (2020)", why: "Atlanta melodic trap at its most commercially dominant" },
+      { name: "The Kid LAROI", signature: "F*CK LOVE (2020)", why: "Current-wave melodic rap with full pop crossover" },
+    ],
+  },
+
+  "Boom Bap": {
+    tagline: "Golden-era East Coast hip-hop defined by punchy drums, jazz samples, and lyricism-first ethos. The 'real hip-hop' sound.",
+    traitDetails: [
+      { trait: "SP-1200 / MPC drums", detail: "Punchy, crunchy sampled drums — the Akai MPC60 and E-mu SP-1200 gave boom-bap its signature 'boom' (kick) and 'bap' (snare)." },
+      { trait: "Jazz / soul loops", detail: "Four-bar loops pulled from Blue Note jazz, Stax soul, and funk records. Pete Rock and DJ Premier were masters." },
+      { trait: "Head-nod tempo (85-95 BPM)", detail: "The sweet spot for the rap-over-groove feel. Not too fast for storytelling, not too slow to lose energy." },
+      { trait: "Lyricism-first", detail: "Complex wordplay, multi-syllable rhymes, and storytelling are valued over hooks or melody." },
+    ],
+    artistDetails: [
+      { name: "A Tribe Called Quest", signature: "The Low End Theory (1991)", why: "Jazz-rap perfection; Q-Tip's production template" },
+      { name: "Wu-Tang Clan", signature: "Enter the Wu-Tang (36 Chambers) (1993)", why: "RZA's gritty lo-fi sampling; 9 MCs, one iconic aesthetic" },
+      { name: "Nas", signature: "Illmatic (1994)", why: "Boom-bap's greatest lyrical statement" },
+      { name: "DJ Premier (Gang Starr)", signature: "Moment of Truth (1998)", why: "Defining boom-bap producer; chop-and-scratch chorus style" },
+      { name: "Pete Rock & CL Smooth", signature: "Mecca and the Soul Brother (1992)", why: "Warmest boom-bap production ever made" },
+      { name: "Mobb Deep", signature: "The Infamous (1995)", why: "Dark NY boom-bap; Havoc's menacing production" },
+      { name: "Madlib / Madvillain", signature: "Madvillainy (2004, w/ MF DOOM)", why: "Underground boom-bap's holy grail" },
+    ],
+  },
+
+  "Gangsta Rap": {
+    tagline: "West Coast street narratives over funk samples. Harder drums, harder language, and a fundamentally cinematic sensibility.",
+    traitDetails: [
+      { trait: "P-Funk samples", detail: "Chopped Parliament-Funkadelic, Zapp, and Roger Troutman funk loops — often featuring synth bass and talkbox." },
+      { trait: "G-Funk whistle synth", detail: "Dr. Dre / DJ Quik's high-pitched lead synth — defined West Coast's melodic signature." },
+      { trait: "Street cinematic narratives", detail: "First-person storytelling about gang life, police, poverty — a journalistic register." },
+      { trait: "Heavy 808 drums", detail: "Kick-and-snare patterns sit forward in the mix; different from NY boom-bap's SP-1200 sound." },
+    ],
+    artistDetails: [
+      { name: "N.W.A", signature: "Straight Outta Compton (1988)", why: "Originated the genre; defined Compton sound" },
+      { name: "Dr. Dre", signature: "The Chronic (1992)", why: "G-funk production blueprint; birthed Snoop's career" },
+      { name: "Snoop Dogg", signature: "Doggystyle (1993)", why: "Defined West Coast MC laid-back flow" },
+      { name: "Tupac", signature: "Me Against the World (1995) / All Eyez on Me (1996)", why: "Emotional range and political awareness that transcended the genre" },
+      { name: "Ice Cube", signature: "AmeriKKKa's Most Wanted (1990)", why: "Post-NWA Cube; brought Bomb Squad production to West Coast" },
+      { name: "The Game", signature: "The Documentary (2005)", why: "Revived G-funk in the 2000s with 50 Cent/Dre co-signs" },
+    ],
+  },
+
+  "Phonk": {
+    tagline: "Memphis rap cassettes from the 1990s resurrected via TikTok and drift culture. The soundtrack of 2020s car videos.",
+    traitDetails: [
+      { trait: "Memphis rap samples", detail: "Chopped DJ Screw / Three 6 Mafia / Lord Infamous vocal fragments form the core." },
+      { trait: "Distorted 808 cowbell", detail: "The signature percussion — cowbell processed through saturation/bitcrushing — ticks the beat." },
+      { trait: "Lo-fi tape saturation", detail: "Cassette-warped aesthetic; tape hiss, pitch wobble, analog compression." },
+      { trait: "Drift/racing association", detail: "Via Russian TikTok and car culture, phonk became the de facto drifting/racing soundtrack." },
+    ],
+    artistDetails: [
+      { name: "DJ Smokey", signature: "Memphis Chapel (2017)", why: "Originated modern phonk scene 2013-2017" },
+      { name: "Kordhell", signature: "Murder in My Mind (2021)", why: "Viral phonk breakthrough; defined the TikTok era" },
+      { name: "DVRST", signature: "Close Eyes (2021)", why: "Drift phonk that dominated racing content globally" },
+      { name: "PlayaPhonk", signature: "2022-2024 compilations", why: "Russian-Ukrainian scene driver" },
+      { name: "Ghostface Playa", signature: "Why Not? (2023)", why: "Modern phonk's cleanest commercial success" },
+      { name: "Freddie Dredd", signature: "Pray to the Grave (2020)", why: "Bridged phonk with dark trap and horrorcore" },
+    ],
+  },
+
+  "Cloud Rap": {
+    tagline: "Ambient, druggy hip-hop with ethereal production and distant vocals. Peak: 2011-2016 internet era.",
+    traitDetails: [
+      { trait: "Reverb-drenched atmosphere", detail: "Vocals float in vast reverbs; production feels distant, like overheard from another room." },
+      { trait: "Slow tempos (60-80 BPM)", detail: "Half-time trap feel; drugged, floating pace." },
+      { trait: "Chopped-and-screwed influence", detail: "Tempos and pitches dragged down; DJ Screw's Houston legacy transposed to internet rap." },
+      { trait: "Dreamy synth pads", detail: "Pitched-down or chopped samples — often sampling ambient or new-age sources." },
+    ],
+    artistDetails: [
+      { name: "Lil B", signature: "Rain in England (2010)", why: "Cloud rap godfather; coined the aesthetic" },
+      { name: "Clams Casino", signature: "Instrumentals (2011)", why: "The defining producer; Lil B, ASAP Rocky all used his beats" },
+      { name: "ASAP Rocky", signature: "LiveLoveA$AP (2011)", why: "Most successful cloud rap artist; mainstream breakthrough" },
+      { name: "Main Attrakionz", signature: "808s & Dark Grapes II (2011)", why: "Bay Area cloud rap duo; archetypal sound" },
+      { name: "Spaceghostpurrp", signature: "Mystikal Maze (2012)", why: "Florida cloud rap; Raider Klan founder" },
+    ],
+  },
+
+  // ── R&B / SOUL family ──────────────────────────────────────────
+  "Neo-Soul": {
+    tagline: "Soul music filtered through hip-hop's lens. Live instruments, organic grooves, head-nod tempos. The thinking listener's R&B.",
+    traitDetails: [
+      { trait: "Organic live production", detail: "Real drums (often with J Dilla drunken-drum feel), real bass, Rhodes piano — rejection of polished 90s R&B programming." },
+      { trait: "Jazz harmony", detail: "Extended chords (9ths, 11ths, 13ths), modal voicings — unlike pop R&B's simpler I-vi-IV-V progressions." },
+      { trait: "Hip-hop tempo range", detail: "85-95 BPM head-nod feel; shares tempo DNA with boom-bap hip-hop." },
+      { trait: "Conscious / introspective lyrics", detail: "Themes of Black spirituality, love as devotion, social awareness — not hook-factory love songs." },
+    ],
+    artistDetails: [
+      { name: "D'Angelo", signature: "Brown Sugar (1995) / Voodoo (2000)", why: "Kicked off neo-soul; 'Untitled (How Does It Feel)' is the genre's ur-track" },
+      { name: "Erykah Badu", signature: "Baduizm (1997)", why: "Neo-soul's poet; defined the female voice of the genre" },
+      { name: "Lauryn Hill", signature: "The Miseducation of Lauryn Hill (1998)", why: "Hip-hop-informed soul; one of the best-selling neo-soul albums ever" },
+      { name: "Jill Scott", signature: "Who Is Jill Scott? (2000)", why: "Philly neo-soul; poet-singer bridge" },
+      { name: "Maxwell", signature: "Urban Hang Suite (1996)", why: "Falsetto-driven neo-soul romance; Marvin Gaye-school" },
+      { name: "Musiq Soulchild", signature: "Aijuswanaseing (2000)", why: "Philly International lineage; accessible neo-soul" },
+      { name: "Anderson .Paak", signature: "Malibu (2016)", why: "Current-era neo-soul; drummer-singer who pushed the genre forward" },
+    ],
+  },
+
+  "Alt R&B": {
+    tagline: "Moody, atmospheric R&B with electronic textures and negative space. Emerged ~2010 from Toronto and LA.",
+    traitDetails: [
+      { trait: "Dark atmospheric production", detail: "Noir cinema aesthetic — detuned synths, reverb-drenched drums, cold electronic textures." },
+      { trait: "Pitched vocals", detail: "Voice as atmosphere — layered harmonies, pitched-down ad-libs, sometimes auto-tuned." },
+      { trait: "Sparse arrangement", detail: "Space between sounds — R&B that treats silence as an instrument." },
+      { trait: "Lyrical introspection", detail: "Themes of anxiety, substance use, failed relationships, fame's dark side." },
+    ],
+    artistDetails: [
+      { name: "The Weeknd", signature: "House of Balloons (2011)", why: "Trilogy mixtapes defined the aesthetic" },
+      { name: "Frank Ocean", signature: "Blonde (2016) / Channel Orange (2012)", why: "Critical apex of alt R&B; genre-defying auteur" },
+      { name: "Jhené Aiko", signature: "Souled Out (2014)", why: "Floating vocal style over ambient R&B production" },
+      { name: "SZA", signature: "Ctrl (2017) / SOS (2022)", why: "Conversational vocal approach; defined current-era alt R&B" },
+      { name: "Miguel", signature: "Kaleidoscope Dream (2012)", why: "Prince-inspired funk-soul with alt R&B production" },
+      { name: "Daniel Caesar", signature: "Freudian (2017)", why: "Gospel-trained voice in minimalist alt R&B production" },
+      { name: "H.E.R.", signature: "H.E.R. (2017)", why: "Guitar-driven alt R&B; Grammy breakthrough" },
+    ],
+  },
+
+  "Contemporary R&B": {
+    tagline: "Mainstream R&B with polished pop production and hip-hop DNA. The sound of radio R&B from 1990 onwards.",
+    traitDetails: [
+      { trait: "Programmed drum production", detail: "808s, drum machines, meticulous quantization — unlike neo-soul's live feel." },
+      { trait: "Melismatic vocals", detail: "Runs, trills, vocal gymnastics — the Mariah/Whitney/Christina vocal vocabulary." },
+      { trait: "Pop songcraft", detail: "Hook-first writing; verse/pre-chorus/chorus structure inherited from pop." },
+      { trait: "Hip-hop-influenced", detail: "Many artists collaborate with rappers; production often shares beats/producers with rap." },
+    ],
+    artistDetails: [
+      { name: "Mariah Carey", signature: "Daydream (1995) / Butterfly (1997)", why: "Defined the 90s R&B vocal standard; 19 #1 hits" },
+      { name: "Whitney Houston", signature: "Whitney (1987) / The Bodyguard (1992)", why: "Greatest pure voice of the contemporary R&B era" },
+      { name: "Usher", signature: "Confessions (2004)", why: "Peak 2000s R&B; 10 million+ copies sold US" },
+      { name: "Beyoncé", signature: "B'Day (2006) / Dangerously in Love (2003)", why: "Contemporary R&B's biggest star" },
+      { name: "Chris Brown", signature: "F.A.M.E. (2011)", why: "2010s R&B hit machine; dance-driven crossover" },
+      { name: "Alicia Keys", signature: "The Diary of Alicia Keys (2003)", why: "Piano-driven contemporary R&B; neo-classical bent" },
+    ],
+  },
+
+  "Trap Soul": {
+    tagline: "R&B vocals over trap drum programming. Bryson Tiller's 2015 invention that dominated the back half of the decade.",
+    traitDetails: [
+      { trait: "Trap drum patterns", detail: "Hi-hat rolls, 808s, half-time feel — but with R&B sung on top instead of rap." },
+      { trait: "Pitched-down vocal samples", detail: "Chopped R&B vocals from 90s/2000s records, often slowed and reverbed." },
+      { trait: "Melodic Auto-Tune", detail: "Vocals use Auto-Tune expressively, often with exaggerated pitch slides." },
+      { trait: "Intimate lyrical tone", detail: "Late-night relationship songs; texts, hookups, emotional uncertainty." },
+    ],
+    artistDetails: [
+      { name: "Bryson Tiller", signature: "T R A P S O U L (2015)", why: "Invented the genre — album title gave it its name" },
+      { name: "6LACK", signature: "FREE 6LACK (2016)", why: "Atlanta trap-soul; quiet, introspective" },
+      { name: "PartyNextDoor", signature: "PND2 (2014)", why: "OVO label architect; pre-Tiller template" },
+      { name: "Tory Lanez", signature: "I Told You (2016)", why: "Toronto trap-soul; commercial breakthrough year-one" },
+      { name: "Roy Woods", signature: "Say Less (2017)", why: "OVO label; minimalist trap-soul" },
+    ],
+  },
+
+  // ── ELECTRONIC family ─────────────────────────────────────────
+  "House": {
+    tagline: "Chicago club music from the early 1980s. Gave electronic dance music its four-on-the-floor template.",
+    traitDetails: [
+      { trait: "Four-on-the-floor kick", detail: "Kick drum on every quarter note at 120-128 BPM — the hypnotic foundation." },
+      { trait: "Open hi-hat on offbeats", detail: "The 'sizzle' on beats 2 and 4 — creates motion between kicks." },
+      { trait: "Disco sample chops", detail: "Chopped disco loops, vocal hooks, piano stabs — house was born from DJs extending disco's best moments." },
+      { trait: "Roland TR-909", detail: "The definitive house drum sound — even when samples are used, producers reference the 909's tuning." },
+    ],
+    artistDetails: [
+      { name: "Frankie Knuckles", signature: "Tears (1989)", why: "The Godfather of House; his Warehouse residency named the genre" },
+      { name: "Larry Heard", signature: "Amnesia EP (1986)", why: "Deep house architect; 'Can You Feel It' is the Rosetta Stone" },
+      { name: "Marshall Jefferson", signature: "Move Your Body (1986)", why: "'The house music anthem'; defined piano house" },
+      { name: "Kerri Chandler", signature: "Bar a Thym (2008)", why: "NY garage-house; soulful deep house evangelist" },
+      { name: "Disclosure", signature: "Settle (2013)", why: "Brought UK garage-house to pop charts; 'Latch' crossover" },
+      { name: "Fred again..", signature: "Actual Life trilogy (2021-2023)", why: "Current-era house; voice-note sampling and emotional UK sound" },
+      { name: "Peggy Gou", signature: "I Hear You (2023)", why: "Current-era house global star; Korean-German crossover" },
+    ],
+  },
+
+  "Deep House": {
+    tagline: "Slower, moodier, jazzier cousin of house. More chord-driven, less club-functional, more listenable.",
+    traitDetails: [
+      { trait: "Slower tempo (115-125 BPM)", detail: "Slightly slower than house proper; gives tracks more room to breathe." },
+      { trait: "Jazzy chord progressions", detail: "Rhodes and pad chords with 7ths and 9ths; richer harmonic palette than standard house." },
+      { trait: "Deep, soulful bass", detail: "Filtered, warm basslines often derived from real bass guitar or rich analog sub." },
+      { trait: "Extended arrangements", detail: "7-10 minute tracks that evolve through filter sweeps, percussion changes, chord swaps." },
+    ],
+    artistDetails: [
+      { name: "Larry Heard (Mr. Fingers)", signature: "Amnesia (1986)", why: "Invented deep house; 'Can You Feel It' is the origin point" },
+      { name: "Kerri Chandler", signature: "Hemisphere Red (1998)", why: "NJ deep house; soulful, emotional" },
+      { name: "Moodymann", signature: "Black Mahogani (2004)", why: "Detroit deep house; Kenny Dixon Jr.'s underground legend" },
+      { name: "Jimpster", signature: "Freerange catalog (2000-)", why: "UK deep house; defined the 2000s scene" },
+      { name: "Dixon", signature: "Innervisions label", why: "Berlin deep house; Âme collaborator" },
+      { name: "Black Coffee", signature: "Subconsciously (2021)", why: "South African deep house to global scale; 2022 Grammy winner" },
+    ],
+  },
+
+  "Techno": {
+    tagline: "Detroit-born electronic music built on relentless rhythm and machine futurism. Harder and more hypnotic than house.",
+    traitDetails: [
+      { trait: "Machine-first aesthetic", detail: "Drum machines, 303s, 808s, 909s — techno embraces the sound of the machine, never hides it." },
+      { trait: "Minimalist repetition", detail: "Tracks evolve across 7-10 minutes through subtle filter/FX changes — patience is the genre's ethic." },
+      { trait: "Higher BPM (128-140)", detail: "Slightly faster than house; hard techno pushes 140-160 BPM for peak-time intensity." },
+      { trait: "Industrial / dark atmospheres", detail: "Metallic percussion, distorted synths, factory/machine aesthetic (especially Berlin techno)." },
+    ],
+    artistDetails: [
+      { name: "Juan Atkins / Cybotron", signature: "Clear (1983)", why: "Detroit techno founder; coined the term 'techno'" },
+      { name: "Derrick May", signature: "Strings of Life (1987)", why: "Belleville Three; defined techno's musicality" },
+      { name: "Jeff Mills", signature: "Exhibitionist (2004)", why: "Three-deck mixing pioneer; defined industrial techno" },
+      { name: "Richie Hawtin", signature: "Consumed (1998)", why: "Minimal techno architect; Plastikman alias" },
+      { name: "Carl Cox", signature: "Space Ibiza residencies", why: "Most globally recognized techno DJ" },
+      { name: "Charlotte de Witte", signature: "Formula EP (2021)", why: "#1 Techno DJ 2024-2025 (DJ Mag); Belgian scene dominance" },
+      { name: "Sara Landry", signature: "2023-2024 festival sets", why: "#1 Hard DJ 2025; current-era hard techno leader" },
+    ],
+  },
+
+  "Dubstep": {
+    tagline: "London 2000s garage-meets-dub creation that birthed both atmospheric 'UK dubstep' and the American aggressive 'brostep' drop.",
+    traitDetails: [
+      { trait: "140 BPM half-time feel", detail: "Fast tempo played against half-time drum groove — creates the signature lurching feel." },
+      { trait: "Sub-bass weight", detail: "Sub frequencies (below 60Hz) are the centerpiece; designed for massive sound systems." },
+      { trait: "The 'drop'", detail: "Extended intro leads to a drop where the bass wobble / growl takes over. Skrillex codified this for US audiences." },
+      { trait: "Wobble bass (LFO-modulated)", detail: "Low-frequency oscillator applied to filter cutoff creates the wobble-wub-wub sound." },
+    ],
+    artistDetails: [
+      { name: "Skream", signature: "Skream! (2006)", why: "South London dubstep originator; 'Midnight Request Line'" },
+      { name: "Benga", signature: "Diary of an Afro Warrior (2008)", why: "Croydon scene founder alongside Skream and Artwork" },
+      { name: "Burial", signature: "Untrue (2007)", why: "Post-dubstep; ghostly, garage-influenced atmospheric side" },
+      { name: "Skrillex", signature: "Scary Monsters and Nice Sprites (2010)", why: "Brought US brostep to mainstream; defined 'drop' culture" },
+      { name: "Rusko", signature: "O.M.G.! (2010)", why: "Early brostep; 'Woo Boost' template for all modern dubstep" },
+      { name: "Excision", signature: "Apex (2018)", why: "Modern US dubstep giant; festival-driven heavy bass" },
+    ],
+  },
+
+  "Drum & Bass": {
+    tagline: "UK 1990s jungle evolution — breakneck breakbeats at 160-180 BPM with heavy sub-bass. The fastest major electronic genre.",
+    traitDetails: [
+      { trait: "Amen break foundation", detail: "The Winstons' 1969 drum break chopped and re-sequenced. Every DnB producer has used it." },
+      { trait: "160-180 BPM", detail: "Extremely fast tempo; the half-time bassline creates a 80-90 BPM feel while drums remain breakneck." },
+      { trait: "Sub-bass weight", detail: "Deep, rolling sub-basslines; often in 8-bar patterns, sometimes with Reese distortion." },
+      { trait: "Multiple subgenres", detail: "Liquid DnB (melodic), Neurofunk (heavy), Jump-up (melodic hook-based), Jungle (breakbeat-heavy original)." },
+    ],
+    artistDetails: [
+      { name: "Goldie", signature: "Timeless (1995)", why: "Pioneered DnB as 'serious music'; defined genre's ambition" },
+      { name: "Roni Size / Reprazent", signature: "New Forms (1997)", why: "Mercury Prize-winning jazz-DnB; live-band approach" },
+      { name: "Pendulum", signature: "Hold Your Colour (2005)", why: "Australian DnB; rock crossover that brought DnB to mainstream" },
+      { name: "Noisia", signature: "Outer Edges (2016)", why: "Dutch trio; apex of neurofunk technical production" },
+      { name: "Chase & Status", signature: "No More Idols (2011)", why: "UK DnB pop crossover" },
+      { name: "Sub Focus", signature: "Torus (2013)", why: "Melodic DnB; defined 2010s radio-friendly sound" },
+      { name: "Dimension", signature: "Organ EP (2018)", why: "Current-era DnB's most commercially dominant producer" },
+    ],
+  },
+
+  "Trance": {
+    tagline: "Euphoric, emotionally-cathartic dance music from 1990s Germany/Netherlands. Epic breakdowns, soaring leads.",
+    traitDetails: [
+      { trait: "128-140 BPM", detail: "Sweet spot between house and harder dance; euphoric but still danceable." },
+      { trait: "Supersaw leads", detail: "Detuned saw-wave leads with long attack envelopes — the iconic 'trance lead' sound." },
+      { trait: "Epic breakdowns", detail: "2-minute stripped sections before the drop; pads, piano, or vocals build tension before release." },
+      { trait: "Arpeggiated sequences", detail: "Running 16th-note synth arpeggios drive the energy — often in minor keys for emotional pull." },
+    ],
+    artistDetails: [
+      { name: "Armin van Buuren", signature: "A State of Trance radio show (2001-)", why: "The face of modern trance; Dutch trance king" },
+      { name: "Tiësto", signature: "In Search of Sunrise series", why: "Dutch trance pioneer who crossed to EDM mainstream" },
+      { name: "Paul van Dyk", signature: "Seven Ways (1996)", why: "German trance architect; 'For an Angel' defined the sound" },
+      { name: "Above & Beyond", signature: "Group Therapy (2011)", why: "British trance trio; emotional vocal trance leaders" },
+      { name: "ATB", signature: "Movin' Melodies (1999)", why: "German producer; '9PM (Till I Come)' is genre-defining" },
+      { name: "Anyma", signature: "Genesys / Welcome to The Opera (2022-2024)", why: "Current-era melodic techno-trance hybrid; #10 DJ Mag 2025" },
+    ],
+  },
+
+  // ── ROCK family ───────────────────────────────────────────────
+  "Grunge": {
+    tagline: "Seattle 1990-1994 fusion of punk energy, metal heaviness, and indie rock introspection. Killed hair metal in 18 months.",
+    traitDetails: [
+      { trait: "Quiet-loud dynamics", detail: "Whispered verses explode into distorted choruses — Pixies' dynamic template weaponized." },
+      { trait: "Drop-tuned guitars", detail: "Guitars tuned down for heaviness, often to D or lower — gives grunge its sludgy weight." },
+      { trait: "Anti-hair-metal aesthetic", detail: "Flannel shirts, unwashed hair, Doc Martens — deliberate rejection of 80s excess." },
+      { trait: "Introspective/angry lyrics", detail: "Depression, alienation, generational apathy — Gen X's emotional vocabulary." },
+    ],
+    artistDetails: [
+      { name: "Nirvana", signature: "Nevermind (1991)", why: "'Smells Like Teen Spirit' was grunge's big bang moment" },
+      { name: "Pearl Jam", signature: "Ten (1991)", why: "More traditional rock than Nirvana; sold more but got less credit" },
+      { name: "Soundgarden", signature: "Superunknown (1994)", why: "Metal-heavy grunge; Chris Cornell's vocal range unmatched" },
+      { name: "Alice in Chains", signature: "Dirt (1992)", why: "Dark harmony vocals; heaviest of the Seattle Four" },
+      { name: "Stone Temple Pilots", signature: "Core (1992)", why: "Accessible grunge-adjacent; 'Plush' was ubiquitous" },
+      { name: "Hole", signature: "Live Through This (1994)", why: "Courtney Love's post-Cobain masterpiece; female grunge voice" },
+    ],
+  },
+
+  "Indie Rock": {
+    tagline: "Umbrella term for rock made outside major labels. Became aesthetically specific in the 2000s: jangly, literate, DIY-adjacent.",
+    traitDetails: [
+      { trait: "Jangly clean guitars", detail: "Chiming, chorused, or clean-tone guitars (Telecasters, Rickenbackers) — the opposite of arena-rock distortion." },
+      { trait: "Literate lyrics", detail: "Writerly, often oblique lyrics with cultural/literary references — indie rock valorizes lyrical intelligence." },
+      { trait: "Low-fi production values", detail: "Often recorded in home studios or independent labels; production is secondary to song and feel." },
+      { trait: "Non-blockbuster songcraft", detail: "5-minute songs are fine; don't have to hit at 0:00; mood and atmosphere over hooks." },
+    ],
+    artistDetails: [
+      { name: "Pavement", signature: "Slanted and Enchanted (1992)", why: "Defined 90s indie rock's slacker aesthetic" },
+      { name: "The Strokes", signature: "Is This It (2001)", why: "Kicked off the 2000s indie rock revival; NYC template" },
+      { name: "Arcade Fire", signature: "Funeral (2004)", why: "Indie rock's emotional grandeur; Canadian baroque pop" },
+      { name: "Modest Mouse", signature: "Good News for People Who Love Bad News (2004)", why: "Idiosyncratic vocal style; 'Float On' mainstream crossover" },
+      { name: "Vampire Weekend", signature: "Vampire Weekend (2008)", why: "Ivy League indie; Afro-pop influenced" },
+      { name: "Phoebe Bridgers", signature: "Punisher (2020)", why: "Current-era indie rock; whisper-sing vocal style" },
+      { name: "Boygenius", signature: "the record (2023)", why: "Phoebe + Julien + Lucy; current-era supergroup" },
+    ],
+  },
+
+  "Punk": {
+    tagline: "Three chords and attitude. 1970s NYC/London response to arena rock bloat — short, fast, loud, confrontational.",
+    traitDetails: [
+      { trait: "Short fast songs", detail: "Usually 2-3 minutes; punk rejects prog rock's 20-minute suites." },
+      { trait: "Power chords + downstrokes", detail: "All-downstroke strumming creates punk's aggressive rhythmic drive." },
+      { trait: "DIY ethic", detail: "'Anyone can do this' — zines, indie labels, self-recording; rejection of music-industry professionalism." },
+      { trait: "Confrontational/political lyrics", detail: "Anti-establishment, anti-authority, often nihilistic — punk's stance is always against." },
+    ],
+    artistDetails: [
+      { name: "The Ramones", signature: "Ramones (1976)", why: "Defined punk's sound; 14 songs in 29 minutes" },
+      { name: "Sex Pistols", signature: "Never Mind the Bollocks (1977)", why: "UK punk breakthrough; cultural detonation" },
+      { name: "The Clash", signature: "London Calling (1979)", why: "Expanded punk's musical vocabulary to reggae and rockabilly" },
+      { name: "Black Flag", signature: "Damaged (1981)", why: "Hardcore punk template; defined 80s underground" },
+      { name: "Dead Kennedys", signature: "Fresh Fruit for Rotting Vegetables (1980)", why: "SF political hardcore; Jello Biafra's biting satire" },
+      { name: "Green Day", signature: "Dookie (1994)", why: "Brought punk back to mainstream 90s" },
+    ],
+  },
+
+  "Metal": {
+    tagline: "Amplified, distorted, aggressive rock dating to Black Sabbath in 1970. Has spawned dozens of subgenres across 5 decades.",
+    traitDetails: [
+      { trait: "Heavy distortion", detail: "High-gain amps, saturated tones — distortion is baseline, not ornament." },
+      { trait: "Power-chord foundation", detail: "Root-5th chords, often chromatic; creates aggression without tonal ambiguity." },
+      { trait: "Virtuosic musicianship", detail: "Metal values technical proficiency — fast picking, shred solos, complex drumming." },
+      { trait: "Epic/dark thematic content", detail: "Lyrics often about death, war, fantasy, rebellion — operatic scope." },
+    ],
+    artistDetails: [
+      { name: "Black Sabbath", signature: "Paranoid (1970)", why: "Invented heavy metal; downtuned, doomy, slow" },
+      { name: "Judas Priest", signature: "British Steel (1980)", why: "Defined twin-guitar heavy metal template" },
+      { name: "Iron Maiden", signature: "The Number of the Beast (1982)", why: "Epic/narrative metal; Bruce Dickinson's operatic vocals" },
+      { name: "Metallica", signature: "Master of Puppets (1986)", why: "Thrash metal peak; transitioned to mainstream with 'Black Album' 1991" },
+      { name: "Tool", signature: "Ænima (1996)", why: "Progressive metal; intellectual and art-album sensibility" },
+      { name: "System of a Down", signature: "Toxicity (2001)", why: "Nu-metal crossover; Armenian-American political metal" },
+      { name: "Ghost", signature: "Meliora (2015)", why: "Current-era theatrical doom metal; pop crossover" },
+    ],
+  },
+
+  "Thrash Metal": {
+    tagline: "Early 1980s acceleration of metal — faster, more aggressive, more technical. Bay Area + Germany epicenters.",
+    traitDetails: [
+      { trait: "Breakneck tempos", detail: "150-220 BPM; thrash distinguishes itself from traditional metal via sheer speed." },
+      { trait: "Palm-muted chugging", detail: "Right-hand palm mute on low strings + picking precision — defines the thrash rhythm guitar sound." },
+      { trait: "Complex song structures", detail: "Multi-part songs with tempo changes, instrumental sections, often 7+ minutes." },
+      { trait: "Aggressive shouted vocals", detail: "Barked, shouted, or harsh-sung — not yet death-metal growled, but not traditional metal either." },
+    ],
+    artistDetails: [
+      { name: "Metallica", signature: "Ride the Lightning (1984) / Master of Puppets (1986)", why: "Defined thrash template" },
+      { name: "Slayer", signature: "Reign in Blood (1986)", why: "Most extreme thrash; 29 minutes of pure aggression" },
+      { name: "Megadeth", signature: "Rust in Peace (1990)", why: "Most technical thrash; Dave Mustaine's ex-Metallica virtuosity" },
+      { name: "Anthrax", signature: "Among the Living (1987)", why: "Thrash-hip-hop crossover; 'I'm the Man' and Public Enemy collab" },
+      { name: "Exodus", signature: "Bonded by Blood (1985)", why: "Bay Area thrash scene originators" },
+      { name: "Kreator", signature: "Extreme Aggression (1989)", why: "German thrash leaders; Teutonic thrash scene" },
+    ],
+  },
+
+  // ── POP / K-POP ────────────────────────────────────────────────
+  "K-Pop": {
+    tagline: "Korean pop with military-precision choreography, genre-mashing production, and globally coordinated fandoms.",
+    traitDetails: [
+      { trait: "Genre-mashing within songs", detail: "A K-pop track might shift from trap to EDM to ballad in 3 minutes — rejects genre coherence as boring." },
+      { trait: "Line distribution as structure", detail: "Groups (4-9 members) divide each song — each member gets a moment, creating multiple peaks per track." },
+      { trait: "Choreo-driven production", detail: "Songs are built with dance in mind — hits land on choreo beats, vocal arrangements match body positions." },
+      { trait: "Trainee system perfectionism", detail: "Artists train 3-10 years before debut; vocals/dance are technically pristine." },
+    ],
+    artistDetails: [
+      { name: "BTS", signature: "Love Yourself: Tear (2018)", why: "First Korean act #1 on Billboard 200; global K-pop breakthrough" },
+      { name: "BLACKPINK", signature: "The Album (2020)", why: "Biggest female group globally; defined feminine K-pop aesthetic" },
+      { name: "NewJeans", signature: "Get Up (2023)", why: "Y2K-inspired Alt R&B/DnB K-pop; 4th-gen leader" },
+      { name: "LE SSERAFIM", signature: "UNFORGIVEN (2023)", why: "Y2K pop-rock K-pop; Latin-inspired production" },
+      { name: "Stray Kids", signature: "NOEASY (2021)", why: "Hip-hop-dominant K-pop; self-producing group" },
+      { name: "IVE", signature: "I've IVE (2023)", why: "Current-era pop-leaning K-pop" },
+      { name: "aespa", signature: "My World (2023)", why: "SM's metaverse concept; hyperpop-influenced K-pop" },
+    ],
+  },
+
+  // ── LATIN family ──────────────────────────────────────────────
+  "Reggaeton": {
+    tagline: "Puerto Rican dancehall-influenced urban music built on the 'dembow' rhythm. Dominates global Latin pop.",
+    traitDetails: [
+      { trait: "Dembow rhythm", detail: "Derived from Shabba Ranks' 'Dem Bow' (1990). Boom-chick-boom-chick-boom-chick-chick-chick pattern." },
+      { trait: "~90-95 BPM", detail: "Slow enough for perreo (grinding dance), fast enough to maintain energy." },
+      { trait: "Call-and-response vocals", detail: "Hype-style vocals, ad-libs, gang vocals punctuate between rap verses." },
+      { trait: "Synth bass + 808 hybrid", detail: "Low-end combines dancehall sub-bass and hip-hop 808 kick energy." },
+    ],
+    artistDetails: [
+      { name: "Daddy Yankee", signature: "Barrio Fino (2004)", why: "'Gasolina' broke reggaeton globally; the King" },
+      { name: "Don Omar", signature: "King of Kings (2006)", why: "Co-defined early-2000s commercial reggaeton era" },
+      { name: "Wisin & Yandel", signature: "Pa'l Mundo (2005)", why: "Duo who crossed reggaeton into international mainstream" },
+      { name: "J Balvin", signature: "Energía (2016)", why: "Led 2015+ reggaeton globalization wave" },
+      { name: "Bad Bunny", signature: "Un Verano Sin Ti (2022)", why: "Most-streamed artist globally 2020-23; Spanish-language dominance" },
+      { name: "Karol G", signature: "Mañana Será Bonito (2023)", why: "Biggest female Latin artist; reggaeton + bachata + trap" },
+      { name: "Rauw Alejandro", signature: "Vice Versa (2021)", why: "Futuristic R&B-reggaeton with electronic experimentation" },
+    ],
+  },
+
+  "Amapiano": {
+    tagline: "South African house music with jazzy keys and signature log-drum bass. Went from township parties to global clubs in 3 years.",
+    traitDetails: [
+      { trait: "Log drum bass", detail: "The definitive sound — sliding deep sub-bass bouncing between the root and the fifth, often on the '&' beats." },
+      { trait: "Jazzy chord stabs", detail: "Rhodes and piano stabs on the offbeat, with extended jazz harmony (7ths, 9ths, 11ths)." },
+      { trait: "Shakers + percussion layers", detail: "Dense percussion grid — shakers, congas, bongos, clap patterns create the rhythmic hypnotism." },
+      { trait: "Slow BPM (~110-115)", detail: "Slower than house, faster than hip-hop — sits in the sweet spot for dancing and groove." },
+    ],
+    artistDetails: [
+      { name: "Kabza De Small", signature: "I Am The King of Amapiano (2020)", why: "Godfather; defined sound's production template" },
+      { name: "DJ Maphorisa", signature: "Scorpion Kings (2019, w/ Kabza)", why: "Commercial driver behind many breakthrough hits" },
+      { name: "Tyla", signature: "Water (2023)", why: "Brought amapiano-pop crossover to Billboard Hot 100 globally" },
+      { name: "Focalistic", signature: "Ase Trap (2020)", why: "Amapiano's hip-hop connection" },
+      { name: "Uncle Waffles", signature: "Tanzania EP (2022)", why: "Viral DJ; TikTok and international clubs" },
+      { name: "Major League DJz", signature: "Piano City mix series", why: "Amapiano globalization; international festival circuit" },
+    ],
+  },
+
+  // ── BLUES / GOSPEL / FOLK / JAZZ-ADJACENT ────────────────────
+  "Blues": {
+    tagline: "The emotional foundation of American popular music. Born from African-American work songs, spirituals, and field hollers in the Mississippi Delta.",
+    traitDetails: [
+      { trait: "12-bar form", detail: "The standard blues structure: 4 bars of I chord, 2 of IV, 2 of I, 2 of V, 2 of I. Template for rock and R&B." },
+      { trait: "Blue notes", detail: "Flatted 3rd, 5th, and 7th — notes that sit 'between' major and minor, creating the blues' emotional ambiguity." },
+      { trait: "Call-and-response vocals", detail: "Singer calls a phrase, guitar or band responds — conversation structure inherited from African music." },
+      { trait: "Bent notes and slides", detail: "Guitar strings are bent for expressive pitch variations; slide guitar uses bottleneck for continuous glissando." },
+    ],
+    artistDetails: [
+      { name: "Robert Johnson", signature: "King of the Delta Blues Singers (1961 compilation)", why: "Delta blues archetype; Legend of the Crossroads" },
+      { name: "Muddy Waters", signature: "The Best of Muddy Waters (1958)", why: "Chicago electric blues founder; Rolling Stones named after his song" },
+      { name: "B.B. King", signature: "Live at the Regal (1965)", why: "Most influential blues guitarist; defined the 12-bar lead style" },
+      { name: "Howlin' Wolf", signature: "Moanin' in the Moonlight (1959)", why: "Chicago blues; rawest voice in the genre" },
+      { name: "John Lee Hooker", signature: "Boom Boom (1962)", why: "Boogie blues; one-chord vamp style" },
+      { name: "Stevie Ray Vaughan", signature: "Texas Flood (1983)", why: "Brought blues back to rock audiences in the 80s" },
+      { name: "Gary Clark Jr.", signature: "Blak and Blu (2012)", why: "Current-era blues torchbearer" },
+    ],
+  },
+
+  "Gospel": {
+    tagline: "Sacred music with Black American emotional intensity. Vocal power, call-and-response, organ-driven — the training ground for most soul/R&B vocalists.",
+    traitDetails: [
+      { trait: "Vocal melisma", detail: "Elaborate runs and ornamented phrasing — the gospel vocal technique all soul singers inherit." },
+      { trait: "Call-and-response", detail: "Preacher/soloist calls, congregation/choir responds. Foundational structure in African-American music." },
+      { trait: "Hammond B3 organ", detail: "The signature keyboard of Black Protestant worship; sustained chords and bass pedals." },
+      { trait: "Tambourine + handclaps", detail: "Simple percussion driving the rhythm; congregation becomes the rhythm section." },
+    ],
+    artistDetails: [
+      { name: "Mahalia Jackson", signature: "Come On Children, Let's Sing (1960)", why: "The Queen of Gospel; civil-rights movement's musical voice" },
+      { name: "Aretha Franklin", signature: "Amazing Grace (1972)", why: "Live gospel album that crossed to secular audiences; still the best-selling gospel album ever" },
+      { name: "The Staple Singers", signature: "Freedom Highway (1965)", why: "Gospel-soul bridge; civil-rights anthem creators" },
+      { name: "Kirk Franklin", signature: "The Nu Nation Project (1998)", why: "Contemporary gospel; brought hip-hop sensibilities to the genre" },
+      { name: "Fred Hammond", signature: "Spirit of David (1996)", why: "Urban contemporary gospel architect" },
+      { name: "Tasha Cobbs Leonard", signature: "Heart. Passion. Pursuit. (2017)", why: "Current-era gospel star; worship-focused contemporary" },
+    ],
+  },
+
+  "Folk": {
+    tagline: "Acoustic storytelling traditions passed orally. Protest, narrative, and community song. The roots of country, indie, and singer-songwriter music.",
+    traitDetails: [
+      { trait: "Acoustic instrumentation", detail: "Guitar, banjo, fiddle, mandolin, harmonica — the 'folk' of folk music is what ordinary people could play on ordinary instruments." },
+      { trait: "Narrative lyrics", detail: "Songs tell stories — of labor, love, protest, travel, loss. Lyric is primary; production is secondary." },
+      { trait: "Solo or small ensemble", detail: "Often solo singer with acoustic guitar, or duo/trio. Not arena-scale music." },
+      { trait: "Tradition-bearing", detail: "Folk artists reinterpret older songs as much as write new ones; 'the folk process' means songs evolve through generations." },
+    ],
+    artistDetails: [
+      { name: "Woody Guthrie", signature: "Dust Bowl Ballads (1940)", why: "Defined American folk protest tradition; 'This Land Is Your Land'" },
+      { name: "Pete Seeger", signature: "We Shall Overcome (1963)", why: "Folk's civil-rights conscience; banjo pedagogy too" },
+      { name: "Bob Dylan", signature: "The Freewheelin' Bob Dylan (1963)", why: "Transformed folk into literary songwriting; Nobel Prize in Literature" },
+      { name: "Joan Baez", signature: "Joan Baez (1960)", why: "Folk's pure voice; civil-rights movement performer" },
+      { name: "Simon & Garfunkel", signature: "Bridge Over Troubled Water (1970)", why: "Folk-pop bridge; brought folk to mass audiences" },
+      { name: "Joni Mitchell", signature: "Blue (1971)", why: "Folk's greatest songwriter; confessional template for singer-songwriters" },
+      { name: "Sufjan Stevens", signature: "Illinois (2005) / Carrie & Lowell (2015)", why: "Current-era indie folk; orchestral and intimate" },
+    ],
+  },
+
+  "Disco": {
+    tagline: "Four-on-the-floor dance music from 1970s clubs. Strings, hi-hats, lush production — invented DJ culture and remixing.",
+    traitDetails: [
+      { trait: "Four-on-the-floor kick", detail: "Kick on every quarter note at 110-130 BPM — the ancestor of house music's groove." },
+      { trait: "Open hi-hats on offbeats", detail: "The 'tss tss tss' that defines disco's swing; every eighth-note gets a hat." },
+      { trait: "Lush orchestral strings", detail: "Philadelphia International Records and Giorgio Moroder used strings and horn sections to add glamour." },
+      { trait: "Extended DJ mixes", detail: "Clubs needed longer tracks; disco pioneered the 12-inch single, the extended mix, and the DJ as artist." },
+    ],
+    artistDetails: [
+      { name: "Donna Summer", signature: "Bad Girls (1979)", why: "Queen of Disco; Moroder's 'I Feel Love' invented electronic disco" },
+      { name: "Bee Gees", signature: "Saturday Night Fever (1977)", why: "Best-selling soundtrack of the 70s; 40 million copies" },
+      { name: "Chic", signature: "C'est Chic (1978)", why: "Nile Rodgers' guitar; 'Good Times' bassline birthed 'Rapper's Delight'" },
+      { name: "Earth, Wind & Fire", signature: "All 'n All (1977)", why: "Funk-disco fusion at peak" },
+      { name: "Diana Ross", signature: "Diana (1980)", why: "Chic production; motown-disco pivot" },
+      { name: "Giorgio Moroder", signature: "From Here to Eternity (1977)", why: "Electronic disco architect; producer behind Donna Summer's biggest hits" },
+    ],
+  },
+
+  "Funk": {
+    tagline: "Groove over melody. Syncopated bass, tight horns, 'the one' downbeat. Born from James Brown, refined by Parliament-Funkadelic.",
+    traitDetails: [
+      { trait: "'The one' emphasis", detail: "James Brown's innovation — the downbeat of each bar is the anchor; rhythm players lock to it aggressively." },
+      { trait: "Syncopated bass", detail: "Bass guitar as lead instrument — plucked, popped, syncopated, often the most melodic element." },
+      { trait: "Horn stabs", detail: "Tight 3-5 note horn hits punctuate the groove; often a James Brown-style trombone + sax combo." },
+      { trait: "Clavinet + wah guitar", detail: "Signature keyboard (Hohner Clavinet via wah pedal) and chicken-scratch wah-pedal guitar." },
+    ],
+    artistDetails: [
+      { name: "James Brown", signature: "Live at the Apollo (1963) / Sex Machine (1970)", why: "Invented funk; the Godfather of Soul moved music from changes to groove" },
+      { name: "Parliament-Funkadelic", signature: "Mothership Connection (1975)", why: "George Clinton's P-Funk cosmology; template for hip-hop sampling" },
+      { name: "Sly and the Family Stone", signature: "There's a Riot Goin' On (1971)", why: "Psych-funk crossover; integrated band" },
+      { name: "Stevie Wonder", signature: "Innervisions (1973)", why: "Funk in service of social commentary and songcraft" },
+      { name: "Tower of Power", signature: "Tower of Power (1973)", why: "East Bay grease; tightest horn section in funk" },
+      { name: "Prince", signature: "1999 (1982) / Sign o' the Times (1987)", why: "One-man-band funk auteur across 40 years" },
+      { name: "Bruno Mars", signature: "24K Magic (2016)", why: "Current-era funk revival; Uptown Funk ubiquity" },
+    ],
+  },
+
+  "Reggae": {
+    tagline: "Jamaican music evolved from ska and rocksteady. Slow tempo, off-beat guitar accents, heavy bass, spiritual lyrical content.",
+    traitDetails: [
+      { trait: "The 'skank' guitar pattern", detail: "Offbeat guitar chops on beats 2 and 4 — reggae's defining rhythmic signature." },
+      { trait: "Heavy, melodic bass", detail: "Bass is often the lead instrument; deep sub frequencies carry tracks." },
+      { trait: "One drop drumming", detail: "Drum emphasis on beat 3 with kick; creates reggae's distinctive laid-back feel." },
+      { trait: "Rastafarian themes", detail: "Lyrics often center on Rasta spirituality, Babylon (oppression), Zion, and Jah." },
+    ],
+    artistDetails: [
+      { name: "Bob Marley", signature: "Exodus (1977) / Legend (1984 compilation)", why: "The defining face of reggae; globalized the genre" },
+      { name: "Peter Tosh", signature: "Legalize It (1976)", why: "Militant reggae; Wailers co-founder" },
+      { name: "Jimmy Cliff", signature: "The Harder They Come (1972)", why: "Reggae's first crossover; soundtrack that introduced the genre to the world" },
+      { name: "Burning Spear", signature: "Marcus Garvey (1975)", why: "Roots reggae archetype; Black nationalist themes" },
+      { name: "Toots and the Maytals", signature: "Funky Kingston (1973)", why: "Originated the term 'reggae'; church-influenced soulful vocals" },
+      { name: "Lee 'Scratch' Perry", signature: "Super Ape (1976)", why: "Producer-auteur; pioneered dub music" },
+    ],
+  },
+
+  "Dancehall": {
+    tagline: "Jamaica's 1980s-and-after evolution of reggae — digital, faster, MC-driven. The Caribbean's answer to hip-hop.",
+    traitDetails: [
+      { trait: "Digital riddims", detail: "Pre-recorded instrumental tracks that multiple vocalists record over — 'riddim' culture is dancehall's organizing principle." },
+      { trait: "MC/deejay-led vocals", detail: "Fast-spoken Jamaican patois rather than reggae's sung vocals; dancehall MC is the precursor to the rapper." },
+      { trait: "Bigger basslines", detail: "Sub-bass drops that shook soundsystems; cross-pollinated directly into reggaeton's dembow." },
+      { trait: "Higher BPM (~95-105)", detail: "Faster than reggae's 70-80 BPM; designed for dancefloor energy." },
+    ],
+    artistDetails: [
+      { name: "Shabba Ranks", signature: "As Raw As Ever (1991)", why: "First international dancehall superstar; 'Dem Bow' source rhythm" },
+      { name: "Sean Paul", signature: "Dutty Rock (2002)", why: "Dancehall's biggest global crossover" },
+      { name: "Beenie Man", signature: "Art and Life (2000)", why: "King of Dancehall; 90s-2000s dominance" },
+      { name: "Vybz Kartel", signature: "Kingston Story (2011)", why: "Most influential modern dancehall artist despite imprisonment" },
+      { name: "Popcaan", signature: "Forever (2018)", why: "Current-era dancehall leader; Drake collaborator" },
+      { name: "Koffee", signature: "Rapture EP (2019)", why: "Youngest Grammy winner for Best Reggae Album" },
+    ],
+  },
+
+  // ═══════════════════ TIER C — 37 NICHE SUBGENRES ═════════════════════
+  // 3-4 artists each, focused trait details. These fill out the long tail
+  // for users exploring deeper subgenre territory.
+
+  // ── HIP-HOP NICHES ──────────────────────────────────────────────
+  "Jersey Drill": {
+    tagline: "NY drill mutation using the Jersey Club kick pattern. Faster, bouncier, more danceable than Brooklyn drill.",
+    traitDetails: [
+      { trait: "Jersey Club kick pattern", detail: "The signature 'bed squeak' / five-kick syncopated pattern from Jersey Club layered under drill content." },
+      { trait: "Faster tempo (~140-150 BPM)", detail: "Quicker than standard drill (~140), dance-floor-ready rather than street-reportage-paced." },
+      { trait: "Melodic hook emphasis", detail: "Jersey drill pairs drill content with more singable hooks; less monotone than NY drill." },
+    ],
+    artistDetails: [
+      { name: "Bandmanrill", signature: "Bandemic (2022)", why: "Defined Jersey drill's sound" },
+      { name: "Sha EK", signature: "Face of the Pain (2022)", why: "Bridged Jersey drill with Bronx drill" },
+      { name: "DThang", signature: "Jersey scene mixtapes", why: "Jersey drill's early architect" },
+      { name: "MCVertt", signature: "2022-2023 viral tracks", why: "Producer behind many key Jersey drill hits" },
+    ],
+  },
+
+  "Lo-Fi Hip-Hop": {
+    tagline: "Chilled, beat-loop hip-hop designed for studying and ambient listening. Born from J Dilla, weaponized by YouTube 24/7 streams.",
+    traitDetails: [
+      { trait: "Dusty, warm production", detail: "Vinyl crackle, tape hiss, low-pass filtered samples — deliberately lo-fi aesthetic." },
+      { trait: "Jazz sample foundation", detail: "Chopped jazz piano, saxophone, or Rhodes samples, usually in minor keys." },
+      { trait: "Instrumental / no vocals", detail: "Almost always instrumental; meant for background listening, not attention." },
+      { trait: "J Dilla drunken-drum feel", detail: "Slightly off-grid quantization gives drums a human, swaying feel." },
+    ],
+    artistDetails: [
+      { name: "J Dilla", signature: "Donuts (2006)", why: "The spiritual father of the entire aesthetic" },
+      { name: "Nujabes", signature: "Modal Soul (2005)", why: "Japanese producer; 'Samurai Champloo' soundtrack defined chill jazz-hop" },
+      { name: "Joji (early)", signature: "BALLADS 1 (2018)", why: "Pre-pop lo-fi era; 'Slow Dancing in the Dark' crossover" },
+      { name: "idealism", signature: "Lonely Hearts (2018)", why: "Defined the chillhop-YouTube-stream aesthetic" },
+    ],
+  },
+
+  "Memphis Rap": {
+    tagline: "Early-90s Memphis scene known for grimy cassette production, horrorcore themes, and slowed-down dark aesthetics. Spawned phonk decades later.",
+    traitDetails: [
+      { trait: "Cassette-tape saturation", detail: "Recorded direct to cassette with heavy tape hiss and wobble — the lo-fi aesthetic was necessity, then became identity." },
+      { trait: "Horrorcore themes", detail: "Occult imagery, violent storytelling, Satanic themes — unusual darkness for early-90s rap." },
+      { trait: "Slow BPM + syrupy flow", detail: "Tempos 70-80 BPM, often slowed further via chopped-and-screwed technique borrowed from Houston." },
+      { trait: "808 cowbell", detail: "The distorted 808 cowbell hit is the signature percussion — later became phonk's core element." },
+    ],
+    artistDetails: [
+      { name: "Three 6 Mafia", signature: "Mystic Stylez (1995)", why: "Memphis rap's most influential group; Oscar winners" },
+      { name: "DJ Screw", signature: "Chapter 12: Headed to the Paper (1995)", why: "Houston-Memphis bridge; invented chopped-and-screwed" },
+      { name: "Lord Infamous", signature: "Three 6 Mafia albums", why: "Pioneer of chopper flow; solo work is phonk's primary sample source" },
+      { name: "Project Pat", signature: "Mista Don't Play (2001)", why: "Most commercial Memphis rap success" },
+    ],
+  },
+
+  "Crunk": {
+    tagline: "Atlanta and Memphis 2000s party rap — shouted hype vocals, heavy 808s, chant hooks. Precursor to modern trap.",
+    traitDetails: [
+      { trait: "Shouted hype vocals", detail: "Group chants, call-and-response, 'yeah!' ad-libs — designed for club energy, not lyricism." },
+      { trait: "Heavy 808 kicks", detail: "Booming 808-driven drums; crunk was among the first to center the 808 over sampled drums." },
+      { trait: "Repetitive chant hooks", detail: "Hooks are short, chant-based phrases meant for crowd participation." },
+      { trait: "~100 BPM Southern feel", detail: "Mid-tempo with heavy half-time feel; designed for the 'crunk' (hyped up) club environment." },
+    ],
+    artistDetails: [
+      { name: "Lil Jon & the East Side Boyz", signature: "Kings of Crunk (2002)", why: "Defined the genre; Lil Jon produced most of its biggest hits" },
+      { name: "Three 6 Mafia", signature: "Most Known Unknown (2005)", why: "Crossed Memphis rap into crunk-adjacent mainstream" },
+      { name: "Ying Yang Twins", signature: "United State of Atlanta (2005)", why: "'Get Low' and 'Salt Shaker' commercial apex" },
+      { name: "Crime Mob", signature: "Crime Mob (2004)", why: "Young crunk female voices; 'Knuck If You Buck'" },
+    ],
+  },
+
+  "Conscious Hip-Hop": {
+    tagline: "Hip-hop prioritizing social, political, and philosophical content over party/street narratives. A value system as much as a sound.",
+    traitDetails: [
+      { trait: "Political/social themes", detail: "Lyrics about racism, economic inequality, history, activism — hip-hop as journalism and education." },
+      { trait: "Dense lyrical references", detail: "Allusions to Black intellectual history, literature, civil rights — requires unpacking." },
+      { trait: "Jazz/soul production", detail: "Often pairs thoughtful lyrics with warm organic production; rejects the commercial-beat aesthetic." },
+      { trait: "Album-oriented approach", detail: "Full-length concept albums over single-chasing — form matches the serious content." },
+    ],
+    artistDetails: [
+      { name: "Public Enemy", signature: "It Takes a Nation of Millions (1988)", why: "Originated conscious rap's confrontational political edge" },
+      { name: "A Tribe Called Quest", signature: "The Low End Theory (1991)", why: "Afrocentric jazz-rap; defined conscious rap's cooler side" },
+      { name: "Common", signature: "Be (2005)", why: "Kanye-produced; conscious rap's most commercially accessible era" },
+      { name: "Kendrick Lamar", signature: "To Pimp a Butterfly (2015)", why: "Conscious rap's 21st-century apex; Pulitzer winner" },
+    ],
+  },
+
+  "Rage Rap": {
+    tagline: "Trap mutation with aggressive stereo-widened synths, distorted 808s, and screamed Auto-Tune. Playboi Carti's 'Whole Lotta Red' is the urtext.",
+    traitDetails: [
+      { trait: "Stereo-widened synth hooks", detail: "EDM/future-bass-influenced lead synths, wide and loud, looped in short phrases — often derived from Pi'erre Bourne / F1lthy type-beats." },
+      { trait: "Distorted, heavy 808s", detail: "808 bass pushed into saturation/clipping for weight; often elastic and bouncy like rubber." },
+      { trait: "Screamed Auto-Tune vocals", detail: "Heavily processed, often clipped or distorted vocals; influenced by Playboi Carti's vocal experimentation." },
+      { trait: "Video-game aesthetics", detail: "Synth patches reminiscent of 1990s game soundtracks and trance — futuristic/electronic energy." },
+    ],
+    artistDetails: [
+      { name: "Playboi Carti", signature: "Whole Lotta Red (2020) / MUSIC (2025)", why: "Defined rage rap; WLR is the genre's founding document" },
+      { name: "Ken Carson", signature: "A Great Chaos (2023) / More Chaos (2025)", why: "Current-era leader; More Chaos #1 Billboard 200" },
+      { name: "Destroy Lonely", signature: "No Stylist (2022) / If Looks Could Kill (2023)", why: "Opium label; atmospheric, fashion-forward rage" },
+      { name: "Yeat", signature: "2 Alive (2022) / LYFESTYLE (2024)", why: "Dark, bell-heavy rage variant; 2024 Billboard #1" },
+      { name: "Trippie Redd", signature: "Miss the Rage (2021, w/ Carti)", why: "Co-named and popularized the genre" },
+    ],
+  },
+
+  "Plugg": {
+    tagline: "Atlanta 2016-2018 beat subgenre — bright plugg synths, melodic loops, pluggnb offshoot. Precursor to rage rap.",
+    traitDetails: [
+      { trait: "Bright plugg synths", detail: "Major-key pluck synths and sparkly arpeggios — happier than trap, more melodic than drill." },
+      { trait: "Light trap drums", detail: "Trap hi-hat patterns and 808s, but mixed lower — the synths dominate the arrangement." },
+      { trait: "Short looped melodic phrases", detail: "4-8 bar melodic loops that repeat throughout; producer-centric beats." },
+      { trait: "PluggnB variant", detail: "Softer melodic vocals over plugg production — became its own TikTok-era subgenre." },
+    ],
+    artistDetails: [
+      { name: "MexikoDro", signature: "Plugg beat tapes (2016-)", why: "Originated the 'plugg' beat sound in Atlanta" },
+      { name: "Summrs", signature: "Summrs mixtapes (2020-)", why: "PluggnB pioneer; TikTok-era melodic plugg" },
+      { name: "Autumn!", signature: "Golden Plugg (2021)", why: "Pushed plugg/pluggnb into streaming mainstream" },
+      { name: "Kankan", signature: "RR (2021)", why: "Bridged plugg with rage; Dallas scene leader" },
+    ],
+  },
+
+  "French Rap": {
+    tagline: "France's hip-hop tradition — from 1990s East Coast-style crews to 2020s melodic cloud rap. One of the largest non-English rap scenes globally.",
+    traitDetails: [
+      { trait: "French-language wordplay", detail: "Verlan slang, rich internal rhymes — French rap takes lyrical craft seriously." },
+      { trait: "Cinematic production", detail: "French producers favor lush strings, piano, cinematic textures — heavy Ennio Morricone influence historically." },
+      { trait: "Afro-French fusion", detail: "Many artists draw on West/North African heritage; fuses with Afrobeats, raï, gnawa." },
+      { trait: "Storytelling/street narrative", detail: "Banlieue (suburb) realism; French rap carries strong social-commentary tradition." },
+    ],
+    artistDetails: [
+      { name: "IAM", signature: "L'École du Micro d'Argent (1997)", why: "Marseille rap pioneers; defined 90s French hip-hop" },
+      { name: "Booba", signature: "Ouest Side (2006)", why: "French rap's biggest commercial figure; Kaaris rivalry era" },
+      { name: "Damso", signature: "Ipséité (2017)", why: "Belgian-Congolese; brought French rap to wider European mainstream" },
+      { name: "Ninho", signature: "Destin (2019)", why: "Most-streamed French rapper of his era" },
+      { name: "PNL", signature: "Deux frères (2019)", why: "Cloud-rap French duo; visual aesthetic iconic" },
+    ],
+  },
+
+  "Grime": {
+    tagline: "London 2000s 140-BPM electronic-rap hybrid — descended from UK garage, parallel to dubstep. Fast, urgent, bar-focused.",
+    traitDetails: [
+      { trait: "140 BPM 2-step foundation", detail: "Faster than hip-hop; descended from UK garage's 2-step rhythm and broken-beat patterns." },
+      { trait: "Skippy, fragmented drums", detail: "Not four-on-the-floor; syncopated kicks and snares with lots of space and swing." },
+      { trait: "Square-wave synth basslines", detail: "Raw, distorted sub-basslines — often from FruityLoops / Reason synth presets." },
+      { trait: "Fast bar-heavy MCing", detail: "MCs trade 8-bar verses rapidly over pirate-radio-style sets; lyrical skill is the currency." },
+    ],
+    artistDetails: [
+      { name: "Dizzee Rascal", signature: "Boy in da Corner (2003)", why: "Grime's first Mercury Prize winner; genre-defining debut" },
+      { name: "Wiley", signature: "Treddin' on Thin Ice (2004)", why: "The Godfather of Grime; invented 'Eskibeat' production style" },
+      { name: "Skepta", signature: "Konnichiwa (2016)", why: "Grime's 2010s revival leader; Drake endorsement era" },
+      { name: "Stormzy", signature: "Gang Signs & Prayer (2017)", why: "Took grime to #1 on UK Albums Chart; Glastonbury headliner" },
+      { name: "Kano", signature: "Made in the Manor (2016)", why: "East London grime veteran; kept the genre literary" },
+    ],
+  },
+
+  "Latin Rap": {
+    tagline: "Spanish-language hip-hop from Latin America and the US Latino diaspora. Distinct from Latin Trap — this is pure rap in Spanish.",
+    traitDetails: [
+      { trait: "Spanish-language lyricism", detail: "Bilingual wordplay, regional slang — rap craft in Spanish linguistic tradition." },
+      { trait: "Boom-bap sensibility", detail: "Many Latin rap scenes honor 90s NY hip-hop structurally — sample-based, beat-driven." },
+      { trait: "Social/political content", detail: "Often socially conscious; Latin American political history informs many artists' themes." },
+      { trait: "Regional distinctiveness", detail: "Mexican, Chilean, Argentine, Puerto Rican, and US Chicano scenes each have distinct sounds." },
+    ],
+    artistDetails: [
+      { name: "Vico C", signature: "Hispanic Soul (1991)", why: "The Philosopher of Rap; Puerto Rican pioneer" },
+      { name: "Control Machete", signature: "Mucho Barato (1996)", why: "Mexican rap icons; Monterrey scene architects" },
+      { name: "Calle 13", signature: "Entren Los Que Quieran (2010)", why: "Puerto Rican duo; Latin rap's most Grammy-awarded act" },
+      { name: "Nach", signature: "Un día en Suburbia (2008)", why: "Spain's lyrical rap standard-bearer" },
+    ],
+  },
+
+  "Latin Trap": {
+    tagline: "Spanish-language trap from Puerto Rico and Latin diaspora. Fuses Atlanta trap production with Spanish vocals. Emerged ~2016.",
+    traitDetails: [
+      { trait: "Trap production in Spanish", detail: "808 bass, hi-hat triplets, dark minor-key pads — with Spanish-language vocals over the top." },
+      { trait: "Reggaeton adjacency", detail: "Many Latin trap artists also do reggaeton; the two genres cross-pollinate heavily." },
+      { trait: "Melodic sing-rap hybrid", detail: "Vocals often Auto-Tuned and melodic, similar to US melodic rap." },
+      { trait: "Caribbean rhythmic sensibility", detail: "Even when using trap drums, phrasing and groove often reference dembow and Afro-Caribbean patterns." },
+    ],
+    artistDetails: [
+      { name: "Bad Bunny", signature: "X 100pre (2018)", why: "Latin trap's biggest crossover; eventually went pure reggaeton" },
+      { name: "Anuel AA", signature: "Real Hasta la Muerte (2018)", why: "Defined modern Latin trap's street edge" },
+      { name: "Farruko", signature: "Gangalee (2019)", why: "Puerto Rican Latin trap veteran" },
+      { name: "Ozuna", signature: "Odisea (2017)", why: "Melodic Latin trap; bridged trap and reggaeton" },
+    ],
+  },
+
+  // ── R&B NICHES ──────────────────────────────────────────────────
+  "New Jack Swing": {
+    tagline: "Late 1980s-early 90s R&B + hip-hop + funk fusion. Teddy Riley's invention — swing-feel drums, synth bass, rapped bridges.",
+    traitDetails: [
+      { trait: "Swing-feel drum programming", detail: "Quantized but swung drum machines (typically Roland R-8 or Akai MPC) — rap's precision with R&B groove." },
+      { trait: "Synth bass + keyboard stabs", detail: "Synthy 80s production — Minimoog bass, DX7 stabs, often replacing traditional R&B band instrumentation." },
+      { trait: "Rapped bridges", detail: "Middle-8s often feature a rapped verse — the first consistent R&B-rap hybrid format." },
+      { trait: "Shuffle hi-hats", detail: "16th-note hi-hat patterns with triplet swing — defines the 'new jack' groove." },
+    ],
+    artistDetails: [
+      { name: "Teddy Riley", signature: "Guy (1988, as Guy) / MJ's Dangerous (1991, co-produced)", why: "Invented the genre; his production defined the sound" },
+      { name: "Bobby Brown", signature: "Don't Be Cruel (1988)", why: "First New Jack Swing pop breakthrough" },
+      { name: "Bell Biv DeVoe", signature: "Poison (1990)", why: "Defined the boy-group-plus-rap template" },
+      { name: "Keith Sweat", signature: "Make It Last Forever (1987)", why: "Earliest new jack swing; Sweat's solo debut pre-dates the genre's naming" },
+    ],
+  },
+
+  "Auto-Tune R&B": {
+    tagline: "R&B that uses Auto-Tune as creative tool rather than pitch corrector. T-Pain invented the style; Future perfected it for rap.",
+    traitDetails: [
+      { trait: "Auto-Tune as expressive instrument", detail: "Hard-corrected pitch settings create robotic quality; turned 'imperfection' into signature aesthetic." },
+      { trait: "Exaggerated pitch slides", detail: "Vocals slide dramatically between notes; Auto-Tune intensifies the slide, creating the 'wobble' effect." },
+      { trait: "Processed layering", detail: "Often multiple Auto-Tuned vocal takes stacked; creates choir-of-robots texture." },
+      { trait: "Emotional vulnerability", detail: "Despite the robotic processing, content is often raw and emotionally direct — machine voice, human heart." },
+    ],
+    artistDetails: [
+      { name: "T-Pain", signature: "Rappa Ternt Sanga (2005)", why: "Popularized Auto-Tune as creative tool" },
+      { name: "Future", signature: "Pluto 3D (2012)", why: "Defined the Atlanta trap-soul Auto-Tune aesthetic" },
+      { name: "Lil Durk", signature: "Almost Healed (2023)", why: "Current-era melodic rap Auto-Tune; drill-adjacent" },
+      { name: "Kanye West", signature: "808s & Heartbreak (2008)", why: "Brought Auto-Tune to artistic high-art rap context" },
+    ],
+  },
+
+  // ── POP NICHES ──────────────────────────────────────────────────
+  "Hyperpop": {
+    tagline: "Maximalist, glitchy, digitally-exaggerated pop from the PC Music label and 100 gecs era. A. G. Cook & SOPHIE = architects. Charli XCX = queen.",
+    traitDetails: [
+      { trait: "Maximalist production", detail: "Wall-of-sound, distorted, pushed past the limit — deliberately 'too much' in every dimension." },
+      { trait: "Pitch-shifted vocals", detail: "Vocals sped up, slowed down, Auto-Tuned to mechanical perfection or beyond." },
+      { trait: "Bubblegum-bass + industrial fusion", detail: "Saccharine melodies over heavy industrial/electronic production — beauty and abrasion at once." },
+      { trait: "Queer/Gen Z internet aesthetic", detail: "Emerged from Alt TikTok, queer Discord servers, SoundCloud; internet-native in ways other genres aren't." },
+    ],
+    artistDetails: [
+      { name: "SOPHIE", signature: "Oil of Every Pearl's Un-Insides (2018)", why: "Genre-defining producer; made industrial hyperpop before it had a name" },
+      { name: "A. G. Cook", signature: "7G (2020) / Apple (2020) / Britpop (2024)", why: "PC Music founder; hyperpop architect" },
+      { name: "Charli XCX", signature: "Pop 2 (2017) / how i'm feeling now (2020) / Brat (2024)", why: "Hyperpop's biggest crossover; Brat defined 2024" },
+      { name: "100 gecs", signature: "1000 gecs (2019)", why: "'Money Machine' viral breakthrough; Gen Z hyperpop template" },
+      { name: "Charli XCX protégés (Dorian Electra, Hannah Diamond)", signature: "Various PC Music releases", why: "Defined the visual + sonic PC Music aesthetic" },
+    ],
+  },
+
+  "Bedroom Pop": {
+    tagline: "Intimate, lo-fi pop recorded in bedrooms — DIY-Gen-Z aesthetic born on SoundCloud and Bandcamp in the 2010s.",
+    traitDetails: [
+      { trait: "Home-recorded aesthetic", detail: "Deliberately amateur production values — tape hiss, room tone, single mic vocals — honest and intimate." },
+      { trait: "Soft, whispered vocals", detail: "Close-mic'd, unprocessed vocals — conversational rather than performative." },
+      { trait: "Acoustic + lo-fi electronic hybrid", detail: "Guitar + GarageBand drum machines; lo-fi production shared between indie folk and indie electronic." },
+      { trait: "Diaristic lyrics", detail: "Personal, introspective songwriting — often about mental health, young love, boredom." },
+    ],
+    artistDetails: [
+      { name: "Clairo", signature: "Immunity (2019)", why: "Viral 'Pretty Girl' defined bedroom pop aesthetic" },
+      { name: "Rex Orange County", signature: "Pony (2019)", why: "UK bedroom pop; lush acoustic-electronic hybrid" },
+      { name: "Mac DeMarco", signature: "Salad Days (2014)", why: "Jangly-slacker bedroom pop; older-gen antecedent" },
+      { name: "Cuco", signature: "Para Mí (2019)", why: "Latinx bedroom pop; bilingual indie" },
+    ],
+  },
+
+  "City Pop": {
+    tagline: "1970s-80s Japanese urban pop — funk, disco, jazz-fusion played by session musicians. Went global via YouTube algorithm in the late 2010s.",
+    traitDetails: [
+      { trait: "Session-musician precision", detail: "Tight, studio-clean playing — often from Japan's top session players (funk/jazz musicians)." },
+      { trait: "Funk and disco DNA", detail: "Groove-driven rhythm sections; funk bass and hi-hat disco patterns dominate." },
+      { trait: "Jazz chord vocabulary", detail: "9th, 11th, 13th chord extensions — more harmonically sophisticated than 80s US pop." },
+      { trait: "Urban/consumerist themes", detail: "Lyrics about Tokyo nightlife, driving, loneliness, consumer culture — pre-digital melancholy." },
+    ],
+    artistDetails: [
+      { name: "Mariya Takeuchi", signature: "Variety (1984)", why: "'Plastic Love' became city pop's viral breakout single (30+ years late)" },
+      { name: "Tatsuro Yamashita", signature: "For You (1982)", why: "City pop's most influential male artist" },
+      { name: "Anri", signature: "Timely!! (1983)", why: "Summer city pop standard-bearer" },
+      { name: "Toshiki Kadomatsu", signature: "Weekend Fly to the Sun (1982)", why: "Jazz-funk city pop; session-musician peak" },
+    ],
+  },
+
+  "Dark Pop": {
+    tagline: "Minor-key, atmospheric, brooding pop — Lana Del Rey's invention becomes Billie Eilish's template. Melancholy as pop vocabulary.",
+    traitDetails: [
+      { trait: "Minor-key melodic tendency", detail: "Minor scales and modal interchange dominant; major-key choruses are rare." },
+      { trait: "Whispered/breathy vocals", detail: "Close-mic'd, unprocessed vocal intimacy — whispered more often than belted." },
+      { trait: "Sparse production with bass emphasis", detail: "Bass is often the loudest element; space between sounds creates unease." },
+      { trait: "Melancholic lyrical register", detail: "Themes of depression, toxic relationships, death, self-destructive romance." },
+    ],
+    artistDetails: [
+      { name: "Lana Del Rey", signature: "Born to Die (2012)", why: "Originated the dark pop template; Hollywood sadness as aesthetic" },
+      { name: "Billie Eilish", signature: "When We All Fall Asleep, Where Do We Go? (2019)", why: "Dark pop's Gen Z face; whispered-pop world domination" },
+      { name: "Halsey", signature: "Badlands (2015)", why: "Alt-pop dark sensibility bridging indie and pop" },
+      { name: "Melanie Martinez", signature: "Cry Baby (2015)", why: "Dark theatrical pop; concept-album aesthetic" },
+    ],
+  },
+
+  "J-Pop": {
+    tagline: "Japanese pop umbrella — idol groups, city pop descendants, anime themes, visual kei adjacents. Huge domestic industry, selective export.",
+    traitDetails: [
+      { trait: "Genre-mashing within songs", detail: "Like K-pop, J-pop tracks shift styles mid-song; rejects genre coherence." },
+      { trait: "Idol/group systems", detail: "Large groups (AKB48, Morning Musume) with member rotations; song-and-dance as product." },
+      { trait: "Anime tie-in tradition", detail: "Many J-pop hits are anime opening themes; anime culture drives domestic hit-making." },
+      { trait: "Hyper-polished production", detail: "Japanese studios prize technical perfection; J-pop rarely sounds rough." },
+    ],
+    artistDetails: [
+      { name: "Utada Hikaru", signature: "First Love (1999)", why: "Best-selling J-pop album ever; bilingual international crossover" },
+      { name: "Ado", signature: "One Piece Film Red soundtrack (2022)", why: "Vocaloid-influenced J-pop vocalist; anonymous superstar" },
+      { name: "Kenshi Yonezu", signature: "STRAY SHEEP (2020)", why: "Current-era J-pop auteur; biggest male solo artist" },
+      { name: "Yoasobi", signature: "The Book (2021)", why: "Light-novel-adapted J-pop duo; 'Yoru ni Kakeru' viral globally" },
+    ],
+  },
+
+  // ── ELECTRONIC NICHES ───────────────────────────────────────────
+  "Afro House": {
+    tagline: "African-flavored house — percussion-heavy, Afrobeats/African-language vocals, tribal drum loops. Black Coffee is the face.",
+    traitDetails: [
+      { trait: "African percussion layering", detail: "Djembe, conga, shakere, talking drum patterns layered over house drums." },
+      { trait: "Vocal samples from African languages", detail: "Zulu, Yoruba, and other language vocal snippets used as both instrument and hook." },
+      { trait: "Deeper BPM (118-125)", detail: "Sits between deep house and regular house tempo; meditative, slow-build." },
+      { trait: "Spiritual/tribal atmosphere", detail: "Pads, bells, nature sounds create ceremonial feel rather than peak-time intensity." },
+    ],
+    artistDetails: [
+      { name: "Black Coffee", signature: "Subconsciously (2021)", why: "2022 Grammy; defined Afro house globally" },
+      { name: "Culoe De Song", signature: "The Journey (2011)", why: "South African Afro house originator" },
+      { name: "Caiiro", signature: "The Akan (2020)", why: "Tribal Afro house emotional epicenter" },
+      { name: "Da Capo", signature: "Return of Dacapo (2019)", why: "South African Afro house prolific producer" },
+    ],
+  },
+
+  "Tech-House": {
+    tagline: "House + techno hybrid — 4-on-the-floor like house, darker/grittier like techno. Became the dominant festival-club sound in the 2020s.",
+    traitDetails: [
+      { trait: "124-128 BPM", detail: "Slightly faster than classic house; slightly slower than peak techno." },
+      { trait: "Tight minimalist arrangement", detail: "Fewer elements than full house; closer to minimal techno's restraint." },
+      { trait: "Vocal chop hooks", detail: "Short pitched vocal chops used as instrumental hooks — 'Fisher style' defined the sub-genre's 2020s era." },
+      { trait: "Groove-first rhythmic complexity", detail: "Syncopated bass/percussion interplay; dance-floor-driven rather than trance-euphoric." },
+    ],
+    artistDetails: [
+      { name: "Fisher", signature: "Losing It (2018)", why: "Australian producer; defined 2020s tech-house sound" },
+      { name: "Chris Lake", signature: "Free Treatment (2018)", why: "UK tech-house; 'Turn Off The Lights' era" },
+      { name: "Hot Since 82", signature: "Eight (2017)", why: "UK tech-house veteran; Knee Deep in Sound label" },
+      { name: "Patrick Topping", signature: "Trick label releases", why: "UK tech-house staple; groove-focused sets" },
+    ],
+  },
+
+  "Minimal Techno": {
+    tagline: "Techno stripped to essentials — repetitive, patient, often 8-12 minute tracks. Richie Hawtin's invention, Berlin's scene.",
+    traitDetails: [
+      { trait: "Extreme minimalism", detail: "Often just kick + hi-hat + one synth element + occasional FX. Everything else is stripped." },
+      { trait: "8-12 minute track length", detail: "Tracks evolve glacially; one small change every 2-4 bars over long duration." },
+      { trait: "Subtle percussion variation", detail: "Hi-hat patterns and shaker elements carry rhythmic interest; micro-changes are features." },
+      { trait: "Clinical production values", detail: "Dry, clean, uncolored production — minimalism rejects the 'warm analog' aesthetic." },
+    ],
+    artistDetails: [
+      { name: "Richie Hawtin / Plastikman", signature: "Consumed (1998)", why: "Minimal techno's founding document" },
+      { name: "Robert Hood", signature: "Minimal Nation (1994)", why: "Detroit minimal techno; defined the original sound" },
+      { name: "Ricardo Villalobos", signature: "Alcachofa (2003)", why: "Chilean-German; pushed minimal into 10+ minute territory" },
+      { name: "Dubfire", signature: "A Quiet Place (2006)", why: "Deep Dish member who went minimal solo" },
+    ],
+  },
+
+  "UK Garage": {
+    tagline: "Late 1990s UK dance music — 2-step drums, pitched-up soulful vocals, swung basslines. The direct ancestor of grime and dubstep.",
+    traitDetails: [
+      { trait: "2-step rhythm", detail: "Skippy, broken drum pattern with no kick on beat 3 — the signature UK garage groove." },
+      { trait: "Pitched-up vocals", detail: "Female soul vocals sped up; creates the genre's distinctive chipmunk-like timbre." },
+      { trait: "Swung basslines", detail: "Syncopated, swung bass figures — often filtered or with portamento slides." },
+      { trait: "~130 BPM", detail: "Sweet spot between house and drum & bass; dancefloor-ready but breakbeat-adjacent." },
+    ],
+    artistDetails: [
+      { name: "MJ Cole", signature: "Sincere (2000)", why: "UK garage's most musical producer; Mercury Prize nomination" },
+      { name: "Artful Dodger", signature: "It's All About the Stragglers (2000)", why: "'Re-Rewind' was the chart-conquering garage moment" },
+      { name: "Todd Edwards", signature: "UK garage remix catalog", why: "NJ producer who defined UK garage's vocal-chop aesthetic" },
+      { name: "So Solid Crew", signature: "They Don't Know (2001)", why: "Bridged UK garage into grime; 21-person collective" },
+    ],
+  },
+
+  "Jungle": {
+    tagline: "Early 1990s UK breakbeat dance music — sped-up Amen breaks + sub-bass + reggae sample culture. Proto-drum-and-bass.",
+    traitDetails: [
+      { trait: "Amen/Apache break chopping", detail: "Classic drum breaks chopped, reversed, time-stretched — jungle pioneered the chopped-breakbeat aesthetic." },
+      { trait: "160-180 BPM breakbeats", detail: "Doubled from hip-hop tempos; drum hits feel urgent and propulsive." },
+      { trait: "Ragga/reggae samples", detail: "Heavy use of dancehall and reggae vocal samples; jungle's cultural roots are Afro-Caribbean UK." },
+      { trait: "Deep sub-bass", detail: "Half-time basslines (~80 BPM feel) below the breakneck drums — creates jungle's bi-tempo effect." },
+    ],
+    artistDetails: [
+      { name: "Goldie", signature: "Timeless (1995)", why: "Made jungle a 'serious' art form; defined the 'intelligent' strain" },
+      { name: "Shy FX", signature: "Original Nuttah (1994, w/ UK Apachi)", why: "Defining ragga-jungle track of all time" },
+      { name: "A Guy Called Gerald", signature: "Black Secret Technology (1995)", why: "Darker, more experimental jungle direction" },
+      { name: "LTJ Bukem", signature: "Logical Progression series (1996+)", why: "Ambient/atmospheric jungle direction" },
+    ],
+  },
+
+  "Breakbeat": {
+    tagline: "Umbrella term for dance music built on sampled drum breaks rather than 4-on-the-floor. Spawned jungle, big beat, nu-skool breaks.",
+    traitDetails: [
+      { trait: "Sampled break foundation", detail: "Drum breaks from funk/soul records (Amen, Apache, Funky Drummer) chopped and looped." },
+      { trait: "Syncopated drum patterns", detail: "Irregular kick placement — unlike 4-on-the-floor's regularity, breakbeat emphasizes groove complexity." },
+      { trait: "Variable BPM range", detail: "Can be 120 (big beat) or 140 (nu-skool breaks) or 160+ (jungle) — tempo is less defining than rhythm shape." },
+      { trait: "Bass-driven low end", detail: "Sub-bass and synth bass carry tracks; often more prominent than the drums themselves." },
+    ],
+    artistDetails: [
+      { name: "The Chemical Brothers", signature: "Dig Your Own Hole (1997)", why: "Big-beat breakbeat architects" },
+      { name: "The Prodigy", signature: "Music for the Jilted Generation (1994)", why: "Breakbeat-rave-rock hybrid defined the sound" },
+      { name: "Fatboy Slim", signature: "You've Come a Long Way, Baby (1998)", why: "Most commercially successful big-beat breakbeat artist" },
+      { name: "The Crystal Method", signature: "Vegas (1997)", why: "American breakbeat peak; 'Bad Stone' era" },
+    ],
+  },
+
+  "Electro": {
+    tagline: "Early 1980s fusion of Kraftwerk electronic pop and hip-hop — TR-808 drum patterns, robotic vocals, sci-fi themes.",
+    traitDetails: [
+      { trait: "TR-808 drum patterns", detail: "Electro popularized the 808's cold, robotic drums — hip-hop inherited this via 'Planet Rock'." },
+      { trait: "Robotic/Vocoder vocals", detail: "Kraftwerk-style vocoded robot voices; dehumanized vocal aesthetic." },
+      { trait: "Sci-fi/futurist themes", detail: "Lyrics about robots, space, technology; Afrofuturism meets German machine-funk." },
+      { trait: "Synth bass dominance", detail: "Moog and synth basslines drive the groove; real bass was rarely used." },
+    ],
+    artistDetails: [
+      { name: "Afrika Bambaataa", signature: "Planet Rock (1982)", why: "The foundational electro track; sampled Kraftwerk's 'Trans-Europe Express'" },
+      { name: "Mantronix", signature: "The Album (1985)", why: "NY electro duo; bridged electro and hip-hop production" },
+      { name: "Egyptian Lover", signature: "On the Nile (1984)", why: "LA electro pioneer; 'Egypt, Egypt'" },
+      { name: "Cybotron", signature: "Clear (1983)", why: "Juan Atkins' electro group; precursor to Detroit techno" },
+    ],
+  },
+
+  "Miami Bass": {
+    tagline: "Late 1980s-early 90s Florida bass music — extreme sub-bass, fast tempos, dance-floor-first content. Spawned Southern hip-hop.",
+    traitDetails: [
+      { trait: "Sub-bass emphasis", detail: "Extreme low-frequency focus; designed for car trunks and Miami club systems with massive subs." },
+      { trait: "Fast tempos (115-140 BPM)", detail: "Faster than most hip-hop; closer to house tempo." },
+      { trait: "Call-and-response chants", detail: "Hooks are chant-based and participatory — crunk and Southern rap inherited this directly." },
+      { trait: "Party/explicit content", detail: "Dance-floor content and sometimes raunchy lyrics; 2 Live Crew's obscenity cases defined era." },
+    ],
+    artistDetails: [
+      { name: "2 Live Crew", signature: "As Nasty As They Wanna Be (1989)", why: "Most famous Miami Bass group; obscenity trial changed First Amendment precedent" },
+      { name: "Magic Mike", signature: "Bass Is the Name of the Game (1990)", why: "Orlando bass producer; defined the instrumental bass aesthetic" },
+      { name: "Uncle Luke", signature: "I Got Shit on My Mind (1992)", why: "Solo work of 2 Live Crew frontman; regional bass figurehead" },
+      { name: "DJ Laz", signature: "Miami bass compilations", why: "Miami scene's DJ-producer architect" },
+    ],
+  },
+
+  "Jersey Club": {
+    tagline: "Newark club music evolving from Baltimore Club. Fast, playful, bed-squeak kick pattern. Exploded via TikTok in the 2020s.",
+    traitDetails: [
+      { trait: "Five-kick pattern", detail: "The signature rhythm — five kicks per 4/4 bar in a bouncy pattern. Distinguishes Jersey Club from everything else." },
+      { trait: "Bed-squeak sample", detail: "The ubiquitous 'bed squeak' or 'sneaker squeak' sample — often just a pitched-up squeak on beats 2 and 4." },
+      { trait: "140 BPM", detail: "Faster than hip-hop; matches the bounce energy of the kick pattern." },
+      { trait: "Vocal-chop hooks", detail: "R&B and hip-hop vocal samples chopped and arranged into hooks — often from recognizable pop sources." },
+    ],
+    artistDetails: [
+      { name: "DJ Sliink", signature: "Jersey Club compilations", why: "Jersey Club scene architect; codified the sound" },
+      { name: "Cookie Kawaii", signature: "Vibe (If I Back It Up) (2019)", why: "Jersey Club's biggest TikTok-era hit" },
+      { name: "Tati.56", signature: "2022-2024 TikTok viral tracks", why: "Current-era Jersey Club producer" },
+      { name: "UNIIQU3", signature: "Heartbeats (2018)", why: "Jersey Club's 'Queen'; DJ-producer emissary" },
+    ],
+  },
+
+  "Baltimore Club": {
+    tagline: "Baltimore's late-80s club scene — looped breakbeats, triangle samples, call-and-response chants. Parent of Jersey Club.",
+    traitDetails: [
+      { trait: "Triangle sample", detail: "The iconic tinkling triangle hit used on almost every Baltimore Club track — from 'Sing Sing' loop." },
+      { trait: "Looped breakbeat foundation", detail: "Lyn Collins 'Think (About It)' break is the backbone; looped at 130 BPM." },
+      { trait: "Chanted hooks", detail: "Short chanted hook-phrases — 'Dance My Pain Away' structure typical." },
+      { trait: "Dance-battle context", detail: "Music designed for aggressive dance battles; shaped the genre's confrontational energy." },
+    ],
+    artistDetails: [
+      { name: "DJ Technics", signature: "Baltimore Club classics", why: "Scene pioneer; defined the sound in the 90s" },
+      { name: "Rod Lee", signature: "Vol. 5 (2004)", why: "Baltimore Club's most prolific producer" },
+      { name: "TT the Artist", signature: "2010s club tracks", why: "Current-era Baltimore Club's breakout artist" },
+    ],
+  },
+
+  "Ambient": {
+    tagline: "Music designed to create atmosphere rather than demand attention. Brian Eno's invention. Environmental, meditative, sometimes beatless.",
+    traitDetails: [
+      { trait: "Beatless or sparse rhythm", detail: "Many ambient tracks have no drums at all; rhythm emerges from pulsing tones and drones." },
+      { trait: "Sustained pads and drones", detail: "Long-sustained synth textures form the foundation; harmony changes glacially if at all." },
+      { trait: "Environmental sensibility", detail: "Eno's definition — 'as ignorable as it is interesting.' Designed to color environments." },
+      { trait: "Low dynamic range", detail: "Quiet and uniform; no dramatic peaks or drops — the anti-pop dynamic." },
+    ],
+    artistDetails: [
+      { name: "Brian Eno", signature: "Ambient 1: Music for Airports (1978)", why: "Invented the genre; coined the term" },
+      { name: "Aphex Twin", signature: "Selected Ambient Works Volume II (1994)", why: "Beatless ambient masterpiece" },
+      { name: "Stars of the Lid", signature: "The Tired Sounds Of (2001)", why: "Texas drone-ambient duo; 2000s benchmark" },
+      { name: "Tim Hecker", signature: "Ravedeath, 1972 (2011)", why: "Current-era ambient-noise auteur" },
+    ],
+  },
+
+  "Dub": {
+    tagline: "1970s Jamaican studio-reconstruction of reggae — heavy reverb, delay, drop-outs, instrumental remixes. The first 'remix culture.'",
+    traitDetails: [
+      { trait: "Extreme reverb + delay", detail: "Engineers used tape delay, spring reverb, and real echo chambers — effects became the instrument." },
+      { trait: "Instrumental remix approach", detail: "Vocal tracks are dropped out and brought back; dub strips tracks into drums+bass+effects." },
+      { trait: "Bass-and-drums foundation", detail: "Drum and bass are left alone while everything else is manipulated around them — template for all electronic dance music." },
+      { trait: "Engineer as auteur", detail: "Producers (King Tubby, Lee Perry) became artists; the mixing desk became an instrument." },
+    ],
+    artistDetails: [
+      { name: "King Tubby", signature: "Dub from the Roots (1975)", why: "Invented dub as a practice; engineer-god" },
+      { name: "Lee 'Scratch' Perry", signature: "Super Ape (1976)", why: "Dub's most experimental producer; Black Ark studio legend" },
+      { name: "Scientist", signature: "Scientist Rids the World of the Evil Curse of the Vampires (1981)", why: "King Tubby's protégé; dub's second generation" },
+      { name: "Augustus Pablo", signature: "King Tubbys Meets Rockers Uptown (1976)", why: "Melodica-driven instrumental dub" },
+    ],
+  },
+
+  // ── METAL NICHES ────────────────────────────────────────────────
+  "Death Metal": {
+    tagline: "Late 1980s Florida/Scandinavia extreme metal — growled vocals, blast-beat drums, downtuned guitars. Extreme-metal's foundational subgenre.",
+    traitDetails: [
+      { trait: "Guttural growled vocals", detail: "Deep, unintelligible growls and roars — the defining vocal aesthetic." },
+      { trait: "Blast-beat drumming", detail: "Extremely fast alternating kick+snare patterns (200+ BPM) — drums as sheer velocity." },
+      { trait: "Downtuned guitars", detail: "Guitars tuned to D, C, or lower with heavy palm-muting and dissonant riffs." },
+      { trait: "Technical precision", detail: "Death metal values technical skill; virtuosic playing is central to the genre's identity." },
+    ],
+    artistDetails: [
+      { name: "Death", signature: "Symbolic (1995)", why: "Chuck Schuldiner named the genre; technical peak" },
+      { name: "Cannibal Corpse", signature: "Tomb of the Mutilated (1992)", why: "Best-selling death metal band; genre's face" },
+      { name: "Morbid Angel", signature: "Altars of Madness (1989)", why: "Florida death metal's foundational album" },
+      { name: "Opeth", signature: "Blackwater Park (2001)", why: "Progressive death metal; brought the genre to indie audiences" },
+    ],
+  },
+
+  // ── PUNK-ADJACENT ───────────────────────────────────────────────
+  "Ska": {
+    tagline: "1950s Jamaican music ancestor to reggae — upbeat, off-beat guitar stabs, horns. Went through 3 commercial waves globally.",
+    traitDetails: [
+      { trait: "Upbeat tempo (120-160 BPM)", detail: "Faster than reggae; energetic dance music." },
+      { trait: "Off-beat guitar stabs", detail: "The defining technique — chords hit on beats 2 and 4; reggae inherited this but slowed it down." },
+      { trait: "Horn sections", detail: "Trumpet, trombone, saxophone lines drive the melody; more jazz-influenced than reggae." },
+      { trait: "Three commercial waves", detail: "Jamaican original (1950s-60s), UK 2 Tone revival (late 70s), Third wave/ska-punk (1990s US)." },
+    ],
+    artistDetails: [
+      { name: "The Skatalites", signature: "Ska Authentic (1964)", why: "Original Jamaican ska architects; Don Drummond era" },
+      { name: "The Specials", signature: "The Specials (1979)", why: "UK 2 Tone revival leaders; multiracial ska" },
+      { name: "Madness", signature: "One Step Beyond (1979)", why: "Most commercial 2 Tone band" },
+      { name: "No Doubt", signature: "Tragic Kingdom (1995)", why: "Third-wave ska-pop crossover; Gwen Stefani breakthrough" },
+    ],
+  },
+
+  "Indie": {
+    tagline: "Umbrella for music released outside major labels, now shorthand for a specific jangly/literate aesthetic regardless of label status.",
+    traitDetails: [
+      { trait: "DIY/anti-mainstream ethic", detail: "Originally literal (independent labels) — now ethos more than structural reality." },
+      { trait: "Aesthetic signifiers", detail: "Jangly guitars, lo-fi production values, literate lyrics, unconventional song structures." },
+      { trait: "Genre permeability", detail: "'Indie rock', 'indie pop', 'indie folk', 'indie electronic' all exist — label more than sound." },
+      { trait: "College radio lineage", detail: "1980s college radio culture shaped the taste formation; R.E.M., Pixies, Sonic Youth defined the template." },
+    ],
+    artistDetails: [
+      { name: "R.E.M.", signature: "Murmur (1983)", why: "Defined 80s college-rock indie; sold 90 million records indie-spirit-intact" },
+      { name: "Arcade Fire", signature: "Funeral (2004)", why: "2000s indie's biggest breakthrough" },
+      { name: "Bon Iver", signature: "For Emma, Forever Ago (2007)", why: "Defined late-2000s indie folk; cabin-aesthetic" },
+      { name: "Mitski", signature: "Puberty 2 (2016) / The Land Is Inhospitable (2023)", why: "Current-era indie's Gen Z icon" },
+    ],
+  },
+
+  // ── LATIN NICHES ────────────────────────────────────────────────
+  "Salsa": {
+    tagline: "New York 1960s-70s Afro-Caribbean dance music built on Cuban son rhythm and big-band structure. Fania All Stars defined the era.",
+    traitDetails: [
+      { trait: "Clave-driven rhythm", detail: "The 3-2 or 2-3 clave pattern is the rhythmic DNA; everything else locks to it." },
+      { trait: "Montuno section", detail: "Extended instrumental/vocal-improv section after the main song; sonero trades with chorus." },
+      { trait: "Horn section + piano", detail: "Trombones, trumpets, saxophones plus montuno piano pattern — the brass-and-keys foundation." },
+      { trait: "Percussion interplay", detail: "Congas, bongos, timbales, güiro — each plays a distinct pattern creating complex polyrhythm." },
+    ],
+    artistDetails: [
+      { name: "Celia Cruz", signature: "Celia & Johnny (1974)", why: "The Queen of Salsa; Fania-era vocal icon" },
+      { name: "Hector Lavoe", signature: "La Voz (1975)", why: "Fania All Stars voice; Willie Colón's partner" },
+      { name: "Willie Colón", signature: "Siembra (1978, w/ Rubén Blades)", why: "Nuyorican salsa architect; trombone-led" },
+      { name: "Rubén Blades", signature: "Siembra (1978)", why: "Salsa's poet; 'Pedro Navaja' is the genre's literary peak" },
+      { name: "Marc Anthony", signature: "Todo a Su Tiempo (1995)", why: "Best-selling salsa artist ever; defined salsa romántica" },
+    ],
+  },
+
+  "Bachata": {
+    tagline: "Dominican rural guitar music that became global pop in the 2010s. Romantic themes, sliding guitar runs, slow-to-mid tempo dance music.",
+    traitDetails: [
+      { trait: "Requinto lead guitar", detail: "The high-pitched lead guitar with distinctive slides and pull-offs — bachata's signature sound." },
+      { trait: "Bongo + güira percussion", detail: "Bongos drive the rhythm; güira (metal scraper) provides the swing feel." },
+      { trait: "Romantic/heartbreak themes", detail: "Lyrics almost always about love, loss, longing, betrayal — bachata is Latin America's country music emotionally." },
+      { trait: "Slow-to-mid tempo (90-120 BPM)", detail: "Dance-driven — the bachata partner dance is central to the music's function." },
+    ],
+    artistDetails: [
+      { name: "Juan Luis Guerra", signature: "Bachata Rosa (1990)", why: "Elevated bachata from rural to mainstream; Grammy-winning" },
+      { name: "Aventura", signature: "God's Project (2005)", why: "Modern bachata's biggest-ever group; Romeo Santos' launch" },
+      { name: "Romeo Santos", signature: "Formula, Vol. 1 (2011)", why: "Current King of Bachata; former Aventura frontman" },
+      { name: "Prince Royce", signature: "Prince Royce (2010)", why: "Contemporary bachata-pop bridge" },
+    ],
+  },
+
+  "Cumbia": {
+    tagline: "Colombian coastal dance music of African, Indigenous, and Spanish origin. Spread across Latin America into Mexican cumbia, Argentine cumbia villera, etc.",
+    traitDetails: [
+      { trait: "Syncopated gaita + drums", detail: "Gaita (Indigenous flute) and tambor (drum) form the original acoustic instrumentation." },
+      { trait: "Dance-driven rhythm", detail: "2/4 or 4/4 syncopated pattern; the cumbia dance (walking with specific foot movement) is central to the music." },
+      { trait: "Regional variations", detail: "Colombian traditional, Mexican cumbia (accordion-based), Argentine cumbia villera, Peruvian chicha — vastly different sounds under one name." },
+      { trait: "Accordion prominence", detail: "Mexican and norteño cumbia center the accordion; Colombian traditional uses flutes and drums only." },
+    ],
+    artistDetails: [
+      { name: "Los Ángeles Azules", signature: "De Buenos Aires Para el Mundo (2013)", why: "Mexican cumbia sonidera; biggest contemporary cumbia act" },
+      { name: "La Sonora Dinamita", signature: "Colombian cumbia classics", why: "Most famous Colombian cumbia ensemble" },
+      { name: "Selena", signature: "Entre a Mi Mundo (1992)", why: "Tejano-cumbia fusion; brought cumbia to US mainstream" },
+      { name: "Carlos Vives", signature: "Clásicos de la Provincia (1993)", why: "Modernized traditional Colombian cumbia/vallenato fusion" },
+    ],
+  },
+
+  "Afrobeat": {
+    tagline: "Fela Kuti's 1970s Nigerian political funk — NOT the 2010s 'Afrobeats' (singular vs. plural matters). Long-form, polyrhythmic, politically fierce.",
+    traitDetails: [
+      { trait: "Extended jam structure", detail: "Tracks often 15-25 minutes; evolve slowly with polyrhythmic grooves rather than verse/chorus." },
+      { trait: "Polyrhythmic percussion", detail: "Multiple interlocking rhythms from drums, congas, shekere, bells — West African drumming tradition." },
+      { trait: "Horn section intensity", detail: "Tight horn lines layered over the groove; Fela's band was essentially a jazz ensemble." },
+      { trait: "Political lyrics in Pidgin English", detail: "Fela's lyrics were savage critiques of corruption, colonialism, military rule — jailed multiple times for songs." },
+    ],
+    artistDetails: [
+      { name: "Fela Kuti", signature: "Zombie (1976) / Expensive Shit (1975)", why: "Created Afrobeat; musical and political founding figure" },
+      { name: "Tony Allen", signature: "Fela drums / Black Voices (1999)", why: "Fela's drummer; invented the Afrobeat drum pattern" },
+      { name: "Femi Kuti", signature: "Shoki Shoki (1998)", why: "Fela's son; carrying the political Afrobeat torch" },
+      { name: "Seun Kuti", signature: "From Africa With Fury: Rise (2011)", why: "Fela's other son; continues the Egypt 80 band" },
+    ],
+  },
+
+  "Yoruba Music": {
+    tagline: "Nigerian traditional and popular music from the Yoruba ethnic group — juju, fuji, apala, sakara. Influences modern Afrobeats deeply.",
+    traitDetails: [
+      { trait: "Talking drum (dùndún) centrality", detail: "The pressure-tuned dùndún drum mimics Yoruba tonal language — drum literally 'talks' to dancers." },
+      { trait: "Praise-singing tradition", detail: "Vocalists praise kings, patrons, ancestors — a direct line to the griot tradition." },
+      { trait: "Polyrhythmic layering", detail: "Multiple drum patterns (sekere, bata, dùndún) interlock; informs all later Afro-pop." },
+      { trait: "Call-and-response vocals", detail: "Lead singer + chorus structure across juju, fuji, and traditional genres." },
+    ],
+    artistDetails: [
+      { name: "King Sunny Adé", signature: "Juju Music (1982)", why: "Brought juju (Yoruba popular music) to global stages" },
+      { name: "Ebenezer Obey", signature: "The Horse, The Man (1973)", why: "Juju music pioneer alongside King Sunny Adé" },
+      { name: "Fela Anikulapo Kuti", signature: "Fela's catalog", why: "Yoruba cultural figure whose Afrobeat drew on Yoruba traditions" },
+      { name: "Ayinde Barrister", signature: "Fuji Exponent (1980s-90s)", why: "Fuji music founder; Yoruba Islamic popular music" },
+    ],
+  },
+
+  "Kwaito": {
+    tagline: "Post-apartheid South African 1990s house-mutation — slowed house beats, Zulu/Tswana vocals, township dance music. Amapiano's grandparent.",
+    traitDetails: [
+      { trait: "Slowed house tempo (~100 BPM)", detail: "Roughly 100 BPM — slower than US house; closer to hip-hop groove territory." },
+      { trait: "African-language vocals", detail: "Zulu, Tswana, Xhosa, Sotho lyrics — rejected English as the language of music; explicitly post-apartheid assertion." },
+      { trait: "Deep bass and simple grooves", detail: "Heavy sub-bass, hypnotic simple loops; party/township-dance functional." },
+      { trait: "Bridges to amapiano", detail: "Kwaito → Gqom → Amapiano lineage is direct; same South African township scene over 30 years." },
+    ],
+    artistDetails: [
+      { name: "Arthur Mafokate", signature: "Kaffir (1995)", why: "Kwaito originator; first kwaito hit" },
+      { name: "Boom Shaka", signature: "It's About Time (1994)", why: "Kwaito's first superstar group" },
+      { name: "Mandoza", signature: "Nkalakatha (2000)", why: "Post-apartheid kwaito icon; bridging Black-white audiences" },
+      { name: "TKZee", signature: "Halloween (1998)", why: "Most commercially successful kwaito group" },
+    ],
+  },
+
+  "Mento": {
+    tagline: "Jamaican folk music predating ska — guitar, banjo, and rumba box. The grandfather of ska, reggae, dancehall. Sometimes called 'Jamaican calypso.'",
+    traitDetails: [
+      { trait: "Acoustic folk instrumentation", detail: "Guitar, banjo, hand drums, rumba box (a large bass thumb-piano) — all acoustic, no electric instruments." },
+      { trait: "Calypso rhythmic kinship", detail: "Shares Caribbean 'skiffle' feel with Trinidadian calypso; Jamaicans called it 'mento,' Trinidadians 'calypso.'" },
+      { trait: "Risqué/humorous lyrics", detail: "Often bawdy, topical, humorous — social commentary in the West Indian oral tradition." },
+      { trait: "Rural origins", detail: "Born in Jamaican country areas; mento predates ska by decades but was eclipsed once ska arrived." },
+    ],
+    artistDetails: [
+      { name: "The Jolly Boys", signature: "Mento Madness compilations", why: "Longest-running mento band; revived internationally in the 2010s" },
+      { name: "Count Lasher", signature: "Perseverance and other mento recordings", why: "Golden-age mento; 1950s Jamaican star" },
+      { name: "Lord Flea", signature: "Calypso! Swinging in Jamaica (1957)", why: "Mento's US pop-chart moment; pre-ska Caribbean" },
+    ],
+  },
+};
+
 
 const GENRE_HISTORY = {
   // ── HIP-HOP family ─────────────────────────────────────────────────────
@@ -4920,8 +7842,1588 @@ const GENRE_CONTEXT = {
 };
 
 // ════════════════════════════════════════════════════════════════════════════
-// HISTORY PAGE — expanded, scored, multi-chart view
+// GENRE LINEAGE TREE — interactive parent/child evolution explorer
+// Each node is clickable; expanding reveals descendants with smooth animation.
+// Selecting a node opens a contextual detail card on the right.
 // ════════════════════════════════════════════════════════════════════════════
+
+// ════════════════════════════════════════════════════════════════════════════
+// TIMELINE SCRUBBER — scrub through music history month by month.
+// At any point in time, genres are shown as floating labels sized by how
+// popular they were that month. Hover/click to lock, see details.
+// ════════════════════════════════════════════════════════════════════════════
+
+// Research metadata — which genres have been deeply researched vs estimated
+const GENRE_RESEARCHED = new Set([
+  // Major genres with strong public data (Billboard, Spotify, Google Trends)
+  "Hip-Hop", "Trap", "Drill", "Melodic Rap", "Boom Bap", "Gangsta Rap",
+  "Phonk", "Rage Rap", "Plugg", "Jersey Drill",
+  "R&B / Soul", "Alt R&B", "Neo-Soul", "Contemporary R&B", "Trap Soul",
+  "Afrobeats", "Amapiano", "Reggaeton", "Latin Trap", "Afro House",
+  "Pop", "Pop (modern)", "Electropop", "K-Pop", "Hyperpop",
+  "House", "Deep House", "Tech House", "Techno", "Dubstep",
+  "Rock", "Classic Rock", "Alternative Rock", "Indie Rock",
+  "Country", "Country Pop", "Bro-Country",
+  "EDM", "Electronic", "Dance", "Drum & Bass",
+]);
+
+// Helper: interpolate popularity at a specific year+month for a genre
+function interpolateGenreAt(genre, year, monthIdx = 6) {
+  const curve = GENRE_HISTORY[genre];
+  if (!curve || curve.length === 0) return 0;
+  const t = year + monthIdx / 12;
+
+  // Before first point: fade in from 0 over 3 years
+  if (t < curve[0][0]) {
+    const delta = curve[0][0] - t;
+    if (delta > 3) return 0;
+    return curve[0][1] * (1 - delta / 3) * 0.3;
+  }
+  // After last point: decay
+  if (t > curve[curve.length - 1][0]) {
+    const delta = t - curve[curve.length - 1][0];
+    return Math.max(0, curve[curve.length - 1][1] * (1 - delta / 8));
+  }
+  // Linear interpolation between bracketing points
+  for (let i = 0; i < curve.length - 1; i++) {
+    const [ta, va] = curve[i];
+    const [tb, vb] = curve[i + 1];
+    if (t >= ta && t <= tb) {
+      const p = (t - ta) / (tb - ta);
+      // Use smoothstep for natural feel instead of linear
+      const smooth = p * p * (3 - 2 * p);
+      return va + (vb - va) * smooth;
+    }
+  }
+  return 0;
+}
+
+function TimelineScrubber({ selectedGenre, onSelectGenre }) {
+  const { layout } = useLayout();
+  const isMobile = layout === "mobile";
+
+  // Scrubber position — store as continuous float for smooth animation
+  // value = year + month/12 (e.g. 2024.5 = July 2024)
+  const MIN_YEAR = 1960;
+  const currentDate = new Date();
+  const MAX_YEAR = currentDate.getFullYear() + (currentDate.getMonth() + 1) / 12;
+  const [scrubValue, setScrubValue] = useState(MAX_YEAR - 0.1); // near today
+  const [isPlaying, setIsPlaying] = useState(false);
+  const playRafRef = useRef(null);
+
+  // All genres with history data
+  const allGenres = useMemo(() => Object.keys(GENRE_HISTORY), []);
+
+  // At current scrub time, compute popularity for every genre
+  const snapshot = useMemo(() => {
+    const year = Math.floor(scrubValue);
+    const monthIdx = Math.floor((scrubValue - year) * 12);
+    return allGenres
+      .map(g => ({
+        name: g,
+        score: interpolateGenreAt(g, year, monthIdx),
+        researched: GENRE_RESEARCHED.has(g),
+      }))
+      .filter(x => x.score > 8) // hide genres that are dormant/unborn
+      .sort((a, b) => b.score - a.score)
+      .slice(0, isMobile ? 20 : 40); // limit labels shown
+  }, [scrubValue, allGenres, isMobile]);
+
+  // Deterministic position for each genre label — based on genre name hash
+  // so labels don't jump around as you scrub (same genre → same position)
+  const genrePositions = useMemo(() => {
+    const map = {};
+    allGenres.forEach(g => {
+      // Simple hash → deterministic float 0..1
+      let h = 0;
+      for (let i = 0; i < g.length; i++) h = (h * 31 + g.charCodeAt(i)) >>> 0;
+      const hx = (h % 1000) / 1000;
+      const hy = ((h * 17) % 1000) / 1000;
+      map[g] = { x: hx, y: hy };
+    });
+    return map;
+  }, [allGenres]);
+
+  // Playback animation — advances scrub by ~2 years/sec
+  useEffect(() => {
+    if (!isPlaying) return;
+    let last = performance.now();
+    const tick = (now) => {
+      const dt = (now - last) / 1000;
+      last = now;
+      setScrubValue(v => {
+        const next = v + dt * 1.5; // 1.5 years per real second
+        if (next >= MAX_YEAR) {
+          setIsPlaying(false);
+          return MAX_YEAR - 0.01;
+        }
+        return next;
+      });
+      playRafRef.current = requestAnimationFrame(tick);
+    };
+    playRafRef.current = requestAnimationFrame(tick);
+    return () => { if (playRafRef.current) cancelAnimationFrame(playRafRef.current); };
+  }, [isPlaying, MAX_YEAR]);
+
+  // Format scrub value → "April 2026"
+  const formatDate = (v) => {
+    const year = Math.floor(v);
+    const monthIdx = Math.min(11, Math.max(0, Math.floor((v - year) * 12)));
+    const months = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+    return `${months[monthIdx]} ${year}`;
+  };
+
+  // Decade tick marks for the scrubber
+  const decadeTicks = [];
+  for (let y = 1960; y <= 2020; y += 10) decadeTicks.push(y);
+
+  const scrubPct = ((scrubValue - MIN_YEAR) / (MAX_YEAR - MIN_YEAR)) * 100;
+
+  const handleScrub = (e) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = (e.clientX || (e.touches && e.touches[0].clientX)) - rect.left;
+    const pct = Math.max(0, Math.min(1, x / rect.width));
+    setScrubValue(MIN_YEAR + pct * (MAX_YEAR - MIN_YEAR));
+    setIsPlaying(false);
+  };
+
+  return (
+    <div style={{
+      background: T.bg,
+      border: `1px solid ${T.border}`,
+      borderRadius: T.r_lg,
+      overflow: "hidden",
+      position: "relative",
+    }}>
+      {/* ── SCRUBBER BAR AT TOP ───────────────────────────────────── */}
+      <div style={{
+        padding: isMobile ? "16px 14px 12px" : "20px 24px 14px",
+        borderBottom: `1px solid ${T.border}`,
+        background: "linear-gradient(180deg, rgba(15,17,22,0.6) 0%, transparent 100%)",
+      }}>
+        {/* Current time display */}
+        <div style={{
+          display: "flex", alignItems: "baseline", justifyContent: "space-between",
+          marginBottom: 12, gap: 12, flexWrap: "wrap",
+        }}>
+          <div>
+            <div style={{
+              fontSize: 10, fontFamily: T.font_mono, fontWeight: 700,
+              letterSpacing: "0.22em", color: T.textMuted, marginBottom: 4,
+            }}>NOW VIEWING</div>
+            <div style={{
+              fontSize: isMobile ? 26 : 36,
+              fontFamily: T.font_display, fontStyle: "italic", fontWeight: 400,
+              color: T.text, lineHeight: 1,
+              letterSpacing: "-0.02em",
+            }}>
+              {formatDate(scrubValue)}
+            </div>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <button type="button"
+              onClick={() => setIsPlaying(p => !p)}
+              title={isPlaying ? "Pause" : "Play through time"}
+              style={{
+                display: "inline-flex", alignItems: "center", gap: 6,
+                padding: "8px 14px", minHeight: 36,
+                background: isPlaying
+                  ? `linear-gradient(180deg, ${T.accent}33 0%, ${T.accent}11 100%)`
+                  : T.surface,
+                border: `1px solid ${isPlaying ? T.accent : T.border}`,
+                color: isPlaying ? T.accentHi : T.text,
+                borderRadius: 6,
+                fontSize: 11, fontFamily: T.font_mono, fontWeight: 700,
+                letterSpacing: "0.15em", cursor: "pointer",
+                transition: "all 160ms ease-out",
+              }}>
+              <span>{isPlaying ? "❚❚" : "▶"}</span>
+              {isPlaying ? "PAUSE" : "PLAY"}
+            </button>
+            <button type="button"
+              onClick={() => { setScrubValue(MIN_YEAR); setIsPlaying(false); }}
+              title="Jump to 1960"
+              style={{
+                padding: "8px 12px", minHeight: 36,
+                background: T.surface, border: `1px solid ${T.border}`,
+                color: T.textSec, borderRadius: 6,
+                fontSize: 11, fontFamily: T.font_mono, fontWeight: 700,
+                letterSpacing: "0.1em", cursor: "pointer",
+              }}>↺ 1960</button>
+            <button type="button"
+              onClick={() => { setScrubValue(MAX_YEAR - 0.1); setIsPlaying(false); }}
+              title="Jump to today"
+              style={{
+                padding: "8px 12px", minHeight: 36,
+                background: T.surface, border: `1px solid ${T.border}`,
+                color: T.textSec, borderRadius: 6,
+                fontSize: 11, fontFamily: T.font_mono, fontWeight: 700,
+                letterSpacing: "0.1em", cursor: "pointer",
+              }}>TODAY</button>
+          </div>
+        </div>
+
+        {/* Scrubber track */}
+        <div
+          onMouseDown={handleScrub}
+          onMouseMove={(e) => { if (e.buttons === 1) handleScrub(e); }}
+          onTouchStart={handleScrub}
+          onTouchMove={handleScrub}
+          style={{
+            position: "relative",
+            height: 40,
+            cursor: "pointer",
+            userSelect: "none",
+            touchAction: "none",
+          }}>
+          {/* Track groove */}
+          <div style={{
+            position: "absolute", top: 18, left: 0, right: 0, height: 4,
+            background: `linear-gradient(90deg, ${T.surface} 0%, ${T.elevated} 100%)`,
+            border: `1px solid ${T.border}`,
+            borderRadius: 2,
+            boxShadow: "inset 0 1px 2px rgba(0,0,0,0.6)",
+          }} />
+          {/* Filled portion */}
+          <div style={{
+            position: "absolute", top: 18, left: 0, width: `${scrubPct}%`,
+            height: 4,
+            background: `linear-gradient(90deg, ${T.accent}55 0%, ${T.accent} 100%)`,
+            borderRadius: 2,
+            boxShadow: `0 0 8px ${T.accent}88`,
+            transition: "none",
+          }} />
+          {/* Decade ticks */}
+          {decadeTicks.map(year => {
+            const p = ((year - MIN_YEAR) / (MAX_YEAR - MIN_YEAR)) * 100;
+            return (
+              <div key={year} style={{
+                position: "absolute", top: 14, left: `${p}%`,
+                width: 1, height: 12,
+                background: T.textMuted,
+                opacity: 0.5,
+                pointerEvents: "none",
+              }}>
+                <div style={{
+                  position: "absolute", top: 14, left: -14,
+                  fontSize: 9, fontFamily: T.font_mono,
+                  color: T.textMuted, letterSpacing: "0.08em",
+                  whiteSpace: "nowrap",
+                }}>{year}</div>
+              </div>
+            );
+          })}
+          {/* Scrubber handle */}
+          <div style={{
+            position: "absolute", top: 6, left: `${scrubPct}%`,
+            width: 4, height: 28, marginLeft: -2,
+            background: T.accentHi,
+            borderRadius: 2,
+            boxShadow: `0 0 12px ${T.accent}, 0 0 24px ${T.accent}88`,
+            pointerEvents: "none",
+            transition: isPlaying ? "none" : "left 60ms ease-out",
+          }} />
+          {/* Handle pill on top */}
+          <div style={{
+            position: "absolute", top: 0, left: `${scrubPct}%`,
+            transform: "translateX(-50%)",
+            width: 14, height: 14,
+            background: "radial-gradient(circle at 30% 30%, #fff 0%, " + T.accent + " 60%, " + T.accent + "88 100%)",
+            border: `1px solid ${T.accent}`,
+            borderRadius: "50%",
+            boxShadow: `0 0 12px ${T.accent}aa, 0 2px 4px rgba(0,0,0,0.6)`,
+            pointerEvents: "none",
+          }} />
+        </div>
+
+        {/* Instruction hint */}
+        <div style={{
+          marginTop: 8,
+          fontSize: 10, fontFamily: T.font_mono,
+          color: T.textMuted, letterSpacing: "0.1em", textAlign: "center",
+        }}>
+          DRAG TO SCRUB · CLICK A GENRE TO PIN DETAILS
+        </div>
+      </div>
+
+      {/* ── FLOATING GENRE LABELS CANVAS ──────────────────────────── */}
+      <div style={{
+        position: "relative",
+        height: isMobile ? 500 : 620,
+        background: `radial-gradient(ellipse at center, ${T.surface} 0%, ${T.bg} 70%)`,
+        overflow: "hidden",
+      }}>
+        {/* Starfield backdrop — subtle ambient atmosphere */}
+        <svg
+          width="100%" height="100%"
+          style={{ position: "absolute", inset: 0, pointerEvents: "none", opacity: 0.4 }}>
+          {[...Array(40)].map((_, i) => {
+            const x = (i * 137) % 100;
+            const y = (i * 71) % 100;
+            const r = (i % 3) * 0.4 + 0.3;
+            return <circle key={i} cx={`${x}%`} cy={`${y}%`} r={r} fill={T.textMuted} />;
+          })}
+        </svg>
+
+        {snapshot.map((g) => {
+          const pos = genrePositions[g.name] || { x: 0.5, y: 0.5 };
+          // Font size scales with popularity — weight(8..100) → font(11..38)
+          const size = 11 + (g.score / 100) * (isMobile ? 18 : 27);
+          const opacity = 0.35 + (g.score / 100) * 0.65;
+          const isSelected = selectedGenre === g.name;
+          // Use the same family color system from the earlier tree attempt
+          const color = g.researched ? T.text : T.textSec;
+          return (
+            <div key={g.name}
+              onClick={() => onSelectGenre(g.name)}
+              style={{
+                position: "absolute",
+                left: `${8 + pos.x * 84}%`,
+                top: `${8 + pos.y * 84}%`,
+                transform: "translate(-50%, -50%)",
+                padding: "4px 10px",
+                background: isSelected
+                  ? `linear-gradient(180deg, ${T.accent}33 0%, ${T.accent}11 100%)`
+                  : "rgba(18,20,25,0.6)",
+                border: `1px solid ${isSelected ? T.accent : "rgba(255,255,255,0.08)"}`,
+                borderRadius: 6,
+                cursor: "pointer",
+                transition: "all 380ms cubic-bezier(0.16, 1, 0.3, 1)",
+                boxShadow: isSelected ? `0 0 20px ${T.accent}88` : "none",
+                opacity,
+                whiteSpace: "nowrap",
+                backdropFilter: "blur(4px)",
+                zIndex: Math.floor(g.score),
+              }}
+              onMouseEnter={e => { e.currentTarget.style.opacity = 1; e.currentTarget.style.zIndex = 999; }}
+              onMouseLeave={e => { e.currentTarget.style.opacity = opacity; e.currentTarget.style.zIndex = Math.floor(g.score); }}>
+              <div style={{
+                display: "flex", alignItems: "center", gap: 6,
+                fontSize: size, fontFamily: T.font_sans, fontWeight: 500,
+                color: isSelected ? T.accentHi : color,
+                lineHeight: 1.1,
+                letterSpacing: "-0.01em",
+              }}>
+                {g.name}
+                {!g.researched && (
+                  <span style={{
+                    fontSize: 8, fontFamily: T.font_mono, fontWeight: 700,
+                    color: V.neonGold, letterSpacing: "0.12em",
+                    padding: "1px 4px",
+                    background: `${V.neonGold}14`,
+                    border: `1px solid ${V.neonGold}44`,
+                    borderRadius: 3,
+                  }}>EST</span>
+                )}
+                {g.researched && (
+                  <span style={{
+                    fontSize: 8, fontFamily: T.font_mono, fontWeight: 700,
+                    color: T.success, letterSpacing: "0.12em",
+                    padding: "1px 4px",
+                    background: `${T.success}14`,
+                    border: `1px solid ${T.success}44`,
+                    borderRadius: 3,
+                  }}>RES</span>
+                )}
+              </div>
+            </div>
+          );
+        })}
+
+        {/* Empty state */}
+        {snapshot.length === 0 && (
+          <div style={{
+            position: "absolute", inset: 0,
+            display: "grid", placeItems: "center",
+            color: T.textMuted, fontSize: 13, fontFamily: T.font_sans,
+            textAlign: "center", padding: 20,
+          }}>
+            No genres active at this point in time.<br/>
+            <span style={{ fontSize: 11, color: T.textTer }}>
+              Scrub forward to see music culture evolve.
+            </span>
+          </div>
+        )}
+
+        {/* Legend — RES vs EST explanation */}
+        <div style={{
+          position: "absolute",
+          bottom: 12, left: 12,
+          display: "flex", gap: 14, alignItems: "center",
+          fontSize: 10, fontFamily: T.font_mono, color: T.textMuted,
+          padding: "6px 10px",
+          background: "rgba(10,11,14,0.85)",
+          border: `1px solid ${T.border}`,
+          borderRadius: 6,
+          backdropFilter: "blur(8px)",
+        }}>
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+            <span style={{
+              fontSize: 8, fontFamily: T.font_mono, fontWeight: 700,
+              color: T.success, letterSpacing: "0.12em",
+              padding: "1px 4px",
+              background: `${T.success}14`,
+              border: `1px solid ${T.success}44`,
+              borderRadius: 3,
+            }}>RES</span>
+            researched
+          </span>
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+            <span style={{
+              fontSize: 8, fontFamily: T.font_mono, fontWeight: 700,
+              color: V.neonGold, letterSpacing: "0.12em",
+              padding: "1px 4px",
+              background: `${V.neonGold}14`,
+              border: `1px solid ${V.neonGold}44`,
+              borderRadius: 3,
+            }}>EST</span>
+            estimated
+          </span>
+        </div>
+
+        {/* Active count */}
+        <div style={{
+          position: "absolute",
+          top: 12, right: 12,
+          fontSize: 10, fontFamily: T.font_mono, color: T.textMuted,
+          letterSpacing: "0.15em",
+          padding: "6px 10px",
+          background: "rgba(10,11,14,0.85)",
+          border: `1px solid ${T.border}`,
+          borderRadius: 6,
+          backdropFilter: "blur(8px)",
+        }}>
+          {snapshot.length} ACTIVE · {formatDate(scrubValue).split(" ")[1]}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Keep the earlier VisualFamilyTree available but unused for now — it may come back
+function VisualFamilyTree({ selectedGenre, onSelectGenre }) {
+  return <TimelineScrubber selectedGenre={selectedGenre} onSelectGenre={onSelectGenre} />;
+}
+
+function GenreLineageTree({ selectedGenre, onSelectGenre }) {
+  const { layout } = useLayout();
+  const isMobile = layout === "mobile";
+  // Which nodes are expanded. Default: roots only.
+  const [expanded, setExpanded] = useState(() => new Set(GENRE_ROOTS));
+  const [searchText, setSearchText] = useState("");
+
+  const toggleNode = (name) => {
+    setExpanded(prev => {
+      const next = new Set(prev);
+      if (next.has(name)) next.delete(name); else next.add(name);
+      return next;
+    });
+  };
+
+  // When a user searches, auto-expand the path to any matching nodes
+  const searchLower = searchText.trim().toLowerCase();
+  const matchingSet = useMemo(() => {
+    if (!searchLower) return null;
+    return new Set(Object.keys(GENRE_LINEAGE).filter(g => g.toLowerCase().includes(searchLower)));
+  }, [searchLower]);
+
+  // Build ancestors set for auto-expand on search
+  const autoExpand = useMemo(() => {
+    if (!matchingSet) return new Set();
+    const result = new Set();
+    const walk = (name) => {
+      const parents = GENRE_LINEAGE[name]?.parents || [];
+      parents.forEach(p => { result.add(p); walk(p); });
+    };
+    matchingSet.forEach(walk);
+    return result;
+  }, [matchingSet]);
+
+  const isExpanded = (name) => expanded.has(name) || autoExpand.has(name);
+
+  // Recursive tree renderer. Pass `depth` for indentation.
+  // Tracks a `visited` set to prevent infinite loops on hybrid genres
+  // that could theoretically create cycles (though data is acyclic).
+  const renderNode = (name, depth = 0, visited = new Set()) => {
+    if (visited.has(name)) return null;
+    const node = GENRE_LINEAGE[name];
+    if (!node) return null;
+    const children = GENRE_CHILDREN[name] || [];
+    const hasChildren = children.length > 0;
+    const open = isExpanded(name);
+    const isSelected = selectedGenre === name;
+    const isMatched = matchingSet && matchingSet.has(name);
+    const newVisited = new Set(visited); newVisited.add(name);
+
+    return (
+      <div key={`${name}-${depth}`}>
+        <div
+          onClick={() => { onSelectGenre(name); if (hasChildren) toggleNode(name); }}
+          style={{
+            position: "relative",
+            display: "flex", alignItems: "center", gap: 8,
+            padding: "7px 10px",
+            paddingLeft: 10 + depth * (isMobile ? 14 : 20),
+            margin: "2px 0",
+            background: isSelected
+              ? `linear-gradient(90deg, ${T.accent}22 0%, transparent 100%)`
+              : isMatched
+                ? `linear-gradient(90deg, ${V.neonGold}15 0%, transparent 60%)`
+                : "transparent",
+            borderLeft: isSelected ? `2px solid ${T.accent}` : "2px solid transparent",
+            cursor: "pointer",
+            borderRadius: 4,
+            transition: "background 160ms ease-out, border-color 160ms ease-out",
+            userSelect: "none",
+          }}
+          onMouseEnter={e => { if (!isSelected) e.currentTarget.style.background = T.hover; }}
+          onMouseLeave={e => { if (!isSelected) e.currentTarget.style.background = isMatched ? `linear-gradient(90deg, ${V.neonGold}15 0%, transparent 60%)` : "transparent"; }}
+        >
+          {/* Tree line indicator */}
+          {depth > 0 && (
+            <span aria-hidden="true" style={{
+              position: "absolute",
+              left: 10 + (depth - 1) * (isMobile ? 14 : 20) + 4,
+              top: 0, bottom: 0, width: 1,
+              background: `linear-gradient(180deg, ${T.border}aa 0%, ${T.border}44 100%)`,
+            }} />
+          )}
+
+          {/* Expand indicator */}
+          <span style={{
+            display: "inline-block",
+            width: 14, textAlign: "center",
+            fontSize: 10, fontFamily: T.font_mono,
+            color: hasChildren ? T.textTer : T.textMuted,
+            transform: open ? "rotate(90deg)" : "rotate(0deg)",
+            transition: "transform 220ms cubic-bezier(0.34, 1.56, 0.64, 1)",
+            flexShrink: 0,
+          }}>
+            {hasChildren ? "▸" : "·"}
+          </span>
+
+          {/* Node label */}
+          <span style={{
+            fontSize: isMobile ? 13 : 14,
+            fontFamily: T.font_sans,
+            fontWeight: depth === 0 ? 600 : 450,
+            color: isSelected ? T.text : isMatched ? V.neonGold : T.textSec,
+            letterSpacing: depth === 0 ? "-0.01em" : "0em",
+            whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+          }}>
+            {name}
+          </span>
+
+          {/* Era hint — only shown on non-mobile or for roots */}
+          {(!isMobile || depth === 0) && (
+            <span style={{
+              fontSize: 10, fontFamily: T.font_mono,
+              color: T.textMuted, letterSpacing: "0.08em",
+              marginLeft: "auto", flexShrink: 0,
+            }}>
+              {node.era}
+            </span>
+          )}
+
+          {/* Hybrid badge — multiple parents */}
+          {node.parents.length > 1 && (
+            <span title={`Hybrid of: ${node.parents.join(", ")}`} style={{
+              fontSize: 9, fontFamily: T.font_mono, fontWeight: 700,
+              color: V.cyan, letterSpacing: "0.12em",
+              padding: "1px 5px",
+              background: `${V.cyan}14`,
+              border: `1px solid ${V.cyan}44`,
+              borderRadius: 3,
+              flexShrink: 0,
+            }}>HYBRID</span>
+          )}
+        </div>
+
+        {/* Children — animated reveal */}
+        {hasChildren && open && (
+          <div style={{
+            animation: "treeBranchIn 280ms cubic-bezier(0.16, 1, 0.3, 1)",
+            overflow: "hidden",
+          }}>
+            {children.map(c => renderNode(c, depth + 1, newVisited))}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  return (
+    <div style={{
+      background: T.surface,
+      border: `1px solid ${T.border}`,
+      borderRadius: T.r_lg,
+      padding: isMobile ? 12 : 16,
+    }}>
+      <style>{`
+        @keyframes treeBranchIn {
+          from { opacity: 0; max-height: 0; transform: translateX(-4px); }
+          to   { opacity: 1; max-height: 3000px; transform: translateX(0); }
+        }
+      `}</style>
+
+      {/* Header + search */}
+      <div style={{
+        display: "flex", alignItems: "center", gap: 10,
+        marginBottom: 12,
+      }}>
+        <Label color={T.text} size={T.fs_sm}>Genre lineage</Label>
+        <span style={{
+          fontSize: 10, color: T.textTer, fontFamily: T.font_mono, letterSpacing: "0.1em",
+          flex: 1,
+        }}>
+          {Object.keys(GENRE_LINEAGE).length} genres · click to explore
+        </span>
+      </div>
+      <input
+        type="text" value={searchText}
+        onChange={e => setSearchText(e.target.value)}
+        placeholder="Search genres (e.g. 'trap', 'house')"
+        style={{
+          width: "100%", boxSizing: "border-box",
+          padding: isMobile ? "10px 12px" : "8px 12px",
+          background: T.bg, border: `1px solid ${T.border}`,
+          color: T.text,
+          fontSize: isMobile ? 16 : 13,
+          fontFamily: T.font_sans,
+          borderRadius: 6, outline: "none",
+          marginBottom: 8,
+          WebkitAppearance: "none",
+          transition: "border-color 140ms ease-out",
+        }}
+        onFocus={e => e.currentTarget.style.borderColor = T.borderFocus}
+        onBlur={e => e.currentTarget.style.borderColor = T.border}
+      />
+
+      {/* Expand/collapse all */}
+      <div style={{ display: "flex", gap: 6, marginBottom: 10 }}>
+        <button type="button"
+          onClick={() => setExpanded(new Set(Object.keys(GENRE_LINEAGE)))}
+          style={{
+            padding: "4px 10px", background: "transparent",
+            border: `1px solid ${T.border}`, color: T.textTer,
+            fontSize: 10, fontFamily: T.font_mono, letterSpacing: "0.12em",
+            borderRadius: 4, cursor: "pointer",
+          }}>EXPAND ALL</button>
+        <button type="button"
+          onClick={() => setExpanded(new Set(GENRE_ROOTS))}
+          style={{
+            padding: "4px 10px", background: "transparent",
+            border: `1px solid ${T.border}`, color: T.textTer,
+            fontSize: 10, fontFamily: T.font_mono, letterSpacing: "0.12em",
+            borderRadius: 4, cursor: "pointer",
+          }}>COLLAPSE</button>
+      </div>
+
+      {/* The tree */}
+      <div style={{
+        maxHeight: isMobile ? 420 : 640,
+        overflowY: "auto", overflowX: "hidden",
+        paddingRight: 4,
+      }}>
+        {GENRE_ROOTS.map(root => renderNode(root))}
+      </div>
+    </div>
+  );
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// GenreDetailCard — context card for the currently-selected genre node.
+// Shows era, description, traits, representative artists, and ancestry paths.
+// ────────────────────────────────────────────────────────────────────────────
+function GenreDetailCard({ genre, onSelectGenre }) {
+  const [artistsExpanded, setArtistsExpanded] = useState(false);
+  const [traitsExpanded, setTraitsExpanded] = useState(true); // traits open by default
+  // Reset expansion state when switching genres
+  useEffect(() => {
+    setArtistsExpanded(false);
+    setTraitsExpanded(true);
+  }, [genre]);
+
+  if (!genre) {
+    return (
+      <div style={{
+        background: T.surface, border: `1px solid ${T.border}`,
+        borderRadius: T.r_lg, padding: 24,
+        display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+        minHeight: 240, textAlign: "center",
+      }}>
+        <div style={{
+          fontSize: 36, marginBottom: 12, opacity: 0.4, lineHeight: 1,
+        }}>🎼</div>
+        <div style={{
+          fontSize: 14, color: T.textSec, fontFamily: T.font_sans, maxWidth: 320,
+          lineHeight: 1.5,
+        }}>
+          Select a genre in the tree to explore its origins, characteristics, and descendants.
+        </div>
+      </div>
+    );
+  }
+
+  const node = GENRE_LINEAGE[genre];
+  if (!node) return null;
+  const children = GENRE_CHILDREN[genre] || [];
+  const deep = GENRE_DEEP_INFO[genre]; // may be undefined for genres without research
+
+  // Build merged data: prefer rich from GENRE_DEEP_INFO, fall back to GENRE_LINEAGE
+  const traitsList = deep?.traitDetails || node.traits.map(t => ({ trait: t, detail: null }));
+  const artistsList = deep?.artistDetails || node.artists.map(a => ({ name: a, signature: null, why: null }));
+  const hasRichTraits = !!deep?.traitDetails;
+  const hasRichArtists = !!deep?.artistDetails;
+
+  // By default show first 3 artists; expand to show all
+  const visibleArtists = artistsExpanded ? artistsList : artistsList.slice(0, 3);
+
+  return (
+    <div style={{
+      background: T.surface, border: `1px solid ${T.border}`,
+      borderRadius: T.r_lg, padding: 20,
+      animation: "detailCardIn 280ms cubic-bezier(0.16, 1, 0.3, 1)",
+    }}>
+      <style>{`
+        @keyframes detailCardIn {
+          from { opacity: 0; transform: translateY(6px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes sectionExpand {
+          from { opacity: 0; max-height: 0; }
+          to   { opacity: 1; max-height: 2000px; }
+        }
+      `}</style>
+
+      {/* ── Header: era + genre name ──────────────────────── */}
+      <div style={{ marginBottom: 14 }}>
+        <div style={{
+          fontSize: 10, fontFamily: T.font_mono, color: T.textMuted,
+          letterSpacing: "0.2em", marginBottom: 6,
+        }}>{node.era.toUpperCase()}</div>
+        <div style={{
+          fontSize: 26, fontFamily: T.font_sans, fontWeight: 600,
+          color: T.text, lineHeight: 1.1, letterSpacing: "-0.015em",
+        }}>{genre}</div>
+      </div>
+
+      {/* ── Tagline (from deep info) or fallback description ──── */}
+      <p style={{
+        fontSize: 14, lineHeight: 1.55,
+        color: T.textSec, fontFamily: T.font_sans,
+        margin: 0, marginBottom: 16,
+        fontStyle: deep?.tagline ? "italic" : "normal",
+      }}>
+        {deep?.tagline || node.description}
+      </p>
+
+      {/* ── Popularity curve chart ─────────────────────────────── */}
+      {GENRE_HISTORY[genre] && (
+        <div style={{ marginBottom: 16 }}>
+          <GenrePopularityChart genre={genre} />
+        </div>
+      )}
+
+      {/* ── Lineage (parents + children) — compact single block ─ */}
+      {(node.parents.length > 0 || children.length > 0) && (
+        <div style={{
+          padding: 12,
+          background: T.bg,
+          border: `1px solid ${T.border}`,
+          borderRadius: 8,
+          marginBottom: 16,
+        }}>
+          {/* Parents */}
+          {node.parents.length > 0 && (
+            <div style={{ marginBottom: children.length > 0 ? 10 : 0 }}>
+              <div style={{
+                fontSize: 9, fontFamily: T.font_mono, color: T.textMuted,
+                letterSpacing: "0.2em", marginBottom: 6,
+              }}>◂ EVOLVED FROM</div>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
+                {node.parents.map(p => (
+                  <button key={p} type="button"
+                    onClick={() => onSelectGenre(p)}
+                    style={{
+                      padding: "4px 9px",
+                      background: "transparent",
+                      border: `1px solid ${T.border}`,
+                      color: T.textSec,
+                      fontSize: 11, fontFamily: T.font_sans, fontWeight: 500,
+                      borderRadius: 4, cursor: "pointer",
+                      transition: "all 140ms ease-out",
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.borderColor = T.accent; e.currentTarget.style.color = T.accent; }}
+                    onMouseLeave={e => { e.currentTarget.style.borderColor = T.border; e.currentTarget.style.color = T.textSec; }}>
+                    {p}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+          {/* Children */}
+          {children.length > 0 && (
+            <div>
+              <div style={{
+                fontSize: 9, fontFamily: T.font_mono, color: T.textMuted,
+                letterSpacing: "0.2em", marginBottom: 6,
+              }}>▸ SPAWNED</div>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
+                {children.map(c => (
+                  <button key={c} type="button"
+                    onClick={() => onSelectGenre(c)}
+                    style={{
+                      padding: "4px 9px",
+                      background: `${T.accent}11`,
+                      border: `1px solid ${T.accentBorder}`,
+                      color: T.accentHi,
+                      fontSize: 11, fontFamily: T.font_sans, fontWeight: 500,
+                      borderRadius: 4, cursor: "pointer",
+                      transition: "all 140ms ease-out",
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.background = `${T.accent}22`; }}
+                    onMouseLeave={e => { e.currentTarget.style.background = `${T.accent}11`; }}>
+                    {c}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── Key Traits — expandable with detailed explanations ──── */}
+      {traitsList.length > 0 && (
+        <div style={{
+          marginBottom: 16,
+          padding: 14,
+          background: `${V.neonGold}07`,
+          border: `1px solid ${V.neonGold}26`,
+          borderRadius: 8,
+        }}>
+          <button type="button"
+            onClick={() => setTraitsExpanded(!traitsExpanded)}
+            style={{
+              width: "100%",
+              display: "flex", alignItems: "center", justifyContent: "space-between",
+              background: "transparent", border: "none",
+              padding: 0, cursor: "pointer",
+              marginBottom: traitsExpanded ? 10 : 0,
+            }}>
+            <div style={{
+              fontSize: 10, fontFamily: T.font_mono, fontWeight: 700,
+              color: V.neonGold, letterSpacing: "0.18em",
+              textShadow: `0 0 4px ${V.neonGold}33`,
+            }}>
+              KEY TRAITS · {traitsList.length}
+            </div>
+            <span style={{
+              color: V.neonGold, fontSize: 11, fontFamily: T.font_mono,
+              transition: "transform 200ms ease-out",
+              transform: traitsExpanded ? "rotate(90deg)" : "rotate(0deg)",
+            }}>▸</span>
+          </button>
+          {traitsExpanded && (
+            <div style={{
+              display: "flex", flexDirection: "column", gap: 10,
+              animation: "sectionExpand 220ms ease-out",
+            }}>
+              {traitsList.map((t, i) => (
+                <div key={i} style={{
+                  paddingBottom: i < traitsList.length - 1 ? 10 : 0,
+                  borderBottom: i < traitsList.length - 1 ? `1px dashed ${V.neonGold}22` : "none",
+                }}>
+                  <div style={{
+                    fontSize: 13, fontWeight: 600, color: T.text,
+                    fontFamily: T.font_sans, marginBottom: t.detail ? 4 : 0,
+                    lineHeight: 1.3,
+                  }}>
+                    <span style={{ color: V.neonGold, marginRight: 6 }}>◆</span>
+                    {t.trait}
+                  </div>
+                  {t.detail && (
+                    <div style={{
+                      fontSize: 12, color: T.textSec,
+                      fontFamily: T.font_sans, lineHeight: 1.5,
+                      paddingLeft: 14,
+                    }}>
+                      {t.detail}
+                    </div>
+                  )}
+                </div>
+              ))}
+              {!hasRichTraits && (
+                <div style={{
+                  fontSize: 10, color: T.textMuted, fontFamily: T.font_mono,
+                  marginTop: 4, fontStyle: "italic",
+                  letterSpacing: "0.05em",
+                }}>
+                  Basic traits only — detailed explanations being researched
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── Representative Artists — expandable with signatures ─── */}
+      {artistsList.length > 0 && (
+        <div style={{
+          padding: 14,
+          background: T.bg,
+          border: `1px solid ${T.border}`,
+          borderRadius: 8,
+        }}>
+          <div style={{
+            display: "flex", alignItems: "center", justifyContent: "space-between",
+            marginBottom: 10,
+          }}>
+            <div style={{
+              fontSize: 10, fontFamily: T.font_mono, fontWeight: 700,
+              color: T.text, letterSpacing: "0.18em",
+            }}>
+              ARTISTS · {artistsList.length}
+            </div>
+            {artistsList.length > 3 && (
+              <button type="button"
+                onClick={() => setArtistsExpanded(!artistsExpanded)}
+                style={{
+                  background: "transparent", border: "none",
+                  color: T.accent, fontSize: 11,
+                  fontFamily: T.font_mono, fontWeight: 600,
+                  letterSpacing: "0.12em", cursor: "pointer",
+                  padding: "2px 8px",
+                  borderRadius: 4,
+                  transition: "all 140ms ease-out",
+                }}
+                onMouseEnter={e => e.currentTarget.style.background = `${T.accent}15`}
+                onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
+                {artistsExpanded ? "SHOW LESS ▲" : `SHOW ALL ${artistsList.length} ▾`}
+              </button>
+            )}
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            {visibleArtists.map((a, i) => (
+              <div key={i} style={{
+                paddingBottom: i < visibleArtists.length - 1 ? 10 : 0,
+                borderBottom: i < visibleArtists.length - 1 ? `1px dashed ${T.border}` : "none",
+              }}>
+                <div style={{
+                  fontSize: 14, fontWeight: 600, color: T.text,
+                  fontFamily: T.font_sans,
+                  marginBottom: a.signature ? 3 : 0,
+                  lineHeight: 1.2,
+                }}>
+                  {a.name}
+                </div>
+                {a.signature && (
+                  <div style={{
+                    fontSize: 11, color: T.accent,
+                    fontFamily: T.font_mono, letterSpacing: "0.05em",
+                    marginBottom: a.why ? 3 : 0,
+                  }}>
+                    ▸ {a.signature}
+                  </div>
+                )}
+                {a.why && (
+                  <div style={{
+                    fontSize: 12, color: T.textSec,
+                    fontFamily: T.font_sans, lineHeight: 1.5,
+                  }}>
+                    {a.why}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+          {!hasRichArtists && (
+            <div style={{
+              marginTop: 8, fontSize: 10, color: T.textMuted, fontFamily: T.font_mono,
+              fontStyle: "italic", letterSpacing: "0.05em",
+            }}>
+              Artist details being researched
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+
+
+// ════════════════════════════════════════════════════════════════════════════
+// GENRE BROWSER — era-grouped sidebar + detail pane.
+// Replaces the messy multi-view experience with a single clean encyclopedia.
+// Genres are bucketed into 5 eras; each era section is collapsible.
+// ════════════════════════════════════════════════════════════════════════════
+
+// Era buckets with readable labels. Order matters — oldest → newest.
+const GENRE_ERAS = [
+  {
+    id: "pre-1960",
+    label: "Pre-1960s",
+    sublabel: "The foundations",
+    description: "Blues, jazz, gospel, folk, country — the roots of everything that follows.",
+  },
+  {
+    id: "60s-70s",
+    label: "1960s – 70s",
+    sublabel: "Birth of modern genres",
+    description: "Rock explodes, funk arrives, hip-hop is invented, disco peaks, metal emerges.",
+  },
+  {
+    id: "80s-90s",
+    label: "1980s – 90s",
+    sublabel: "Genre explosion",
+    description: "New Wave, house, techno, grunge, boom-bap, R&B, alt-rock, gangsta rap, Britpop.",
+  },
+  {
+    id: "2000s-10s",
+    label: "2000s – 2010s",
+    sublabel: "The streaming era",
+    description: "Trap, EDM, indie, alt R&B, K-pop globalization, emo rap, dubstep, afrobeats rise.",
+  },
+  {
+    id: "2020s",
+    label: "2020s+",
+    sublabel: "Today",
+    description: "Amapiano, phonk, hyperpop, drill, plugg, rage rap, current afrobeats, country-pop.",
+  },
+];
+
+// Map a genre's era string → era bucket id. Uses regex patterns.
+function getEraForGenre(genre) {
+  const node = GENRE_LINEAGE[genre];
+  if (!node || !node.era) return "pre-1960"; // safe fallback
+
+  const era = node.era;
+  // Check for specific decade mentions, oldest first
+  if (/pre-1900|1800|190[0-9]|191[0-9]|192[0-9]|193[0-9]|194[0-9]|195[0-9]/i.test(era)) return "pre-1960";
+  if (/196[0-9]|197[0-9]/i.test(era)) return "60s-70s";
+  if (/198[0-9]|199[0-9]/i.test(era)) return "80s-90s";
+  if (/200[0-9]|201[0-9]/i.test(era)) return "2000s-10s";
+  if (/202[0-9]/i.test(era)) return "2020s";
+  return "pre-1960";
+}
+
+// Precompute: { eraId: [genre1, genre2, ...] } with genres sorted alphabetically within each era.
+const GENRES_BY_ERA = (() => {
+  const map = {};
+  GENRE_ERAS.forEach(e => { map[e.id] = []; });
+  Object.keys(GENRE_LINEAGE).forEach(g => {
+    const eraId = getEraForGenre(g);
+    if (map[eraId]) map[eraId].push(g);
+  });
+  // Alphabetize within each era for predictable browsing
+  Object.keys(map).forEach(id => { map[id].sort((a, b) => a.localeCompare(b)); });
+  return map;
+})();
+
+// ── SPARKLINE & CHART COMPONENTS — popularity visualization ───────────
+// Both compute from GENRE_HISTORY yearly data points. Sparkline = tiny
+// inline version (for sidebar rows). Chart = full-size version (for the
+// detail card). Pure line charts: x-axis is years, y-axis is popularity 0-100.
+
+// Get current-year popularity for a genre (used for sorting)
+function getCurrentPopularity(genre) {
+  const curve = GENRE_HISTORY[genre];
+  if (!curve || curve.length === 0) return 0;
+  const now = 2026;
+  // Use interpolation but without the pre-birth fade-in so sorting is clean
+  if (now < curve[0][0]) return 0;
+  if (now > curve[curve.length - 1][0]) {
+    const delta = now - curve[curve.length - 1][0];
+    return Math.max(0, curve[curve.length - 1][1] * (1 - delta / 8));
+  }
+  for (let i = 0; i < curve.length - 1; i++) {
+    const [ta, va] = curve[i];
+    const [tb, vb] = curve[i + 1];
+    if (now >= ta && now <= tb) {
+      const p = (now - ta) / (tb - ta);
+      return va + (vb - va) * p;
+    }
+  }
+  return 0;
+}
+
+// Build an SVG path (d attribute) from a curve at given dimensions
+function buildCurvePath(curve, width, height, minYear, maxYear) {
+  if (!curve || curve.length === 0) return "";
+  const padY = 4; // leave a little breathing room top/bottom
+  const usableH = height - padY * 2;
+  const years = maxYear - minYear;
+  // Sample every quarter-year for smooth appearance
+  const points = [];
+  for (let y = minYear; y <= maxYear; y += 0.25) {
+    // Linear interp for speed (simpler than smoothstep for chart rendering)
+    let val = 0;
+    if (y < curve[0][0]) val = 0;
+    else if (y > curve[curve.length - 1][0]) {
+      const delta = y - curve[curve.length - 1][0];
+      val = Math.max(0, curve[curve.length - 1][1] * (1 - delta / 8));
+    } else {
+      for (let i = 0; i < curve.length - 1; i++) {
+        const [ta, va] = curve[i];
+        const [tb, vb] = curve[i + 1];
+        if (y >= ta && y <= tb) {
+          const p = (y - ta) / (tb - ta);
+          val = va + (vb - va) * p;
+          break;
+        }
+      }
+    }
+    const px = ((y - minYear) / years) * width;
+    const py = padY + (1 - val / 100) * usableH;
+    points.push(`${px.toFixed(1)},${py.toFixed(1)}`);
+  }
+  if (points.length === 0) return "";
+  return `M ${points[0]} L ${points.slice(1).join(" L ")}`;
+}
+
+// ── Tiny sidebar sparkline — ~80px wide, 20px tall ─────────────────
+function GenreSparkline({ genre, width = 80, height = 20, color }) {
+  const curve = GENRE_HISTORY[genre];
+  if (!curve || curve.length === 0) return null;
+  const minYear = 1960;
+  const maxYear = 2026;
+  const path = buildCurvePath(curve, width, height, minYear, maxYear);
+  const current = getCurrentPopularity(genre);
+  // Current-position dot on the right edge
+  const dotX = width - 1.5;
+  const dotY = 4 + (1 - current / 100) * (height - 8);
+
+  const strokeColor = color || T.textSec;
+
+  return (
+    <svg width={width} height={height} style={{ display: "block", flexShrink: 0 }}>
+      <path d={path}
+        fill="none"
+        stroke={strokeColor}
+        strokeWidth={1.2}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        opacity={0.75}
+      />
+      {/* Current-position dot */}
+      <circle cx={dotX} cy={dotY} r={1.8}
+        fill={strokeColor}
+        opacity={1}
+      />
+    </svg>
+  );
+}
+
+// ── Full popularity chart — big line chart for the detail card ─────
+function GenrePopularityChart({ genre }) {
+  const curve = GENRE_HISTORY[genre];
+  if (!curve || curve.length === 0) {
+    return (
+      <div style={{
+        padding: 16, textAlign: "center",
+        fontSize: 12, color: T.textMuted, fontFamily: T.font_sans,
+        fontStyle: "italic",
+      }}>
+        No historical data available yet — being researched.
+      </div>
+    );
+  }
+
+  const MIN_YEAR = 1960;
+  const MAX_YEAR = 2026;
+  const WIDTH = 540;
+  const HEIGHT = 160;
+  const PAD_L = 32;   // y-axis label room
+  const PAD_R = 12;
+  const PAD_T = 16;
+  const PAD_B = 26;   // x-axis label room
+  const CHART_W = WIDTH - PAD_L - PAD_R;
+  const CHART_H = HEIGHT - PAD_T - PAD_B;
+
+  const path = buildCurvePath(curve, CHART_W, CHART_H, MIN_YEAR, MAX_YEAR);
+  const current = getCurrentPopularity(genre);
+
+  // Decade ticks for the x-axis
+  const decadeTicks = [1960, 1970, 1980, 1990, 2000, 2010, 2020];
+  // Popularity grid lines
+  const yGridLines = [0, 25, 50, 75, 100];
+
+  // Find peak year for annotation
+  let peakYear = curve[0][0];
+  let peakValue = curve[0][1];
+  curve.forEach(([y, v]) => {
+    if (v > peakValue) { peakValue = v; peakYear = y; }
+  });
+
+  return (
+    <div style={{
+      padding: "12px 14px",
+      background: T.bg,
+      border: `1px solid ${T.border}`,
+      borderRadius: 8,
+    }}>
+      {/* Header: current popularity + peak */}
+      <div style={{
+        display: "flex", alignItems: "baseline", justifyContent: "space-between",
+        marginBottom: 6, gap: 10, flexWrap: "wrap",
+      }}>
+        <div style={{
+          fontSize: 10, fontFamily: T.font_mono, fontWeight: 700,
+          color: T.textMuted, letterSpacing: "0.18em",
+        }}>POPULARITY CURVE</div>
+        <div style={{
+          fontSize: 11, color: T.textTer, fontFamily: T.font_mono,
+          letterSpacing: "0.05em",
+          display: "flex", gap: 10,
+        }}>
+          <span>NOW: <strong style={{ color: T.text }}>{Math.round(current)}</strong></span>
+          <span>PEAK: <strong style={{ color: V.neonGold }}>{Math.round(peakValue)}</strong> ({peakYear})</span>
+        </div>
+      </div>
+
+      <svg
+        width="100%"
+        viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
+        preserveAspectRatio="none"
+        style={{ display: "block" }}>
+        {/* Y-axis grid lines */}
+        {yGridLines.map(v => {
+          const y = PAD_T + (1 - v / 100) * CHART_H;
+          return (
+            <g key={v}>
+              <line
+                x1={PAD_L} x2={WIDTH - PAD_R}
+                y1={y} y2={y}
+                stroke={T.border}
+                strokeWidth={0.5}
+                strokeDasharray={v === 0 || v === 100 ? "0" : "2 3"}
+                opacity={0.6}
+              />
+              <text
+                x={PAD_L - 6} y={y + 3}
+                textAnchor="end"
+                fontSize={8}
+                fontFamily={T.font_mono}
+                fill={T.textMuted}
+                letterSpacing="0.05em">
+                {v}
+              </text>
+            </g>
+          );
+        })}
+
+        {/* X-axis decade tick marks + labels */}
+        {decadeTicks.map(y => {
+          const x = PAD_L + ((y - MIN_YEAR) / (MAX_YEAR - MIN_YEAR)) * CHART_W;
+          return (
+            <g key={y}>
+              <line
+                x1={x} x2={x}
+                y1={PAD_T} y2={PAD_T + CHART_H}
+                stroke={T.border}
+                strokeWidth={0.5}
+                opacity={0.3}
+              />
+              <text
+                x={x} y={HEIGHT - 8}
+                textAnchor="middle"
+                fontSize={9}
+                fontFamily={T.font_mono}
+                fill={T.textMuted}
+                letterSpacing="0.05em">
+                {y}
+              </text>
+            </g>
+          );
+        })}
+
+        {/* The actual popularity curve */}
+        <g transform={`translate(${PAD_L}, ${PAD_T})`}>
+          <path d={path}
+            fill="none"
+            stroke={T.accent}
+            strokeWidth={1.6}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            style={{ filter: `drop-shadow(0 0 2px ${T.accent}88)` }}
+          />
+          {/* Current-position marker */}
+          <circle
+            cx={CHART_W}
+            cy={(1 - current / 100) * CHART_H}
+            r={3}
+            fill={T.accentHi}
+            stroke={T.bg}
+            strokeWidth={1.5}
+            style={{ filter: `drop-shadow(0 0 4px ${T.accent})` }}
+          />
+        </g>
+
+        {/* X-axis label */}
+        <text
+          x={WIDTH / 2} y={HEIGHT - 1}
+          textAnchor="middle"
+          fontSize={8}
+          fontFamily={T.font_mono}
+          fill={T.textMuted}
+          letterSpacing="0.15em">
+          YEAR · 1960 → 2026
+        </text>
+      </svg>
+    </div>
+  );
+}
+
+
+// ════════════════════════════════════════════════════════════════════════════
+// GENRE BROWSER — popularity-sorted sidebar + detail pane.
+// Genres are sorted by their 2026 popularity (most relevant now at top).
+// Each row shows a tiny sparkline so you can see a genre's life-curve at a glance.
+// ════════════════════════════════════════════════════════════════════════════
+function GenreBrowser({ selectedGenre, onSelectGenre }) {
+  const { layout } = useLayout();
+  const isMobile = layout === "mobile";
+  const [search, setSearch] = useState("");
+  const [mobileShowDetail, setMobileShowDetail] = useState(false);
+
+  // Precompute: all genres sorted by current (2026) popularity, descending.
+  // This turns the sidebar into a "what's hot right now" ranked list.
+  const sortedGenres = useMemo(() => {
+    return Object.keys(GENRE_LINEAGE)
+      .map(g => ({ name: g, current: getCurrentPopularity(g) }))
+      .sort((a, b) => b.current - a.current);
+  }, []);
+
+  // Search filters across the full list
+  const searchLower = search.trim().toLowerCase();
+  const isSearching = searchLower.length > 0;
+  const visibleGenres = useMemo(() => {
+    if (!isSearching) return sortedGenres;
+    return sortedGenres.filter(g => g.name.toLowerCase().includes(searchLower));
+  }, [sortedGenres, isSearching, searchLower]);
+
+  // On mobile, show detail view when a genre is selected
+  useEffect(() => {
+    if (isMobile && selectedGenre) setMobileShowDetail(true);
+  }, [selectedGenre, isMobile]);
+
+  const handleSelect = (genre) => {
+    onSelectGenre(genre);
+    if (isMobile) setMobileShowDetail(true);
+  };
+
+  // ── Mobile: show either sidebar OR detail, not both ─────────────
+  if (isMobile && mobileShowDetail && selectedGenre) {
+    return (
+      <div style={{
+        background: T.bg,
+        border: `1px solid ${T.border}`,
+        borderRadius: T.r_lg,
+        overflow: "hidden",
+      }}>
+        <button type="button"
+          onClick={() => setMobileShowDetail(false)}
+          style={{
+            width: "100%",
+            padding: "12px 16px",
+            background: T.surface,
+            border: "none",
+            borderBottom: `1px solid ${T.border}`,
+            color: T.text,
+            fontSize: 13, fontFamily: T.font_sans, fontWeight: 500,
+            cursor: "pointer", textAlign: "left",
+            display: "flex", alignItems: "center", gap: 8,
+          }}>
+          <span style={{ color: T.accent, fontSize: 16 }}>◂</span>
+          Back to all genres
+        </button>
+        <div style={{ padding: T.s3 }}>
+          <GenreDetailCard
+            genre={selectedGenre}
+            onSelectGenre={handleSelect}
+          />
+        </div>
+      </div>
+    );
+  }
+
+  // ── Sidebar + detail layout ─────────────────────────────────────
+  return (
+    <div style={{
+      display: "grid",
+      gridTemplateColumns: isMobile ? "1fr" : "minmax(320px, 380px) 1fr",
+      gap: T.s4,
+      alignItems: "start",
+    }}>
+      {/* ════ SIDEBAR ═══════════════════════════════════════════ */}
+      <div style={{
+        background: T.surface,
+        border: `1px solid ${T.border}`,
+        borderRadius: T.r_lg,
+        overflow: "hidden",
+      }}>
+        {/* Header with explanatory label */}
+        <div style={{
+          padding: "12px 14px 10px",
+          borderBottom: `1px solid ${T.border}`,
+          background: "linear-gradient(180deg, rgba(255,255,255,0.02) 0%, transparent 100%)",
+        }}>
+          <div style={{
+            fontSize: 10, fontFamily: T.font_mono, fontWeight: 700,
+            color: T.textMuted, letterSpacing: "0.18em", marginBottom: 4,
+          }}>SORTED BY CURRENT POPULARITY</div>
+          <div style={{
+            fontSize: 10, color: T.textTer, fontFamily: T.font_sans,
+            lineHeight: 1.4,
+          }}>
+            {visibleGenres.length} genres · most relevant today first
+          </div>
+        </div>
+
+        {/* Search */}
+        <div style={{ padding: 10, borderBottom: `1px solid ${T.border}` }}>
+          <input
+            type="text"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Search genres…"
+            style={{
+              width: "100%", boxSizing: "border-box",
+              padding: isMobile ? "10px 12px" : "8px 12px",
+              background: T.bg,
+              border: `1px solid ${T.border}`,
+              color: T.text,
+              fontSize: isMobile ? 16 : 13,
+              fontFamily: T.font_sans,
+              borderRadius: 6, outline: "none",
+              WebkitAppearance: "none",
+              transition: "border-color 140ms ease-out",
+            }}
+            onFocus={e => e.currentTarget.style.borderColor = T.borderFocus}
+            onBlur={e => e.currentTarget.style.borderColor = T.border}
+          />
+        </div>
+
+        {/* Scrollable ranked list */}
+        <div style={{
+          maxHeight: isMobile ? "none" : "calc(100vh - 260px)",
+          overflowY: "auto",
+          padding: "4px 0",
+        }}>
+          {visibleGenres.length === 0 ? (
+            <div style={{
+              padding: "20px 16px", textAlign: "center",
+              fontSize: 13, color: T.textMuted, fontFamily: T.font_sans,
+            }}>
+              No genres match "{search}"
+            </div>
+          ) : (
+            visibleGenres.map((g, idx) => (
+              <GenreRow key={g.name}
+                genre={g.name}
+                rank={isSearching ? null : idx + 1}
+                current={g.current}
+                isSelected={selectedGenre === g.name}
+                onClick={() => handleSelect(g.name)}
+              />
+            ))
+          )}
+        </div>
+      </div>
+
+      {/* ════ DETAIL PANE ═══════════════════════════════════════ */}
+      {!isMobile && (
+        <div style={{ position: "sticky", top: 72 }}>
+          <GenreDetailCard
+            genre={selectedGenre}
+            onSelectGenre={handleSelect}
+          />
+        </div>
+      )}
+    </div>
+  );
+}
+
+
+
+// Row component — a single clickable genre in the sidebar list.
+// Shows: rank number · genre name · hybrid marker · RES badge · sparkline
+function GenreRow({ genre, rank, current, isSelected, onClick }) {
+  const node = GENRE_LINEAGE[genre];
+  if (!node) return null;
+  const deep = GENRE_DEEP_INFO[genre];
+  const hasRich = !!deep;
+  const isHybrid = (node.parents || []).length > 1;
+
+  // Color the sparkline based on current popularity: hot genres get accent,
+  // cooler ones fade toward muted gray
+  const sparkColor = current >= 60 ? T.accentHi
+    : current >= 35 ? T.textSec
+    : T.textMuted;
+
+  return (
+    <button type="button"
+      onClick={onClick}
+      style={{
+        display: "flex", alignItems: "center", gap: 10, width: "100%",
+        padding: "7px 10px 7px 8px",
+        background: isSelected ? `linear-gradient(90deg, ${T.accent}22 0%, transparent 80%)` : "transparent",
+        border: "none",
+        borderLeft: `2px solid ${isSelected ? T.accent : "transparent"}`,
+        borderRadius: isSelected ? "0 6px 6px 0" : 6,
+        color: isSelected ? T.text : T.textSec,
+        fontSize: 13, fontFamily: T.font_sans, fontWeight: isSelected ? 500 : 400,
+        cursor: "pointer",
+        transition: "all 120ms ease-out",
+        textAlign: "left",
+      }}
+      onMouseEnter={e => { if (!isSelected) e.currentTarget.style.background = T.hover; }}
+      onMouseLeave={e => { if (!isSelected) e.currentTarget.style.background = "transparent"; }}>
+      {/* Rank number */}
+      {rank !== null && rank !== undefined && (
+        <span style={{
+          flexShrink: 0,
+          width: 22, textAlign: "right",
+          fontSize: 10, fontFamily: T.font_mono,
+          color: rank <= 10 ? T.accentHi : T.textMuted,
+          fontWeight: rank <= 10 ? 700 : 400,
+          letterSpacing: "0.05em",
+        }}>{rank}</span>
+      )}
+      {/* Genre name */}
+      <div style={{
+        display: "flex", alignItems: "center", gap: 5,
+        flex: 1, minWidth: 0,
+      }}>
+        <span style={{
+          overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+        }}>{genre}</span>
+        {isHybrid && (
+          <span title={`Hybrid of: ${node.parents.join(", ")}`}
+            style={{ fontSize: 9, color: V.cyan, flexShrink: 0 }}>◆</span>
+        )}
+      </div>
+      {/* RES badge + sparkline */}
+      <div style={{
+        display: "flex", alignItems: "center", gap: 6, flexShrink: 0,
+      }}>
+        {hasRich && (
+          <span style={{
+            fontSize: 8, fontFamily: T.font_mono, fontWeight: 700,
+            color: T.success, letterSpacing: "0.12em",
+            padding: "1px 4px",
+            background: `${T.success}14`,
+            border: `1px solid ${T.success}44`,
+            borderRadius: 3,
+          }}>RES</span>
+        )}
+        <GenreSparkline genre={genre} width={70} height={18} color={sparkColor} />
+      </div>
+    </button>
+  );
+}
+
 
 function HistoryPage() {
   const { layout } = useLayout();
@@ -4943,9 +9445,10 @@ function HistoryPage() {
 
   const [selected, setSelected] = useState(defaultSelected);
   const [search, setSearch] = useState("");
-  const [sortMode, setSortMode] = useState("trend");
   const [viewMode, setViewMode] = useState("grid");
   const [resolution, setResolution] = useState("yearly"); // yearly|monthly|weekly
+  const [pageMode, setPageMode] = useState("browse"); // browse | charts
+  const [selectedLineage, setSelectedLineage] = useState("Hip-Hop"); // currently selected tree node
   const MAX_SELECTED = features.historyMaxSelect || 3;
 
   // Enforce cap if tier changes and user had too many selected
@@ -4978,16 +9481,10 @@ function HistoryPage() {
   const filteredGenres = useMemo(() => {
     let list = ALL_GENRES;
     if (searchLower) list = list.filter(g => g.toLowerCase().includes(searchLower));
-    if (sortMode === "trend") list = [...list].sort((a, b) => trendIndex[b] - trendIndex[a]);
-    else if (sortMode === "az") list = [...list].sort((a, b) => a.localeCompare(b));
+    // Single sort: alphabetical
+    list = [...list].sort((a, b) => a.localeCompare(b));
     return list;
-  }, [searchLower, sortMode, trendIndex]);
-
-  // Top trending (for the featured panel)
-  const topTrending = useMemo(() =>
-    [...ALL_GENRES].sort((a, b) => trendIndex[b] - trendIndex[a]).slice(0, 10),
-    [trendIndex]
-  );
+  }, [searchLower]);
 
   // Accent-family palette for lines
   const LINE_COLORS = [T.accentHi, T.accent, T.text, T.warning, T.success, "#8B5CF6", "#06B6D4", T.danger, T.textSec, "#FF6B00", "#00E5FF", "#FF2D9C", "#FFD700", "#00FF88", "#E94FEF", "#F5A524", "#4ADE80", "#7C8BFF", "#5E6AD2", "#6B6E76", "#EF4444", "#8B5CF6", "#06B6D4", "#10B981", "#F59E0B"];
@@ -5002,7 +9499,7 @@ function HistoryPage() {
       {/* ── HERO ─────────────────────────────────────────────────────── */}
       <div style={{ marginBottom: T.s8 }}>
         <Label color={T.textTer} style={{ display: "block", marginBottom: T.s4 }}>
-          Genre History · time-decay trend index
+          Genre History · popularity over time
         </Label>
         <h1 style={{
           fontSize: "clamp(32px, 4vw, 56px)",
@@ -5016,66 +9513,63 @@ function HistoryPage() {
           color: T.textSec, fontSize: T.fs_lg, lineHeight: 1.55,
           maxWidth: 720, marginBottom: T.s3, fontFamily: T.font_sans,
         }}>
-          Every genre and subgenre in the engine, plotted from 1960 to now. A time-decay scoring model ranks each by current momentum — genres peaking today score highest, genres that peaked a year ago score lower, a decade ago lower still.
+          Every genre and subgenre in the engine, plotted from 1960 to now. Each curve shows how a genre's cultural momentum has risen and fallen over the decades.
         </p>
-        <p style={{
-          color: T.textTer, fontSize: T.fs_sm, lineHeight: 1.5, fontFamily: T.font_sans,
+        {/* Explicit disclaimer — users deserve to know the data provenance */}
+        <div style={{
+          display: "inline-flex", alignItems: "center", gap: 8,
+          padding: "8px 14px", marginTop: T.s2,
+          background: `${V.neonGold}0a`,
+          border: `1px solid ${V.neonGold}33`,
+          borderRadius: 6,
+          fontSize: 11, fontFamily: T.font_mono, fontWeight: 600,
+          letterSpacing: "0.12em",
+          color: V.neonGold,
+          textShadow: `0 0 4px ${V.neonGold}44`,
         }}>
-          Curated data, not real-time. Popularity curves are hand-authored estimates of cultural weight, revisited periodically.
-        </p>
+          <span>⚠</span>
+          EDITORIAL ESTIMATES · LAST UPDATED APRIL 2026 · NOT REAL-TIME CHART DATA
+        </div>
       </div>
 
-      {/* ── TOP TRENDING LEADERBOARD ─────────────────────────────────── */}
+      {/* ── PAGE MODE SWITCHER — simplified to 2 tabs ─────────────────── */}
       <div style={{
+        display: "inline-flex",
         background: T.surface, border: `1px solid ${T.border}`,
-        borderRadius: T.r_lg, padding: T.s5, marginBottom: T.s6,
+        borderRadius: 8, padding: 4, marginBottom: T.s6,
       }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: T.s4 }}>
-          <Label color={T.text} size={T.fs_sm}>Top trending right now</Label>
-          <span style={{ fontSize: T.fs_xs, color: T.textTer, fontFamily: T.font_mono }}>
-            by trend-index score
-          </span>
-        </div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: T.s2 }}>
-          {topTrending.map((g, i) => {
-            const score = trendIndex[g];
-            const isOn = selected.includes(g);
-            const barColor = score >= 85 ? T.success : score >= 70 ? T.warning : T.accent;
-            return (
-              <div key={g} onClick={() => toggleGenre(g)} style={{
-                padding: T.s3, cursor: "pointer",
-                background: isOn ? T.elevated : "transparent",
-                border: `1px solid ${isOn ? T.borderHi : T.border}`,
-                borderRadius: T.r_md,
-                transition: `all ${T.dur_fast} ${T.ease}`,
-                position: "relative",
-              }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 6 }}>
-                  <span style={{
-                    fontSize: T.fs_xs, color: T.textTer,
-                    fontFamily: T.font_mono,
-                  }}>#{i + 1}</span>
-                  <span style={{
-                    fontSize: T.fs_base, fontWeight: 700,
-                    color: barColor, fontFamily: T.font_mono,
-                  }}>{score}</span>
-                </div>
-                <div style={{
-                  fontSize: T.fs_md, color: T.text, fontWeight: 500,
-                  fontFamily: T.font_sans, lineHeight: 1.2, marginBottom: 8,
-                }}>{g}</div>
-                <div style={{ height: 2, background: T.border, borderRadius: 1, overflow: "hidden" }}>
-                  <div style={{
-                    height: "100%", width: `${score}%`,
-                    background: barColor,
-                    transition: `width ${T.dur_slow} ${T.ease}`,
-                  }} />
-                </div>
-              </div>
-            );
-          })}
-        </div>
+        {[
+          { id: "browse", label: "Browse", hint: "Explore genres grouped by era" },
+          { id: "charts", label: "Popularity charts", hint: "Popularity over time" },
+        ].map(m => (
+          <button key={m.id} type="button"
+            onClick={() => setPageMode(m.id)}
+            title={m.hint}
+            style={{
+              padding: "8px 16px",
+              background: pageMode === m.id ? T.elevated : "transparent",
+              border: "none",
+              color: pageMode === m.id ? T.text : T.textSec,
+              fontSize: 13, fontFamily: T.font_sans, fontWeight: 500,
+              borderRadius: 6, cursor: "pointer",
+              transition: "all 160ms ease-out",
+            }}>{m.label}</button>
+        ))}
       </div>
+
+      {/* ── BROWSE MODE — new era-grouped encyclopedia ───────────────── */}
+      {pageMode === "browse" && (
+        <div style={{ marginBottom: T.s7 }}>
+          <GenreBrowser
+            selectedGenre={selectedLineage}
+            onSelectGenre={setSelectedLineage}
+          />
+        </div>
+      )}
+
+      {/* ── TREND CHARTS MODE — existing functionality ───────────────── */}
+      {pageMode === "charts" && (<>
+
 
       {/* ── CONTROLS — search, sort, view mode, selection counter ───── */}
       <div style={{
@@ -5087,35 +9581,19 @@ function HistoryPage() {
           style={{
             flex: "1 1 240px", minWidth: 200,
             background: T.surface, border: `1px solid ${T.border}`,
-            color: T.text, padding: `${T.s2}px ${T.s3}px`,
-            fontSize: T.fs_md, fontFamily: T.font_sans,
+            color: T.text,
+            padding: isMobile ? "10px 12px" : `${T.s2}px ${T.s3}px`,
+            fontSize: isMobile ? 16 : T.fs_md,
+            fontFamily: T.font_sans,
             borderRadius: T.r_md, outline: "none",
+            boxSizing: "border-box",
+            height: isMobile ? 40 : "auto",
+            WebkitAppearance: "none",
             transition: `border-color ${T.dur_fast} ${T.ease}`,
           }}
           onFocus={e => e.currentTarget.style.borderColor = T.borderFocus}
           onBlur={e => e.currentTarget.style.borderColor = T.border}
         />
-
-        {/* Sort picker */}
-        <div style={{
-          display: "flex", background: T.surface,
-          border: `1px solid ${T.border}`, borderRadius: T.r_md, padding: 2,
-        }}>
-          {[
-            { id: "trend", label: "By trend" },
-            { id: "az",    label: "A–Z" },
-          ].map(o => (
-            <button key={o.id} type="button" onClick={() => setSortMode(o.id)} style={{
-              background: sortMode === o.id ? T.elevated : "transparent",
-              border: "none",
-              color: sortMode === o.id ? T.text : T.textTer,
-              padding: `${T.s2}px ${T.s3}px`, cursor: "pointer",
-              fontSize: T.fs_sm, fontFamily: T.font_sans, fontWeight: 500,
-              borderRadius: T.r_sm,
-              transition: `all ${T.dur_fast} ${T.ease}`,
-            }}>{o.label}</button>
-          ))}
-        </div>
 
         {/* View mode */}
         <div style={{
@@ -5224,7 +9702,7 @@ function HistoryPage() {
           </Label>
           <div style={{
             display: "grid", gap: T.s3,
-            gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))",
+            gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))",
           }}>
             {selected.filter(g => GENRE_CONTEXT[g]).map(g => (
               <div key={g} style={{
@@ -5254,6 +9732,7 @@ function HistoryPage() {
           </div>
         </div>
       )}
+      </>)}
     </div>
   );
 }
@@ -5381,203 +9860,1172 @@ function MiniChart({ genre, data, color, score }) {
 
 
 // ════════════════════════════════════════════════════════════════════════════
-// TREND ENGINE PAGE — exclusive to Trend Hit fuel. Pulls from the trend-index
-// scoring to propose high-momentum genre combinations the user can roll.
+// VIP SECRETS PAGE — guides to maximize use of Hit Engine
 // ════════════════════════════════════════════════════════════════════════════
 
-function TrendEnginePage({ onNavigate }) {
-  const { layout } = useLayout();
-  const { features, tier } = useTier();
-  const { fuels, activeFuel, setActiveFuel, consumeFuel } = useFuel();
-  const isMobile = layout === "mobile";
+// ════════════════════════════════════════════════════════════════════════════
+// THE PLAYBOOK — long-form VIP knowledge base.
+// Aesthetic: research paper from 2035. Editorial serif typography for ideas,
+// monospace for technical annotations, subtle scanlines and animated grid
+// backgrounds, interactive widgets that TEACH concepts by letting you feel them.
+// Block types: prose, h2, h3, manifesto, annotated-quote, inspector, diagram,
+// example, list, stat-row, divider.
+// ════════════════════════════════════════════════════════════════════════════
 
-  const [result, setResult] = useState(null);
-  const [isRolling, setIsRolling] = useState(false);
+// ── INTERACTIVE WIDGET: Prompt Anatomy Inspector ──────────────────────
+// Live widget where every word of an example prompt is tagged with its
+// function category. Hovering a word highlights all words of the same
+// category — teaches the user to SEE prompt structure, not just read about it.
+const ANATOMY_CATEGORIES = {
+  genre:    { label: "GENRE",     color: "#FFD700", desc: "What stylistic lineage the model should pull from" },
+  tempo:    { label: "TEMPO",     color: "#00E5FF", desc: "BPM and rhythmic feel (halftime, swing, straight)" },
+  instr:    { label: "INSTRUMENT", color: "#7C8BFF", desc: "Specific instruments and their articulations" },
+  vocal:    { label: "VOCAL",     color: "#FF2D9C", desc: "Voice gender, quality, language, delivery style" },
+  mix:      { label: "MIX",       color: "#00FF88", desc: "Production aesthetic, reverb, compression, space" },
+  mood:     { label: "MOOD",      color: "#E94FEF", desc: "Emotional register and harmonic character" },
+};
 
-  // Compute trending genres on mount
-  const trendingGenres = useMemo(() => {
-    const scored = Object.keys(GENRE_HISTORY).map(g => ({
-      name: g, score: calcTrendIndex(GENRE_HISTORY[g]),
-    }));
-    return scored.sort((a, b) => b.score - a.score);
-  }, []);
+// Tokenized prompt. Each token has category + the actual word(s).
+// Rendering joins them with spaces and commas where natural.
+const ANATOMY_EXAMPLE = [
+  { cat: "genre",  t: "Alt R&B" },
+  { t: ",", punct: true },
+  { cat: "tempo",  t: "72 BPM halftime" },
+  { t: ",", punct: true },
+  { cat: "instr",  t: "Rhodes electric piano with vibrato on" },
+  { t: ",", punct: true },
+  { cat: "vocal",  t: "breathy female vocal in English with layered harmonies on choruses" },
+  { t: ",", punct: true },
+  { cat: "instr",  t: "sparse 808 sub-bass" },
+  { t: ",", punct: true },
+  { cat: "mix",    t: "wide reverb tail, minimal arrangement" },
+  { t: ",", punct: true },
+  { cat: "mood",   t: "melancholy minor-key" },
+];
 
-  // When entering this page, auto-select Trend fuel if available
-  useEffect(() => {
-    if (fuels.trend > 0 && activeFuel !== "trend") setActiveFuel("trend");
-  }, []);
+function PromptAnatomyInspector({ isMobile }) {
+  const [hovered, setHovered] = useState(null);
+  const [legendPinned, setLegendPinned] = useState(null); // click-to-pin
 
-  const canRoll = fuels.trend > 0 && !isRolling;
-
-  const rollTrend = () => {
-    if (!canRoll) return;
-    if (!consumeFuel("trend")) return;
-    setIsRolling(true);
-    setTimeout(() => {
-      // Pick from top 15 weighted by score
-      const top = trendingGenres.slice(0, 15);
-      const weights = top.map(t => t.score);
-      const total = weights.reduce((a, b) => a + b, 0);
-      let roll = Math.random() * total;
-      let picked = top[0];
-      for (const t of top) {
-        roll -= t.score;
-        if (roll <= 0) { picked = t; break; }
-      }
-      // Suggest a vocal + mood that's currently hot
-      const hotMoods = ["Confident", "Melancholic", "Euphoric", "Sensual", "Dark & brooding", "Nostalgic"];
-      const hotVocals = ["Auto-tuned melodic rapper", "Breathy pop vocal", "Anthemic clear lead", "Whispered intimate vocal"];
-      const hotGrooves = ["halftime trap", "afrobeats log-drum", "4-on-the-floor", "amapiano log-drum bounce"];
-
-      setResult({
-        genre: picked.name,
-        score: picked.score,
-        mood: hotMoods[Math.floor(Math.random() * hotMoods.length)],
-        vocal: hotVocals[Math.floor(Math.random() * hotVocals.length)],
-        groove: hotGrooves[Math.floor(Math.random() * hotGrooves.length)],
-        bpm: 80 + Math.floor(Math.random() * 80),
-      });
-      setIsRolling(false);
-    }, 900);
-  };
-
-  if (fuels.trend <= 0 && features.dailyFuel.trend === 0) {
-    // User doesn't have trend fuel access at all
-    return (
-      <div style={{
-        maxWidth: 720, margin: "0 auto",
-        padding: isMobile ? `${T.s6}px ${T.s4}px ${T.s10}px` : `${T.s10}px ${T.s7}px ${T.s10}px`,
-      }}>
-        <Label color={T.textTer} style={{ display: "block", marginBottom: T.s4 }}>
-          Trend Engine · real-time momentum rolls
-        </Label>
-        <h1 style={{
-          fontSize: "clamp(32px, 4vw, 48px)",
-          lineHeight: 1.05, letterSpacing: "-0.025em",
-          margin: 0, marginBottom: T.s4,
-          fontFamily: T.font_sans, fontWeight: 600,
-        }}>
-          What's hot, rolled for you
-        </h1>
-        <p style={{
-          color: T.textSec, fontSize: T.fs_lg, lineHeight: 1.55,
-          marginBottom: T.s6, fontFamily: T.font_sans,
-        }}>
-          The Trend Engine uses live time-decay scoring to roll genre + vibe combinations that are actually trending right now — not evergreen picks. Each roll uses one Trend Hit fuel.
-        </p>
-        <TierLock feature="Trend Engine rolls" requiredTier="vip" />
-      </div>
-    );
-  }
+  const activeCategory = legendPinned || hovered;
 
   return (
     <div style={{
-      maxWidth: 860, margin: "0 auto",
-      padding: isMobile ? `${T.s6}px ${T.s4}px ${T.s10}px` : `${T.s10}px ${T.s7}px ${T.s10}px`,
+      margin: `${T.s6}px 0`,
+      padding: isMobile ? T.s4 : T.s5,
+      background: `linear-gradient(135deg, ${T.surface} 0%, ${T.bg} 100%)`,
+      border: `1px solid ${T.borderHi}`,
+      borderRadius: T.r_lg,
+      position: "relative",
+      overflow: "hidden",
     }}>
-      <Label color={T.textTer} style={{ display: "block", marginBottom: T.s4 }}>
-        Trend Engine · real-time momentum rolls
-      </Label>
-      <h1 style={{
-        fontSize: "clamp(32px, 4vw, 48px)",
-        lineHeight: 1.05, letterSpacing: "-0.025em",
-        margin: 0, marginBottom: T.s4,
-        fontFamily: T.font_sans, fontWeight: 600,
-      }}>
-        What's hot, rolled for you
-      </h1>
-      <p style={{
-        color: T.textSec, fontSize: T.fs_lg, lineHeight: 1.55,
-        marginBottom: T.s7, fontFamily: T.font_sans, maxWidth: 600,
-      }}>
-        Each roll samples from the top 15 genres by live trend-index score, weighted by momentum. Uses one Trend Hit fuel per roll.
-      </p>
+      {/* Subtle grid background for futuristic paper feel */}
+      <div aria-hidden="true" style={{
+        position: "absolute", inset: 0, pointerEvents: "none",
+        opacity: 0.4,
+        backgroundImage: `
+          linear-gradient(${T.border} 1px, transparent 1px),
+          linear-gradient(90deg, ${T.border} 1px, transparent 1px)
+        `,
+        backgroundSize: "24px 24px",
+        maskImage: "radial-gradient(ellipse 70% 60% at 50% 50%, black 30%, transparent 90%)",
+      }} />
 
-      {/* Current top 5 */}
-      <div style={{ marginBottom: T.s7 }}>
-        <Label color={T.textSec} style={{ display: "block", marginBottom: T.s3 }}>
-          Top 5 trending right now
-        </Label>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: T.s2 }}>
-          {trendingGenres.slice(0, 5).map((t, i) => (
-            <div key={t.name} style={{
-              padding: T.s3,
-              background: T.surface, border: `1px solid ${T.border}`,
-              borderRadius: T.r_md,
+      <div style={{ position: "relative" }}>
+        {/* Header with run-metadata */}
+        <div style={{
+          display: "flex", alignItems: "baseline", justifyContent: "space-between",
+          gap: T.s3, marginBottom: T.s4, flexWrap: "wrap",
+        }}>
+          <div>
+            <div style={{
+              fontSize: 10, fontFamily: T.font_mono, fontWeight: 700,
+              color: V.neonGold, letterSpacing: "0.28em",
+              marginBottom: 4,
             }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-                <span style={{ fontSize: T.fs_xs, color: T.textTer, fontFamily: T.font_mono }}>#{i + 1}</span>
-                <span style={{ color: FUEL_TYPES.trend.color, fontFamily: T.font_mono, fontSize: T.fs_sm, fontWeight: 700 }}>{t.score}</span>
-              </div>
-              <div style={{ color: T.text, fontSize: T.fs_md, fontWeight: 500, marginTop: 4 }}>{t.name}</div>
+              ▸ INTERACTIVE
             </div>
-          ))}
+            <div style={{
+              fontSize: isMobile ? T.fs_md : T.fs_lg,
+              fontFamily: T.font_display, fontStyle: "italic",
+              color: T.text, lineHeight: 1.3,
+            }}>
+              The Prompt Anatomy Inspector
+            </div>
+          </div>
+          <div style={{
+            fontSize: 9, fontFamily: T.font_mono,
+            color: T.textMuted, letterSpacing: "0.15em",
+            textAlign: isMobile ? "left" : "right",
+          }}>
+            {isMobile ? "TAP" : "HOVER"} A WORD<br/>
+            TO SEE ITS FUNCTION
+          </div>
         </div>
-      </div>
 
-      {/* Roll area */}
+        {/* The prompt itself — each token tinted by category */}
+        <div style={{
+          padding: isMobile ? T.s4 : T.s5,
+          background: T.bg,
+          border: `1px solid ${T.border}`,
+          borderRadius: T.r_md,
+          fontFamily: T.font_mono,
+          fontSize: isMobile ? 13 : 15,
+          lineHeight: 2,
+          letterSpacing: "0.01em",
+          marginBottom: T.s4,
+        }}>
+          {ANATOMY_EXAMPLE.map((tok, i) => {
+            if (tok.punct) {
+              return <span key={i} style={{ color: T.textMuted }}>{tok.t} </span>;
+            }
+            const cat = ANATOMY_CATEGORIES[tok.cat];
+            const isActive = activeCategory === tok.cat;
+            const isDimmed = activeCategory && activeCategory !== tok.cat;
+            return (
+              <span key={i}
+                onMouseEnter={() => setHovered(tok.cat)}
+                onMouseLeave={() => setHovered(null)}
+                onClick={() => setLegendPinned(legendPinned === tok.cat ? null : tok.cat)}
+                style={{
+                  color: isActive ? cat.color : (isDimmed ? T.textMuted : T.text),
+                  textShadow: isActive ? `0 0 10px ${cat.color}88` : "none",
+                  cursor: "pointer",
+                  transition: "all 180ms ease-out",
+                  borderBottom: isActive ? `2px solid ${cat.color}` : `2px solid transparent`,
+                  paddingBottom: 1,
+                  opacity: isDimmed ? 0.35 : 1,
+                }}>
+                {tok.t}
+              </span>
+            );
+          })}
+        </div>
+
+        {/* Legend — all 6 categories as chips, showing description when hovered/active */}
+        <div style={{
+          display: "grid",
+          gridTemplateColumns: isMobile ? "repeat(2, 1fr)" : "repeat(3, 1fr)",
+          gap: T.s2,
+          marginBottom: activeCategory ? T.s3 : 0,
+        }}>
+          {Object.entries(ANATOMY_CATEGORIES).map(([key, cat]) => {
+            const isActive = activeCategory === key;
+            return (
+              <button key={key}
+                type="button"
+                onMouseEnter={() => setHovered(key)}
+                onMouseLeave={() => setHovered(null)}
+                onClick={() => setLegendPinned(legendPinned === key ? null : key)}
+                style={{
+                  display: "flex", alignItems: "center", gap: 8,
+                  padding: "7px 10px",
+                  background: isActive ? `${cat.color}14` : "transparent",
+                  border: `1px solid ${isActive ? cat.color : T.border}`,
+                  borderRadius: T.r_sm,
+                  fontSize: 10, fontFamily: T.font_mono,
+                  color: isActive ? cat.color : T.textSec,
+                  letterSpacing: "0.12em", fontWeight: 700,
+                  cursor: "pointer",
+                  transition: "all 160ms ease-out",
+                  textAlign: "left",
+                }}>
+                <span style={{
+                  width: 8, height: 8, borderRadius: "50%",
+                  background: cat.color,
+                  boxShadow: isActive ? `0 0 8px ${cat.color}` : "none",
+                  flexShrink: 0,
+                }} />
+                {cat.label}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Active category description — appears on hover/pin */}
+        {activeCategory && (
+          <div style={{
+            padding: `${T.s3}px ${T.s4}px`,
+            background: `${ANATOMY_CATEGORIES[activeCategory].color}08`,
+            border: `1px solid ${ANATOMY_CATEGORIES[activeCategory].color}33`,
+            borderRadius: T.r_sm,
+            fontSize: T.fs_sm,
+            fontFamily: T.font_sans,
+            color: T.textSec,
+            lineHeight: 1.6,
+            animation: "fadeIn 180ms ease-out",
+          }}>
+            <style>{`@keyframes fadeIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }`}</style>
+            <strong style={{ color: ANATOMY_CATEGORIES[activeCategory].color, fontFamily: T.font_mono, letterSpacing: "0.12em", fontSize: 10 }}>
+              {ANATOMY_CATEGORIES[activeCategory].label}
+            </strong>{" "}
+            — {ANATOMY_CATEGORIES[activeCategory].desc}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── INTERACTIVE WIDGET: Genre Fusion Gravity ──────────────────────────
+// Force-graph style visualization showing genre clusters. Genres closer
+// to each other have shared DNA; distant pairs are risky fusions.
+// Click a genre to see which genres "attract" it.
+const FUSION_GENRES = [
+  // Afro-Caribbean cluster (center-left)
+  { id: "afrobeats",  label: "Afrobeats",  x: 25, y: 35, cluster: "afro" },
+  { id: "amapiano",   label: "Amapiano",   x: 18, y: 50, cluster: "afro" },
+  { id: "reggaeton",  label: "Reggaeton",  x: 32, y: 58, cluster: "afro" },
+  { id: "dancehall",  label: "Dancehall",  x: 12, y: 40, cluster: "afro" },
+  // Hip-hop cluster (top-right)
+  { id: "trap",       label: "Trap",       x: 70, y: 20, cluster: "hiphop" },
+  { id: "drill",      label: "Drill",      x: 80, y: 28, cluster: "hiphop" },
+  { id: "boom-bap",   label: "Boom Bap",   x: 75, y: 38, cluster: "hiphop" },
+  { id: "phonk",      label: "Phonk",      x: 88, y: 20, cluster: "hiphop" },
+  { id: "melodic",    label: "Melodic Rap", x: 62, y: 30, cluster: "hiphop" },
+  // Dance-floor cluster (bottom-right)
+  { id: "house",      label: "House",      x: 65, y: 75, cluster: "dance" },
+  { id: "techno",     label: "Techno",     x: 78, y: 82, cluster: "dance" },
+  { id: "dnb",        label: "DnB",        x: 82, y: 68, cluster: "dance" },
+  { id: "trance",     label: "Trance",     x: 90, y: 75, cluster: "dance" },
+  // Rock/indie cluster (top-left)
+  { id: "rock",       label: "Rock",       x: 40, y: 15, cluster: "rock" },
+  { id: "indie",      label: "Indie",      x: 55, y: 10, cluster: "rock" },
+  // Neo-soul bridge (center)
+  { id: "rnb",        label: "R&B",        x: 50, y: 50, cluster: "bridge" },
+  { id: "neosoul",    label: "Neo-Soul",   x: 45, y: 62, cluster: "bridge" },
+];
+
+// Attraction pairs — which genre pairs have strong musical gravity
+const FUSION_BONDS = [
+  // Within-cluster strong bonds
+  ["afrobeats", "amapiano"], ["afrobeats", "reggaeton"], ["amapiano", "dancehall"],
+  ["trap", "drill"], ["trap", "melodic"], ["drill", "boom-bap"], ["phonk", "trap"],
+  ["house", "techno"], ["house", "dnb"], ["techno", "trance"], ["dnb", "trance"],
+  ["rock", "indie"],
+  // Cross-cluster bridges (shown as dashed lines)
+  ["rnb", "neosoul"], ["rnb", "melodic"], ["neosoul", "trap"],
+  ["reggaeton", "trap"], ["afrobeats", "melodic"], ["amapiano", "house"],
+  ["dancehall", "reggaeton"],
+];
+
+function GenreFusionDiagram({ isMobile }) {
+  const [selected, setSelected] = useState(null);
+
+  // Get bonds related to selected genre
+  const relatedBonds = selected
+    ? FUSION_BONDS.filter(([a, b]) => a === selected || b === selected)
+    : [];
+  const relatedIds = selected
+    ? new Set(relatedBonds.flat())
+    : null;
+
+  const clusterColors = {
+    afro:   "#FF6B00",
+    hiphop: "#7C8BFF",
+    dance:  "#00E5FF",
+    rock:   "#FF2D9C",
+    bridge: "#FFD700",
+  };
+
+  return (
+    <div style={{
+      margin: `${T.s6}px 0`,
+      padding: isMobile ? T.s3 : T.s4,
+      background: `linear-gradient(135deg, ${T.surface} 0%, ${T.bg} 100%)`,
+      border: `1px solid ${T.borderHi}`,
+      borderRadius: T.r_lg,
+    }}>
       <div style={{
-        background: `linear-gradient(180deg, ${T.surface} 0%, ${T.bg} 100%)`,
-        border: `1px solid ${FUEL_TYPES.trend.color}55`,
-        borderRadius: T.r_lg, padding: T.s6, marginBottom: T.s6,
-        boxShadow: `0 0 40px ${FUEL_TYPES.trend.color}22`,
+        display: "flex", alignItems: "baseline", justifyContent: "space-between",
+        gap: T.s3, marginBottom: T.s3, flexWrap: "wrap",
       }}>
-        <button type="button" onClick={rollTrend} disabled={!canRoll}
-          style={{
-            width: "100%",
-            padding: "20px 24px",
-            background: canRoll
-              ? `radial-gradient(circle at 50% 25%, #4FB0FF 0%, ${FUEL_TYPES.trend.color} 50%, #0052CC 100%)`
-              : "#1a1d24",
-            border: `3px solid ${canRoll ? FUEL_TYPES.trend.color : T.border}`,
-            color: canRoll ? "#FFFFFF" : T.textMuted,
-            fontSize: 36, fontWeight: 900, letterSpacing: "0.1em",
-            fontFamily: T.font_display, fontStyle: "italic",
-            cursor: canRoll ? "pointer" : "not-allowed",
-            borderRadius: 12,
-            boxShadow: canRoll ? `0 0 30px ${FUEL_TYPES.trend.color}88` : "none",
-            textShadow: canRoll ? `0 0 12px rgba(255,255,255,0.6), 0 0 24px ${FUEL_TYPES.trend.color}` : "none",
-            transition: "all 180ms cubic-bezier(0.16,1,0.3,1)",
+        <div>
+          <div style={{
+            fontSize: 10, fontFamily: T.font_mono, fontWeight: 700,
+            color: V.neonGold, letterSpacing: "0.28em",
+            marginBottom: 4,
           }}>
-          {isRolling ? "ROLLING…" : canRoll ? "ROLL TREND" : "OUT OF FUEL"}
-        </button>
+            ▸ INTERACTIVE
+          </div>
+          <div style={{
+            fontSize: isMobile ? T.fs_md : T.fs_lg,
+            fontFamily: T.font_display, fontStyle: "italic",
+            color: T.text, lineHeight: 1.3,
+          }}>
+            Genre Fusion Gravity
+          </div>
+        </div>
         <div style={{
-          marginTop: T.s3, textAlign: "center",
-          fontSize: T.fs_xs, color: T.textTer, fontFamily: T.font_mono, letterSpacing: "0.2em",
+          fontSize: 9, fontFamily: T.font_mono,
+          color: T.textMuted, letterSpacing: "0.15em",
+          textAlign: isMobile ? "left" : "right",
         }}>
-          {fuelDisplay(fuels.trend)} TREND FUEL REMAINING
+          {isMobile ? "TAP" : "CLICK"} A NODE<br/>
+          TO SEE ITS BONDS
         </div>
       </div>
 
-      {/* Result panel */}
-      {result && (
-        <div style={{
-          background: T.surface, border: `1px solid ${FUEL_TYPES.trend.color}44`,
-          borderRadius: T.r_lg, padding: T.s5,
+      <svg viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet"
+        style={{
+          width: "100%", height: "auto", aspectRatio: "1/1",
+          maxHeight: isMobile ? 380 : 520,
+          display: "block",
+          background: T.bg,
+          borderRadius: T.r_md,
+          border: `1px solid ${T.border}`,
         }}>
-          <Label color={FUEL_TYPES.trend.color} style={{ display: "block", marginBottom: T.s3 }}>
-            Trend roll · {result.score} score
-          </Label>
+        {/* Subtle grid */}
+        <defs>
+          <pattern id="gridPattern" width="10" height="10" patternUnits="userSpaceOnUse">
+            <path d="M 10 0 L 0 0 0 10" fill="none" stroke={T.border} strokeWidth="0.15" />
+          </pattern>
+          {/* Radial glow for selected node */}
+          <radialGradient id="nodeGlow">
+            <stop offset="0%" stopColor="#FFD700" stopOpacity="0.5" />
+            <stop offset="100%" stopColor="#FFD700" stopOpacity="0" />
+          </radialGradient>
+        </defs>
+        <rect width="100" height="100" fill="url(#gridPattern)" />
+
+        {/* Bond lines — drawn first so they sit behind nodes */}
+        {FUSION_BONDS.map(([a, b], i) => {
+          const nodeA = FUSION_GENRES.find(g => g.id === a);
+          const nodeB = FUSION_GENRES.find(g => g.id === b);
+          if (!nodeA || !nodeB) return null;
+          const isHighlighted = selected && (a === selected || b === selected);
+          const isDimmed = selected && !isHighlighted;
+          const isCrossCluster = nodeA.cluster !== nodeB.cluster;
+          return (
+            <line key={i}
+              x1={nodeA.x} y1={nodeA.y}
+              x2={nodeB.x} y2={nodeB.y}
+              stroke={isHighlighted ? V.neonGold : T.border}
+              strokeWidth={isHighlighted ? 0.4 : 0.2}
+              strokeDasharray={isCrossCluster ? "1 1.5" : "0"}
+              opacity={isDimmed ? 0.15 : (isHighlighted ? 1 : 0.5)}
+              style={{ transition: "all 220ms ease-out" }} />
+          );
+        })}
+
+        {/* Nodes */}
+        {FUSION_GENRES.map(g => {
+          const isSelected = selected === g.id;
+          const isRelated = relatedIds && relatedIds.has(g.id);
+          const isDimmed = selected && !isSelected && !isRelated;
+          const color = clusterColors[g.cluster];
+          return (
+            <g key={g.id}
+              onClick={() => setSelected(selected === g.id ? null : g.id)}
+              style={{ cursor: "pointer" }}>
+              {isSelected && (
+                <circle cx={g.x} cy={g.y} r="8" fill="url(#nodeGlow)" />
+              )}
+              <circle cx={g.x} cy={g.y}
+                r={isSelected ? 2.2 : 1.6}
+                fill={color}
+                opacity={isDimmed ? 0.25 : 1}
+                style={{
+                  transition: "all 220ms ease-out",
+                  filter: isSelected ? `drop-shadow(0 0 3px ${color})` : "none",
+                }} />
+              <text
+                x={g.x} y={g.y - 3}
+                textAnchor="middle"
+                fontSize="2.6"
+                fontFamily="monospace"
+                fontWeight={isSelected ? 700 : 500}
+                fill={isSelected ? V.neonGold : (isDimmed ? T.textMuted : T.textSec)}
+                opacity={isDimmed ? 0.4 : 1}
+                style={{ transition: "all 220ms ease-out", pointerEvents: "none", letterSpacing: "0.05em" }}>
+                {g.label}
+              </text>
+            </g>
+          );
+        })}
+      </svg>
+
+      {/* Legend + selected genre info */}
+      <div style={{
+        marginTop: T.s3, display: "grid",
+        gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr",
+        gap: T.s3,
+      }}>
+        <div>
           <div style={{
-            fontSize: 28, color: T.text, fontWeight: 700, marginBottom: T.s4,
-            fontFamily: T.font_sans, letterSpacing: "-0.02em",
+            fontSize: 9, fontFamily: T.font_mono, fontWeight: 700,
+            color: T.textMuted, letterSpacing: "0.18em",
+            marginBottom: T.s2,
           }}>
-            {result.genre}
+            CLUSTERS
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: T.s3 }}>
-            <TrendDetail label="Mood" value={result.mood} />
-            <TrendDetail label="Vocal" value={result.vocal} />
-            <TrendDetail label="Groove" value={result.groove} />
-            <TrendDetail label="Tempo" value={`${result.bpm} BPM`} />
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+            {[
+              { k: "afro", label: "Afro-Caribbean" },
+              { k: "hiphop", label: "Hip-Hop" },
+              { k: "dance", label: "Dance-Floor" },
+              { k: "rock", label: "Rock" },
+              { k: "bridge", label: "Bridge" },
+            ].map(c => (
+              <span key={c.k} style={{
+                display: "inline-flex", alignItems: "center", gap: 4,
+                fontSize: 10, fontFamily: T.font_mono, color: T.textSec,
+                padding: "2px 6px",
+                border: `1px solid ${T.border}`, borderRadius: 3,
+              }}>
+                <span style={{ width: 6, height: 6, borderRadius: "50%", background: clusterColors[c.k] }} />
+                {c.label}
+              </span>
+            ))}
           </div>
           <div style={{
-            marginTop: T.s4, padding: T.s3,
-            background: T.bg, border: `1px solid ${T.border}`, borderRadius: T.r_md,
-            fontFamily: T.font_mono, fontSize: T.fs_sm, color: T.textSec, lineHeight: 1.5,
+            fontSize: 10, fontFamily: T.font_mono, color: T.textMuted,
+            marginTop: T.s2, letterSpacing: "0.05em", lineHeight: 1.5,
           }}>
-            <span style={{ color: FUEL_TYPES.trend.color, fontWeight: 700 }}>PROMPT</span>
-            <div style={{ marginTop: 6, color: T.text }}>
-              {result.genre.toLowerCase()}, {result.mood.toLowerCase()}, {result.vocal.toLowerCase()}, {result.groove} groove, {result.bpm} BPM, modern production, radio-ready.
+            Solid = within-cluster (safe)<br/>
+            Dashed = cross-cluster (bridge)
+          </div>
+        </div>
+        <div style={{
+          padding: T.s3,
+          background: T.bg,
+          border: `1px solid ${T.border}`,
+          borderRadius: T.r_sm,
+          minHeight: 80,
+        }}>
+          {selected ? (
+            <>
+              <div style={{
+                fontSize: 9, fontFamily: T.font_mono, fontWeight: 700,
+                color: V.neonGold, letterSpacing: "0.18em", marginBottom: 4,
+              }}>
+                ◉ SELECTED
+              </div>
+              <div style={{
+                fontSize: T.fs_lg, fontFamily: T.font_display, fontStyle: "italic",
+                color: T.text, lineHeight: 1.2, marginBottom: 4,
+              }}>
+                {FUSION_GENRES.find(g => g.id === selected)?.label}
+              </div>
+              <div style={{
+                fontSize: 10, fontFamily: T.font_mono, color: T.textSec,
+                lineHeight: 1.5,
+              }}>
+                {relatedBonds.length} musical bond{relatedBonds.length === 1 ? "" : "s"}
+                {" · "}
+                {relatedBonds.filter(([a, b]) => {
+                  const nA = FUSION_GENRES.find(g => g.id === a);
+                  const nB = FUSION_GENRES.find(g => g.id === b);
+                  return nA && nB && nA.cluster === nB.cluster;
+                }).length} safe, {relatedBonds.filter(([a, b]) => {
+                  const nA = FUSION_GENRES.find(g => g.id === a);
+                  const nB = FUSION_GENRES.find(g => g.id === b);
+                  return nA && nB && nA.cluster !== nB.cluster;
+                }).length} bridge
+              </div>
+            </>
+          ) : (
+            <div style={{
+              fontSize: T.fs_sm, fontFamily: T.font_sans,
+              color: T.textMuted, fontStyle: "italic", lineHeight: 1.5,
+            }}>
+              Select a genre to see its strongest fusion partners.
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── ANIMATED GRID BACKGROUND — chapter hero backdrop ───────────────────
+// Subtle perspective grid fading into the distance. CSS-only, no canvas.
+function GridBackdrop() {
+  return (
+    <div aria-hidden="true" style={{
+      position: "absolute", inset: 0, pointerEvents: "none",
+      overflow: "hidden", opacity: 0.5,
+    }}>
+      <style>{`
+        @keyframes gridDrift {
+          from { transform: translateY(0); }
+          to   { transform: translateY(24px); }
+        }
+      `}</style>
+      <div style={{
+        position: "absolute", inset: "-24px 0 0 0",
+        backgroundImage: `
+          linear-gradient(${T.border} 1px, transparent 1px),
+          linear-gradient(90deg, ${T.border} 1px, transparent 1px)
+        `,
+        backgroundSize: "24px 24px",
+        animation: "gridDrift 14s linear infinite",
+        maskImage: "radial-gradient(ellipse 80% 60% at 50% 40%, black 20%, transparent 85%)",
+        WebkitMaskImage: "radial-gradient(ellipse 80% 60% at 50% 40%, black 20%, transparent 85%)",
+      }} />
+      {/* Accent glow */}
+      <div style={{
+        position: "absolute", inset: 0,
+        background: `radial-gradient(ellipse 50% 40% at 50% 50%, ${T.accent}14 0%, transparent 60%)`,
+      }} />
+    </div>
+  );
+}
+
+// ── INTERACTIVE WIDGET: Production Stack Visualizer (Ch III) ───────────
+// Shows the frequency spectrum as a stack. Each mix element occupies a
+// frequency range. Click any element to see how it fits and what fights
+// for space with it. Teaches the reader to hear a mix as layers.
+const PRODUCTION_STACK = [
+  {
+    id: "sub-bass",
+    label: "Sub-bass (808)",
+    hzLow: 20, hzHigh: 60,
+    color: "#7C8BFF",
+    role: "Foundation. Felt more than heard. Eats headroom if not sidechained.",
+    fights: ["kick-fundamental"],
+  },
+  {
+    id: "kick-fundamental",
+    label: "Kick fundamental",
+    hzLow: 40, hzHigh: 100,
+    color: "#FF6B00",
+    role: "Drives the rhythm. Often sidechained under the sub to prevent masking.",
+    fights: ["sub-bass"],
+  },
+  {
+    id: "bass",
+    label: "Bass guitar / synth bass",
+    hzLow: 60, hzHigh: 250,
+    color: "#00E5FF",
+    role: "Harmonic low end. Carries melodic information the sub can't.",
+    fights: ["kick-fundamental", "low-mids"],
+  },
+  {
+    id: "low-mids",
+    label: "Kick body / low vocals",
+    hzLow: 150, hzHigh: 400,
+    color: "#FFD700",
+    role: "The 'boom' of the kick and chest resonance of vocals. Crowded real estate.",
+    fights: ["bass", "vocals"],
+  },
+  {
+    id: "vocals",
+    label: "Lead vocal body",
+    hzLow: 200, hzHigh: 3000,
+    color: "#FF2D9C",
+    role: "The focal point. Where intelligibility lives. Must sit above the mix.",
+    fights: ["low-mids", "guitars", "pads"],
+  },
+  {
+    id: "guitars",
+    label: "Guitars / keys",
+    hzLow: 80, hzHigh: 5000,
+    color: "#00FF88",
+    role: "Wide-spectrum harmonic fillers. Often carved out to make room for vocals.",
+    fights: ["vocals", "pads"],
+  },
+  {
+    id: "pads",
+    label: "Synth pads / strings",
+    hzLow: 100, hzHigh: 8000,
+    color: "#E94FEF",
+    role: "Atmospheric glue. Can overwhelm the mix if left full-range.",
+    fights: ["vocals", "guitars", "cymbals"],
+  },
+  {
+    id: "cymbals",
+    label: "Cymbals / hi-hats",
+    hzLow: 3000, hzHigh: 16000,
+    color: "#EDEEF0",
+    role: "Transient energy. Makes the mix feel 'open' or 'closed'.",
+    fights: ["pads"],
+  },
+  {
+    id: "air",
+    label: "Air / sparkle",
+    hzLow: 10000, hzHigh: 20000,
+    color: "#A1A4AB",
+    role: "The sheen on a polished mix. Reverb tails live up here.",
+    fights: [],
+  },
+];
+
+function ProductionStackVisualizer({ isMobile }) {
+  const [selected, setSelected] = useState(null);
+  const selectedItem = selected ? PRODUCTION_STACK.find(s => s.id === selected) : null;
+  const fightingIds = selectedItem ? new Set(selectedItem.fights) : new Set();
+
+  // Log scale for the frequency axis — 20Hz→20kHz is 3 decades
+  // Map freq to % position using log scale so low frequencies get proportional space
+  const logPos = (hz) => {
+    const minLog = Math.log10(20);
+    const maxLog = Math.log10(20000);
+    return ((Math.log10(hz) - minLog) / (maxLog - minLog)) * 100;
+  };
+
+  // Frequency axis ticks
+  const freqTicks = [20, 100, 500, 1000, 5000, 10000, 20000];
+
+  return (
+    <div style={{
+      margin: `${T.s6}px 0`,
+      padding: isMobile ? T.s3 : T.s4,
+      background: `linear-gradient(135deg, ${T.surface} 0%, ${T.bg} 100%)`,
+      border: `1px solid ${T.borderHi}`,
+      borderRadius: T.r_lg,
+    }}>
+      <div style={{
+        display: "flex", alignItems: "baseline", justifyContent: "space-between",
+        gap: T.s3, marginBottom: T.s4, flexWrap: "wrap",
+      }}>
+        <div>
+          <div style={{
+            fontSize: 10, fontFamily: T.font_mono, fontWeight: 700,
+            color: V.neonGold, letterSpacing: "0.28em", marginBottom: 4,
+          }}>▸ INTERACTIVE</div>
+          <div style={{
+            fontSize: isMobile ? T.fs_md : T.fs_lg,
+            fontFamily: T.font_display, fontStyle: "italic",
+            color: T.text, lineHeight: 1.3,
+          }}>The Production Stack</div>
+        </div>
+        <div style={{
+          fontSize: 9, fontFamily: T.font_mono,
+          color: T.textMuted, letterSpacing: "0.15em",
+          textAlign: isMobile ? "left" : "right",
+        }}>
+          {isMobile ? "TAP" : "CLICK"} AN ELEMENT<br/>TO SEE ITS RANGE
+        </div>
+      </div>
+
+      {/* Frequency axis */}
+      <div style={{ position: "relative", marginBottom: 6, height: 18 }}>
+        {freqTicks.map(hz => (
+          <div key={hz} style={{
+            position: "absolute",
+            left: `${logPos(hz)}%`,
+            transform: "translateX(-50%)",
+            fontSize: 9, fontFamily: T.font_mono,
+            color: T.textMuted, letterSpacing: "0.05em",
+          }}>
+            {hz >= 1000 ? `${hz / 1000}k` : hz}
+          </div>
+        ))}
+      </div>
+
+      {/* Stacked bars */}
+      <div style={{
+        position: "relative",
+        background: T.bg,
+        border: `1px solid ${T.border}`,
+        borderRadius: T.r_md,
+        padding: 4,
+      }}>
+        {PRODUCTION_STACK.map((item, idx) => {
+          const isSelected = selected === item.id;
+          const isFighting = fightingIds.has(item.id);
+          const isDimmed = selected && !isSelected && !isFighting;
+          const leftPct = logPos(item.hzLow);
+          const widthPct = logPos(item.hzHigh) - logPos(item.hzLow);
+          return (
+            <div key={item.id}
+              onClick={() => setSelected(selected === item.id ? null : item.id)}
+              style={{
+                position: "relative",
+                height: isMobile ? 22 : 26,
+                marginBottom: 3,
+                cursor: "pointer",
+              }}>
+              {/* Background track */}
+              <div style={{
+                position: "absolute", inset: 0,
+                background: T.surface,
+                borderRadius: 3,
+              }} />
+              {/* Actual frequency bar */}
+              <div style={{
+                position: "absolute",
+                left: `${leftPct}%`,
+                width: `${widthPct}%`,
+                top: 0, bottom: 0,
+                background: isSelected
+                  ? `linear-gradient(90deg, ${item.color}cc 0%, ${item.color}66 100%)`
+                  : isFighting
+                    ? `linear-gradient(90deg, ${item.color}88 0%, ${item.color}33 100%)`
+                    : isDimmed
+                      ? `${item.color}22`
+                      : `${item.color}55`,
+                border: `1px solid ${isSelected ? item.color : `${item.color}66`}`,
+                borderRadius: 3,
+                boxShadow: isSelected ? `0 0 12px ${item.color}88` : "none",
+                opacity: isDimmed ? 0.4 : 1,
+                transition: "all 180ms ease-out",
+              }} />
+              {/* Label overlay */}
+              <div style={{
+                position: "absolute",
+                left: 8,
+                top: "50%",
+                transform: "translateY(-50%)",
+                fontSize: isMobile ? 10 : 11,
+                fontFamily: T.font_mono,
+                fontWeight: isSelected ? 700 : 500,
+                color: isSelected ? T.text : T.textSec,
+                letterSpacing: "0.05em",
+                pointerEvents: "none",
+                whiteSpace: "nowrap",
+                textShadow: `0 0 4px ${T.bg}`,
+              }}>
+                {item.label}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Info panel */}
+      <div style={{
+        marginTop: T.s3,
+        padding: T.s3,
+        background: T.bg,
+        border: `1px solid ${T.border}`,
+        borderRadius: T.r_sm,
+        minHeight: 72,
+      }}>
+        {selectedItem ? (
+          <>
+            <div style={{
+              fontSize: 9, fontFamily: T.font_mono, fontWeight: 700,
+              color: selectedItem.color, letterSpacing: "0.18em", marginBottom: 4,
+            }}>
+              ◉ {selectedItem.hzLow}Hz – {selectedItem.hzHigh >= 1000 ? `${selectedItem.hzHigh / 1000}kHz` : `${selectedItem.hzHigh}Hz`}
+            </div>
+            <div style={{
+              fontSize: T.fs_md, fontFamily: T.font_display, fontStyle: "italic",
+              color: T.text, lineHeight: 1.3, marginBottom: T.s2,
+            }}>
+              {selectedItem.label}
+            </div>
+            <div style={{
+              fontSize: T.fs_sm, fontFamily: T.font_sans,
+              color: T.textSec, lineHeight: 1.5, marginBottom: selectedItem.fights.length > 0 ? T.s2 : 0,
+            }}>
+              {selectedItem.role}
+            </div>
+            {selectedItem.fights.length > 0 && (
+              <div style={{
+                fontSize: 10, fontFamily: T.font_mono,
+                color: T.textMuted, letterSpacing: "0.1em",
+                paddingTop: T.s2,
+                borderTop: `1px dashed ${T.border}`,
+              }}>
+                CONTESTS: {selectedItem.fights.map(id => PRODUCTION_STACK.find(x => x.id === id)?.label).filter(Boolean).join(", ")}
+              </div>
+            )}
+          </>
+        ) : (
+          <div style={{
+            fontSize: T.fs_sm, fontFamily: T.font_sans,
+            color: T.textMuted, fontStyle: "italic", lineHeight: 1.5,
+          }}>
+            Select an element to see its frequency range and what it competes with in the mix.
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── INTERACTIVE WIDGET: Song Structure Deconstructor (Ch IV) ───────────
+// Timeline showing how a radio hit maps across 3:30. Hover sections to see
+// what each does. Teaches song architecture visually.
+const HIT_TIMELINE_SECTIONS = [
+  { id: "intro", label: "Intro", start: 0, end: 15, color: "#A1A4AB",
+    role: "The first 15 seconds. Decides whether a listener stays. Usually instrumental or a vocal hook teaser." },
+  { id: "v1", label: "Verse 1", start: 15, end: 45, color: "#7C8BFF",
+    role: "Narrative setup. Lower energy than chorus. Establishes voice, subject, emotional tone." },
+  { id: "pre1", label: "Pre", start: 45, end: 60, color: "#FFD700",
+    role: "The lift. Chord changes tilt toward the chorus. Drum fill or filter sweep signals arrival." },
+  { id: "c1", label: "Chorus 1", start: 60, end: 90, color: "#FF2D9C",
+    role: "The hook. The song's identity. Drops here at 1:00 — roughly one-third through." },
+  { id: "v2", label: "Verse 2", start: 90, end: 120, color: "#7C8BFF",
+    role: "Continues the narrative. Often adds production layers to feel bigger than V1." },
+  { id: "pre2", label: "Pre", start: 120, end: 135, color: "#FFD700",
+    role: "Second lift. Usually identical to Pre 1 to reinforce pattern recognition." },
+  { id: "c2", label: "Chorus 2", start: 135, end: 165, color: "#FF2D9C",
+    role: "Same hook, now familiar. Listeners sing along. Added production polish." },
+  { id: "bridge", label: "Bridge", start: 165, end: 190, color: "#00E5FF",
+    role: "The reset. New harmonic material or a stripped moment. Prepares for the final chorus to hit hardest." },
+  { id: "c3", label: "Final Chorus", start: 190, end: 220, color: "#E94FEF",
+    role: "Everything amplified. Often modulates up a semitone or adds a countermelody. The climax." },
+  { id: "outro", label: "Outro", start: 220, end: 210, color: "#A1A4AB",
+    role: "The exit. Short — modern hits fade fast so streaming skip-rates stay low." },
+];
+
+function SongStructureDeconstructor({ isMobile }) {
+  const [selected, setSelected] = useState(null);
+  const totalDuration = 210; // 3:30 in seconds
+
+  const selectedSection = selected ? HIT_TIMELINE_SECTIONS.find(s => s.id === selected) : null;
+
+  const formatTime = (s) => {
+    const m = Math.floor(s / 60);
+    const sec = s % 60;
+    return `${m}:${String(sec).padStart(2, "0")}`;
+  };
+
+  return (
+    <div style={{
+      margin: `${T.s6}px 0`,
+      padding: isMobile ? T.s3 : T.s4,
+      background: `linear-gradient(135deg, ${T.surface} 0%, ${T.bg} 100%)`,
+      border: `1px solid ${T.borderHi}`,
+      borderRadius: T.r_lg,
+    }}>
+      <div style={{
+        display: "flex", alignItems: "baseline", justifyContent: "space-between",
+        gap: T.s3, marginBottom: T.s4, flexWrap: "wrap",
+      }}>
+        <div>
+          <div style={{
+            fontSize: 10, fontFamily: T.font_mono, fontWeight: 700,
+            color: V.neonGold, letterSpacing: "0.28em", marginBottom: 4,
+          }}>▸ INTERACTIVE</div>
+          <div style={{
+            fontSize: isMobile ? T.fs_md : T.fs_lg,
+            fontFamily: T.font_display, fontStyle: "italic",
+            color: T.text, lineHeight: 1.3,
+          }}>Anatomy of a 3:30 Radio Hit</div>
+        </div>
+        <div style={{
+          fontSize: 9, fontFamily: T.font_mono,
+          color: T.textMuted, letterSpacing: "0.15em",
+          textAlign: isMobile ? "left" : "right",
+        }}>
+          {isMobile ? "TAP" : "CLICK"} A SECTION<br/>TO SEE ITS ROLE
+        </div>
+      </div>
+
+      {/* Timeline bar */}
+      <div style={{
+        position: "relative",
+        height: isMobile ? 48 : 56,
+        background: T.bg,
+        border: `1px solid ${T.border}`,
+        borderRadius: T.r_sm,
+        overflow: "hidden",
+        marginBottom: T.s3,
+      }}>
+        {HIT_TIMELINE_SECTIONS.filter(s => s.start < s.end).map(section => {
+          const leftPct = (section.start / totalDuration) * 100;
+          const widthPct = ((section.end - section.start) / totalDuration) * 100;
+          const isSelected = selected === section.id;
+          const isDimmed = selected && !isSelected;
+          return (
+            <div key={section.id}
+              onClick={() => setSelected(selected === section.id ? null : section.id)}
+              style={{
+                position: "absolute",
+                left: `${leftPct}%`,
+                width: `calc(${widthPct}% - 1px)`,
+                top: 0, bottom: 0,
+                background: isSelected
+                  ? `linear-gradient(180deg, ${section.color}dd 0%, ${section.color}66 100%)`
+                  : isDimmed
+                    ? `${section.color}22`
+                    : `linear-gradient(180deg, ${section.color}88 0%, ${section.color}33 100%)`,
+                borderRight: `1px solid ${T.bg}`,
+                cursor: "pointer",
+                transition: "all 180ms ease-out",
+                opacity: isDimmed ? 0.4 : 1,
+                boxShadow: isSelected ? `inset 0 0 20px ${section.color}66` : "none",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                overflow: "hidden",
+              }}>
+              <div style={{
+                fontSize: 10, fontFamily: T.font_mono, fontWeight: 700,
+                color: isSelected ? T.text : T.textSec,
+                letterSpacing: "0.08em", pointerEvents: "none",
+                textShadow: `0 0 4px ${T.bg}`,
+                whiteSpace: "nowrap",
+              }}>
+                {section.label}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Time axis */}
+      <div style={{
+        position: "relative",
+        height: 14,
+        marginBottom: T.s3,
+      }}>
+        {[0, 30, 60, 90, 120, 150, 180, 210].map(t => (
+          <div key={t} style={{
+            position: "absolute",
+            left: `${(t / totalDuration) * 100}%`,
+            transform: "translateX(-50%)",
+            fontSize: 9, fontFamily: T.font_mono,
+            color: T.textMuted, letterSpacing: "0.05em",
+          }}>
+            {formatTime(t)}
+          </div>
+        ))}
+      </div>
+
+      {/* Info panel */}
+      <div style={{
+        padding: T.s3,
+        background: T.bg,
+        border: `1px solid ${T.border}`,
+        borderRadius: T.r_sm,
+        minHeight: 80,
+      }}>
+        {selectedSection ? (
+          <>
+            <div style={{
+              fontSize: 9, fontFamily: T.font_mono, fontWeight: 700,
+              color: selectedSection.color, letterSpacing: "0.18em", marginBottom: 4,
+            }}>
+              ◉ {formatTime(selectedSection.start)} – {formatTime(selectedSection.end)}
+              &nbsp;·&nbsp;{selectedSection.end - selectedSection.start}s
+            </div>
+            <div style={{
+              fontSize: T.fs_lg, fontFamily: T.font_display, fontStyle: "italic",
+              color: T.text, lineHeight: 1.2, marginBottom: T.s2,
+            }}>
+              {selectedSection.label}
+            </div>
+            <div style={{
+              fontSize: T.fs_sm, fontFamily: T.font_sans,
+              color: T.textSec, lineHeight: 1.55,
+            }}>
+              {selectedSection.role}
+            </div>
+          </>
+        ) : (
+          <div style={{
+            fontSize: T.fs_sm, fontFamily: T.font_sans,
+            color: T.textMuted, fontStyle: "italic", lineHeight: 1.5,
+          }}>
+            A radio hit is a time-constrained architecture. Click any section to see what it's designed to do.
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── INTERACTIVE WIDGET: Anti-Pattern Detector (Ch V) ───────────────────
+// A gallery of bad prompts, each tagged with which anti-pattern it exhibits.
+// Hover/tap to see the diagnosis and a cleaned-up version.
+const ANTI_PATTERNS = [
+  {
+    id: "over-adjective",
+    label: "The Adjective Soup",
+    prompt: "Dreamy, ethereal, nostalgic, wistful, melancholy, bittersweet, haunting, atmospheric song",
+    diagnosis: "Eight mood adjectives, zero functional decisions. The model has no genre, tempo, instruments, or vocal info — just vibes.",
+    fix: "Alt R&B, 80 BPM halftime, Rhodes electric piano, breathy female vocal in English, sparse arrangement, minor-key melancholy.",
+    severity: 3,
+  },
+  {
+    id: "contradiction",
+    label: "Contradictory Signals",
+    prompt: "Aggressive death metal lullaby, soft and screaming, 60 BPM with blast beats",
+    diagnosis: "Every specification contradicts another. The model can't reconcile 'lullaby' with 'death metal' or '60 BPM' with 'blast beats'.",
+    fix: "Pick one lane. If you want contrast, name an artist who bridged them — e.g. 'in the style of Deftones' (soft-loud done right).",
+    severity: 3,
+  },
+  {
+    id: "genre-language-mismatch",
+    label: "Genre-Language Mismatch",
+    prompt: "K-pop, English vocals, Tennessee country twang, banjo",
+    diagnosis: "K-pop and Tennessee country are not adjacent. English + twang + banjo is a country contract that K-pop's production template can't honor.",
+    fix: "If you want country: say country. If you want K-pop: use Korean or multilingual vocals and drop the banjo.",
+    severity: 2,
+  },
+  {
+    id: "kitchen-sink",
+    label: "Everything But the Kitchen Sink",
+    prompt: "Trap + Amapiano + Reggaeton + Afrobeats + Drill + Phonk + Dubstep, 808s, log drums, dembow, hi-hat triplets, wobble bass, all together",
+    diagnosis: "Seven genres and five bass elements in one prompt. Each genre wants to dominate; the model produces an averaged mush that matches none of them.",
+    fix: "Pick 2 genres max, preferably adjacent. Lock one with anchor-and-roll to discover the third via iteration.",
+    severity: 3,
+  },
+  {
+    id: "vague-vocal",
+    label: "Vague Vocal",
+    prompt: "Alt R&B, 80 BPM, Rhodes piano, vocals",
+    diagnosis: "The vocal spec is just 'vocals' — the most important single decision is empty. Language, gender, quality, and delivery style are all left to defaults.",
+    fix: "Add: 'breathy female vocal in English, layered harmonies on choruses'. Language alone does more lifting than the rest of the prompt combined.",
+    severity: 2,
+  },
+  {
+    id: "no-tempo",
+    label: "Tempo Vacuum",
+    prompt: "Dark moody trap with 808s and synth pads",
+    diagnosis: "No BPM, no feel indicator (halftime vs. straight), no tempo reference. The model will pick an average trap tempo — often wrong for your intent.",
+    fix: "Add '72 BPM halftime' or '140 BPM'. Even one number transforms the result.",
+    severity: 2,
+  },
+];
+
+function AntiPatternDetector({ isMobile }) {
+  const [selected, setSelected] = useState(null);
+  const selectedPattern = selected ? ANTI_PATTERNS.find(p => p.id === selected) : null;
+
+  return (
+    <div style={{
+      margin: `${T.s6}px 0`,
+      padding: isMobile ? T.s3 : T.s4,
+      background: `linear-gradient(135deg, ${T.surface} 0%, ${T.bg} 100%)`,
+      border: `1px solid ${T.borderHi}`,
+      borderRadius: T.r_lg,
+    }}>
+      <div style={{
+        display: "flex", alignItems: "baseline", justifyContent: "space-between",
+        gap: T.s3, marginBottom: T.s4, flexWrap: "wrap",
+      }}>
+        <div>
+          <div style={{
+            fontSize: 10, fontFamily: T.font_mono, fontWeight: 700,
+            color: V.neonGold, letterSpacing: "0.28em", marginBottom: 4,
+          }}>▸ INTERACTIVE</div>
+          <div style={{
+            fontSize: isMobile ? T.fs_md : T.fs_lg,
+            fontFamily: T.font_display, fontStyle: "italic",
+            color: T.text, lineHeight: 1.3,
+          }}>The Anti-Pattern Gallery</div>
+        </div>
+        <div style={{
+          fontSize: 9, fontFamily: T.font_mono,
+          color: T.textMuted, letterSpacing: "0.15em",
+          textAlign: isMobile ? "left" : "right",
+        }}>
+          {isMobile ? "TAP" : "CLICK"} A TRAP<br/>TO SEE THE FIX
+        </div>
+      </div>
+
+      <div style={{
+        display: "grid",
+        gridTemplateColumns: isMobile ? "1fr" : "repeat(2, 1fr)",
+        gap: T.s2,
+        marginBottom: selectedPattern ? T.s4 : 0,
+      }}>
+        {ANTI_PATTERNS.map(pattern => {
+          const isSelected = selected === pattern.id;
+          return (
+            <button key={pattern.id} type="button"
+              onClick={() => setSelected(selected === pattern.id ? null : pattern.id)}
+              style={{
+                textAlign: "left",
+                padding: T.s3,
+                background: isSelected
+                  ? `linear-gradient(135deg, ${T.danger}14 0%, transparent 100%)`
+                  : T.bg,
+                border: `1px solid ${isSelected ? T.danger : T.border}`,
+                borderRadius: T.r_sm,
+                cursor: "pointer",
+                transition: "all 180ms ease-out",
+              }}>
+              <div style={{
+                display: "flex", alignItems: "center", gap: 8,
+                marginBottom: T.s2,
+              }}>
+                <span style={{
+                  fontSize: 9, fontFamily: T.font_mono, fontWeight: 700,
+                  color: T.danger, letterSpacing: "0.18em",
+                }}>
+                  ✗ {"●".repeat(pattern.severity)}{"○".repeat(3 - pattern.severity)}
+                </span>
+                <span style={{
+                  fontSize: T.fs_sm, fontFamily: T.font_sans, fontWeight: 600,
+                  color: T.text, flex: 1, letterSpacing: "-0.005em",
+                }}>
+                  {pattern.label}
+                </span>
+              </div>
+              <div style={{
+                fontSize: T.fs_xs, fontFamily: T.font_mono,
+                color: T.textMuted, lineHeight: 1.5,
+                display: "-webkit-box",
+                WebkitLineClamp: 2,
+                WebkitBoxOrient: "vertical",
+                overflow: "hidden",
+              }}>
+                {pattern.prompt}
+              </div>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Diagnosis + fix panel */}
+      {selectedPattern && (
+        <div style={{
+          padding: T.s4,
+          background: T.bg,
+          border: `1px solid ${T.danger}44`,
+          borderRadius: T.r_md,
+          animation: "fadeIn 180ms ease-out",
+        }}>
+          <div style={{
+            display: "grid",
+            gridTemplateColumns: "1fr",
+            gap: T.s3,
+          }}>
+            <div>
+              <div style={{
+                fontSize: 10, fontFamily: T.font_mono, fontWeight: 700,
+                color: T.danger, letterSpacing: "0.18em", marginBottom: T.s2,
+              }}>
+                ✗ THE TRAP
+              </div>
+              <div style={{
+                padding: T.s3,
+                background: `${T.danger}08`,
+                border: `1px dashed ${T.danger}44`,
+                borderRadius: T.r_sm,
+                fontSize: T.fs_sm, fontFamily: T.font_mono,
+                color: T.textSec, lineHeight: 1.6,
+                marginBottom: T.s3,
+              }}>
+                {selectedPattern.prompt}
+              </div>
+
+              <div style={{
+                fontSize: 10, fontFamily: T.font_mono, fontWeight: 700,
+                color: T.textMuted, letterSpacing: "0.18em", marginBottom: T.s2,
+              }}>
+                / DIAGNOSIS
+              </div>
+              <div style={{
+                fontSize: T.fs_sm, fontFamily: T.font_sans,
+                color: T.textSec, lineHeight: 1.6, marginBottom: T.s4,
+                fontStyle: "italic",
+              }}>
+                {selectedPattern.diagnosis}
+              </div>
+
+              <div style={{
+                fontSize: 10, fontFamily: T.font_mono, fontWeight: 700,
+                color: T.success, letterSpacing: "0.18em", marginBottom: T.s2,
+              }}>
+                ✓ THE FIX
+              </div>
+              <div style={{
+                padding: T.s3,
+                background: `${T.success}08`,
+                border: `1px solid ${T.success}44`,
+                borderRadius: T.r_sm,
+                fontSize: T.fs_sm, fontFamily: T.font_mono,
+                color: T.text, lineHeight: 1.6,
+              }}>
+                {selectedPattern.fix}
+              </div>
             </div>
           </div>
         </div>
@@ -5586,148 +11034,1947 @@ function TrendEnginePage({ onNavigate }) {
   );
 }
 
-function TrendDetail({ label, value }) {
-  return (
-    <div style={{
-      padding: T.s3, background: T.bg, border: `1px solid ${T.border}`,
-      borderRadius: T.r_md,
-    }}>
-      <div style={{ fontSize: T.fs_xs, color: T.textTer, fontFamily: T.font_mono, letterSpacing: "0.15em", marginBottom: 4 }}>
-        {label.toUpperCase()}
-      </div>
-      <div style={{ color: T.text, fontSize: T.fs_md, fontWeight: 500 }}>{value}</div>
-    </div>
-  );
-}
 
-// ════════════════════════════════════════════════════════════════════════════
-// VIP SECRETS PAGE — guides to maximize use of Hit Engine
-// ════════════════════════════════════════════════════════════════════════════
-
-const VIP_SECRETS = [
+const PLAYBOOK_CHAPTERS = [
   {
-    icon: "🎯",
-    title: "Prompt depth matters more than prompt length",
-    body: "Suno and Udio don't reward essays — they reward well-structured lists. Use Expanded mode (499 chars) as your default. Simple mode cuts useful detail; Chaos mode often bloats with filler that confuses the model. When in doubt, Expanded.",
+    id: "prompt-craft",
+    number: "I",
+    title: "The Craft of the Prompt",
+    subtitle: "How structure and specificity dictate what comes out of the black box.",
+    status: "complete",
+    readingMinutes: 8,
+    runId: "PB.I.2026",
+    blocks: [
+      {
+        type: "manifesto",
+        text: "The model is not your problem. Your prompt is.",
+      },
+      {
+        type: "prose",
+        text: "Most people treat AI music prompts like wishes at a fountain. They toss in adjectives — moody, upbeat, nostalgic — and hope for the best. The model obliges, in the most average way it knows how. The result is generic, and the user blames the model.",
+      },
+      {
+        type: "prose",
+        text: "What modern AI music generators actually respond to is a well-organized specification, not a poetic description. A song is a set of decisions: tempo, key, instruments, vocal style, structural shape, mix aesthetic. Whatever you leave unspecified, the model chooses for you — and its defaults are the median of its training data, which is to say, nothing memorable.",
+      },
+      {
+        type: "annotated-quote",
+        text: "Every adjective you don't provide becomes a vote for the average.",
+        source: "Working principle · PB.I §0",
+      },
+      { type: "h2", text: "A prompt has anatomy. Learn to see it." },
+      {
+        type: "prose",
+        text: "Before we talk about what makes prompts good or bad, you need to be able to look at a prompt and instantly see its structure. Below is a strong prompt with each token color-coded by function. Hover any word to see what category it belongs to. Read it a few times — the goal is to stop seeing prose and start seeing architecture.",
+      },
+      {
+        type: "inspector",
+      },
+      {
+        type: "prose",
+        text: "Six categories cover nearly every decision worth making: genre, tempo, instrument, vocal, mix, and mood. A prompt with all six present is almost always stronger than a prompt missing any of them. A prompt with two or three is leaving four decisions to the model's defaults.",
+      },
+      { type: "h2", text: "Expanded mode is your default. Chaos is a tool." },
+      {
+        type: "prose",
+        text: "Hit Engine offers three prompt modes: Simple, Expanded, and Chaos. Simple mode is a good tutorial — it hides complexity to help you start. Chaos mode is useful for creative disruption, but it adds filler that the model wastes attention on. Expanded is where professional work lives: 499 characters of structured, comma-separated specification. No adjectives that don't carry weight. No vibes without vectors.",
+      },
+      {
+        type: "stat-row",
+        items: [
+          { value: "499", unit: "CHARS", label: "Expanded mode budget" },
+          { value: "6", unit: "CATEGORIES", label: "Functional slots to fill" },
+          { value: "12+", unit: "DECISIONS", label: "In a well-crafted prompt" },
+        ],
+      },
+      { type: "h2", text: "The weak vs. strong pairing." },
+      {
+        type: "prose",
+        text: "Here is the same musical intention expressed two ways. The weak version gives the model five vague moods. The strong version gives it twelve concrete decisions. Every word earns its place.",
+      },
+      {
+        type: "example",
+        weak: {
+          label: "Weak",
+          text: "A sad song with piano and vocals, emotional and slow, kind of moody",
+        },
+        strong: {
+          label: "Strong",
+          text: "Alt R&B, 72 BPM halftime, Rhodes electric piano with vibrato on, breathy female vocal in English with layered harmonies on choruses, sparse 808 sub-bass, wide reverb tail, minimal arrangement, melancholy minor-key",
+        },
+        why: "The strong prompt fills all six anatomy categories (genre, tempo, instrument, vocal, mix, mood). The weak prompt fills one and a half. You can measure strength by how many categories a prompt addresses.",
+      },
+      { type: "h2", text: "Specificity compounds." },
+      {
+        type: "prose",
+        text: "The instinct to say 'Rhodes piano' is correct. The move to say 'Rhodes electric piano with vibrato on' is better. The model's training data is full of instrument recordings with specific articulations and performance techniques — tremolo, pizzicato, fingerpicked, palm-muted, overdriven. Using those terms lets you tap into specific timbral clusters instead of the averaged default.",
+      },
+      {
+        type: "list",
+        label: "Articulations that change the game",
+        items: [
+          "\"Rhodes electric piano — vibrato on\" vs. \"electric piano\"",
+          "\"Nylon guitar — rasgueado flamenco\" vs. \"acoustic guitar\"",
+          "\"Saxophone tenor — Coltrane sheets of sound\" vs. \"saxophone\"",
+          "\"Acoustic kit — brushes on snare\" vs. \"drums\"",
+          "\"808 sub-bass — sliding with portamento\" vs. \"bass\"",
+        ],
+      },
+      { type: "h2", text: "Language is a free lever." },
+      {
+        type: "prose",
+        text: "The model interprets a vocal specification very differently depending on the language you attach to it. 'Breathy female vocal, English' produces different phrasing than 'Breathy female vocal, Spanish' — even on an instrumental prompt where no actual lyrics are generated. The model has learned language-specific vocal textures, cadences, and consonant patterns. Specifying the language is a free way to shift the entire vocal performance.",
+      },
+      {
+        type: "annotated-quote",
+        text: "Lock language before you roll. It's the cheapest upgrade in your arsenal.",
+        source: "Working principle · PB.I §4",
+      },
+      { type: "h2", text: "Chaos mode, correctly used." },
+      {
+        type: "prose",
+        text: "Don't write off Chaos mode — just use it correctly. Chaos is a creative disruption tool, not a default. When you've been rolling Expanded prompts for twenty minutes and everything is starting to sound the same, one Chaos roll can break you out of the rut with an absurd combination you'd never have picked. Then switch back to Expanded and cherry-pick the one weird thing Chaos suggested that actually worked.",
+      },
+    ],
   },
   {
-    icon: "🔒",
-    title: "Lock one genre slot, randomize the rest",
-    body: "The best fusions come from holding one element steady while the others rotate. Pick your anchor genre (e.g., Trap), right-click to lock, then keep hitting. You'll discover fusions you wouldn't have thought to combine manually.",
+    id: "genre-strategy",
+    number: "II",
+    title: "Genre as Strategy",
+    subtitle: "Combining, colliding, and choosing styles with intention.",
+    status: "complete",
+    readingMinutes: 7,
+    runId: "PB.II.2026",
+    blocks: [
+      {
+        type: "manifesto",
+        text: "Genre is not a label. It's a set of contracts.",
+      },
+      {
+        type: "prose",
+        text: "Genre is the single most consequential decision in any prompt. It determines the tempo range the model will gravitate toward, the instrumentation it will default to, the vocal style it will try first, the mix aesthetic it will deliver. Get the genre right and everything else falls into place. Get it wrong and no amount of polish will save the track.",
+      },
+      {
+        type: "prose",
+        text: "The problem is that most people think of genre as a label — 'make me a pop song' — when it's actually a set of contracts. Every genre has conventions about what's allowed, what's required, and what's forbidden. Understanding those contracts is what separates someone making radio music from someone making karaoke tracks.",
+      },
+      { type: "h2", text: "Adjacent fusions beat distant ones." },
+      {
+        type: "prose",
+        text: "A common mistake is to assume that more distance between genres creates more interesting results. It doesn't. Distant fusions (classical + trap, polka + dubstep) tend to sound like parody. Adjacent fusions — genres that share rhythmic DNA, tempo ranges, or cultural lineage — produce the results that actually work musically.",
+      },
+      {
+        type: "prose",
+        text: "This can be modeled visually. Below, each genre is a node. Nodes cluster by shared DNA (tempo, rhythm family, cultural lineage). Solid lines are within-cluster bonds — always safe to fuse. Dashed lines are cross-cluster bridges — riskier but often more interesting when they work. Click a genre to see which bonds it can lean on.",
+      },
+      {
+        type: "diagram",
+      },
+      {
+        type: "prose",
+        text: "The four clusters are not arbitrary. Within each, genres share enough musical DNA that the model can fuse them without cognitive dissonance. Across clusters, you need a bridging element — a shared tempo, a shared language, a common production aesthetic.",
+      },
+      { type: "h2", text: "Anchor one, randomize the rest." },
+      {
+        type: "prose",
+        text: "The most useful workflow Hit Engine offers is the anchor-and-roll technique. Pick your primary genre — the one you know you want. Right-click its chip to lock it. Then hit the roll button repeatedly. Every other slot cycles while your anchor stays fixed. You'll discover fusions you would never have consciously chosen. Most will be awful. One in twenty will be a discovery.",
+      },
+      {
+        type: "annotated-quote",
+        text: "Good fusions come from constraint, not chaos. Lock one thing. Roll everything else.",
+        source: "Working principle · PB.II §1",
+      },
+      { type: "h2", text: "Know what's peaking vs. declining." },
+      {
+        type: "prose",
+        text: "The Genre History page is not decoration. Current-day popularity matters because the model has more training data for genres that have been active recently. A prompt for amapiano today will produce tighter results than a prompt for kwaito, because kwaito's peak was twenty years ago and its training data is thinner. This doesn't mean you shouldn't use declining genres — just that you should compensate with extra specificity.",
+      },
+      {
+        type: "stat-row",
+        items: [
+          { value: "2020s", unit: "PEAK", label: "Genres with freshest training" },
+          { value: "~95%", unit: "CONFIDENCE", label: "Amapiano, drill, phonk today" },
+          { value: "+30%", unit: "MORE SPEC", label: "Needed for declining genres" },
+        ],
+      },
+      { type: "h2", text: "The three safe fusion families." },
+      {
+        type: "prose",
+        text: "For reliable fusion results, draw from these three clusters. Inside each cluster, almost any combination will work. Across clusters, you need a justifying element — a shared tempo, a shared language, a production aesthetic that bridges both.",
+      },
+      {
+        type: "list",
+        label: "Reliable fusion clusters",
+        items: [
+          "Afro-Caribbean family: Afrobeats, Amapiano, Afro House, Reggaeton, Dancehall, Latin Trap — shared Afro-diasporic rhythm DNA and 95–115 BPM range.",
+          "Hip-hop family: Trap, Drill, Boom Bap, Melodic Rap, Alt R&B, Trap Soul, Phonk — shared 808 sub-bass, half-time feel, rap/sung hybrid vocals.",
+          "Dance-floor family: House, Deep House, Techno, Tech-House, Trance, Drum & Bass, UK Garage — shared four-on-the-floor (or derivative) kicks and 120–140 BPM.",
+        ],
+      },
+      { type: "h2", text: "When to ignore all of this." },
+      {
+        type: "prose",
+        text: "Rules describe probability distributions, not physics. Sometimes a distant fusion works because one specific artist already made it work. Country-rap exists because Lil Nas X proved it could. Hyperpop exists because SOPHIE proved glitched bubblegum-industrial was listenable. If you have a specific artist reference for a distant fusion, name them explicitly — 'in the style of 100 gecs' does heavy lifting that abstract genre labels can't.",
+      },
+      {
+        type: "annotated-quote",
+        text: "Reference specific artists, not abstract sounds. The model remembers names.",
+        source: "Working principle · PB.II §5",
+      },
+    ],
   },
   {
-    icon: "🎙",
-    title: "Always pair vocal style with a specific language",
-    body: "Suno interprets \"Breathy female vocal\" + \"English\" very differently from just \"Breathy female vocal.\" Specifying the language reshapes phrasing, cadence, and diction. For non-English, lock the language before rolling.",
+    id: "production-depth",
+    number: "III",
+    title: "Production Depth",
+    subtitle: "How to think about mix, space, and sonic architecture.",
+    status: "complete",
+    readingMinutes: 7,
+    runId: "PB.III.2026",
+    blocks: [
+      {
+        type: "manifesto",
+        text: "A mix is not a pile of sounds. It is a stack of frequency-agreements.",
+      },
+      {
+        type: "prose",
+        text: "Most people prompt music generators the way a child names colors — 'make it bright' or 'make it warm'. The model does its best with those words, but what it's actually doing behind the scenes is negotiating frequencies. Every instrument occupies a range of the audible spectrum. When two instruments want the same range, one of them has to lose, or the mix gets muddy. Producers who understand this have a private vocabulary; everyone else fights the mix without knowing why it's fighting back.",
+      },
+      {
+        type: "prose",
+        text: "You don't need to become a mastering engineer. You just need to see the stack. When you can see the stack, your prompts start to specify it — and the model, handed a frequency-aware instruction, produces mixes that breathe.",
+      },
+      { type: "h2", text: "The stack, made visible." },
+      {
+        type: "prose",
+        text: "Every element in a mix lives somewhere on this spectrum. Click any bar to see its frequency range and — more usefully — what else it competes with. The elements that overlap are the ones that need the most care. A sub-bass and a kick fundamental are always fighting below 80Hz. Pads and vocals are always fighting in the mid-range. Naming the fight is the first step to resolving it.",
+      },
+      {
+        type: "production-stack",
+      },
+      {
+        type: "prose",
+        text: "Notice the vocal bar. It spans a wider range than almost anything else — roughly 200Hz to 3kHz — and that's why vocals are so hard to place. Guitars, pads, low-mid drums all sit inside the vocal's frequency territory. A 'sparse' prompt is sparse for a reason: fewer elements mean less competition for the vocal's real estate.",
+      },
+      { type: "h2", text: "Space is not empty — it is worked for." },
+      {
+        type: "prose",
+        text: "'Wide reverb tail' sounds like decoration. It isn't. Reverb is how a mix tells you where a sound lives — in a bedroom, in a cathedral, on a stage, in outer space. Specifying reverb is specifying architecture. A vocal with no reverb sounds like a podcast. A vocal drowning in plate reverb sounds like 1982. A vocal with a short, early-reflection-heavy room sounds like a confession in a small room — intimate, urgent.",
+      },
+      {
+        type: "annotated-quote",
+        text: "Reverb is a lie about the space the sound was recorded in. Pick your lie carefully.",
+        source: "Working principle · PB.III §1",
+      },
+      { type: "h2", text: "Vocabulary for the mix." },
+      {
+        type: "prose",
+        text: "Below is a working vocabulary for prompt-level mix decisions. Each term maps to a real production choice the model has been trained on. Using them is how you move from asking for vibes to asking for architecture.",
+      },
+      {
+        type: "list",
+        label: "Mix terms that do real work",
+        items: [
+          "'Sidechained 808' — the kick momentarily ducks the bass, creating the pumping feel common in house, trap, and modern pop.",
+          "'Wide stereo field' — instruments panned hard left and right, creating a sense of largeness. Opposite: 'mono-centered' for vintage or intimate recordings.",
+          "'Gated reverb on snare' — the '80s power-ballad snare sound (Phil Collins). Dramatic, large, dated unless used deliberately.",
+          "'Close-mic'd, dry vocal' — intimate, present, no reverb. The bedroom-pop aesthetic.",
+          "'Tape saturation' or 'analog warmth' — compresses transients and adds harmonic richness. The opposite of clinical digital.",
+          "'Lo-fi bitcrush' — deliberately degraded bit depth. The phonk, lo-fi hip-hop, chillwave signature.",
+          "'Heavily compressed' vs. 'dynamic' — whether the track sits at a consistent loudness or breathes.",
+        ],
+      },
+      { type: "h2", text: "The bedroom-to-arena spectrum." },
+      {
+        type: "prose",
+        text: "Every prompt implicitly places its music on a spectrum from bedroom recording to arena production. Naming your position on this spectrum is one of the highest-leverage things you can do. 'Bedroom-lofi' signals limited frequency range, mono-adjacent, audible room tone. 'Radio-polished' signals full spectrum, wide stereo, sidechain compression, loudness-max mastering. The model has strong clusters for both, and for many intermediate flavors.",
+      },
+      {
+        type: "stat-row",
+        items: [
+          { value: "3", unit: "BANDS", label: "Low, mid, high — the mental model starts here" },
+          { value: "9", unit: "ELEMENTS", label: "Typical mix stack a prompt should address" },
+          { value: "1", unit: "FOCAL", label: "Point of attention — usually the vocal" },
+        ],
+      },
+      { type: "h2", text: "Side-chain is a groove tool, not a mastering effect." },
+      {
+        type: "prose",
+        text: "Sidechain compression is often described as a mixing technique for preventing bass-kick masking. That is its original purpose. But in modern production — house, future bass, trap — sidechain is a groove tool, a compositional choice. The rhythmic pumping becomes part of the song. 'Sidechained synth pad' doesn't just mean 'cleaner mix'; it means 'pad breathes with the kick'. Specifying this in a prompt shifts the groove character, not just the mix clarity.",
+      },
+      {
+        type: "example",
+        weak: {
+          label: "Vague mix spec",
+          text: "Pop song with synth pads, 808s, and drums",
+        },
+        strong: {
+          label: "Architectural mix spec",
+          text: "Pop, 120 BPM, supersaw lead with wide stereo field, sidechained synth pad pumping with the kick, 808 sub-bass tight on the kick fundamental, breathy female vocal close-mic'd with short plate reverb, loud mastered bus compression",
+        },
+        why: "The strong prompt specifies relationships between elements — what ducks what, what sits where, how space is created. Each phrase names a production decision the model can execute.",
+      },
+    ],
   },
   {
-    icon: "⚡",
-    title: "Halftime trap beats most drum selections",
-    body: "When in doubt about rhythm, halftime trap is the most versatile groove for vocal-forward tracks. It works under R&B, hip-hop, pop, dark pop, alt R&B. It's the pocket default of modern production.",
+    id: "hit-formulas",
+    number: "IV",
+    title: "Hit Formulas",
+    subtitle: "Patterns from commercial chart-toppers, decoded.",
+    status: "complete",
+    readingMinutes: 8,
+    runId: "PB.IV.2026",
+    blocks: [
+      {
+        type: "manifesto",
+        text: "A hit is not a melody. It is a time-managed architecture.",
+      },
+      {
+        type: "prose",
+        text: "Pop songs sound effortless because they're engineered to. The listener hears a song; the producer hears a structural plan executed within a 3:30 budget. Every second is accounted for. Intros don't meander. Verses don't wander. Choruses land on beats the brain is already waiting for. If this sounds cynical, consider that the same structural discipline governs good sonnets, good sitcom episodes, and good standup sets. Constraint is not the enemy of art; it is art's instrument.",
+      },
+      {
+        type: "prose",
+        text: "Understanding hit structure lets you prompt for it. You can tell a model 'build to a chorus' or 'drop at 0:45'. You can say 'bridge at the 3-minute mark' or 'four-on-the-floor from 1:00'. The model has seen thousands of hits; it knows these shapes. What it needs is for you to pick one.",
+      },
+      { type: "h2", text: "The shape of 3:30." },
+      {
+        type: "prose",
+        text: "Below is the skeleton of a typical modern pop hit — not the only shape, but the dominant one since ~2015. Hover any section to see what it's designed to do. Notice how fast the first chorus arrives (around 1:00) and how the bridge reliably appears in the final third as a reset before the climactic chorus. This is not an accident.",
+      },
+      {
+        type: "song-structure",
+      },
+      {
+        type: "prose",
+        text: "The first chorus lands at roughly 30% of the song's runtime. Streaming metrics have hardened this: if the hook doesn't arrive inside the first minute, skip-rate climbs sharply. A track that takes 90 seconds to reveal its chorus is a track many listeners never finish.",
+      },
+      { type: "h2", text: "The 15-second rule." },
+      {
+        type: "prose",
+        text: "The first 15 seconds decide whether a listener stays. Modern hits open with the hook, a vocal teaser, or a signature production element that is immediately recognizable. Slow instrumental builds are a luxury only established artists can afford; a new track that begins with 20 seconds of atmospheric pad will be skipped before the vocal arrives. Prompt accordingly — 'intro with vocal hook teaser' or 'cold open on the chorus' are instructions worth giving.",
+      },
+      {
+        type: "annotated-quote",
+        text: "The first 15 seconds are the only ones that are guaranteed to be heard.",
+        source: "Working principle · PB.IV §1",
+      },
+      { type: "h2", text: "The pre-chorus lift." },
+      {
+        type: "prose",
+        text: "Between the verse and chorus sits the pre-chorus — a section most casual listeners don't consciously notice, which is precisely why it works. The pre-chorus is a lift: chord progressions that tilt upward, drum patterns that add density, filter sweeps or drum fills that signal 'arrival imminent'. Its job is to make the chorus feel inevitable, like the song has been building toward it all along.",
+      },
+      {
+        type: "list",
+        label: "Pre-chorus moves that make choruses land",
+        items: [
+          "A chord change that sits on the IV (subdominant) or a borrowed minor chord, creating harmonic tension.",
+          "Drums drop to just kick and hi-hat, creating rhythmic space before the full drop.",
+          "A filter sweep rising upward — white noise, reverb tail, or a synth opening up its cutoff.",
+          "Vocal phrasing shifts from spoken-style to sung-melodic, signaling the emotional climb.",
+          "A drum fill in the last two bars — the classic 'here comes the chorus' cue.",
+        ],
+      },
+      { type: "h2", text: "The drop before the drop." },
+      {
+        type: "prose",
+        text: "In electronic dance music, and increasingly in pop, there is a micro-pattern called the 'drop before the drop'. Just before the actual bass drop, everything cuts to silence for half a beat or a single beat. The ear notices the absence; the subsequent drop hits harder because of it. This is a direct borrowing from how drummers set up big fills — the silence is part of the hit.",
+      },
+      {
+        type: "stat-row",
+        items: [
+          { value: "~1:00", unit: "FIRST HOOK", label: "When the first chorus typically lands" },
+          { value: "~3:30", unit: "DURATION", label: "Modern pop's target runtime" },
+          { value: "15s", unit: "DECIDE-BY", label: "The listener has committed or skipped" },
+        ],
+      },
+      { type: "h2", text: "When to violate the formula." },
+      {
+        type: "prose",
+        text: "Rules describe what works on average. Individual artists build their identities by knowing which rules to break and when. Billie Eilish broke the loudness rule — her songs are quiet, whispered, and still chart. Phoebe Bridgers broke the hook-at-1:00 rule — her songs meander intentionally. Bad Bunny breaks the 3:30 rule — his songs often run 2:30. In each case, the violation is the point. The artists know what they're breaking.",
+      },
+      {
+        type: "annotated-quote",
+        text: "You cannot subvert a rule you don't know.",
+        source: "Working principle · PB.IV §4",
+      },
+      { type: "h2", text: "Prompting structural intent." },
+      {
+        type: "prose",
+        text: "Most AI music generators accept structural directives in the prompt. Use them. Phrases like 'intro 8 bars', 'drop at 0:45', 'bridge at 2:00', or 'outro fade' steer the model toward specific arrangement choices. Without these, the model chooses structure from its training median — which for modern pop defaults to the shape above, but for other genres will drift unpredictably.",
+      },
+      {
+        type: "example",
+        weak: {
+          label: "No structural intent",
+          text: "Upbeat summer pop with tropical vibes",
+        },
+        strong: {
+          label: "Structural intent",
+          text: "Dance-pop, 118 BPM four-on-the-floor, intro 8 bars with supersaw teaser, verse 1 at 0:15 with filtered drums, pre-chorus lift at 0:45, drop chorus at 1:00 with full arrangement, bridge at 2:15 with stripped arrangement and vocal harmonies, final chorus at 2:45 with key change up a semitone",
+        },
+        why: "The strong prompt doesn't just specify genre and mood — it specifies the song's architecture. The model renders that architecture, and the result feels crafted rather than improvised.",
+      },
+    ],
   },
   {
-    icon: "🎨",
-    title: "Use favorites to build your signature palette",
-    body: "Double-click any chip to add to favorites. Do this over a week while rolling. By day 7 you'll have 20-30 favorited options across sections — that's your taste fingerprint. The randomizer weights favorites more heavily.",
-  },
-  {
-    icon: "🔥",
-    title: "Pop-hit meter isn't a judge — it's a predictor",
-    body: "A 40% score doesn't mean your track is bad. It means the feature combination is less aligned with mainstream pop DNA. Experimental, art-pop, and niche genres will always score lower. Use the meter to know where on the spectrum you're landing, not whether it's good.",
-  },
-  {
-    icon: "📐",
-    title: "Specific instruments beat generic descriptions",
-    body: "\"Rhodes electric piano with vibrato on\" produces vastly better results than \"electric piano\". Suno's training includes thousands of instrument-specific references. Use the articulation layer — it's what separates amateur prompts from pro ones.",
-  },
-  {
-    icon: "🧭",
-    title: "Trend Engine is for when you don't know what's hot",
-    body: "Use Trend Engine (costs Trend fuel) when you're out of creative ideas but know you want something currently in the culture. It won't give you niche genres — it rolls from the top 15 by momentum. Good for commercial or viral-leaning tracks.",
+    id: "common-traps",
+    number: "V",
+    title: "Common Traps",
+    subtitle: "The mistakes nobody warns you about until you've wasted a week.",
+    status: "complete",
+    readingMinutes: 6,
+    runId: "PB.V.2026",
+    blocks: [
+      {
+        type: "manifesto",
+        text: "The mistakes are not random. They are predictable. You are not the first to make them.",
+      },
+      {
+        type: "prose",
+        text: "Everyone who has spent a month prompting AI music generators has hit the same set of walls. They're so consistent that they might as well be listed in a manual — except no one wrote that manual, so each new user falls into each trap individually, wastes hours or days, and gradually learns what not to do. This chapter is that manual. You may have fallen into some of these already. You will recognize them.",
+      },
+      {
+        type: "prose",
+        text: "The good news: once you see an anti-pattern clearly, you stop writing it. The mistakes below are easy to make because they feel like you're being more descriptive — adding more adjectives, more genres, more atmosphere. The model doesn't reward that. It rewards structure.",
+      },
+      { type: "h2", text: "The gallery of wrong prompts." },
+      {
+        type: "prose",
+        text: "Below is a catalog of the six most common anti-patterns, each with a real-looking example prompt, a diagnosis of what went wrong, and a cleaned-up version. Click any one to see the full breakdown. The severity dots (●) indicate how badly the pattern tends to sabotage output — three dots means the model often produces something unusable.",
+      },
+      {
+        type: "anti-patterns",
+      },
+      { type: "h2", text: "Why 'more' is usually worse." },
+      {
+        type: "prose",
+        text: "The common thread across these anti-patterns is the assumption that more information produces better results. It doesn't. More information produces more constraints, and past a certain point, constraints conflict. A prompt that tries to specify fifteen things ends up under-specifying each one, because the model's attention is finite and spread thin. The craft is not in saying more — it is in saying the right things with precision.",
+      },
+      {
+        type: "annotated-quote",
+        text: "A prompt of twelve precise words outperforms a prompt of forty vague ones.",
+        source: "Working principle · PB.V §1",
+      },
+      { type: "h2", text: "The locking trap." },
+      {
+        type: "prose",
+        text: "Hit Engine lets you lock any slot to prevent it from randomizing. This is a powerful feature — and a dangerous one. If you lock too many slots, you've eliminated the creative disruption the randomizer is meant to provide. Rolling becomes pointless. The sweet spot is one or two anchors and the rest free. If you find yourself locking every slot, you're not rolling anymore — you're manually building a prompt, which you can do faster by typing.",
+      },
+      {
+        type: "stat-row",
+        items: [
+          { value: "1–2", unit: "LOCKED", label: "Ideal number of anchors when rolling" },
+          { value: "5+", unit: "IS TOO MANY", label: "You've turned randomizer into typing" },
+          { value: "0", unit: "IS CHAOS", label: "Nothing to discover without an anchor" },
+        ],
+      },
+      { type: "h2", text: "The 'sounds like' trap." },
+      {
+        type: "prose",
+        text: "Describing what you want a song to 'sound like' is fine when you reference specific artists ('in the style of Billie Eilish' does real work). It's poor when the reference is vague ('sounds like a summer afternoon', 'sounds emotional'). Metaphors don't translate to the model's training data; specific artists and specific songs do. When you feel the urge to reach for a metaphor, reach for a name instead.",
+      },
+      { type: "h2", text: "The contradiction trap." },
+      {
+        type: "prose",
+        text: "Beginners often combine terms that make stylistic sense individually but contradict each other in combination. 'Minimalist maximalist', 'aggressive gentle', 'fast slow'. The model attempts to reconcile these, and the result is either averaged mush or one signal dominating and the other disappearing. If you catch yourself writing a contradiction, pick one side. If you truly want both, name an artist who fuses them successfully.",
+      },
+      {
+        type: "annotated-quote",
+        text: "Two contradictions cancel. Two specifics reinforce.",
+        source: "Working principle · PB.V §3",
+      },
+      { type: "h2", text: "The 'try everything' trap." },
+      {
+        type: "prose",
+        text: "When a prompt isn't producing what you want, the temptation is to add more to it. Another adjective. Another genre tag. Another mix direction. Almost always, the correct move is the opposite: remove something. Prompts get better when they're tightened, not when they're stuffed. If your prompt exceeds 400 characters and isn't producing what you want, the problem is rarely that you need more — the problem is usually that two of the things you already wrote are fighting each other.",
+      },
+      {
+        type: "example",
+        weak: {
+          label: "Stuffed and conflicting",
+          text: "Epic emotional pop song with cinematic strings, dubstep drops, country twang, hip-hop drums, opera vocals, ambient textures, jazz chord changes, 128 BPM and also 80 BPM, loud and quiet, happy and sad",
+        },
+        strong: {
+          label: "Tightened and coherent",
+          text: "Cinematic pop ballad, 72 BPM, orchestral strings with a modern sub-bass foundation, breathy female vocal in English with one climactic belted chorus, loud-quiet-loud dynamics",
+        },
+        why: "The weak prompt contradicts itself six different ways. The strong prompt keeps the 'cinematic' and 'emotional' intent but commits to one tempo, one vocal style, and one dynamic arc. The model can now execute.",
+      },
+      { type: "h2", text: "The closing move." },
+      {
+        type: "prose",
+        text: "Most of these traps share an origin: uncertainty about what you actually want. When you're unsure, you add more, in the hope that the model will surface the right option from the pile. A better move is to pause, decide what one thing matters most, write that one thing as clearly as you can, and let the model fill in the rest. You can always roll again. You cannot un-confuse the model mid-generation.",
+      },
+    ],
   },
 ];
 
-function VipSecretsPage() {
+function PlaybookPage() {
   const { layout } = useLayout();
   const isMobile = layout === "mobile";
+  const [activeChapter, setActiveChapter] = useState(PLAYBOOK_CHAPTERS[0].id);
+  const chapterRefs = useRef({});
+
+  // Scroll-tracking for TOC via IntersectionObserver
+  useEffect(() => {
+    if (isMobile) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visible = entries
+          .filter(e => e.isIntersecting)
+          .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
+        if (visible.length > 0) {
+          setActiveChapter(visible[0].target.dataset.chapterId);
+        }
+      },
+      { rootMargin: "-120px 0px -60% 0px", threshold: 0 }
+    );
+    PLAYBOOK_CHAPTERS.forEach(ch => {
+      const el = chapterRefs.current[ch.id];
+      if (el) observer.observe(el);
+    });
+    return () => observer.disconnect();
+  }, [isMobile]);
+
+  const scrollToChapter = (id) => {
+    const el = chapterRefs.current[id];
+    if (!el) return;
+    const yOffset = -90;
+    const y = el.getBoundingClientRect().top + window.pageYOffset + yOffset;
+    window.scrollTo({ top: y, behavior: "smooth" });
+  };
+
+  // Build session timestamp for the 2035-research-paper feel
+  const now = new Date();
+  const sessionId = `SESS.${String(now.getFullYear()).slice(-2)}${String(now.getMonth() + 1).padStart(2, "0")}${String(now.getDate()).padStart(2, "0")}`;
+
   return (
     <div style={{
-      maxWidth: 860, margin: "0 auto",
-      padding: isMobile ? `${T.s6}px ${T.s4}px ${T.s10}px` : `${T.s10}px ${T.s7}px ${T.s10}px`,
+      maxWidth: 1200,
+      margin: "0 auto",
+      padding: isMobile ? `${T.s6}px ${T.s4}px ${T.s10}px` : `${T.s8}px ${T.s7}px ${T.s10}px`,
     }}>
-      <Label color={V.neonGold} style={{ display: "block", marginBottom: T.s4 }}>
-        VIP Secrets 🤫
-      </Label>
-      <h1 style={{
-        fontSize: "clamp(32px, 4vw, 56px)",
-        lineHeight: 1.0, letterSpacing: "-0.03em",
-        margin: 0, marginBottom: T.s4,
-        fontFamily: T.font_sans, fontWeight: 600,
+      {/* ═══════════════════════ EDITORIAL MASTHEAD ═══════════════════════ */}
+      <div style={{
+        marginBottom: isMobile ? T.s8 : T.s10,
+        paddingBottom: T.s7,
+        borderBottom: `1px solid ${T.border}`,
+        position: "relative",
+        minHeight: isMobile ? "auto" : 320,
       }}>
-        Maximize what you get from Hit Engine
-      </h1>
-      <p style={{
-        color: T.textSec, fontSize: T.fs_lg, lineHeight: 1.55,
-        maxWidth: 640, marginBottom: T.s8, fontFamily: T.font_sans,
-      }}>
-        Field-tested techniques for extracting the best possible output from Suno, Udio, and other music AIs — learned the hard way so you don't have to.
-      </p>
-      <div style={{ display: "flex", flexDirection: "column", gap: T.s3 }}>
-        {VIP_SECRETS.map((s, i) => (
-          <div key={i} style={{
-            padding: T.s5,
-            background: T.surface, border: `1px solid ${T.border}`,
-            borderRadius: T.r_lg,
-            display: "flex", gap: T.s4, alignItems: "flex-start",
+        <GridBackdrop />
+        <div style={{ position: "relative", zIndex: 1 }}>
+          {/* Top metadata bar */}
+          <div style={{
+            display: "flex", alignItems: "center", gap: T.s3,
+            marginBottom: T.s5, flexWrap: "wrap",
+            fontSize: 10, fontFamily: T.font_mono, letterSpacing: "0.2em",
           }}>
+            <span style={{ color: V.neonGold, fontWeight: 700 }}>
+              VIP · VOL. I
+            </span>
+            <span style={{ color: T.textMuted }}>·</span>
+            <span style={{ color: T.textMuted }}>
+              {sessionId}
+            </span>
+            <span style={{ color: T.textMuted }}>·</span>
+            <span style={{ color: T.textMuted }}>
+              {PLAYBOOK_CHAPTERS.filter(c => c.status === "complete").length}/{PLAYBOOK_CHAPTERS.length} CH.
+            </span>
+            <div style={{ flex: 1 }} />
+            <span style={{
+              color: T.success, fontSize: 9,
+              display: "inline-flex", alignItems: "center", gap: 6,
+            }}>
+              <span style={{
+                display: "inline-block", width: 6, height: 6, borderRadius: "50%",
+                background: T.success,
+                boxShadow: `0 0 6px ${T.success}`,
+                animation: "pulse 2s ease-in-out infinite",
+              }} />
+              <style>{`@keyframes pulse { 0%, 100% { opacity: 1 } 50% { opacity: 0.4 } }`}</style>
+              LIVE
+            </span>
+          </div>
+
+          <h1 style={{
+            fontSize: isMobile ? "clamp(52px, 15vw, 92px)" : "clamp(88px, 10vw, 168px)",
+            lineHeight: 0.9,
+            letterSpacing: "-0.035em",
+            margin: 0,
+            marginBottom: T.s4,
+            fontFamily: T.font_display,
+            fontWeight: 400,
+            fontStyle: "italic",
+            color: T.text,
+          }}>
+            The Playbook
+          </h1>
+          <p style={{
+            fontSize: isMobile ? T.fs_lg : T.fs_xl,
+            lineHeight: 1.4,
+            color: T.textSec,
+            fontFamily: T.font_display,
+            fontStyle: "italic",
+            margin: 0,
+            maxWidth: 640,
+            fontWeight: 400,
+          }}>
+            Field-tested wisdom for extracting real music from AI — learned the hard way, written down once, so the next person doesn't start from zero.
+          </p>
+        </div>
+      </div>
+
+      {/* ════════════════════ LAYOUT: TOC + CONTENT ════════════════════════ */}
+      <div style={{
+        display: "grid",
+        gridTemplateColumns: isMobile ? "1fr" : "220px 1fr",
+        gap: isMobile ? 0 : T.s9,
+        alignItems: "start",
+      }}>
+        {/* ────── TABLE OF CONTENTS (desktop only) ────── */}
+        {!isMobile && (
+          <nav style={{ position: "sticky", top: 90, paddingTop: T.s2 }}>
             <div style={{
-              fontSize: 28, lineHeight: 1, flexShrink: 0,
-              width: 48, height: 48, display: "grid", placeItems: "center",
-              background: T.elevated, border: `1px solid ${T.borderHi}`,
-              borderRadius: T.r_md,
-            }}>{s.icon}</div>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{
-                fontSize: T.fs_lg, color: T.text, fontWeight: 600,
-                fontFamily: T.font_sans, marginBottom: T.s2, letterSpacing: "-0.01em",
+              fontSize: 9, fontFamily: T.font_mono, fontWeight: 700,
+              color: T.textMuted, letterSpacing: "0.28em",
+              marginBottom: T.s4, paddingBottom: T.s2,
+              borderBottom: `1px solid ${T.border}`,
+            }}>
+              / CONTENTS
+            </div>
+            <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
+              {PLAYBOOK_CHAPTERS.map(ch => {
+                const isActive = activeChapter === ch.id;
+                const isComplete = ch.status === "complete";
+                return (
+                  <li key={ch.id} style={{ marginBottom: T.s3 }}>
+                    <button type="button"
+                      onClick={() => scrollToChapter(ch.id)}
+                      style={{
+                        background: "transparent", border: "none", padding: 0,
+                        cursor: "pointer", textAlign: "left", width: "100%",
+                        display: "block",
+                        borderLeft: `2px solid ${isActive ? V.neonGold : "transparent"}`,
+                        paddingLeft: 12,
+                        transition: "all 180ms ease-out",
+                        opacity: isComplete ? 1 : 0.45,
+                      }}>
+                      <div style={{
+                        fontSize: 10, fontFamily: T.font_mono, fontWeight: 700,
+                        color: isActive ? V.neonGold : T.textMuted,
+                        letterSpacing: "0.18em",
+                        marginBottom: 2,
+                        transition: "color 180ms ease-out",
+                      }}>
+                        CH. {ch.number}
+                      </div>
+                      <div style={{
+                        fontSize: 13, fontFamily: T.font_display,
+                        fontStyle: "italic", fontWeight: 400,
+                        color: isActive ? T.text : T.textSec,
+                        lineHeight: 1.25,
+                        transition: "color 180ms ease-out",
+                      }}>
+                        {ch.title}
+                      </div>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+            <div style={{
+              marginTop: T.s6, paddingTop: T.s4,
+              borderTop: `1px solid ${T.border}`,
+              fontSize: 10, fontFamily: T.font_mono,
+              color: T.textMuted, letterSpacing: "0.12em",
+              lineHeight: 1.7,
+            }}>
+              ~{PLAYBOOK_CHAPTERS.reduce((sum, c) => sum + c.readingMinutes, 0)} MIN · VOL. I<br/>
+              <span style={{ color: T.textTer }}>REV. 2026.04</span>
+            </div>
+          </nav>
+        )}
+
+        {/* ────── MAIN CONTENT COLUMN ────── */}
+        <article style={{ maxWidth: 720, minWidth: 0 }}>
+          {PLAYBOOK_CHAPTERS.map(ch => (
+            <section
+              key={ch.id}
+              ref={el => chapterRefs.current[ch.id] = el}
+              data-chapter-id={ch.id}
+              style={{
+                marginBottom: T.s10,
+                opacity: ch.status === "complete" ? 1 : 0.65,
               }}>
-                <span style={{
-                  color: V.neonGold, fontFamily: T.font_mono, fontSize: T.fs_xs,
-                  fontWeight: 700, letterSpacing: "0.25em", marginRight: 10,
-                }}>#{String(i + 1).padStart(2, "0")}</span>
-                {s.title}
+              {/* ── Chapter header ── */}
+              <header style={{ marginBottom: T.s6 }}>
+                {/* Scanline divider */}
+                <div style={{
+                  height: 1,
+                  background: `linear-gradient(90deg, ${V.neonGold}aa 0%, ${V.neonGold}33 30%, transparent 100%)`,
+                  marginBottom: T.s4,
+                }} />
+                <div style={{
+                  display: "flex", alignItems: "baseline", gap: T.s3,
+                  marginBottom: T.s3, flexWrap: "wrap",
+                }}>
+                  <div style={{
+                    fontSize: 11, fontFamily: T.font_mono, fontWeight: 700,
+                    color: V.neonGold, letterSpacing: "0.25em",
+                  }}>
+                    CHAPTER {ch.number}
+                  </div>
+                  <div style={{
+                    fontSize: 9, fontFamily: T.font_mono, color: T.textTer,
+                    letterSpacing: "0.12em",
+                  }}>
+                    / {ch.runId}
+                  </div>
+                  {ch.status === "upcoming" && (
+                    <span style={{
+                      fontSize: 9, fontFamily: T.font_mono, fontWeight: 700,
+                      color: T.textMuted, letterSpacing: "0.15em",
+                      padding: "2px 7px",
+                      border: `1px solid ${T.border}`,
+                      borderRadius: 3,
+                      background: T.surface,
+                    }}>
+                      ◇ DRAFT
+                    </span>
+                  )}
+                  <div style={{ flex: 1 }} />
+                  <div style={{
+                    fontSize: 10, fontFamily: T.font_mono,
+                    color: T.textMuted, letterSpacing: "0.12em",
+                  }}>
+                    {ch.readingMinutes} MIN
+                  </div>
+                </div>
+                <h2 style={{
+                  fontSize: isMobile ? "clamp(36px, 9vw, 60px)" : "clamp(48px, 5.5vw, 76px)",
+                  lineHeight: 0.98,
+                  letterSpacing: "-0.028em",
+                  margin: 0,
+                  marginBottom: T.s3,
+                  fontFamily: T.font_display,
+                  fontWeight: 400,
+                  fontStyle: "italic",
+                  color: T.text,
+                }}>
+                  {ch.title}
+                </h2>
+                <p style={{
+                  fontSize: isMobile ? T.fs_base : T.fs_lg,
+                  lineHeight: 1.5,
+                  color: T.textSec,
+                  fontFamily: T.font_sans,
+                  margin: 0,
+                  maxWidth: 560,
+                }}>
+                  {ch.subtitle}
+                </p>
+              </header>
+              {/* Chapter body */}
+              <div>
+                {ch.blocks.map((block, i) => (
+                  <PlaybookBlock key={i} block={block} isMobile={isMobile} />
+                ))}
               </div>
-              <div style={{
-                color: T.textSec, fontSize: T.fs_md, lineHeight: 1.6,
-                fontFamily: T.font_sans,
-              }}>{s.body}</div>
+            </section>
+          ))}
+
+          {/* Closing note */}
+          <div style={{
+            marginTop: T.s8,
+            padding: `${T.s6}px ${T.s5}px`,
+            background: `linear-gradient(180deg, ${V.neonGold}08 0%, transparent 100%)`,
+            border: `1px solid ${V.neonGold}33`,
+            borderRadius: T.r_lg,
+            textAlign: "center",
+            position: "relative",
+            overflow: "hidden",
+          }}>
+            {/* Top accent line */}
+            <div style={{
+              position: "absolute", top: 0, left: "50%", transform: "translateX(-50%)",
+              width: 60, height: 2,
+              background: V.neonGold,
+              boxShadow: `0 0 10px ${V.neonGold}66`,
+            }} />
+            <div style={{
+              fontSize: 10, fontFamily: T.font_mono, fontWeight: 700,
+              color: V.neonGold, letterSpacing: "0.28em",
+              marginBottom: T.s3,
+              textShadow: `0 0 6px ${V.neonGold}44`,
+            }}>
+              ━━ END OF VOLUME I ━━
+            </div>
+            <div style={{
+              fontSize: isMobile ? T.fs_lg : T.fs_xl,
+              fontFamily: T.font_display,
+              fontStyle: "italic",
+              color: T.text,
+              marginBottom: T.s3,
+              lineHeight: 1.4,
+            }}>
+              New chapters added as the experiments run.
+            </div>
+            <div style={{
+              color: T.textTer, fontSize: T.fs_sm, fontFamily: T.font_sans,
+              maxWidth: 440, margin: "0 auto", lineHeight: 1.6,
+            }}>
+              Your feedback shapes what gets researched next. Tell us what's working — or what isn't.
             </div>
           </div>
-        ))}
-      </div>
-      <div style={{
-        marginTop: T.s8, padding: T.s5,
-        background: `${V.neonGold}08`, border: `1px dashed ${V.neonGold}44`,
-        borderRadius: T.r_lg, textAlign: "center",
-      }}>
-        <div style={{
-          fontSize: T.fs_xs, fontFamily: T.font_mono, letterSpacing: "0.25em",
-          color: V.neonGold, fontWeight: 700, marginBottom: T.s2,
-          textShadow: `0 0 6px ${V.neonGold}66`,
-        }}>VIP THANKS</div>
-        <div style={{ color: T.textSec, fontSize: T.fs_md, fontFamily: T.font_sans }}>
-          More secrets added as we learn them. Your feedback shapes the guide — what's working for you?
-        </div>
+        </article>
       </div>
     </div>
   );
 }
+
+// ── PlaybookBlock — renders each block type with its own aesthetic treatment ─
+function PlaybookBlock({ block, isMobile }) {
+  const baseProseStyle = {
+    fontSize: isMobile ? T.fs_base : 17,
+    lineHeight: 1.75,
+    color: T.textSec,
+    fontFamily: T.font_sans,
+    margin: 0,
+    marginBottom: T.s4,
+    fontWeight: 400,
+  };
+
+  switch (block.type) {
+    case "prose":
+      return <p style={baseProseStyle}>{block.text}</p>;
+
+    case "h2":
+      return (
+        <h3 style={{
+          fontSize: isMobile ? T.fs_xl : 28,
+          lineHeight: 1.15,
+          letterSpacing: "-0.02em",
+          margin: 0,
+          marginTop: T.s7,
+          marginBottom: T.s4,
+          fontFamily: T.font_display,
+          fontStyle: "italic",
+          fontWeight: 400,
+          color: T.text,
+        }}>
+          {block.text}
+        </h3>
+      );
+
+    case "h3":
+      return (
+        <h4 style={{
+          fontSize: T.fs_lg,
+          lineHeight: 1.3,
+          margin: 0,
+          marginTop: T.s5,
+          marginBottom: T.s3,
+          fontFamily: T.font_sans,
+          fontWeight: 600,
+          color: T.text,
+          letterSpacing: "-0.01em",
+        }}>
+          {block.text}
+        </h4>
+      );
+
+    case "manifesto":
+      // Oversized statement that reframes the chapter's thesis. Serif italic,
+      // big, with top/bottom scanline rules and a leading mono annotation.
+      return (
+        <div style={{
+          margin: `${T.s6}px 0 ${T.s7}px`,
+          padding: `${T.s5}px 0`,
+          borderTop: `1px solid ${V.neonGold}66`,
+          borderBottom: `1px solid ${V.neonGold}22`,
+          position: "relative",
+        }}>
+          <div style={{
+            fontSize: 9, fontFamily: T.font_mono, fontWeight: 700,
+            color: V.neonGold, letterSpacing: "0.28em",
+            marginBottom: T.s3,
+          }}>
+            ◆ THESIS
+          </div>
+          <div style={{
+            fontSize: isMobile ? 28 : 40,
+            lineHeight: 1.1,
+            letterSpacing: "-0.025em",
+            fontFamily: T.font_display,
+            fontStyle: "italic",
+            fontWeight: 400,
+            color: T.text,
+          }}>
+            {block.text}
+          </div>
+        </div>
+      );
+
+    case "annotated-quote":
+      // Pull-quote with source annotation. More specific than a plain quote —
+      // cites itself like a referenced footnote.
+      return (
+        <blockquote style={{
+          margin: `${T.s6}px 0`,
+          padding: `${T.s4}px ${T.s4}px`,
+          background: T.bg,
+          border: `1px solid ${V.neonGold}33`,
+          borderLeft: `3px solid ${V.neonGold}`,
+          borderRadius: `0 ${T.r_md}px ${T.r_md}px 0`,
+          position: "relative",
+        }}>
+          <div style={{
+            fontSize: isMobile ? 20 : 24,
+            lineHeight: 1.3,
+            color: T.text,
+            fontFamily: T.font_display,
+            fontStyle: "italic",
+            fontWeight: 400,
+            letterSpacing: "-0.01em",
+            marginBottom: T.s2,
+          }}>
+            {block.text}
+          </div>
+          {block.source && (
+            <div style={{
+              fontSize: 10, fontFamily: T.font_mono,
+              color: T.textMuted, letterSpacing: "0.12em",
+              fontWeight: 500,
+            }}>
+              ── {block.source}
+            </div>
+          )}
+        </blockquote>
+      );
+
+    case "inspector":
+      return <PromptAnatomyInspector isMobile={isMobile} />;
+
+    case "diagram":
+      return <GenreFusionDiagram isMobile={isMobile} />;
+
+    case "production-stack":
+      return <ProductionStackVisualizer isMobile={isMobile} />;
+
+    case "song-structure":
+      return <SongStructureDeconstructor isMobile={isMobile} />;
+
+    case "anti-patterns":
+      return <AntiPatternDetector isMobile={isMobile} />;
+
+    case "stat-row":
+      // Research-paper-style stat strip. Big value + small unit + label.
+      return (
+        <div style={{
+          margin: `${T.s6}px 0`,
+          display: "grid",
+          gridTemplateColumns: isMobile ? "1fr" : `repeat(${block.items.length}, 1fr)`,
+          gap: isMobile ? T.s3 : 0,
+          border: `1px solid ${T.border}`,
+          borderRadius: T.r_md,
+          overflow: "hidden",
+          background: T.surface,
+        }}>
+          {block.items.map((item, i) => (
+            <div key={i} style={{
+              padding: `${T.s4}px ${T.s4}px`,
+              borderRight: !isMobile && i < block.items.length - 1 ? `1px solid ${T.border}` : "none",
+              borderBottom: isMobile && i < block.items.length - 1 ? `1px solid ${T.border}` : "none",
+              position: "relative",
+            }}>
+              <div style={{
+                fontSize: 9, fontFamily: T.font_mono, fontWeight: 700,
+                color: T.textMuted, letterSpacing: "0.22em",
+                marginBottom: T.s2,
+              }}>
+                / {item.unit}
+              </div>
+              <div style={{
+                fontSize: isMobile ? 36 : 44,
+                fontFamily: T.font_display,
+                fontStyle: "italic",
+                fontWeight: 400,
+                color: T.text,
+                lineHeight: 1,
+                marginBottom: T.s2,
+                letterSpacing: "-0.02em",
+              }}>
+                {item.value}
+              </div>
+              <div style={{
+                fontSize: T.fs_xs, fontFamily: T.font_sans,
+                color: T.textSec, lineHeight: 1.4,
+              }}>
+                {item.label}
+              </div>
+            </div>
+          ))}
+        </div>
+      );
+
+    case "example":
+      return (
+        <div style={{
+          margin: `${T.s5}px 0`,
+          border: `1px solid ${T.border}`,
+          borderRadius: T.r_lg,
+          overflow: "hidden",
+          background: T.surface,
+        }}>
+          <div style={{
+            padding: `${T.s4}px ${T.s4}px`,
+            borderBottom: `1px solid ${T.border}`,
+            background: `linear-gradient(90deg, ${T.danger}08 0%, transparent 60%)`,
+          }}>
+            <div style={{
+              fontSize: 10, fontFamily: T.font_mono, fontWeight: 700,
+              color: T.danger, letterSpacing: "0.2em", marginBottom: T.s2,
+            }}>
+              ✗ {block.weak.label.toUpperCase()}
+            </div>
+            <div style={{
+              fontSize: T.fs_md, color: T.textSec,
+              fontFamily: T.font_mono, lineHeight: 1.6,
+            }}>
+              {block.weak.text}
+            </div>
+          </div>
+          <div style={{
+            padding: `${T.s4}px ${T.s4}px`,
+            background: `linear-gradient(90deg, ${T.success}0a 0%, transparent 60%)`,
+          }}>
+            <div style={{
+              fontSize: 10, fontFamily: T.font_mono, fontWeight: 700,
+              color: T.success, letterSpacing: "0.2em", marginBottom: T.s2,
+            }}>
+              ✓ {block.strong.label.toUpperCase()}
+            </div>
+            <div style={{
+              fontSize: T.fs_md, color: T.text,
+              fontFamily: T.font_mono, lineHeight: 1.6,
+            }}>
+              {block.strong.text}
+            </div>
+          </div>
+          {block.why && (
+            <div style={{
+              padding: `${T.s3}px ${T.s4}px`,
+              background: T.bg,
+              borderTop: `1px dashed ${T.border}`,
+            }}>
+              <div style={{
+                fontSize: 10, fontFamily: T.font_mono, fontWeight: 700,
+                color: T.textMuted, letterSpacing: "0.2em", marginBottom: T.s1,
+              }}>
+                WHY IT WORKS
+              </div>
+              <div style={{
+                fontSize: T.fs_sm, color: T.textSec,
+                fontFamily: T.font_sans, lineHeight: 1.6, fontStyle: "italic",
+              }}>
+                {block.why}
+              </div>
+            </div>
+          )}
+        </div>
+      );
+
+    case "list":
+      return (
+        <div style={{ margin: `${T.s5}px 0` }}>
+          {block.label && (
+            <div style={{
+              fontSize: 10, fontFamily: T.font_mono, fontWeight: 700,
+              color: T.textMuted, letterSpacing: "0.2em", marginBottom: T.s3,
+            }}>
+              / {block.label.toUpperCase()}
+            </div>
+          )}
+          <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
+            {block.items.map((item, i) => (
+              <li key={i} style={{
+                position: "relative",
+                paddingLeft: 28,
+                marginBottom: T.s3,
+                fontSize: isMobile ? T.fs_base : 16,
+                lineHeight: 1.65,
+                color: T.textSec,
+                fontFamily: T.font_sans,
+              }}>
+                <span style={{
+                  position: "absolute",
+                  left: 0, top: "2px",
+                  fontSize: 11,
+                  fontFamily: T.font_mono,
+                  color: V.neonGold,
+                  fontWeight: 700,
+                  letterSpacing: "0.1em",
+                }}>
+                  {String(i + 1).padStart(2, "0")}
+                </span>
+                {item}
+              </li>
+            ))}
+          </ul>
+        </div>
+      );
+
+    case "divider":
+      return (
+        <div style={{
+          margin: `${T.s6}px auto`,
+          width: 120,
+          height: 1,
+          background: `linear-gradient(90deg, transparent 0%, ${T.border} 50%, transparent 100%)`,
+        }} />
+      );
+
+    default:
+      return null;
+  }
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// SHOP PAGE — demo shop for purchasing tier upgrades with fake credits
+// ════════════════════════════════════════════════════════════════════════════
+
+function ShopPage() {
+  const { tier, ownedTiers, purchaseTier } = useTier();
+  const { refillForTier } = useFuel();
+  const { layout } = useLayout();
+  const isMobile = layout === "mobile";
+  const [feedback, setFeedback] = useState(null);
+  const [payModal, setPayModal] = useState(null); // { tierId, billing }
+  const [billing, setBilling] = useState("monthly"); // monthly | yearly
+
+  const showFeedback = (ok, text) => {
+    setFeedback({ ok, text });
+    setTimeout(() => setFeedback(null), 3500);
+  };
+
+  const handleSubscribe = (tierId) => {
+    setPayModal({ tierId, billing });
+  };
+
+  const completePayment = (tierId, bill) => {
+    const result = purchaseTier(tierId, bill);
+    if (result.ok) {
+      refillForTier(tierId);
+      const tierLabel = TIERS[tierId].label;
+      showFeedback(true, `Welcome to ${tierLabel}! Your subscription is active.`);
+      setPayModal(null);
+    } else {
+      showFeedback(false, result.error);
+    }
+  };
+
+  const currentHighestRank = Math.max(...[...ownedTiers].map(x => TIER_RANK[x] ?? 0));
+  const shopOrder = ["free", "pro", "vip"];
+
+  // Feature lists — hand-authored for each tier, ordered by importance
+  const getFeatureList = (tierId) => {
+    const f = TIER_FEATURES[tierId];
+    if (tierId === "free") {
+      return [
+        { text: "10 Hits per day", highlight: true },
+        { text: "Simple & Moderated modes" },
+        { text: "Basic genre slots (1)" },
+        { text: "5 options per section" },
+        { text: "No locks or favorites", muted: true },
+        { text: "No Pop profile meter", muted: true },
+      ];
+    }
+    if (tierId === "pro") {
+      return [
+        { text: "Unlimited daily Hits", highlight: true },
+        { text: "All 5 prompt modes (incl. Chaos)" },
+        { text: "3 genre slots" },
+        { text: "Full option library" },
+        { text: "Locks & favorites" },
+        { text: "Pop profile meter" },
+        { text: "Shareable prompt links" },
+      ];
+    }
+    if (tierId === "vip") {
+      return [
+        { text: "Everything in Pro", highlight: true },
+        { text: "Unlimited daily Hits" },
+        { text: "Batch generation (5 variants)" },
+        { text: "JSON export for power users" },
+        { text: "The Playbook (deep guides)" },
+        { text: "Monthly genre graphs" },
+        { text: "Priority feature drops" },
+      ];
+    }
+    return [];
+  };
+
+  return (
+    <div style={{
+      maxWidth: 1100, margin: "0 auto",
+      padding: isMobile
+        ? `${T.s5}px ${T.s3}px ${T.s8}px`
+        : `${T.s9}px ${T.s7}px ${T.s10}px`,
+    }}>
+      {/* ─ HEADER ─────────────────────────────────────────────── */}
+      <div style={{ marginBottom: isMobile ? T.s5 : T.s6 }}>
+        <Label color={T.textTer} style={{ display: "block", marginBottom: T.s3 }}>
+          Membership · demo pricing · no real charges
+        </Label>
+        <h1 style={{
+          fontSize: isMobile ? "32px" : "clamp(36px, 5vw, 64px)",
+          lineHeight: 1.02, letterSpacing: "-0.025em",
+          margin: 0, marginBottom: T.s3,
+          fontFamily: T.font_display, fontWeight: 400,
+          fontStyle: "italic",
+        }}>
+          Choose your plan.
+        </h1>
+        <p style={{
+          color: T.textSec, fontSize: T.fs_lg, lineHeight: 1.55,
+          maxWidth: 640, fontFamily: T.font_sans, margin: 0,
+        }}>
+          Unlock unlimited Hits, power-user tools, and deeper options.
+          Cancel anytime.
+        </p>
+      </div>
+
+      {/* ─ BILLING TOGGLE (monthly / yearly) ───────────────────── */}
+      <div style={{
+        display: "inline-flex",
+        background: T.surface, border: `1px solid ${T.border}`,
+        borderRadius: 10, padding: 4, marginBottom: T.s5,
+        position: "relative",
+      }}>
+        {[
+          { id: "monthly", label: "Monthly" },
+          { id: "yearly",  label: "Yearly", badge: "SAVE 35%" },
+        ].map(b => {
+          const active = billing === b.id;
+          return (
+            <button key={b.id} type="button"
+              onClick={() => setBilling(b.id)}
+              style={{
+                display: "inline-flex", alignItems: "center", gap: 8,
+                padding: isMobile ? "8px 14px" : "10px 20px",
+                background: active ? T.elevated : "transparent",
+                border: "none",
+                color: active ? T.text : T.textSec,
+                fontSize: 13, fontFamily: T.font_sans, fontWeight: 500,
+                borderRadius: 8, cursor: "pointer",
+                transition: "all 160ms ease-out",
+              }}>
+              {b.label}
+              {b.badge && (
+                <span style={{
+                  padding: "2px 6px",
+                  background: `${V.neonGold}22`,
+                  border: `1px solid ${V.neonGold}66`,
+                  color: V.neonGold,
+                  fontSize: 9, fontFamily: T.font_mono, fontWeight: 700,
+                  letterSpacing: "0.15em", borderRadius: 3,
+                  textShadow: `0 0 4px ${V.neonGold}66`,
+                }}>{b.badge}</span>
+              )}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* ─ FEEDBACK TOAST ─────────────────────────────────────── */}
+      {feedback && (
+        <div style={{
+          padding: `${T.s3}px ${T.s4}px`,
+          marginBottom: T.s5,
+          background: feedback.ok ? `${T.success}11` : `${T.danger}11`,
+          border: `1px solid ${feedback.ok ? T.success : T.danger}44`,
+          borderRadius: T.r_md,
+          color: feedback.ok ? T.success : T.danger,
+          fontSize: T.fs_md, fontFamily: T.font_sans, fontWeight: 500,
+        }}>
+          {feedback.text}
+        </div>
+      )}
+
+      {/* ─ TIER CARDS ─────────────────────────────────────────── */}
+      <div style={{
+        display: "grid",
+        gridTemplateColumns: isMobile ? "1fr" : "repeat(3, 1fr)",
+        gap: isMobile ? T.s3 : T.s4,
+        marginBottom: T.s7,
+      }}>
+        {shopOrder.map(tierId => {
+          const t = TIERS[tierId];
+          const priceData = TIER_PRICE[tierId] || { monthly: 0, yearly: 0 };
+          const owned = ownedTiers.has(tierId);
+          const tierRank = TIER_RANK[tierId];
+          const blockedByHigher = tierRank < currentHighestRank;
+          const isFeatured = tierId === "pro"; // highlight Pro as the "most popular" pick
+          const disabled = owned || blockedByHigher || tierId === "free";
+
+          // Compute price display based on billing toggle
+          const isYearly = billing === "yearly";
+          const displayPrice = isYearly
+            ? (priceData.yearly / 12).toFixed(2)
+            : priceData.monthly.toFixed(2);
+          const fullYearlyPrice = priceData.yearly;
+
+          let buttonLabel = isYearly
+            ? `SUBSCRIBE — $${fullYearlyPrice}/yr`
+            : `SUBSCRIBE — $${priceData.monthly}/mo`;
+          if (tierId === "free") buttonLabel = "YOUR PLAN";
+          else if (owned) buttonLabel = "● ACTIVE";
+          else if (blockedByHigher) buttonLabel = "LOWER THAN CURRENT";
+
+          return (
+            <div key={tierId} style={{
+              padding: isMobile ? T.s4 : T.s5,
+              background: isFeatured
+                ? `linear-gradient(180deg, ${t.color}14 0%, transparent 60%), ${T.surface}`
+                : `linear-gradient(180deg, ${t.color}0a 0%, transparent 60%), ${T.surface}`,
+              border: `1px solid ${owned ? t.color + "88" : isFeatured ? t.color + "55" : T.border}`,
+              borderRadius: T.r_lg,
+              boxShadow: owned
+                ? `0 0 30px ${t.color}22, inset 0 0 20px ${t.color}0a`
+                : isFeatured ? `0 0 20px ${t.color}11` : "none",
+              position: "relative",
+              transition: `all ${T.dur_norm} ${T.ease}`,
+            }}>
+              {/* Badges */}
+              {owned && (
+                <div style={{
+                  position: "absolute", top: -10, right: T.s3,
+                  padding: "3px 8px",
+                  background: `${t.color}`, color: T.bg,
+                  borderRadius: 4,
+                  fontSize: 9, fontFamily: T.font_mono, fontWeight: 700,
+                  letterSpacing: "0.2em",
+                  boxShadow: `0 0 10px ${t.color}aa`,
+                }}>● ACTIVE</div>
+              )}
+              {!owned && isFeatured && (
+                <div style={{
+                  position: "absolute", top: -10, right: T.s3,
+                  padding: "3px 8px",
+                  background: T.accent, color: T.text,
+                  borderRadius: 4,
+                  fontSize: 9, fontFamily: T.font_mono, fontWeight: 700,
+                  letterSpacing: "0.2em",
+                  boxShadow: `0 0 10px ${T.accent}aa`,
+                }}>MOST POPULAR</div>
+              )}
+
+              {/* Tier label */}
+              <div style={{
+                fontSize: 11, fontFamily: T.font_mono, fontWeight: 700,
+                letterSpacing: "0.25em", color: t.color,
+                textShadow: `0 0 6px ${t.color}66`, marginBottom: 10,
+              }}>
+                {t.label.toUpperCase()}
+              </div>
+
+              {/* Price */}
+              <div style={{ marginBottom: T.s3, display: "flex", alignItems: "baseline", gap: 6 }}>
+                {tierId === "free" ? (
+                  <span style={{
+                    fontSize: 44, fontFamily: T.font_display, fontStyle: "italic",
+                    color: T.text, lineHeight: 1,
+                  }}>Free</span>
+                ) : (
+                  <>
+                    <span style={{
+                      fontSize: 44, fontFamily: T.font_display, fontStyle: "italic",
+                      color: T.text, lineHeight: 1, fontWeight: 400,
+                    }}>${displayPrice}</span>
+                    <span style={{
+                      fontSize: 13, color: T.textTer,
+                      fontFamily: T.font_sans, fontStyle: "normal",
+                    }}>/month</span>
+                  </>
+                )}
+              </div>
+
+              {/* Yearly billing note */}
+              {tierId !== "free" && (
+                <div style={{
+                  fontSize: 11, color: T.textMuted, fontFamily: T.font_mono,
+                  marginBottom: T.s4, minHeight: 16,
+                  letterSpacing: "0.05em",
+                }}>
+                  {isYearly
+                    ? `Billed $${fullYearlyPrice}/year · save ${yearlySavingsPct(tierId)}%`
+                    : "Billed monthly · cancel anytime"}
+                </div>
+              )}
+              {tierId === "free" && (
+                <div style={{
+                  fontSize: 11, color: T.textMuted, fontFamily: T.font_mono,
+                  marginBottom: T.s4, minHeight: 16,
+                  letterSpacing: "0.05em",
+                }}>Forever free · no card required</div>
+              )}
+
+              {/* Description */}
+              <div style={{
+                color: T.textSec, fontSize: T.fs_md, lineHeight: 1.5,
+                marginBottom: T.s4, fontFamily: T.font_sans,
+              }}>
+                {t.description}
+              </div>
+
+              {/* Feature list */}
+              <ul style={{
+                listStyle: "none", padding: 0, margin: 0, marginBottom: T.s5,
+                display: "flex", flexDirection: "column", gap: 7,
+              }}>
+                {getFeatureList(tierId).map((feat, i) => (
+                  <li key={i} style={{
+                    display: "flex", alignItems: "flex-start", gap: 8,
+                    color: feat.muted ? T.textTer : T.textSec,
+                    fontSize: T.fs_sm, fontFamily: T.font_sans,
+                    fontWeight: feat.highlight ? 500 : 400,
+                  }}>
+                    <span style={{
+                      color: feat.muted ? T.textMuted : t.color,
+                      flexShrink: 0,
+                      fontSize: 14, lineHeight: 1.3,
+                    }}>{feat.muted ? "○" : "✓"}</span>
+                    <span style={feat.highlight ? { color: T.text, fontWeight: 500 } : {}}>
+                      {feat.text}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+
+              {/* Subscribe button */}
+              <button type="button"
+                onClick={() => !disabled && handleSubscribe(tierId)}
+                disabled={disabled}
+                style={{
+                  width: "100%",
+                  padding: `${T.s3}px ${T.s4}px`,
+                  minHeight: 44,
+                  background: owned ? `${t.color}22`
+                    : disabled ? T.surface
+                    : isFeatured
+                      ? `linear-gradient(135deg, ${t.color} 0%, ${t.color}dd 100%)`
+                      : `linear-gradient(135deg, ${t.color}33 0%, ${t.color}11 100%)`,
+                  border: `1px solid ${owned ? t.color + "66" : disabled ? T.border : t.color + "aa"}`,
+                  color: owned ? t.color : disabled ? T.textTer : isFeatured ? T.bg : t.color,
+                  fontSize: 11, fontFamily: T.font_mono, fontWeight: 700,
+                  letterSpacing: "0.18em",
+                  cursor: disabled ? "not-allowed" : "pointer",
+                  borderRadius: 6,
+                  textShadow: disabled || owned || isFeatured ? "none" : `0 0 6px ${t.color}66`,
+                  boxShadow: isFeatured && !disabled ? `0 0 16px ${t.color}66` : "none",
+                  transition: "all 120ms ease-out",
+                }}
+                onMouseEnter={e => {
+                  if (disabled) return;
+                  e.currentTarget.style.background = isFeatured
+                    ? `linear-gradient(135deg, ${t.color} 0%, ${t.color} 100%)`
+                    : `linear-gradient(135deg, ${t.color}55 0%, ${t.color}22 100%)`;
+                }}
+                onMouseLeave={e => {
+                  if (disabled) return;
+                  e.currentTarget.style.background = isFeatured
+                    ? `linear-gradient(135deg, ${t.color} 0%, ${t.color}dd 100%)`
+                    : `linear-gradient(135deg, ${t.color}33 0%, ${t.color}11 100%)`;
+                }}>
+                {buttonLabel}
+              </button>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* ─ COMPARISON / FAQ FOOTER ────────────────────────────── */}
+      <div style={{
+        padding: T.s5,
+        background: T.surface,
+        border: `1px solid ${T.border}`,
+        borderRadius: T.r_lg,
+        marginBottom: T.s5,
+      }}>
+        <Label color={T.text} style={{ display: "block", marginBottom: T.s3 }}>
+          Why subscribe?
+        </Label>
+        <div style={{
+          color: T.textSec, fontSize: T.fs_md, lineHeight: 1.6,
+          fontFamily: T.font_sans,
+        }}>
+          HIT-ENGINE generates deterministic prompt structures that get better results
+          from modern AI music generators — less trial-and-error, fewer
+          wasted credits on those platforms. Pro pays for itself after a handful of
+          cleaner prompts.
+        </div>
+      </div>
+
+      {/* PAYMENT MODAL */}
+      {payModal && (
+        <PaymentModal
+          tierId={payModal.tierId}
+          billing={payModal.billing}
+          onClose={() => setPayModal(null)}
+          onComplete={(bill) => completePayment(payModal.tierId, bill)}
+        />
+      )}
+    </div>
+  );
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// PAYMENT MODAL — simulated prod-ready checkout flow
+// Three tabs: Credits (in-app), Card (Stripe-style), PayPal
+// Card form has validation + processing spinner + success animation
+// ════════════════════════════════════════════════════════════════════════════
+function PaymentModal({ tierId, billing, onClose, onComplete }) {
+  const t = TIERS[tierId];
+  const priceData = TIER_PRICE[tierId] || { monthly: 0, yearly: 0 };
+  const isYearly = billing === "yearly";
+  const chargeAmount = isYearly ? priceData.yearly : priceData.monthly;
+  const displayAmount = chargeAmount.toFixed(2);
+  const [method, setMethod] = useState("card");
+  const [stage, setStage] = useState("form"); // form | processing | success
+
+  // Card form fields
+  const [cardNumber, setCardNumber] = useState("");
+  const [cardExpiry, setCardExpiry] = useState("");
+  const [cardCvc, setCardCvc] = useState("");
+  const [cardName, setCardName] = useState("");
+  const [email, setEmail] = useState("");
+  const [errors, setErrors] = useState({});
+
+  // Auto-format card number in groups of 4
+  const formatCardNumber = (v) => v.replace(/\s/g, "").replace(/(.{4})/g, "$1 ").trim().slice(0, 19);
+  const formatExpiry = (v) => {
+    const digits = v.replace(/\D/g, "").slice(0, 4);
+    return digits.length > 2 ? `${digits.slice(0,2)}/${digits.slice(2)}` : digits;
+  };
+
+  const validate = () => {
+    const e = {};
+    const numClean = cardNumber.replace(/\s/g, "");
+    if (numClean.length < 13 || numClean.length > 19) e.cardNumber = "Invalid card number";
+    if (!/^\d{2}\/\d{2}$/.test(cardExpiry)) e.cardExpiry = "MM/YY";
+    if (!/^\d{3,4}$/.test(cardCvc)) e.cardCvc = "Invalid";
+    if (!cardName.trim()) e.cardName = "Required";
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) e.email = "Invalid email";
+    return e;
+  };
+
+  const handleSubmit = () => {
+    if (method === "card") {
+      const e = validate();
+      if (Object.keys(e).length) { setErrors(e); return; }
+    }
+    setErrors({});
+    setStage("processing");
+    setTimeout(() => {
+      setStage("success");
+      setTimeout(() => onComplete(billing), 1100);
+    }, 1400);
+  };
+
+  // Close on ESC
+  useEffect(() => {
+    const h = (e) => { if (e.key === "Escape" && stage === "form") onClose(); };
+    window.addEventListener("keydown", h);
+    return () => window.removeEventListener("keydown", h);
+  }, [stage, onClose]);
+
+  return (
+    <div
+      onClick={stage === "form" ? onClose : undefined}
+      style={{
+        position: "fixed", inset: 0,
+        background: "rgba(0,0,0,0.72)",
+        backdropFilter: "blur(12px)",
+        display: "grid", placeItems: "center",
+        padding: 12,
+        zIndex: 10000,
+        animation: "payModalBgIn 240ms ease-out",
+        overflowY: "auto",
+      }}>
+      <style>{`
+        @keyframes payModalBgIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes payModalCardIn {
+          from { opacity: 0; transform: translateY(16px) scale(0.97); }
+          to   { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        @keyframes paySpin { to { transform: rotate(360deg); } }
+        @keyframes paySuccessPop {
+          0%   { transform: scale(0.3); opacity: 0; }
+          60%  { transform: scale(1.12); opacity: 1; }
+          100% { transform: scale(1); opacity: 1; }
+        }
+      `}</style>
+      <div
+        onClick={e => e.stopPropagation()}
+        style={{
+          width: "100%", maxWidth: 440,
+          maxHeight: "calc(100vh - 24px)",
+          overflowY: "auto",
+          background: "linear-gradient(180deg, #0f1014 0%, #0a0b0e 100%)",
+          border: `1px solid ${T.border}`,
+          borderRadius: 14,
+          padding: 0,
+          boxShadow: "0 40px 80px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.04)",
+          animation: "payModalCardIn 320ms cubic-bezier(0.16, 1, 0.3, 1)",
+          position: "relative",
+        }}>
+        {/* Accent strip */}
+        <div style={{
+          height: 3,
+          background: `linear-gradient(90deg, ${t.color} 0%, ${t.color}aa 50%, ${t.color} 100%)`,
+          boxShadow: `0 0 14px ${t.color}88`,
+        }} />
+
+        {stage === "form" && (
+          <>
+            {/* Header */}
+            <div style={{ padding: "20px 24px 16px", borderBottom: `1px solid ${T.border}` }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                <div>
+                  <div style={{
+                    fontSize: 9, fontFamily: T.font_mono, fontWeight: 700,
+                    letterSpacing: "0.22em", color: T.textMuted, marginBottom: 6,
+                  }}>SECURE CHECKOUT</div>
+                  <div style={{
+                    fontSize: 20, fontFamily: T.font_sans, fontWeight: 600,
+                    color: T.text, lineHeight: 1.1,
+                  }}>
+                    Subscribe to <span style={{ color: t.color }}>{t.label}</span>
+                  </div>
+                  <div style={{
+                    fontSize: 13, fontFamily: T.font_sans, color: T.textSec, marginTop: 4,
+                  }}>
+                    {isYearly ? "Annual plan · save " + yearlySavingsPct(tierId) + "%" : "Monthly plan · cancel anytime"}
+                  </div>
+                </div>
+                <button type="button" onClick={onClose}
+                  aria-label="Close"
+                  style={{
+                    background: "transparent", border: "none", color: T.textTer,
+                    fontSize: 20, lineHeight: 1, cursor: "pointer", padding: 4,
+                  }}>×</button>
+              </div>
+              <div style={{
+                marginTop: 14, padding: "12px 14px",
+                background: T.surface, border: `1px solid ${T.border}`,
+                borderRadius: 8,
+              }}>
+                <div style={{
+                  display: "flex", justifyContent: "space-between",
+                  alignItems: "baseline", marginBottom: isYearly ? 6 : 0,
+                }}>
+                  <span style={{ fontSize: 13, color: T.textSec, fontFamily: T.font_sans }}>
+                    {isYearly ? "Annual subscription" : "Monthly subscription"}
+                  </span>
+                  <span style={{ fontSize: 20, fontWeight: 600, color: t.color, fontFamily: T.font_sans }}>
+                    ${displayAmount}
+                  </span>
+                </div>
+                {isYearly && (
+                  <div style={{
+                    fontSize: 11, color: T.textMuted, fontFamily: T.font_mono,
+                    letterSpacing: "0.05em",
+                  }}>
+                    ${(priceData.yearly / 12).toFixed(2)}/month · billed annually
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Method tabs — Card + PayPal only */}
+            <div style={{
+              display: "grid", gridTemplateColumns: "1fr 1fr",
+              borderBottom: `1px solid ${T.border}`,
+            }}>
+              {[
+                { id: "card",    label: "Card",    icon: "▮" },
+                { id: "paypal",  label: "PayPal",  icon: "P" },
+              ].map(m => (
+                <button key={m.id} type="button"
+                  onClick={() => setMethod(m.id)}
+                  style={{
+                    padding: "12px 8px",
+                    background: method === m.id ? T.surface : "transparent",
+                    border: "none",
+                    borderBottom: `2px solid ${method === m.id ? t.color : "transparent"}`,
+                    color: method === m.id ? T.text : T.textSec,
+                    fontSize: 12, fontFamily: T.font_sans, fontWeight: 500,
+                    cursor: "pointer",
+                    transition: "all 160ms ease-out",
+                    display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+                  }}>
+                  <span style={{ fontSize: 11 }}>{m.icon}</span> {m.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Form body */}
+            <div style={{ padding: "20px 24px" }}>
+              {method === "card" && (
+                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                  <PayField label="Email receipt" value={email} onChange={setEmail}
+                    placeholder="you@example.com" error={errors.email} />
+                  <PayField label="Card number" value={cardNumber}
+                    onChange={v => setCardNumber(formatCardNumber(v))}
+                    placeholder="4242 4242 4242 4242" error={errors.cardNumber}
+                    suffix={<span style={{ fontSize: 9, color: T.textMuted, letterSpacing: "0.1em" }}>VISA · MC · AMEX</span>} />
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                    <PayField label="Expiry" value={cardExpiry}
+                      onChange={v => setCardExpiry(formatExpiry(v))}
+                      placeholder="MM/YY" error={errors.cardExpiry} />
+                    <PayField label="CVC" value={cardCvc}
+                      onChange={v => setCardCvc(v.replace(/\D/g,"").slice(0,4))}
+                      placeholder="123" error={errors.cardCvc} />
+                  </div>
+                  <PayField label="Name on card" value={cardName} onChange={setCardName}
+                    placeholder="Full name" error={errors.cardName} />
+                </div>
+              )}
+
+              {method === "paypal" && (
+                <div style={{ textAlign: "center", padding: "12px 0 8px" }}>
+                  <div style={{
+                    fontSize: 13, color: T.textSec, fontFamily: T.font_sans,
+                    marginBottom: 16, lineHeight: 1.5,
+                  }}>
+                    You'll be redirected to PayPal to complete the subscription of <strong style={{ color: T.text }}>${displayAmount}</strong>
+                    {isYearly ? " for the first year." : " for your first month."}
+                  </div>
+                </div>
+              )}
+
+              {/* Submit button */}
+              <button type="button"
+                onClick={handleSubmit}
+                style={{
+                  marginTop: 18, width: "100%",
+                  padding: "14px",
+                  minHeight: 48,
+                  background: `linear-gradient(180deg, ${t.color} 0%, ${t.color}cc 100%)`,
+                  border: `1px solid ${t.color}`,
+                  color: "#000",
+                  fontFamily: T.font_sans, fontSize: 14, fontWeight: 700,
+                  letterSpacing: "0.02em",
+                  cursor: "pointer",
+                  borderRadius: 8,
+                  boxShadow: `0 4px 14px ${t.color}55, inset 0 1px 0 rgba(255,255,255,0.3)`,
+                  transition: "transform 100ms ease-out",
+                }}
+                onMouseDown={e => e.currentTarget.style.transform = "translateY(1px)"}
+                onMouseUp={e => e.currentTarget.style.transform = "translateY(0)"}
+              >
+                {method === "paypal"
+                  ? `Continue to PayPal · $${displayAmount}`
+                  : `Subscribe · $${displayAmount}`}
+              </button>
+
+              {/* Billing note */}
+              <div style={{
+                marginTop: 10,
+                fontSize: 11, color: T.textMuted, fontFamily: T.font_sans,
+                textAlign: "center", lineHeight: 1.5,
+              }}>
+                {isYearly
+                  ? `You'll be charged $${displayAmount} today, then $${displayAmount} each year. Cancel anytime.`
+                  : `You'll be charged $${displayAmount} today, then $${displayAmount} each month. Cancel anytime.`}
+              </div>
+
+              {/* Trust row */}
+              <div style={{
+                marginTop: 14, display: "flex", justifyContent: "center",
+                alignItems: "center", gap: 14,
+                fontSize: 10, color: T.textMuted, fontFamily: T.font_mono, letterSpacing: "0.12em",
+              }}>
+                <span>🔒 SSL</span>
+                <span>·</span>
+                <span>PCI DSS</span>
+                <span>·</span>
+                <span>CANCEL ANYTIME</span>
+              </div>
+              <div style={{
+                marginTop: 10, padding: "6px 10px",
+                background: `${T.warning}08`,
+                border: `1px dashed ${T.warning}33`,
+                borderRadius: 6,
+                fontSize: 10, fontFamily: T.font_mono,
+                color: T.warning, textAlign: "center", letterSpacing: "0.1em",
+              }}>
+                DEMO — NO REAL PAYMENT PROCESSED
+              </div>
+            </div>
+          </>
+        )}
+
+        {stage === "processing" && (
+          <div style={{ padding: "60px 24px", textAlign: "center" }}>
+            <div style={{
+              width: 48, height: 48, margin: "0 auto 20px",
+              border: `3px solid ${T.border}`,
+              borderTopColor: t.color,
+              borderRadius: "50%",
+              animation: "paySpin 0.8s linear infinite",
+              boxShadow: `0 0 20px ${t.color}44`,
+            }} />
+            <div style={{
+              fontSize: 14, fontFamily: T.font_sans, fontWeight: 500,
+              color: T.text, marginBottom: 6,
+            }}>Processing subscription…</div>
+            <div style={{ fontSize: 11, color: T.textTer, fontFamily: T.font_mono, letterSpacing: "0.1em" }}>
+              DO NOT CLOSE THIS WINDOW
+            </div>
+          </div>
+        )}
+
+        {stage === "success" && (
+          <div style={{ padding: "60px 24px", textAlign: "center" }}>
+            <div style={{
+              width: 64, height: 64, margin: "0 auto 20px",
+              borderRadius: "50%",
+              background: `${t.color}22`,
+              border: `2px solid ${t.color}`,
+              display: "grid", placeItems: "center",
+              fontSize: 32, color: t.color,
+              animation: "paySuccessPop 500ms cubic-bezier(0.34, 1.56, 0.64, 1)",
+              boxShadow: `0 0 30px ${t.color}66`,
+            }}>✓</div>
+            <div style={{
+              fontSize: 18, fontFamily: T.font_sans, fontWeight: 600,
+              color: t.color, marginBottom: 6,
+            }}>Subscription active</div>
+            <div style={{ fontSize: 13, color: T.textSec, fontFamily: T.font_sans }}>
+              Welcome to {t.label}…
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// Helper: a single labeled field for PaymentModal. Keeps the modal readable.
+function PayField({ label, value, onChange, placeholder, error, suffix }) {
+  return (
+    <label style={{ display: "block" }}>
+      <div style={{
+        fontSize: 10, fontFamily: T.font_mono, fontWeight: 600,
+        letterSpacing: "0.14em", color: T.textTer, marginBottom: 5,
+        display: "flex", justifyContent: "space-between", alignItems: "center",
+      }}>
+        <span>{label.toUpperCase()}</span>
+        {suffix}
+      </div>
+      <input
+        type="text" value={value} onChange={e => onChange(e.target.value)}
+        placeholder={placeholder}
+        style={{
+          width: "100%",
+          padding: "12px 12px",
+          background: T.bg,
+          border: `1px solid ${error ? T.danger : T.border}`,
+          color: T.text,
+          fontSize: 16, fontFamily: T.font_sans, // 16px prevents iOS zoom on focus
+          borderRadius: 6,
+          outline: "none",
+          boxSizing: "border-box",
+          transition: "border-color 140ms ease-out",
+          WebkitAppearance: "none",
+        }}
+        onFocus={e => e.currentTarget.style.borderColor = error ? T.danger : T.borderFocus}
+        onBlur={e => e.currentTarget.style.borderColor = error ? T.danger : T.border}
+      />
+      {error && (
+        <div style={{ fontSize: 11, color: T.danger, fontFamily: T.font_sans, marginTop: 4 }}>
+          {error}
+        </div>
+      )}
+    </label>
+  );
+}
+
 
 // ════════════════════════════════════════════════════════════════════════════
 // ROOT APP
 // ════════════════════════════════════════════════════════════════════════════
 
-export default function app() {
+// DailyBonusToast — floating notification when user earns daily login bonus.
+// Auto-dismisses after 6s (timer lives in TierProvider), but user can tap to
+// dismiss earlier. Positioned bottom-right; appears with slide-up animation.
+function DailyBonusToast() {
+  const { dailyBonus, dismissDailyBonus } = useTier();
+  if (!dailyBonus) return null;
+  const { streak } = dailyBonus;
+  const streakEmoji = streak >= 7 ? "🔥" : streak >= 3 ? "⚡" : "✨";
+  return (
+    <div
+      onClick={dismissDailyBonus}
+      role="status"
+      aria-live="polite"
+      style={{
+        position: "fixed",
+        right: 20, bottom: 20,
+        zIndex: 9999,
+        padding: "14px 18px",
+        minWidth: 240,
+        background: `linear-gradient(135deg, ${V.neonGold}18 0%, ${V.orange}12 100%)`,
+        border: `1px solid ${V.neonGold}66`,
+        borderRadius: 10,
+        boxShadow: `
+          0 8px 24px rgba(0,0,0,0.6),
+          0 0 40px ${V.neonGold}22,
+          inset 0 1px 0 ${V.neonGold}22`,
+        backdropFilter: "blur(8px)",
+        cursor: "pointer",
+        fontFamily: T.font_sans,
+        color: T.text,
+        animation: "dailyBonusSlide 420ms cubic-bezier(0.34, 1.56, 0.64, 1)",
+      }}>
+      <style>{`
+        @keyframes dailyBonusSlide {
+          from { opacity: 0; transform: translateY(20px) scale(0.95); }
+          to   { opacity: 1; transform: translateY(0)    scale(1); }
+        }
+      `}</style>
+      <div style={{
+        display: "flex", alignItems: "center", gap: 10, marginBottom: 6,
+      }}>
+        <span style={{ fontSize: 18 }}>{streakEmoji}</span>
+        <span style={{
+          color: V.neonGold, fontFamily: T.font_mono, fontSize: 10,
+          fontWeight: 700, letterSpacing: "0.2em",
+          textShadow: `0 0 6px ${V.neonGold}66`,
+        }}>
+          {streak}-DAY STREAK
+        </span>
+      </div>
+      <div style={{
+        fontSize: 15, fontWeight: 600, lineHeight: 1.35, color: T.text,
+      }}>
+        Welcome back
+      </div>
+      <div style={{
+        fontSize: 12, color: T.textSec, marginTop: 3, lineHeight: 1.4,
+      }}>
+        {streak >= 2 && streak < 6 && "Keep the streak alive"}
+        {streak >= 6 && streak < 14 && "You're on fire 🔥"}
+        {streak >= 14 && "Legend status"}
+      </div>
+    </div>
+  );
+}
+
+export default function HitEngine() {
   const [page, setPage] = useState("engine");
 
   useEffect(() => {
@@ -5766,19 +13013,68 @@ export default function app() {
         }
         .pane-scroll::-webkit-scrollbar-thumb:hover { background: ${T.borderHi}; }
         ::selection { background: ${T.accent}; color: #FFFFFF; }
+
+        /* Page transition — used when switching routes via fuel lever or nav */
+        @keyframes pageFadeIn {
+          0%   { opacity: 0; transform: translateY(8px) scale(0.996); }
+          100% { opacity: 1; transform: translateY(0)   scale(1); }
+        }
+        .page-transition {
+          animation: pageFadeIn 380ms cubic-bezier(0.16, 1, 0.3, 1);
+        }
       `}</style>
       <TierProvider>
         <LayoutProvider>
           <FuelProvider>
-            <div style={{ minHeight: "100vh", background: T.bg, color: T.text }}>
-              <Nav page={page} onNavigate={setPage} />
-              <ErrorBoundary>
-                {page === "engine"  && <EnginePage />}
-                {page === "future"  && <FuturePage />}
-                {page === "history" && <HistoryPage />}
-                {page === "trend"   && <TrendEnginePage onNavigate={setPage} />}
-                {page === "secrets" && <VipSecretsPage />}
-              </ErrorBoundary>
+            <div style={{
+              minHeight: "100vh",
+              background: T.bg,
+              color: T.text,
+              position: "relative",
+              overflowX: "hidden",
+            }}>
+              {/* ── ATMOSPHERIC BACKGROUND LAYER ─────────────────────────
+                  Two stacked effects for depth without noise:
+                  1. A soft radial gradient glow from top-center that fades
+                     into the page background, giving the viewport dimension
+                  2. A fine SVG noise/grain overlay (~2% opacity) that breaks
+                     up flat dark surfaces — the 'film grain' texture
+                  Both are pointer-events: none so they never interfere. */}
+              <div aria-hidden="true" style={{
+                position: "fixed",
+                inset: 0,
+                pointerEvents: "none",
+                zIndex: 0,
+                background: `
+                  radial-gradient(ellipse 80% 50% at 50% -10%, ${T.accent}0d 0%, transparent 60%),
+                  radial-gradient(ellipse 60% 40% at 10% 110%, ${V.purple}0a 0%, transparent 55%),
+                  radial-gradient(ellipse 60% 40% at 90% 110%, ${V.cyan}08 0%, transparent 55%)
+                `,
+              }} />
+              <div aria-hidden="true" style={{
+                position: "fixed",
+                inset: 0,
+                pointerEvents: "none",
+                zIndex: 0,
+                opacity: 0.025,
+                mixBlendMode: "overlay",
+                backgroundImage: `url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' seed='5'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 1 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>")`,
+                backgroundSize: "200px 200px",
+              }} />
+              {/* Everything interactive sits above the background layer */}
+              <div style={{ position: "relative", zIndex: 1 }}>
+                <Nav page={page} onNavigate={setPage} />
+                <ErrorBoundary>
+                  <div key={page} className="page-transition">
+                    {page === "engine"  && <EnginePage />}
+                    {page === "future"  && <FuturePage />}
+                    {page === "history" && <HistoryPage />}
+                    {page === "secrets" && <PlaybookPage />}
+                    {page === "shop"    && <ShopPage />}
+                  </div>
+                </ErrorBoundary>
+                <DailyBonusToast />
+              </div>
             </div>
           </FuelProvider>
         </LayoutProvider>
