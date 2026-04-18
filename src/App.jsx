@@ -146,12 +146,12 @@ const TIERS = {
 // Ordered rank for tier comparison (higher number = higher tier)
 const TIER_RANK = { free: 0, pro: 1, vip: 2, admin: 3 };
 
-// Subscription pricing in USD — monthly. Annual is 35% off (~7.8 months cost).
+// Subscription pricing in USD — monthly. Yearly plans are 25% off the annual total.
 // These are simulated demo prices; real payments are not processed.
 const TIER_PRICE = {
   free:  { monthly: 0,    yearly: 0    },
-  pro:   { monthly: 4.99, yearly: 39   },
-  vip:   { monthly: 9.99, yearly: 79   },
+  pro:   { monthly: 4.99, yearly: 44.99 }, // 25% off $59.88
+  vip:   { monthly: 9.99, yearly: 89.99 }, // 25% off $119.88
   admin: null, // dev-only tier
 };
 
@@ -171,7 +171,7 @@ const TIER_FEATURES = {
   free: {
     // ── Engine capabilities
     maxSlots: 1,                   // only 1 genre slot
-    modes: ["simple", "moderated", "chaos"],  // 3 of 5 modes
+    modes: ["simple", "moderated", "expanded", "chaos"],  // 4 of 5 modes (vast is Pro+)
     maxInstruments: 10,            // 10 per category (generous taste)
     maxOptionsPerSection: 5,       // first 5 options per section, rest blurred
     showOptionNames: true,         // labels shown (but blurred past index 5)
@@ -187,8 +187,8 @@ const TIER_FEATURES = {
     maxPromptVariants: 1,          // single prompt per roll
     shareableLinks: false,         // no copy-shareable-link button
     exportJSON: false,             // no JSON export
-    // ── Daily Hit allocation — Free gets 10/day, paid tiers get unlimited
-    dailyFuel: { free: 10, pro: 0, vip: 0, trend: 0 },
+    // ── Daily Hit allocation — Free gets unlimited basic hits + 1 Pro taste/day
+    dailyFuel: { free: Infinity, pro: 1, vip: 0, trend: 0 },
     // ── Genre History
     historyAccess: "main-yearly",  // only main genres, yearly graph only
     historyMaxSelect: 3,
@@ -218,8 +218,8 @@ const TIER_FEATURES = {
     maxPromptVariants: 1,
     shareableLinks: true,          // copy-to-clipboard share URLs
     exportJSON: false,             // JSON export reserved for VIP
-    // ── Fuel — Pro is unlimited
-    dailyFuel: { free: Infinity, pro: Infinity, vip: 0, trend: 0 },
+    // ── Fuel — Pro gets 100/day (VIP unlimited)
+    dailyFuel: { free: Infinity, pro: 100, vip: 0, trend: 0 },
     // ── History
     historyAccess: "full-yearly",
     historyMaxSelect: 5,
@@ -3831,7 +3831,7 @@ function AddCustomChip({ sectionId, onNavigateToShop }) {
     cursor: "pointer",
   };
 
-  // FREE TIER: tier-locked state, click navigates to Shop
+  // FREE TIER: blue-highlighted locked chip, opens SalesModal on click
   if (!allowed) {
     return (
       <span
@@ -3841,22 +3841,18 @@ function AddCustomChip({ sectionId, onNavigateToShop }) {
         title="Custom options are a Pro feature — click to upgrade"
         style={{
           ...baseStyle,
-          background: "transparent",
-          border: `1px dashed ${T.border}`,
-          color: T.textMuted,
-          opacity: 0.65,
-          position: "relative", overflow: "hidden",
+          background: hover ? "#3B82F622" : "#3B82F615",
+          border: `1px solid ${hover ? "#3B82F6" : "#3B82F688"}`,
+          color: "#3B82F6",
+          fontWeight: 600,
+          boxShadow: hover
+            ? "0 0 0 3px #3B82F622, 0 2px 8px #3B82F633"
+            : "0 0 0 1px #3B82F622",
+          transition: `all ${T.dur_fast} ${T.ease}`,
         }}
       >
-        <span aria-hidden="true" style={{
-          position: "absolute", inset: 0,
-          backgroundImage: `repeating-linear-gradient(135deg,
-            rgba(148,158,182,0.06) 0 4px,
-            transparent 4px 8px)`,
-          pointerEvents: "none",
-        }} />
-        <span style={{ fontSize: 12, opacity: 0.7 }}>⚿</span>
-        <span>+ add</span>
+        <span style={{ fontSize: 11 }}>🔒</span>
+        <span>+ add custom</span>
       </span>
     );
   }
@@ -4125,6 +4121,17 @@ const SALES_COPY = {
       "Full subgenre tree unlocked",
     ],
     cta: "Upgrade to Pro",
+  },
+  joystick: {
+    tier: "vip",
+    headline: "Unlock the Trend Setter joystick",
+    subline: "The three-way fuel joystick lets you flip to Trend Fuel — 50 daily prompts based on the viral tracks of the moment.",
+    bullet: [
+      "Trend Fuel: 50 daily viral-track prompts",
+      "Full Trend Setter page with 63 curated viral items",
+      "Plus: all VIP tools (shuffle deck, popularity sort, custom options)",
+    ],
+    cta: "Upgrade to VIP",
   },
 };
 
@@ -6886,7 +6893,7 @@ function EnginePage({ onNavigate }) {
   const isMobile = layout === "mobile";
   const [state, setState] = useState(ENGINE_DEF);
   const [lyricsOn, setLyricsOn] = useState(true);
-  const [mode, setMode] = useState("moderated");
+  const [mode, setMode] = useState("expanded");
   const [copyState, setCopyState] = useState({ short: "idle", detailed: "idle" });
   const [isRolling, setIsRolling] = useState(false);
   const [casinoOutlines, setCasinoOutlines] = useState(new Map());
@@ -7196,8 +7203,12 @@ function EnginePage({ onNavigate }) {
   const doRandomize = () => {
     const [minSec, maxSec] = MODE_SECTION_LIMITS[mode] || [5, 6];
     const targetSections = minSec + Math.floor(Math.random() * (maxSec - minSec + 1));
-    const slotLocks = state.slotLocks || [false, false, false];
-    const secLocks  = state.sectionLocks || {};
+    // Free users cannot lock: when locksAvailable is false for the active fuel,
+    // all lock state is ignored during randomize so every HIT produces a fully
+    // fresh result. Paid tiers (and free users spending Pro/VIP fuel) keep locks.
+    const locksActive = effectiveLimits.locksAvailable;
+    const slotLocks = locksActive ? (state.slotLocks || [false, false, false]) : [false, false, false];
+    const secLocks  = locksActive ? (state.sectionLocks || {}) : {};
 
     // clipPool — respects tier maxOptionsPerSection (floor 5) so tier-locked
     // options are never chosen by randomizer.
@@ -7222,13 +7233,16 @@ function EnginePage({ onNavigate }) {
     const extras = shuffled.slice(0, Math.min(needed, shuffled.length));
     const chosen = new Set([...forced, ...extras].map(s => s.key));
 
-    // Picker that prefers locked options, then favorites, then random
+    // Picker that prefers locked options, then favorites, then random.
+    // Option locks are only honored for paid tiers (free users cannot lock).
     const favPick = (sectionKey, pool) => {
-      const locked = (state.optionLocks || [])
-        .filter(f => f.startsWith(sectionKey + ":"))
-        .map(f => f.slice(sectionKey.length + 1))
-        .filter(v => pool.includes(v));
-      if (locked.length > 0) return pickOne(locked); // locked option wins
+      if (locksActive) {
+        const locked = (state.optionLocks || [])
+          .filter(f => f.startsWith(sectionKey + ":"))
+          .map(f => f.slice(sectionKey.length + 1))
+          .filter(v => pool.includes(v));
+        if (locked.length > 0) return pickOne(locked); // locked option wins
+      }
       const favs = (state.favorites || [])
         .filter(f => f.startsWith(sectionKey + ":"))
         .map(f => f.slice(sectionKey.length + 1))
@@ -8032,9 +8046,10 @@ function EnginePage({ onNavigate }) {
                 {Number.isFinite(fuels[activeFuel]) ? fuels[activeFuel] : "∞"}
               </span>
             </div>
-            {features.dailyFuel.trend > 0
-              ? <Joystick onNavigate={onNavigate} />
-              : <FuelGearshift compact={isMobile} />}
+            <Joystick
+              onNavigate={onNavigate}
+              onLockedClick={() => setSalesModalFeature("joystick")}
+            />
             {/* Transient toast — shows when user clicks HIT with 0 fuel */}
             {toast && (
               <div style={{
@@ -8063,9 +8078,38 @@ function EnginePage({ onNavigate }) {
                 {FUEL_TYPES[activeFuel].label.toUpperCase()} EMPTY · REFILLS TOMORROW
               </div>
             )}
-            <Button variant="ghost" size="sm" onClick={clearAll} style={{ alignSelf: "flex-start" }}>
-              Clear all
-            </Button>
+            <button
+              type="button"
+              onClick={clearAll}
+              title="Clear all selections — start fresh"
+              style={{
+                alignSelf: "stretch",
+                padding: isMobile ? "10px 14px" : "8px 14px",
+                minHeight: isMobile ? 44 : "auto",
+                background: "transparent",
+                border: `1px solid #F9731644`,
+                borderRadius: T.r_md,
+                color: "#F97316",
+                fontFamily: T.font_mono, fontSize: T.fs_xs, fontWeight: 700,
+                letterSpacing: "0.18em",
+                cursor: "pointer",
+                display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6,
+                transition: `all ${T.dur_fast} ${T.ease}`,
+              }}
+              onMouseEnter={e => {
+                e.currentTarget.style.background = "#F9731612";
+                e.currentTarget.style.borderColor = "#F97316";
+                e.currentTarget.style.boxShadow = "0 0 0 3px #F9731622";
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.background = "transparent";
+                e.currentTarget.style.borderColor = "#F9731644";
+                e.currentTarget.style.boxShadow = "none";
+              }}
+            >
+              <span style={{ fontSize: 11 }}>⟲</span>
+              CLEAR ALL
+            </button>
           </div>
 
           <div style={{ marginBottom: T.s5 }}>
@@ -14200,7 +14244,7 @@ const SMOKE_PUFF_STATIC_STYLE = {
   pointerEvents: "none",
 };
 
-function Joystick({ onNavigate }) {
+function Joystick({ onNavigate, onLockedClick }) {
   const { tier, features } = useTier();
   const { fuels, activeFuel, setActiveFuel } = useFuel();
   const { layout } = useLayout();
@@ -14212,21 +14256,18 @@ function Joystick({ onNavigate }) {
   const [dragAngle, setDragAngle] = useState(null);
   const svgRef = useRef(null);
 
-  // Available positions based on tier
+  // Joystick is always rendered with all 3 positions so free/pro users can
+  // see the full VIP experience (and be tempted to upgrade). Trend slot is
+  // visually locked for tiers without trend fuel allocation.
   const hasTrend = features.dailyFuel.trend > 0;
-  const positions = hasTrend
-    ? ["free", "pro", "trend"]
-    : (tier !== "free" ? ["free", "pro"] : ["free"]);
+  const positions = ["free", "pro", "trend"];
+  const isLocked = (pos) => pos === "trend" && !hasTrend;
 
   const currentIdx = Math.max(0, positions.indexOf(activeFuel));
 
   // Compute the discrete tilt angle for a given position index.
-  // 3 positions: -22°, 0°, +22°. 2 positions: -18°, +18°. 1: 0°.
-  const angleForIdx = (idx) => positions.length === 3
-    ? (idx - 1) * 22
-    : positions.length === 2
-      ? (idx * 2 - 1) * 18
-      : 0;
+  // Always 3 positions now: -22°, 0°, +22°.
+  const angleForIdx = (idx) => (idx - 1) * 22;
 
   // Joystick tilt angle: -1 = left, 0 = center, +1 = right
   const discreteTilt = angleForIdx(currentIdx);
@@ -14235,6 +14276,11 @@ function Joystick({ onNavigate }) {
 
   const handleSelect = (pos) => {
     if (pos === activeFuel) return;
+    // Locked positions open the sales modal instead of switching fuel.
+    if (isLocked(pos)) {
+      onLockedClick && onLockedClick();
+      return;
+    }
     setActiveFuel(pos);
     if (pos === "trend") {
       setTransitioning(true);
@@ -14295,6 +14341,12 @@ function Joystick({ onNavigate }) {
     const targetPos = positions[targetIdx];
     setDragAngle(null); // release drag — CSS transition re-engages toward discrete
     try { e.currentTarget.releasePointerCapture(e.pointerId); } catch {}
+    // Locked position: fire modal, don't switch fuel (snap-back is automatic
+    // since we cleared dragAngle — tilt reverts to current activeFuel's idx).
+    if (isLocked(targetPos)) {
+      onLockedClick && onLockedClick();
+      return;
+    }
     if (targetPos !== activeFuel) handleSelect(targetPos);
   };
 
@@ -14464,6 +14516,7 @@ function Joystick({ onNavigate }) {
             const x = SCREEN_AREA_X + i * (SCREEN_W + SCREEN_GAP);
             const isActive = pos === activeFuel;
             const isHovered = hoverPos === pos;
+            const locked = isLocked(pos);
             const color = FUEL_TYPES[pos].color;
             const label = pos.toUpperCase();
             const fuelCount = fuels[pos];
@@ -14471,7 +14524,7 @@ function Joystick({ onNavigate }) {
 
             return (
               <g key={pos}
-                style={{ cursor: "pointer" }}
+                style={{ cursor: "pointer", opacity: locked ? 0.55 : 1 }}
                 onClick={() => handleSelect(pos)}
                 onMouseEnter={() => setHoverPos(pos)}
                 onMouseLeave={() => setHoverPos(null)}
@@ -14549,6 +14602,27 @@ function Joystick({ onNavigate }) {
                   opacity={isActive ? 0.95 : 0.5}>
                   ▸ {fuelText}
                 </text>
+
+                {/* Lock overlay — small padlock centered when VIP-only */}
+                {locked && (
+                  <g>
+                    {/* Semi-transparent backdrop so the label stays readable behind */}
+                    <rect x={x + 6} y={SCREEN_Y + 6} width={SCREEN_W - 12} height={SCREEN_H - 12}
+                      rx="3" fill="rgba(0,0,0,0.38)" />
+                    {/* Padlock SVG — simple, purple VIP accent */}
+                    <g transform={`translate(${x + SCREEN_W / 2 - 9}, ${SCREEN_Y + SCREEN_H / 2 - 11})`}>
+                      {/* Shackle (arc above body) */}
+                      <path d="M 4 9 L 4 5.5 A 5 5 0 0 1 14 5.5 L 14 9"
+                        fill="none" stroke="#C792EA" strokeWidth="2" strokeLinecap="round" />
+                      {/* Body */}
+                      <rect x="1" y="9" width="16" height="13" rx="2"
+                        fill="#C792EA" stroke="#9B7ED8" strokeWidth="0.6" />
+                      {/* Keyhole */}
+                      <circle cx="9" cy="14.5" r="1.5" fill="#1a1025" />
+                      <rect x="8.4" y="14.5" width="1.2" height="3.5" fill="#1a1025" />
+                    </g>
+                  </g>
+                )}
 
                 {/* Hover/active border highlight */}
                 <rect x={x + 1} y={SCREEN_Y + 1} width={SCREEN_W - 2} height={SCREEN_H - 2}
