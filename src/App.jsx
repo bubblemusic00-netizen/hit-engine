@@ -2183,6 +2183,682 @@ const PRESETS = [
       mix: "Cinematic wide",
     },
   },
+  // ── NEW PRESETS (45) — broad coverage across genres, eras, and vibes ──
+  {
+    id: "sexy-drill",
+    name: "Sexy drill flirt",
+    emoji: "💋",
+    lyricsOn: true, mode: "expanded",
+    state: {
+      slots: [{ genre: "Sexy Drill", sub: "NYC sexy drill", micro: null }, { genre: "Hip-Hop", sub: null, micro: null }, null],
+      mood: "Sensual", energy: "Steady groove throughout", groove: "swing",
+      vocalist: "Auto-tuned melodic delivery", language: "en",
+      lyricalVibe: "Hedonistic escapism",
+      specificInstruments: ["808 sub", "Rhodes electric piano", "Hi-hat (drum machine)"],
+      specificArticulations: { "808 sub": "slide 808", "Rhodes electric piano": "vibrato on" },
+      specificCount: 3, harmonic: "Minor-key introspection", texture: "Thick & saturated", mix: "Punchy & compressed",
+    },
+  },
+  {
+    id: "amapiano-groove",
+    name: "Amapiano dance groove",
+    emoji: "🪘",
+    lyricsOn: true, mode: "moderated",
+    state: {
+      slots: [{ genre: "Amapiano", sub: null, micro: null }, null, null],
+      mood: "Euphoric", energy: "Steady groove throughout", groove: "swing",
+      vocalist: "Smooth tenor", language: "en",
+      lyricalVibe: "Party celebration",
+      specificInstruments: ["Log drum", "Shakers", "Synth bass"],
+      specificArticulations: { "Shakers": "16th shaker" },
+      specificCount: 3, harmonic: "Major-key lift", texture: "Organic & breathing", mix: "Punchy & compressed",
+    },
+  },
+  {
+    id: "corridos-tumbados",
+    name: "Corridos tumbados",
+    emoji: "🤠",
+    lyricsOn: true, mode: "expanded",
+    state: {
+      slots: [{ genre: "Corridos Tumbados", sub: "Peso Pluma lineage", micro: null }, null, null],
+      mood: "Defiant", energy: "Driving & relentless", groove: "straight",
+      vocalist: "Raw male baritone", language: "es",
+      lyricalVibe: "Cinematic scene-setting",
+      specificInstruments: ["Nylon classical", "Acoustic bass", "Tuba"],
+      specificArticulations: { "Nylon classical": "fingerpicked" },
+      specificCount: 3, harmonic: "Minor-key introspection", texture: "Organic & breathing", mix: "Raw & uncompressed",
+    },
+  },
+  {
+    id: "hyperpop-sugar",
+    name: "Hyperpop sugar rush",
+    emoji: "🍬",
+    lyricsOn: true, mode: "chaos",
+    state: {
+      slots: [{ genre: "Hyperpop", sub: null, micro: null }, { genre: "Pop", sub: "Dance-Pop", micro: null }, null],
+      mood: "Ecstatic", energy: "Sparse to wall of sound", groove: "broken",
+      vocalist: "Auto-tuned melodic delivery", language: "en",
+      lyricalVibe: "Stream-of-consciousness",
+      specificInstruments: ["Wavetable synth", "808 sub", "Supersaw lead"],
+      specificArticulations: { "Wavetable synth": "morphing wavetable" },
+      specificCount: 3, harmonic: "Major-key lift", texture: "Digital & precise", mix: "Futuristic digital",
+    },
+  },
+  {
+    id: "lofi-study",
+    name: "Lo-fi study beats",
+    emoji: "📚",
+    lyricsOn: false, mode: "simple",
+    state: {
+      slots: [{ genre: "Lo-Fi Hip-Hop", sub: "dusty chill", micro: null }, null, null],
+      mood: "Serene", energy: "Intimate & bare throughout", groove: "swing",
+      vocalist: "", language: "en",
+      lyricalVibe: "",
+      specificInstruments: ["Rhodes electric piano", "Upright bass", "Brushed drum kit"],
+      specificArticulations: { "Rhodes electric piano": "vibrato on" },
+      specificCount: 3, harmonic: "Jazz extensions", texture: "Distressed & decayed", mix: "Lo-fi tape warmth",
+    },
+  },
+  {
+    id: "afrobeats-radio",
+    name: "Afrobeats radio hit",
+    emoji: "🌍",
+    lyricsOn: true, mode: "moderated",
+    state: {
+      slots: [{ genre: "Afropop Crossover", sub: "Tyla-style amapiano-pop", micro: null }, null, null],
+      mood: "Sensual", energy: "Steady groove throughout", groove: "swing",
+      vocalist: "Breathy female lead", language: "en",
+      lyricalVibe: "Romantic devotion",
+      specificInstruments: ["Log drum", "Synth bass", "Shakers"],
+      specificArticulations: { "Shakers": "16th shaker" },
+      specificCount: 3, harmonic: "Major-key lift", texture: "Smooth & liquid", mix: "Ultra clean & polished",
+    },
+  },
+  {
+    id: "dark-techno",
+    name: "Dark warehouse techno",
+    emoji: "⚫",
+    lyricsOn: false, mode: "expanded",
+    state: {
+      slots: [{ genre: "Hard Techno", sub: "Berlin hard techno", micro: null }, null, null],
+      mood: "Haunted", energy: "Driving & relentless", groove: "motorik",
+      vocalist: "", language: "en",
+      lyricalVibe: "",
+      specificInstruments: ["TB-303 bass", "Modular Eurorack", "TR-909 kick"],
+      specificArticulations: { "TB-303 bass": "acid squelch" },
+      specificCount: 3, harmonic: "Drone-based static harmony", texture: "Metallic & reflective", mix: "Raw & uncompressed",
+    },
+  },
+  {
+    id: "country-pop-summer",
+    name: "Country-pop summer",
+    emoji: "🌾",
+    lyricsOn: true, mode: "moderated",
+    state: {
+      slots: [{ genre: "Pop Country Crossover", sub: "Morgan Wallen pop-country", micro: null }, null, null],
+      mood: "Nostalgic", energy: "Steady groove throughout", groove: "straight",
+      vocalist: "Smooth tenor", language: "en",
+      lyricalVibe: "Nostalgic storytelling",
+      specificInstruments: ["Acoustic steel-string", "Pedal steel", "Tambourine"],
+      specificArticulations: { "Acoustic steel-string": "strummed", "Pedal steel": "swelling legato" },
+      specificCount: 3, harmonic: "Major-key lift", texture: "Organic & breathing", mix: "Ultra clean & polished",
+    },
+  },
+  {
+    id: "neoperreo-club",
+    name: "Neoperreo club night",
+    emoji: "🔥",
+    lyricsOn: true, mode: "expanded",
+    state: {
+      slots: [{ genre: "Neoperreo", sub: "Isabella Lovestory energy", micro: null }, null, null],
+      mood: "Defiant", energy: "Driving & relentless", groove: "syncopated",
+      vocalist: "Auto-tuned melodic delivery", language: "es",
+      lyricalVibe: "Hedonistic escapism",
+      specificInstruments: ["808 sub", "Dembow kit", "FM DX7"],
+      specificArticulations: { "808 sub": "distorted 808" },
+      specificCount: 3, harmonic: "Minor-key introspection", texture: "Distressed & decayed", mix: "Raw & uncompressed",
+    },
+  },
+  {
+    id: "k-pop-5gen",
+    name: "K-pop 5th gen minimal",
+    emoji: "✨",
+    lyricsOn: true, mode: "moderated",
+    state: {
+      slots: [{ genre: "K-Pop 5th Gen", sub: "NewJeans sound", micro: null }, null, null],
+      mood: "Tender", energy: "Intimate & bare throughout", groove: "swing",
+      vocalist: "Breathy female lead", language: "ko",
+      lyricalVibe: "Coming-of-age narrative",
+      specificInstruments: ["Rhodes electric piano", "Synth bass", "Brushed drum kit"],
+      specificArticulations: { "Rhodes electric piano": "warm mk1" },
+      specificCount: 3, harmonic: "Major-key lift", texture: "Airy & weightless", mix: "Ultra clean & polished",
+    },
+  },
+  {
+    id: "drum-and-bass",
+    name: "Liquid drum & bass",
+    emoji: "🌊",
+    lyricsOn: true, mode: "expanded",
+    state: {
+      slots: [{ genre: "Drum and Bass", sub: null, micro: null }, null, null],
+      mood: "Euphoric", energy: "Euphoric continuous build", groove: "broken",
+      vocalist: "Breathy female lead", language: "en",
+      lyricalVibe: "Surreal dreamscape",
+      specificInstruments: ["Synth bass", "Break beats kit", "Juno-60 pads"],
+      specificArticulations: { "Juno-60 pads": "chorus on" },
+      specificCount: 3, harmonic: "Jazz extensions", texture: "Smooth & liquid", mix: "Wide cinematic",
+    },
+  },
+  {
+    id: "ambient-floatscape",
+    name: "Ambient floatscape",
+    emoji: "☁️",
+    lyricsOn: false, mode: "simple",
+    state: {
+      slots: [{ genre: "Ambient Electronic", sub: null, micro: null }, { genre: "Ambient / New Age", sub: "Ambient", micro: null }, null],
+      mood: "Serene", energy: "Intimate & bare throughout", groove: "rubato",
+      vocalist: "", language: "en",
+      lyricalVibe: "",
+      specificInstruments: ["Granular synth", "Juno-60 pads", "Cello"],
+      specificArticulations: { "Granular synth": "time-stretched" },
+      specificCount: 3, harmonic: "Drone-based static harmony", texture: "Airy & weightless", mix: "Heavy reverb cathedral",
+    },
+  },
+  {
+    id: "sigilkore-occult",
+    name: "Sigilkore occult night",
+    emoji: "🕯️",
+    lyricsOn: true, mode: "chaos",
+    state: {
+      slots: [{ genre: "Sigilkore", sub: "Luci4-style occult", micro: null }, { genre: "HexD", sub: "noise-rap", micro: null }, null],
+      mood: "Haunted", energy: "Tension without full release", groove: "broken",
+      vocalist: "Screamed verse / melodic chorus", language: "en",
+      lyricalVibe: "Mythic / allegorical",
+      specificInstruments: ["808 sub", "Granular synth", "Wavetable synth"],
+      specificArticulations: { "808 sub": "distorted 808", "Wavetable synth": "digital harsh" },
+      specificCount: 3, harmonic: "Dissonant tension", texture: "Distressed & decayed", mix: "Lo-fi tape warmth",
+    },
+  },
+  {
+    id: "jazz-noir",
+    name: "Jazz noir ballad",
+    emoji: "🎷",
+    lyricsOn: true, mode: "expanded",
+    state: {
+      slots: [{ genre: "Jazz", sub: "Bebop", micro: null }, null, null],
+      mood: "Melancholic", energy: "Intimate & bare throughout", groove: "swing",
+      vocalist: "Smooth tenor", language: "en",
+      lyricalVibe: "Confessional diary",
+      specificInstruments: ["Grand piano", "Upright bass", "Brushed drum kit"],
+      specificArticulations: { "Grand piano": "legato lyrical", "Upright bass": "pizzicato walking" },
+      specificCount: 3, harmonic: "Jazz extensions", texture: "Smooth & liquid", mix: "Intimate close-mic",
+    },
+  },
+  {
+    id: "reggaeton-mexa",
+    name: "Reggaeton mexa street",
+    emoji: "🇲🇽",
+    lyricsOn: true, mode: "expanded",
+    state: {
+      slots: [{ genre: "Reggaeton Mexa", sub: "Bellakath sound", micro: null }, null, null],
+      mood: "Defiant", energy: "Driving & relentless", groove: "syncopated",
+      vocalist: "Raw male baritone", language: "es",
+      lyricalVibe: "Braggadocio flex",
+      specificInstruments: ["808 sub", "Dembow kit", "FM DX7"],
+      specificArticulations: { "FM DX7": "brass stab" },
+      specificCount: 3, harmonic: "Minor-key introspection", texture: "Thick & saturated", mix: "Punchy & compressed",
+    },
+  },
+  {
+    id: "indie-sleaze",
+    name: "Indie sleaze revival",
+    emoji: "🕶️",
+    lyricsOn: true, mode: "moderated",
+    state: {
+      slots: [{ genre: "Indie Sleaze", sub: "Sky Ferreira lineage", micro: null }, null, null],
+      mood: "Unbothered", energy: "Steady groove throughout", groove: "straight",
+      vocalist: "Raw male baritone", language: "en",
+      lyricalVibe: "Hedonistic escapism",
+      specificInstruments: ["Prophet-5 lead", "808 sub", "Drum machine claps"],
+      specificArticulations: { "Prophet-5 lead": "bright sync lead" },
+      specificCount: 3, harmonic: "Minor-key introspection", texture: "Distressed & decayed", mix: "Lo-fi tape warmth",
+    },
+  },
+  {
+    id: "brazilian-phonk",
+    name: "Brazilian phonk drift",
+    emoji: "🏎️",
+    lyricsOn: true, mode: "expanded",
+    state: {
+      slots: [{ genre: "Brazilian Phonk", sub: "automotivo phonk", micro: null }, null, null],
+      mood: "Furious", energy: "Driving & relentless", groove: "syncopated",
+      vocalist: "Screamed verse / melodic chorus", language: "pt",
+      lyricalVibe: "Party celebration",
+      specificInstruments: ["808 sub", "Cowbell", "Supersaw lead"],
+      specificArticulations: { "808 sub": "distorted 808" },
+      specificCount: 3, harmonic: "Minor-key introspection", texture: "Distressed & decayed", mix: "Raw & uncompressed",
+    },
+  },
+  {
+    id: "bossa-cafe",
+    name: "Bossa nova café",
+    emoji: "☕",
+    lyricsOn: true, mode: "simple",
+    state: {
+      slots: [{ genre: "Bossa Nova", sub: "Rio classic", micro: null }, null, null],
+      mood: "Serene", energy: "Intimate & bare throughout", groove: "swing",
+      vocalist: "Breathy female lead", language: "pt",
+      lyricalVibe: "Romantic devotion",
+      specificInstruments: ["Nylon classical", "Upright bass", "Brushed drum kit"],
+      specificArticulations: { "Nylon classical": "fingerpicked", "Upright bass": "pizzicato walking" },
+      specificCount: 3, harmonic: "Jazz extensions", texture: "Smooth & liquid", mix: "Intimate close-mic",
+    },
+  },
+  {
+    id: "recession-pop",
+    name: "Recession pop 2010",
+    emoji: "💃",
+    lyricsOn: true, mode: "moderated",
+    state: {
+      slots: [{ genre: "Recession Pop", sub: "Gaga-era callback", micro: null }, null, null],
+      mood: "Ecstatic", energy: "Euphoric continuous build", groove: "straight",
+      vocalist: "Breathy female lead", language: "en",
+      lyricalVibe: "Party celebration",
+      specificInstruments: ["Supersaw lead", "808 kick", "Synth bass"],
+      specificArticulations: { "Supersaw lead": "unison detune" },
+      specificCount: 3, harmonic: "Major-key lift", texture: "Digital & precise", mix: "Ultra clean & polished",
+    },
+  },
+  {
+    id: "synthwave-neon",
+    name: "Synthwave neon cruise",
+    emoji: "🌆",
+    lyricsOn: false, mode: "moderated",
+    state: {
+      slots: [{ genre: "Synthwave", sub: null, micro: null }, null, null],
+      mood: "Nostalgic", energy: "Steady groove throughout", groove: "motorik",
+      vocalist: "", language: "en",
+      lyricalVibe: "",
+      specificInstruments: ["Prophet-5 lead", "Juno-60 pads", "TR-909 kick"],
+      specificArticulations: { "Juno-60 pads": "warm strings patch", "Prophet-5 lead": "detuned unison" },
+      specificCount: 3, harmonic: "Minor-key introspection", texture: "Crystalline & brittle", mix: "Vintage analog",
+    },
+  },
+  {
+    id: "spacey-rnb",
+    name: "Spacey R&B night",
+    emoji: "🌙",
+    lyricsOn: true, mode: "expanded",
+    state: {
+      slots: [{ genre: "Alt R&B", sub: "cloud R&B", micro: null }, null, null],
+      mood: "Sensual", energy: "Intimate & bare throughout", groove: "swing",
+      vocalist: "Falsetto-led", language: "en",
+      lyricalVibe: "Heartbreak elegy",
+      specificInstruments: ["Rhodes electric piano", "Synth bass", "Juno-60 pads"],
+      specificArticulations: { "Rhodes electric piano": "warm mk1", "Juno-60 pads": "slow attack pad" },
+      specificCount: 3, harmonic: "Jazz extensions", texture: "Smooth & liquid", mix: "Heavy reverb cathedral",
+    },
+  },
+  {
+    id: "shoegaze-wall",
+    name: "Shoegaze wall of sound",
+    emoji: "🌫️",
+    lyricsOn: true, mode: "expanded",
+    state: {
+      slots: [{ genre: "Shoegaze", sub: "washed wall", micro: null }, null, null],
+      mood: "Dreamlike", energy: "Sparse to wall of sound", groove: "straight",
+      vocalist: "Whisper to full belt", language: "en",
+      lyricalVibe: "Letter to self",
+      specificInstruments: ["Les Paul distortion", "Juno-60 pads", "Acoustic kit close-mic"],
+      specificArticulations: { "Les Paul distortion": "feedback sustain" },
+      specificCount: 3, harmonic: "Major-key lift", texture: "Thick & saturated", mix: "Heavy reverb cathedral",
+    },
+  },
+  {
+    id: "bedroom-pop",
+    name: "Bedroom pop diary",
+    emoji: "🛏️",
+    lyricsOn: true, mode: "simple",
+    state: {
+      slots: [{ genre: "Bedroom Pop", sub: null, micro: null }, null, null],
+      mood: "Bittersweet", energy: "Intimate & bare throughout", groove: "swing",
+      vocalist: "Whisper to full belt", language: "en",
+      lyricalVibe: "Confessional diary",
+      specificInstruments: ["Acoustic steel-string", "Rhodes electric piano", "Drum machine claps"],
+      specificArticulations: { "Acoustic steel-string": "fingerstyle" },
+      specificCount: 3, harmonic: "Major-key lift", texture: "Distressed & decayed", mix: "Lo-fi tape warmth",
+    },
+  },
+  {
+    id: "conscious-hiphop",
+    name: "Conscious hip-hop cipher",
+    emoji: "✊",
+    lyricsOn: true, mode: "expanded",
+    state: {
+      slots: [{ genre: "Conscious Hip-Hop", sub: "jazz-sample underground", micro: null }, null, null],
+      mood: "Defiant", energy: "Steady groove throughout", groove: "swing",
+      vocalist: "Spoken word over melody", language: "en",
+      lyricalVibe: "Social commentary",
+      specificInstruments: ["Upright bass", "Rhodes electric piano", "Brushed drum kit"],
+      specificArticulations: { "Upright bass": "pizzicato walking" },
+      specificCount: 3, harmonic: "Jazz extensions", texture: "Distressed & decayed", mix: "Vintage analog",
+    },
+  },
+  {
+    id: "krushclub-bounce",
+    name: "Krushclub bounce",
+    emoji: "🎮",
+    lyricsOn: true, mode: "chaos",
+    state: {
+      slots: [{ genre: "Krushclub", sub: "Odetari krushclub", micro: null }, null, null],
+      mood: "Ecstatic", energy: "Sparse to wall of sound", groove: "broken",
+      vocalist: "Auto-tuned melodic delivery", language: "en",
+      lyricalVibe: "Hedonistic escapism",
+      specificInstruments: ["Wavetable synth", "808 sub", "Jersey club kick"],
+      specificArticulations: { "Wavetable synth": "digital harsh" },
+      specificCount: 3, harmonic: "Major-key lift", texture: "Crystalline & brittle", mix: "Futuristic digital",
+    },
+  },
+  {
+    id: "uk-drill",
+    name: "UK drill menace",
+    emoji: "🇬🇧",
+    lyricsOn: true, mode: "expanded",
+    state: {
+      slots: [{ genre: "Drill", sub: "UK drill", micro: null }, null, null],
+      mood: "Furious", energy: "Driving & relentless", groove: "syncopated",
+      vocalist: "Raw male baritone", language: "en",
+      lyricalVibe: "Cinematic scene-setting",
+      specificInstruments: ["808 sub", "Piano (dark triad)", "Hi-hat (drum machine)"],
+      specificArticulations: { "808 sub": "slide 808" },
+      specificCount: 3, harmonic: "Minor-key introspection", texture: "Thick & saturated", mix: "Punchy & compressed",
+    },
+  },
+  {
+    id: "french-house",
+    name: "French house filter",
+    emoji: "🇫🇷",
+    lyricsOn: false, mode: "moderated",
+    state: {
+      slots: [{ genre: "House", sub: null, micro: null }, { genre: "Disco / Dance", sub: "Nu-Disco", micro: null }, null],
+      mood: "Euphoric", energy: "Steady groove throughout", groove: "motorik",
+      vocalist: "", language: "fr",
+      lyricalVibe: "",
+      specificInstruments: ["TR-909 kick", "Disco strings", "Synth bass"],
+      specificArticulations: { "Synth bass": "filter-swept" },
+      specificCount: 3, harmonic: "Major-key lift", texture: "Smooth & liquid", mix: "Ultra clean & polished",
+    },
+  },
+  {
+    id: "sertanejo-modern",
+    name: "Sertanejo universitário",
+    emoji: "🎤",
+    lyricsOn: true, mode: "moderated",
+    state: {
+      slots: [{ genre: "Sertanejo", sub: "sertanejo universitário", micro: null }, null, null],
+      mood: "Nostalgic", energy: "Steady groove throughout", groove: "swing",
+      vocalist: "Smooth tenor", language: "pt",
+      lyricalVibe: "Heartbreak elegy",
+      specificInstruments: ["Acoustic steel-string", "Accordion", "Drum kit"],
+      specificArticulations: { "Acoustic steel-string": "strummed" },
+      specificCount: 3, harmonic: "Major-key lift", texture: "Organic & breathing", mix: "Ultra clean & polished",
+    },
+  },
+  {
+    id: "breakcore-chaos",
+    name: "Breakcore chaos mode",
+    emoji: "💥",
+    lyricsOn: false, mode: "chaos",
+    state: {
+      slots: [{ genre: "IDM", sub: null, micro: null }, { genre: "Experimental", sub: "Glitch", micro: null }, null],
+      mood: "Anxious", energy: "Driving & relentless", groove: "polyrhythm",
+      vocalist: "", language: "en",
+      lyricalVibe: "",
+      specificInstruments: ["Break beats kit", "Granular synth", "Wavetable synth"],
+      specificArticulations: { "Granular synth": "cloud of grains" },
+      specificCount: 3, harmonic: "Dissonant tension", texture: "Granular & particulate", mix: "Raw & uncompressed",
+    },
+  },
+  {
+    id: "dancehall-sunny",
+    name: "Dancehall sunshine",
+    emoji: "☀️",
+    lyricsOn: true, mode: "moderated",
+    state: {
+      slots: [{ genre: "World / Global", sub: null, micro: null }, null, null],
+      mood: "Euphoric", energy: "Steady groove throughout", groove: "syncopated",
+      vocalist: "Melismatic soprano", language: "en",
+      lyricalVibe: "Party celebration",
+      specificInstruments: ["Synth bass", "Shakers", "Steel drums"],
+      specificArticulations: { "Shakers": "16th shaker" },
+      specificCount: 3, harmonic: "Major-key lift", texture: "Organic & breathing", mix: "Punchy & compressed",
+    },
+  },
+  {
+    id: "gospel-sunday",
+    name: "Gospel Sunday service",
+    emoji: "🙏",
+    lyricsOn: true, mode: "expanded",
+    state: {
+      slots: [{ genre: "Gospel / Spiritual", sub: "Gospel", micro: null }, null, null],
+      mood: "Triumphant", energy: "Slow burn to explosion", groove: "swing",
+      vocalist: "Gospel ensemble", language: "en",
+      lyricalVibe: "Spiritual seeking",
+      specificInstruments: ["Hammond B3 organ", "Grand piano", "Acoustic kit close-mic"],
+      specificArticulations: { "Hammond B3 organ": "Leslie fast", "Grand piano": "rolled chords" },
+      specificCount: 3, harmonic: "Major-key lift", texture: "Organic & breathing", mix: "Heavy reverb cathedral",
+    },
+  },
+  {
+    id: "bolero-classic",
+    name: "Bolero romántico",
+    emoji: "💔",
+    lyricsOn: true, mode: "simple",
+    state: {
+      slots: [{ genre: "Bolero", sub: "bolero romántico", micro: null }, null, null],
+      mood: "Melancholic", energy: "Intimate & bare throughout", groove: "rubato",
+      vocalist: "Raw male baritone", language: "es",
+      lyricalVibe: "Heartbreak elegy",
+      specificInstruments: ["Nylon classical", "Full string section", "Grand piano"],
+      specificArticulations: { "Nylon classical": "classical arpeggio", "Full string section": "legato lush" },
+      specificCount: 3, harmonic: "Classical voice-leading", texture: "Smooth & liquid", mix: "Intimate close-mic",
+    },
+  },
+  {
+    id: "speed-garage",
+    name: "Speed garage revival",
+    emoji: "💨",
+    lyricsOn: false, mode: "moderated",
+    state: {
+      slots: [{ genre: "Speed Garage", sub: "UK speed-garage revival", micro: null }, null, null],
+      mood: "Electric", energy: "Driving & relentless", groove: "syncopated",
+      vocalist: "", language: "en",
+      lyricalVibe: "",
+      specificInstruments: ["Synth bass", "Break beats kit", "Prophet-5 lead"],
+      specificArticulations: { "Synth bass": "wobble mod" },
+      specificCount: 3, harmonic: "Minor-key introspection", texture: "Metallic & reflective", mix: "Punchy & compressed",
+    },
+  },
+  {
+    id: "arabic-trap",
+    name: "Arabic trap crossover",
+    emoji: "🕌",
+    lyricsOn: true, mode: "expanded",
+    state: {
+      slots: [{ genre: "Trap", sub: "dark trap", micro: null }, null, null],
+      mood: "Defiant", energy: "Tension without full release", groove: "syncopated",
+      vocalist: "Melismatic soprano", language: "ar",
+      lyricalVibe: "Cinematic scene-setting",
+      specificInstruments: ["808 sub", "Oud", "FM DX7"],
+      specificArticulations: { "808 sub": "slide 808" },
+      specificCount: 3, harmonic: "Microtonal", texture: "Thick & saturated", mix: "Cinematic wide",
+    },
+  },
+  {
+    id: "indie-folk-campfire",
+    name: "Indie folk campfire",
+    emoji: "🔥",
+    lyricsOn: true, mode: "simple",
+    state: {
+      slots: [{ genre: "Folk / Acoustic", sub: "Indie Folk", micro: null }, null, null],
+      mood: "Nostalgic", energy: "Intimate & bare throughout", groove: "swing",
+      vocalist: "Raw male baritone", language: "en",
+      lyricalVibe: "Ode to a place",
+      specificInstruments: ["Acoustic steel-string", "Banjo", "Harmonica"],
+      specificArticulations: { "Acoustic steel-string": "travis picking" },
+      specificCount: 3, harmonic: "Major-key lift", texture: "Organic & breathing", mix: "Intimate close-mic",
+    },
+  },
+  {
+    id: "metalcore-rage",
+    name: "Metalcore breakdown",
+    emoji: "🤘",
+    lyricsOn: true, mode: "chaos",
+    state: {
+      slots: [{ genre: "Metal", sub: "Metalcore", micro: null }, null, null],
+      mood: "Furious", energy: "Starts huge then strips back", groove: "broken",
+      vocalist: "Screamed verse / melodic chorus", language: "en",
+      lyricalVibe: "Defiant anthem",
+      specificInstruments: ["Les Paul distortion", "Bass guitar (picked)", "Acoustic kit close-mic"],
+      specificArticulations: { "Les Paul distortion": "palm-muted chugs" },
+      specificCount: 3, harmonic: "Dissonant tension", texture: "Metallic & reflective", mix: "Punchy & compressed",
+    },
+  },
+  {
+    id: "deep-house",
+    name: "Deep house sunset",
+    emoji: "🌅",
+    lyricsOn: false, mode: "moderated",
+    state: {
+      slots: [{ genre: "House", sub: null, micro: null }, null, null],
+      mood: "Serene", energy: "Steady groove throughout", groove: "motorik",
+      vocalist: "", language: "en",
+      lyricalVibe: "",
+      specificInstruments: ["Juno-60 pads", "TR-909 kick", "Synth bass"],
+      specificArticulations: { "Juno-60 pads": "slow attack pad" },
+      specificCount: 3, harmonic: "Jazz extensions", texture: "Smooth & liquid", mix: "Wide cinematic",
+    },
+  },
+  {
+    id: "grime-classic",
+    name: "Grime square-wave",
+    emoji: "📼",
+    lyricsOn: true, mode: "expanded",
+    state: {
+      slots: [{ genre: "Grime", sub: "UK grime", micro: null }, null, null],
+      mood: "Defiant", energy: "Driving & relentless", groove: "broken",
+      vocalist: "Raw male baritone", language: "en",
+      lyricalVibe: "Braggadocio flex",
+      specificInstruments: ["Square wave synth", "808 sub", "Hi-hat (drum machine)"],
+      specificArticulations: { "Square wave synth": "hard sync" },
+      specificCount: 3, harmonic: "Minor-key introspection", texture: "Crystalline & brittle", mix: "Raw & uncompressed",
+    },
+  },
+  {
+    id: "post-rock-cinematic",
+    name: "Post-rock crescendo",
+    emoji: "🌋",
+    lyricsOn: false, mode: "expanded",
+    state: {
+      slots: [{ genre: "Rock", sub: "Post-Rock", micro: null }, null, null],
+      mood: "Triumphant", energy: "Slow burn to explosion", groove: "straight",
+      vocalist: "", language: "en",
+      lyricalVibe: "",
+      specificInstruments: ["Les Paul distortion", "Acoustic kit close-mic", "String ensemble pad"],
+      specificArticulations: { "Les Paul distortion": "feedback sustain", "String ensemble pad": "slow swell" },
+      specificCount: 3, harmonic: "Major-key lift", texture: "Thick & saturated", mix: "Wide cinematic",
+    },
+  },
+  {
+    id: "reggae-roots",
+    name: "Reggae roots skank",
+    emoji: "🌴",
+    lyricsOn: true, mode: "simple",
+    state: {
+      slots: [{ genre: "World / Global", sub: null, micro: null }, null, null],
+      mood: "Unbothered", energy: "Steady groove throughout", groove: "swing",
+      vocalist: "Smooth tenor", language: "en",
+      lyricalVibe: "Social commentary",
+      specificInstruments: ["Clavinet", "Bass guitar (fingered)", "Acoustic kit close-mic"],
+      specificArticulations: { "Clavinet": "reggae skank" },
+      specificCount: 3, harmonic: "Major-key lift", texture: "Organic & breathing", mix: "Vintage analog",
+    },
+  },
+  {
+    id: "japanese-city-pop",
+    name: "Japanese city pop",
+    emoji: "🗼",
+    lyricsOn: true, mode: "moderated",
+    state: {
+      slots: [{ genre: "Pop", sub: null, micro: null }, { genre: "Disco / Dance", sub: "Italo Disco", micro: null }, null],
+      mood: "Nostalgic", energy: "Steady groove throughout", groove: "swing",
+      vocalist: "Breathy female lead", language: "ja",
+      lyricalVibe: "Ode to a place",
+      specificInstruments: ["Rhodes electric piano", "Funk guitar Strat", "Synth bass"],
+      specificArticulations: { "Funk guitar Strat": "chicken-pickin'", "Rhodes electric piano": "bell-like" },
+      specificCount: 3, harmonic: "Jazz extensions", texture: "Smooth & liquid", mix: "Vintage analog",
+    },
+  },
+  {
+    id: "trip-hop-noir",
+    name: "Trip-hop noir",
+    emoji: "🌃",
+    lyricsOn: true, mode: "moderated",
+    state: {
+      slots: [{ genre: "Trip-Hop", sub: null, micro: null }, null, null],
+      mood: "Haunted", energy: "Intimate & bare throughout", groove: "half-time",
+      vocalist: "Breathy female lead", language: "en",
+      lyricalVibe: "Abstract poetry",
+      specificInstruments: ["Upright bass", "Break beats kit", "Rhodes electric piano"],
+      specificArticulations: { "Break beats kit": "dusty chopped loop", "Rhodes electric piano": "warm mk1" },
+      specificCount: 3, harmonic: "Minor-key introspection", texture: "Distressed & decayed", mix: "Lo-fi tape warmth",
+    },
+  },
+  {
+    id: "hebrew-mizrahi",
+    name: "Hebrew Mizrahi pop",
+    emoji: "🕎",
+    lyricsOn: true, mode: "moderated",
+    state: {
+      slots: [{ genre: "World / Global", sub: null, micro: null }, null, null],
+      mood: "Spiritual", energy: "Slow burn to explosion", groove: "syncopated",
+      vocalist: "Melismatic soprano", language: "he",
+      lyricalVibe: "Spiritual seeking",
+      specificInstruments: ["Oud", "Synth bass", "Acoustic kit close-mic"],
+      specificArticulations: {},
+      specificCount: 3, harmonic: "Microtonal", texture: "Organic & breathing", mix: "Ultra clean & polished",
+    },
+  },
+  {
+    id: "experimental-noise",
+    name: "Experimental drone",
+    emoji: "📡",
+    lyricsOn: false, mode: "chaos",
+    state: {
+      slots: [{ genre: "Experimental", sub: "Drone", micro: null }, null, null],
+      mood: "Anxious", energy: "Tension without full release", groove: "experimental",
+      vocalist: "", language: "en",
+      lyricalVibe: "",
+      specificInstruments: ["Modular Eurorack", "Granular synth", "Field recording"],
+      specificArticulations: { "Modular Eurorack": "generative patch", "Granular synth": "cloud of grains" },
+      specificCount: 3, harmonic: "Drone-based static harmony", texture: "Granular & particulate", mix: "Dry & direct",
+    },
+  },
+  {
+    id: "trap-soul-heartbreak",
+    name: "Trap soul heartbreak",
+    emoji: "💧",
+    lyricsOn: true, mode: "expanded",
+    state: {
+      slots: [{ genre: "R&B / Soul", sub: "Trap Soul", micro: null }, { genre: "Melodic Rap", sub: "heartbreak trap", micro: null }, null],
+      mood: "Melancholic", energy: "Intimate & bare throughout", groove: "half-time",
+      vocalist: "Auto-tuned melodic delivery", language: "en",
+      lyricalVibe: "Heartbreak elegy",
+      specificInstruments: ["808 sub", "Rhodes electric piano", "Juno-60 pads"],
+      specificArticulations: { "808 sub": "slide 808", "Rhodes electric piano": "warm mk1", "Juno-60 pads": "slow attack pad" },
+      specificCount: 3, harmonic: "Minor-key introspection", texture: "Smooth & liquid", mix: "Heavy reverb cathedral",
+    },
+  },
 ];
 
 function getModeById(id) { return MODES.find(m => m.id === id) || MODES[1]; }
@@ -2226,6 +2902,8 @@ const PHRASE_COMPRESSIONS = {
 function compressPhrase(s) { return s ? (PHRASE_COMPRESSIONS[s] || s) : s; }
 
 function inferBPM(state) {
+  // If user explicitly set a BPM (via slider), honor it.
+  if (state.bpm && state.bpm > 0) return state.bpm;
   const g = state.groove, e = (state.energy || "").toLowerCase();
   const base = g === "half-time" ? 75 : g === "swing" ? 92 : g === "broken" ? 128 :
                g === "experimental" ? 105 : g === "shuffle" ? 98 : g === "motorik" ? 120 :
@@ -2825,7 +3503,9 @@ function Chip({ label, selected, onClick, onDoubleClick, onLockToggle, favorite,
         ? (hasLockedRedirect ? "Locked — click to upgrade" : "Upgrade tier to unlock this option")
         : onLockToggle
           ? "Click: select · Double-click: favorite · Right-click: lock"
-          : undefined}
+          : onDoubleClick
+            ? "Click: select · Double-click: favorite"
+            : undefined}
       style={{
         ...sizes[size], ...base,
         fontFamily: T.font_sans,
@@ -4936,6 +5616,209 @@ function OutputBlock({ title, subtitle, text, onCopy, copyState, multiline, leng
 }
 
 // ════════════════════════════════════════════════════════════════════════════
+// TIPS MANUAL — collapsible how-to panel with gold outline.
+// Placed prominently at the top of the Engine page so users see it.
+// Contains key interactions that aren't self-discoverable:
+// right-click lock, double-click favorite, joystick, etc.
+// ════════════════════════════════════════════════════════════════════════════
+
+function TipsManual() {
+  const [open, setOpen] = useState(false);
+  const { layout } = useLayout();
+  const isMobile = layout === "mobile";
+
+  const tips = [
+    {
+      icon: "⟐",
+      title: "Double-click to favorite",
+      body: "Double-click any chip (mood, vocalist, instrument, etc.) to mark it as a favorite. Favorites are 70% more likely to be picked during randomize — use them to bias rolls toward your taste.",
+    },
+    {
+      icon: "◉",
+      title: "Section lock — preserve during randomize",
+      body: "Click the small padlock icon at the right of any section header to lock that entire section. Locked sections keep their current value when you hit HIT!. Great for pinning the genre while rolling everything else.",
+    },
+    {
+      icon: "↑",
+      title: "Toggle — Off / Auto / On",
+      body: "Each section has a three-state toggle at its header. OFF removes it from the prompt. AUTO lets randomize decide. ON forces it to always be included. Default is AUTO.",
+    },
+    {
+      icon: "⟳",
+      title: "Preset shuffle",
+      body: "The ⟳ SHUFFLE button on the Presets row picks a fresh set of starter configurations. Click a preset to apply its complete state snapshot — genres, mood, instruments, everything.",
+    },
+    {
+      icon: "+",
+      title: "Add your own options (Pro/VIP)",
+      body: "The + custom button at the end of each chip row lets you add your own entries. Type, press Enter to save. Custom chips are always included during randomize. Right-click a custom chip to delete it.",
+    },
+    {
+      icon: "🕹",
+      title: "Joystick fuel selector (VIP)",
+      body: "VIPs get a retro joystick with three LCD screens — FREE, PRO, TREND. Click any screen to switch fuel. Moving to TREND navigates to the Trend Setter page with a smoke-and-engine transition.",
+    },
+    {
+      icon: "⚡",
+      title: "BPM slider",
+      body: "Drag the BPM slider to set tempo between 60-200. Click RANDOM for a random BPM (step 2). Click CLEAR to return to AUTO — which infers tempo from groove + energy.",
+    },
+    {
+      icon: "⌕",
+      title: "Genre search",
+      body: "Click any genre slot, then use the search bar at the top to filter across all categories, subgenres, and microstyles. Typing 'drill' surfaces Hip-Hop with Drill variants highlighted.",
+    },
+    {
+      icon: "▸",
+      title: "Locked chips → Shop",
+      body: "Dimmed chips with diagonal stripes are locked behind a higher tier. Click them to go straight to the Shop where you can upgrade.",
+    },
+    {
+      icon: "★",
+      title: "Trend Setter page (VIP)",
+      body: "Move the joystick to TREND to visit a curated list of currently-viral tracks per region (US/Israel/UK). Click any card to generate a trend-biased prompt.",
+    },
+  ];
+
+  return (
+    <div style={{
+      marginBottom: T.s5,
+      position: "relative",
+    }}>
+      {/* Pulsing glow behind the button to catch the eye when collapsed */}
+      {!open && (
+        <style>{`
+          @keyframes tipsGoldPulse {
+            0%, 100% { box-shadow: 0 0 0 1px ${V.neonGold}88, 0 0 0px ${V.neonGold}00; }
+            50%      { box-shadow: 0 0 0 1px ${V.neonGold}, 0 0 18px ${V.neonGold}66; }
+          }
+          @keyframes tipsShimmer {
+            0%   { background-position: -120% 0; }
+            100% { background-position: 220% 0; }
+          }
+          .tips-manual-trigger {
+            animation: tipsGoldPulse 2.4s ease-in-out infinite;
+          }
+          .tips-manual-shimmer {
+            position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+            background: linear-gradient(110deg,
+              transparent 0%, transparent 40%,
+              ${V.neonGold}33 50%, transparent 60%,
+              transparent 100%);
+            background-size: 220% 100%;
+            animation: tipsShimmer 3.6s linear infinite;
+          }
+        `}</style>
+      )}
+
+      <button
+        type="button"
+        onClick={() => setOpen(o => !o)}
+        className={!open ? "tips-manual-trigger" : ""}
+        style={{
+          position: "relative", overflow: "hidden",
+          width: "100%", textAlign: "left",
+          display: "flex", alignItems: "center", justifyContent: "space-between",
+          gap: T.s3,
+          padding: isMobile ? `${T.s3}px ${T.s4}px` : `${T.s3}px ${T.s5}px`,
+          background: `linear-gradient(135deg, ${V.neonGold}0a 0%, transparent 100%)`,
+          border: `1px solid ${V.neonGold}`,
+          borderRadius: T.r_lg,
+          color: T.text,
+          fontFamily: T.font_sans,
+          cursor: "pointer",
+          transition: `all ${T.dur_fast} ${T.ease}`,
+        }}>
+        {!open && <span className="tips-manual-shimmer" />}
+        <div style={{ display: "flex", alignItems: "center", gap: T.s3, position: "relative" }}>
+          <span style={{
+            fontSize: 18, color: V.neonGold,
+            filter: `drop-shadow(0 0 4px ${V.neonGold}88)`,
+          }}>✦</span>
+          <div>
+            <div style={{
+              fontSize: T.fs_md, fontWeight: 700, color: T.text,
+              letterSpacing: "0.01em",
+            }}>
+              How to use — 10 quick tips
+            </div>
+            <div style={{
+              fontSize: T.fs_xs, color: T.textMuted,
+              marginTop: 2,
+            }}>
+              Double-click, right-click, the joystick, and everything else you might miss
+            </div>
+          </div>
+        </div>
+        <span style={{
+          color: V.neonGold,
+          fontSize: 14, fontFamily: T.font_mono, fontWeight: 700,
+          letterSpacing: "0.2em",
+          position: "relative",
+          transition: `transform ${T.dur_fast} ${T.ease}`,
+          transform: open ? "rotate(180deg)" : "rotate(0deg)",
+        }}>
+          ▾
+        </span>
+      </button>
+
+      {open && (
+        <div style={{
+          marginTop: T.s2,
+          padding: isMobile ? T.s4 : T.s5,
+          background: T.surface,
+          border: `1px solid ${V.neonGold}55`,
+          borderRadius: T.r_lg,
+          boxShadow: `0 0 0 1px ${V.neonGold}22, 0 4px 20px rgba(0,0,0,0.3)`,
+        }}>
+          <div style={{
+            display: "grid",
+            gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr",
+            gap: T.s3,
+          }}>
+            {tips.map((tip, i) => (
+              <div key={i} style={{
+                display: "flex", gap: T.s3,
+                padding: T.s3,
+                background: T.bg,
+                border: `1px solid ${T.border}`,
+                borderRadius: T.r_md,
+              }}>
+                <span style={{
+                  flexShrink: 0,
+                  width: 28, height: 28,
+                  display: "inline-flex", alignItems: "center", justifyContent: "center",
+                  background: `linear-gradient(135deg, ${V.neonGold}22 0%, transparent 100%)`,
+                  border: `1px solid ${V.neonGold}66`,
+                  borderRadius: T.r_sm,
+                  color: V.neonGold,
+                  fontSize: 14, fontWeight: 700,
+                }}>{tip.icon}</span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{
+                    fontSize: T.fs_sm, fontWeight: 600, color: T.text,
+                    marginBottom: 4,
+                    letterSpacing: "-0.005em",
+                  }}>
+                    {tip.title}
+                  </div>
+                  <div style={{
+                    fontSize: T.fs_xs, color: T.textSec,
+                    lineHeight: 1.5,
+                  }}>
+                    {tip.body}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ════════════════════════════════════════════════════════════════════════════
 // WORKFLOW GUIDE
 // ════════════════════════════════════════════════════════════════════════════
 
@@ -4994,6 +5877,7 @@ const DEFAULT_TOGGLES = {
   vocalist: "auto", language: "auto", lyricalVibe: "auto",
   specificInstruments: "auto",
   harmonic: "auto", texture: "auto", mix: "auto",
+  bpm: "auto",
 };
 
 const ENGINE_DEF = {
@@ -5006,12 +5890,14 @@ const ENGINE_DEF = {
   languageLocked: false,
   specificInstruments: [], specificArticulations: {}, specificCount: 3,
   mix: "", harmonic: "", texture: "",
+  bpm: 0,  // 0 = unset (prompt omits BPM)
   favorites: [],
   // sectionLocks: if a section key is locked, its current value is preserved by randomize
   sectionLocks: {
     mood: false, energy: false, groove: false,
     vocalist: false, language: false, lyricalVibe: false,
     specificInstruments: false, harmonic: false, texture: false, mix: false,
+    bpm: false,
   },
   // optionLocks: "sectionKey:value" — marks specific option as locked. When the
   // section is randomized, any locked option in that section is preferred.
@@ -5030,6 +5916,7 @@ const RANDOMIZER_SECTIONS = [
   { key: "harmonic",            toggleKey: "harmonic" },
   { key: "texture",             toggleKey: "texture" },
   { key: "mix",                 toggleKey: "mix" },
+  { key: "bpm",                 toggleKey: "bpm" },
 ];
 
 
@@ -5160,6 +6047,24 @@ function EnginePage({ onNavigate }) {
   const [casinoOutlines, setCasinoOutlines] = useState(new Map());
   const [toast, setToast] = useState(null); // { kind: "warn" | "info", text }
   const rollTimersRef = useRef([]);
+
+  // ── PRESETS SHUFFLE ─────────────────────────────────────────────────
+  // Show 5 random presets out of the 50-preset catalog. Reshuffles on each
+  // EnginePage mount + when the user clicks the reshuffle button.
+  const shuffle5Presets = () => {
+    const ids = PRESETS.map(p => p.id);
+    // Fisher-Yates partial shuffle — pick 5 unique IDs
+    const copy = [...ids];
+    for (let i = copy.length - 1; i > copy.length - 6 && i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [copy[i], copy[j]] = [copy[j], copy[i]];
+    }
+    return copy.slice(-5);
+  };
+  const [visiblePresetIds, setVisiblePresetIds] = useState(shuffle5Presets);
+  const visiblePresets = visiblePresetIds
+    .map(id => PRESETS.find(p => p.id === id))
+    .filter(Boolean);
 
   // showToast — transient notification near HIT button. Auto-dismiss 3.4s.
   const showToast = (text, kind = "warn") => {
@@ -5584,6 +6489,9 @@ function EnginePage({ onNavigate }) {
       mix:       maybe("mix",      () => withCustom("mix", clipPool(MIX_CHARS))),
       harmonic:  maybe("harmonic", () => withCustom("harmonic", clipPool(HARMONIC_STYLES))),
       texture:   maybe("texture",  () => withCustom("texture", clipPool(SOUND_TEXTURES))),
+      bpm: secLocks.bpm
+             ? state.bpm
+             : (chosen.has("bpm") ? (60 + Math.floor(Math.random() * 61) * 2) : 0),
       favorites: state.favorites || [],
       sectionLocks: state.sectionLocks,
       optionLocks:  state.optionLocks,
@@ -5716,6 +6624,24 @@ function EnginePage({ onNavigate }) {
           50%     { background: ${V.hotPink}22; }
           75%     { background: ${V.cyan}18; }
         }
+        /* BPM range slider thumb — match design tokens */
+        input[type="range"]::-webkit-slider-thumb {
+          -webkit-appearance: none; appearance: none;
+          width: 18px; height: 18px;
+          background: ${T.text};
+          border: 2px solid ${T.accent};
+          border-radius: 50%; cursor: pointer;
+          box-shadow: 0 0 0 2px ${T.bg}, 0 2px 8px rgba(0,0,0,0.4);
+          transition: transform 140ms ease-out;
+        }
+        input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.15); }
+        input[type="range"]::-moz-range-thumb {
+          width: 18px; height: 18px;
+          background: ${T.text};
+          border: 2px solid ${T.accent};
+          border-radius: 50%; cursor: pointer;
+          box-shadow: 0 0 0 2px ${T.bg}, 0 2px 8px rgba(0,0,0,0.4);
+        }
       `}</style>
       <div style={{
         flex: 1, minHeight: 0,
@@ -5777,14 +6703,47 @@ function EnginePage({ onNavigate }) {
             </p>
           </div>
 
-          {/* ── PRESETS ─ quick-start configurations ──────────────────────── */}
+          <TipsManual />
+
+          {/* ── PRESETS ─ quick-start configurations (5 random out of 50) ───── */}
           {features.presets ? (
             <div style={{ marginBottom: T.s6 }}>
-              <Label color={T.textSec} style={{ display: "block", marginBottom: T.s3 }}>
-                Presets
-              </Label>
+              <div style={{
+                display: "flex", justifyContent: "space-between", alignItems: "center",
+                marginBottom: T.s3,
+              }}>
+                <Label color={T.textSec}>
+                  Presets
+                </Label>
+                <button type="button"
+                  onClick={() => setVisiblePresetIds(shuffle5Presets())}
+                  title="Shuffle — show 5 different presets"
+                  style={{
+                    display: "inline-flex", alignItems: "center", gap: 4,
+                    padding: isMobile ? `6px 10px` : `3px 8px`,
+                    minHeight: isMobile ? 32 : "auto",
+                    background: "transparent",
+                    border: `1px solid ${T.border}`,
+                    borderRadius: T.r_sm,
+                    color: T.textMuted,
+                    fontFamily: T.font_mono, fontSize: T.fs_xs, fontWeight: 700,
+                    letterSpacing: "0.15em",
+                    cursor: "pointer",
+                    transition: `all ${T.dur_fast} ${T.ease}`,
+                  }}
+                  onMouseEnter={e => {
+                    e.currentTarget.style.borderColor = T.borderFocus;
+                    e.currentTarget.style.color = T.text;
+                  }}
+                  onMouseLeave={e => {
+                    e.currentTarget.style.borderColor = T.border;
+                    e.currentTarget.style.color = T.textMuted;
+                  }}>
+                  ⟳ SHUFFLE
+                </button>
+              </div>
               <div style={{ display: "flex", flexWrap: "wrap", gap: T.s2 }}>
-                {PRESETS.map(p => (
+                {visiblePresets.map(p => (
                   <button key={p.id} type="button"
                     onClick={() => applyPreset(p)}
                     style={{
@@ -5843,8 +6802,7 @@ function EnginePage({ onNavigate }) {
                   tierLocked={isOptionLocked(i)}
                   casinoOutline={casinoOutlines.get(`mood:${o}`)}
                   onClick={() => set("mood", state.mood === o ? "" : o)}
-                  onDoubleClick={() => toggleFavorite("mood", o)}
-                  onLockToggle={() => toggleOptionLock("mood", o)} />
+                  onDoubleClick={() => toggleFavorite("mood", o)} />
               ))}
               {renderCustomTail("mood", (e) => ({
                 isSelected: state.mood === e,
@@ -5864,8 +6822,7 @@ function EnginePage({ onNavigate }) {
                   tierLocked={isOptionLocked(i)}
                   casinoOutline={casinoOutlines.get(`energy:${o}`)}
                   onClick={() => set("energy", state.energy === o ? "" : o)}
-                  onDoubleClick={() => toggleFavorite("energy", o)}
-                  onLockToggle={() => toggleOptionLock("energy", o)} />
+                  onDoubleClick={() => toggleFavorite("energy", o)} />
               ))}
               {renderCustomTail("energy", (e) => ({
                 isSelected: state.energy === e,
@@ -5885,13 +6842,108 @@ function EnginePage({ onNavigate }) {
                   tierLocked={isOptionLocked(i)}
                   casinoOutline={casinoOutlines.get(`groove:${g.id}`)}
                   onClick={() => set("groove", g.id)}
-                  onDoubleClick={() => toggleFavorite("groove", g.id)}
-                  onLockToggle={() => toggleOptionLock("groove", g.id)} />
+                  onDoubleClick={() => toggleFavorite("groove", g.id)} />
               ))}
               {renderCustomTail("groove", (e) => ({
                 isSelected: state.groove === e,
                 onClick: () => set("groove", state.groove === e ? "" : e),
               }))}
+            </div>
+          </Section>
+
+          <Section title="BPM"
+            hint={state.bpm > 0 ? `${state.bpm} BPM` : "Auto — inferred from groove + energy"}
+            toggle={state.toggles.bpm} onToggleChange={v => setToggle("bpm", v)}
+            extra={renderLockBtn("bpm")}>
+            <div style={{ display: "flex", alignItems: "center", gap: T.s3, flexWrap: "wrap" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: T.s2, flex: 1, minWidth: 220 }}>
+                <span style={{
+                  fontFamily: T.font_mono, fontSize: T.fs_xs, color: T.textMuted,
+                  letterSpacing: "0.1em", minWidth: 18,
+                }}>60</span>
+                <input
+                  type="range"
+                  min="60"
+                  max="200"
+                  step="1"
+                  value={state.bpm || 110}
+                  onChange={(e) => set("bpm", parseInt(e.target.value, 10))}
+                  style={{
+                    flex: 1,
+                    height: 6,
+                    WebkitAppearance: "none",
+                    appearance: "none",
+                    background: state.bpm > 0
+                      ? `linear-gradient(90deg, ${T.accent} 0%, ${T.accent} ${((state.bpm - 60) / 140) * 100}%, ${T.border} ${((state.bpm - 60) / 140) * 100}%, ${T.border} 100%)`
+                      : T.border,
+                    borderRadius: 999,
+                    outline: "none",
+                    cursor: "pointer",
+                  }}
+                />
+                <span style={{
+                  fontFamily: T.font_mono, fontSize: T.fs_xs, color: T.textMuted,
+                  letterSpacing: "0.1em", minWidth: 22,
+                }}>200</span>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: T.s2 }}>
+                <div style={{
+                  padding: `${T.s2}px ${T.s3}px`,
+                  background: state.bpm > 0 ? `${T.accent}15` : T.surface,
+                  border: `1px solid ${state.bpm > 0 ? T.accentBorder : T.border}`,
+                  borderRadius: T.r_md,
+                  fontFamily: T.font_mono, fontSize: T.fs_md, fontWeight: 700,
+                  color: state.bpm > 0 ? T.accent : T.textMuted,
+                  minWidth: 72, textAlign: "center",
+                  letterSpacing: "0.05em",
+                }}>
+                  {state.bpm > 0 ? `${state.bpm} BPM` : "auto"}
+                </div>
+                <button type="button"
+                  onClick={() => set("bpm", 60 + Math.floor(Math.random() * 71) * 2)}
+                  title="Random BPM (60-200, step 2)"
+                  style={{
+                    padding: `${T.s2}px ${T.s3}px`,
+                    background: "transparent",
+                    border: `1px solid ${T.border}`,
+                    borderRadius: T.r_md,
+                    color: T.textSec,
+                    fontFamily: T.font_mono, fontSize: T.fs_xs, fontWeight: 700,
+                    letterSpacing: "0.15em",
+                    cursor: "pointer",
+                    transition: `all ${T.dur_fast} ${T.ease}`,
+                  }}
+                  onMouseEnter={e => {
+                    e.currentTarget.style.borderColor = T.borderFocus;
+                    e.currentTarget.style.color = T.text;
+                  }}
+                  onMouseLeave={e => {
+                    e.currentTarget.style.borderColor = T.border;
+                    e.currentTarget.style.color = T.textSec;
+                  }}>
+                  ⟳ RANDOM
+                </button>
+                {state.bpm > 0 && (
+                  <button type="button"
+                    onClick={() => set("bpm", 0)}
+                    title="Reset to auto"
+                    style={{
+                      padding: `${T.s2}px ${T.s3}px`,
+                      background: "transparent",
+                      border: `1px dashed ${T.border}`,
+                      borderRadius: T.r_md,
+                      color: T.textMuted,
+                      fontFamily: T.font_mono, fontSize: T.fs_xs, fontWeight: 700,
+                      letterSpacing: "0.15em",
+                      cursor: "pointer",
+                      transition: `all ${T.dur_fast} ${T.ease}`,
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.color = T.text; }}
+                    onMouseLeave={e => { e.currentTarget.style.color = T.textMuted; }}>
+                    CLEAR
+                  </button>
+                )}
+              </div>
             </div>
           </Section>
 
@@ -5908,8 +6960,7 @@ function EnginePage({ onNavigate }) {
                       tierLocked={isOptionLocked(i)}
                       casinoOutline={casinoOutlines.get(`vocalist:${o}`)}
                       onClick={() => set("vocalist", state.vocalist === o ? "" : o)}
-                      onDoubleClick={() => toggleFavorite("vocalist", o)}
-                      onLockToggle={() => toggleOptionLock("vocalist", o)} />
+                      onDoubleClick={() => toggleFavorite("vocalist", o)} />
                   ))}
                   {renderCustomTail("vocalist", (e) => ({
                     isSelected: state.vocalist === e,
@@ -5928,8 +6979,7 @@ function EnginePage({ onNavigate }) {
                       locked={optionLockSetFor("language").has(lang.code)}
                       casinoOutline={casinoOutlines.get(`language:${lang.code}`)}
                       onClick={() => set("language", lang.code)}
-                      onDoubleClick={() => toggleFavorite("language", lang.code)}
-                      onLockToggle={() => toggleOptionLock("language", lang.code)} />
+                      onDoubleClick={() => toggleFavorite("language", lang.code)} />
                   ))}
                   {renderCustomTail("language", (e) => ({
                     isSelected: state.language === e,
@@ -5949,8 +6999,7 @@ function EnginePage({ onNavigate }) {
                       tierLocked={isOptionLocked(i)}
                       casinoOutline={casinoOutlines.get(`lyricalVibe:${o}`)}
                       onClick={() => set("lyricalVibe", state.lyricalVibe === o ? "" : o)}
-                      onDoubleClick={() => toggleFavorite("lyricalVibe", o)}
-                      onLockToggle={() => toggleOptionLock("lyricalVibe", o)} />
+                      onDoubleClick={() => toggleFavorite("lyricalVibe", o)} />
                   ))}
                   {renderCustomTail("lyricalVibe", (e) => ({
                     isSelected: state.lyricalVibe === e,
@@ -6001,8 +7050,7 @@ function EnginePage({ onNavigate }) {
                   tierLocked={isOptionLocked(i)}
                   casinoOutline={casinoOutlines.get(`harmonic:${o}`)}
                   onClick={() => set("harmonic", state.harmonic === o ? "" : o)}
-                  onDoubleClick={() => toggleFavorite("harmonic", o)}
-                  onLockToggle={() => toggleOptionLock("harmonic", o)} />
+                  onDoubleClick={() => toggleFavorite("harmonic", o)} />
               ))}
               {renderCustomTail("harmonic", (e) => ({
                 isSelected: state.harmonic === e,
@@ -6022,8 +7070,7 @@ function EnginePage({ onNavigate }) {
                   tierLocked={isOptionLocked(i)}
                   casinoOutline={casinoOutlines.get(`texture:${o}`)}
                   onClick={() => set("texture", state.texture === o ? "" : o)}
-                  onDoubleClick={() => toggleFavorite("texture", o)}
-                  onLockToggle={() => toggleOptionLock("texture", o)} />
+                  onDoubleClick={() => toggleFavorite("texture", o)} />
               ))}
               {renderCustomTail("texture", (e) => ({
                 isSelected: state.texture === e,
@@ -6043,8 +7090,7 @@ function EnginePage({ onNavigate }) {
                   tierLocked={isOptionLocked(i)}
                   casinoOutline={casinoOutlines.get(`mix:${o}`)}
                   onClick={() => set("mix", state.mix === o ? "" : o)}
-                  onDoubleClick={() => toggleFavorite("mix", o)}
-                  onLockToggle={() => toggleOptionLock("mix", o)} />
+                  onDoubleClick={() => toggleFavorite("mix", o)} />
               ))}
               {renderCustomTail("mix", (e) => ({
                 isSelected: state.mix === e,
