@@ -116,7 +116,7 @@ const TIER_FEATURES = {
     shareableLinks: false,         // no copy-shareable-link button
     exportJSON: false,             // no JSON export
     // ── Daily Hit allocation — Free gets 10/day, paid tiers get unlimited
-    dailyFuel: { free: 10, pro: 0, vip: 0 },
+    dailyFuel: { free: 10, pro: 0, vip: 0, trend: 0 },
     // ── Genre History
     historyAccess: "main-yearly",  // only main genres, yearly graph only
     historyMaxSelect: 3,
@@ -147,7 +147,7 @@ const TIER_FEATURES = {
     shareableLinks: true,          // copy-to-clipboard share URLs
     exportJSON: false,             // JSON export reserved for VIP
     // ── Fuel — Pro is unlimited
-    dailyFuel: { free: Infinity, pro: Infinity, vip: 0 },
+    dailyFuel: { free: Infinity, pro: Infinity, vip: 0, trend: 0 },
     // ── History
     historyAccess: "full-yearly",
     historyMaxSelect: 5,
@@ -177,7 +177,7 @@ const TIER_FEATURES = {
     shareableLinks: true,
     exportJSON: true,              // export configurations as JSON
     // ── Fuel — VIP gets its own premium fuel type with full allocation
-    dailyFuel: { free: Infinity, pro: Infinity, vip: Infinity },
+    dailyFuel: { free: Infinity, pro: Infinity, vip: Infinity, trend: 50 },
     // ── History — full depth
     historyAccess: "full-monthly",
     historyMaxSelect: 25,
@@ -204,7 +204,7 @@ const TIER_FEATURES = {
     maxPromptVariants: 5,
     shareableLinks: true,
     exportJSON: true,
-    dailyFuel: { free: Infinity, pro: Infinity, vip: Infinity },
+    dailyFuel: { free: Infinity, pro: Infinity, vip: Infinity, trend: Infinity },
     historyAccess: "full-monthly",
     historyMaxSelect: Infinity,
     vipSecretsPage: true,
@@ -220,6 +220,7 @@ const FUEL_TYPES = {
   free:  { id: "free",  label: "Free Hit",  color: "#00FF88", emoji: "🟢" },
   pro:   { id: "pro",   label: "Pro Hit",   color: "#FF1744", emoji: "🔴" },
   vip:   { id: "vip",   label: "VIP Hit",   color: "#C792EA", emoji: "🟣" },
+  trend: { id: "trend", label: "Trend Hit", color: "#FFD700", emoji: "⭐" },
 };
 
 // Free-tier subgenre whitelist: the 3 most mainstream subgenres under each main
@@ -1224,6 +1225,18 @@ const GENRE_TREE = {
     "French Rap": ["Paris cloud rap","Marseille hardcore","French drill"],
     "Latin Rap": ["Spanglish rap","Chicano rap","reggaeton-rap hybrid"],
     "Jersey Drill": ["Newark drill","triplet drill","bed-squeak drill"],
+    "Sexy Drill": ["NYC sexy drill","Cash Cobain lineage","R&B-sampled drill","flirty drill","bedroom drill","melodic sexy drill"],
+    "Jerk": ["West Coast jerk","kashpaint revival","Xaviersobased jerk","melodic-synth jerk","hyperactive jerk","off-kilter jerk"],
+    "Sigilkore": ["Luci4-style occult","bitcrushed sigil","Jewelxxet collective","dark-magic rap","hexD-adjacent","vampiric sigilkore"],
+    "Krushclub": ["jersey-bitcrushed","Odetari krushclub","6arelyhuman bounce","cartoonish krush","video-game rap","Lumi Athena energy"],
+    "Terror Plugg": ["extremo-plugg","distorted 808 terror","Lazer Dim 700 chaos","meme-plugg","ian-goin aesthetic","excruciating plugg"],
+    "Ambient Plugg": ["meditative plugg","Izaya Tiji soundscapes","ethereal ambient-rap","beatless plugg","Babyxsosa drones","Shed Theory ambient"],
+    "Dark Plugg": ["DMV dark plugg","Surreal Gang sound","Glokk40Spaz cadence","Smokingskul lane","haunted plugg","Memphis-tinged plugg"],
+    "PluggnB": ["Summrs pluggnb","Autumn! melodic","Kankan softboy","TikTok pluggnb","bedroom pluggnb","Summrs-era sing-rap"],
+    "Digicore": ["glitched emo-rap","pitched-up digicore","helix tears sound","Discord-core","SoundCloud digicore","hyperpop-adjacent rap"],
+    "HexD": ["Luci4 hexD","noise-rap","mixing-chain hexD","disorienting trap","bitcrush overload","experimental SoundCloud"],
+    "UK Rap": ["UK afroswing","road rap UK","Digga D lane","Central Cee melodic","London drill-adjacent","UK conscious rap"],
+    "Afroswing": ["J Hus-style afroswing","UK Afrobeats hybrid","London afroswing","melodic afroswing","NSG era","Kojo Funds lineage"],
   },
   "R&B / Soul": {
     "Alt R&B": ["noir ballad","glass-pad ambient","fractured soul","digital gospel","cloud R&B","after-hours R&B","cinematic R&B"],
@@ -1254,6 +1267,12 @@ const GENRE_TREE = {
     "Country-Pop": ["Nashville crossover","pop-country hybrid","Shania-lineage"],
     "Latin Pop": ["crossover pop","balada","modern Latin-pop"],
     "Adult Contemporary": ["AC radio","soft-pop","middle-of-road"],
+    "Recession Pop": ["2008-2012 revival","Y2K-maximalist pop","Gaga-era callback","Katy Perry revival","LMFAO resurgence","escapist pop"],
+    "Indie Sleaze": ["2007-era revival","electroclash-pop","Sky Ferreira lineage","hipster disco-pop","Uffie-adjacent","dirty-electro pop"],
+    "Glitchcore Pop": ["glitched bubblegum","hyper-cute pop","Kawaii glitchcore","fractured pop","TikTok glitchcore","mashup-core"],
+    "Pop Country Crossover": ["Morgan Wallen pop-country","Post Malone country","Beyonce Cowboy-era","Shaboozey-lineage","country-rap pop","honky-tonk pop"],
+    "K-Pop 5th Gen": ["NewJeans sound","IVE concept pop","aespa hyperpop K-pop","LE SSERAFIM energy","5th-gen minimalism","easy-listening K-pop"],
+    "Afropop Crossover": ["Tyla-style amapiano-pop","Rema afropop","Burna Boy crossover","Ayra Starr sound","Tems alt-pop"],
   },
   "Disco / Dance": {
     "Classic Disco": ["Philly disco","Chic-style","strings-and-strings disco","four-on-the-floor disco","70s radio disco"],
@@ -1297,6 +1316,18 @@ const GENRE_TREE = {
     "Chillwave": ["hypnagogic pop","glo-fi","dream-chillwave"],
     "Tropical House": ["Kygo-lineage","festival tropical","mellow deep-tropical"],
     "Breakbeat": ["Florida breaks","big beat","progressive breaks"],
+    "3-Step": ["three-kick amapiano","South African 3-step","gqom-influenced 3-step","log-drum 3-step","post-amapiano","diasporic 3-step"],
+    "Gqom": ["Durban gqom","sgubhu","raw gqom","tribal-gqom","warehouse gqom","DJ Lag lineage"],
+    "Brazilian Funk": ["tamborzão","proibidão","funk ostentação","São Paulo ostentação","automotivo","bruxaria","phonk-funk hybrid","favela funk"],
+    "Brazilian Phonk": ["funk-phonk","automotivo phonk","cowbell-funk","MC meme-phonk","drift-funk hybrid","fast Brazilian phonk"],
+    "Speed Garage": ["2026 speed garage","UK speed-garage revival","sub-bass garage","bassline speed-garage","Todd Edwards-adjacent","wobbly speed garage"],
+    "Bassline / UK Bass": ["UK bassline","bassline house","Niche nightclub sound","Leeds bassline","vocal bassline"],
+    "Hard Techno": ["hardgroove","industrial hard techno","180 BPM techno","Sara Landry sound","VTSS-style hard","Berlin hard techno"],
+    "Dark Melodic Techno": ["Afterlife melodic","Anyma sound","Keinemusik melodic","cinematic melodic techno","Ibiza melodic","Tomorrowland-scale melodic"],
+    "Dance Music Revival": ["recession pop rave","2010s EDM revival","big-room revival","mainstage dance","progressive house revival"],
+    "Phonk House": ["phonk-house crossover","distorted house","cowbell house","drift-house fusion"],
+    "Baltimore Club": ["triangle sample club","Baltimore bounce","Rod Lee-style","breakbeat club"],
+    "Rave / Hardcore Revival": ["happy hardcore revival","UK hardcore","rave piano","breakbeat hardcore","Y2K rave revival","modern acid rave"],
   },
   "Latin": {
     "Reggaeton": ["perreo","neoperreo","experimental reggaeton","Latin trap-reggaeton"],
@@ -1314,6 +1345,16 @@ const GENRE_TREE = {
     "Funk Carioca": ["Brazilian funk","favela funk","funk ostentação","bruxaria"],
     "Tango": ["nuevo tango","traditional tango","tango electrónico"],
     "Bolero": ["classic bolero","bolero romántico"],
+    "Neoperreo": ["Tomasa del Real lineage","Isabella Lovestory energy","Tokischa dembow","raw DIY perreo","queer neoperreo","Ms Nina digital"],
+    "Reggaeton Mexa": ["Bellakath sound","Mexican reggaeton","El Malilla wave","CDMX perreo","Mexican urban fusion"],
+    "Reggaeton Chileno": ["FloyyMenor-style","Cris Mj flow","Santiago sound","Chilean street reggaeton","Gata Only lineage","Julianno Sosa vibe"],
+    "Electrocorridos": ["Fuerza Regida EDM","dance-bélico","Los Esquivel sound","Mexican EDM fusion","corrido-house","sierreño-electronic"],
+    "Cumbia Bélica": ["Yahir Saldívar sound","narco-cumbia","SC-9 lineage","Mexican gangster cumbia","Rigo Tovar revival","belikeada style"],
+    "Latin Afrobeats": ["Kapo sound","Shakira Soltera-wave","Elena Rose afro-Latin","Afro-reggaeton","tropical Afrobeats hybrid","Latin-African fusion"],
+    "Jazz Colombiano": ["Bogotá jazz","Colombian fusion","cumbia-jazz hybrid","Andean jazz","modern Colombian jazz"],
+    "Bolero House": ["Latin electronic bolero","bolero-tech fusion","emotional Latin house","nostalgic bolero-EDM"],
+    "Guaracha / Aleteo": ["Colombian guaracha","aleteo","zapateo","South American hard dance","Latino tribal","tribal-guaracha"],
+    "Drum and Bass Latino": ["Latin DnB","Spanish-language DnB","reggaeton-DnB hybrid"],
   },
   "Rock": {
     "Alternative Rock": ["modern alt","90s alternative","college-radio alt","anthem alt"],
@@ -2669,13 +2710,16 @@ function Button({ children, variant = "secondary", size = "md", onClick, disable
 
 // Chip — single select / multi-select option. Casino outline randomly applied during rolling.
 // tierLocked: option exists in the catalog but is hidden behind a tier gate. Displayed
-// with the label blurred and completely non-interactive — cannot be clicked, favorited,
-// locked, or included in random rolls.
-function Chip({ label, selected, onClick, onDoubleClick, onLockToggle, favorite, locked, disabled, size = "md", casinoOutline, tierLocked }) {
+// with the label blurred. Non-interactive UNLESS onLockedClick is provided — in which
+// case clicking the locked chip fires the redirect handler (e.g. navigate to Shop).
+function Chip({ label, selected, onClick, onDoubleClick, onLockToggle, favorite, locked, disabled, size = "md", casinoOutline, tierLocked, onLockedClick }) {
   const [hover, setHover] = useState(false);
   const { layout } = useLayout();
   const isMobile = layout === "mobile";
-  const inactive = disabled || tierLocked;
+  // A tier-locked chip is inactive UNLESS it has a redirect click handler,
+  // in which case it's clickable (only that one gesture — no fav, no lock).
+  const hasLockedRedirect = tierLocked && onLockedClick;
+  const inactive = disabled || (tierLocked && !onLockedClick);
   const sizes = isMobile ? {
     sm: { padding: "9px 14px", fontSize: T.fs_md, minHeight: 40 },
     md: { padding: "11px 16px", fontSize: T.fs_md, minHeight: 44 },
@@ -2704,14 +2748,18 @@ function Chip({ label, selected, onClick, onDoubleClick, onLockToggle, favorite,
   };
   return (
     <span
-      onClick={inactive ? undefined : onClick}
+      onClick={
+        hasLockedRedirect
+          ? (e) => { e.stopPropagation(); onLockedClick(); }
+          : inactive ? undefined : onClick
+      }
       onDoubleClick={inactive ? undefined : onDoubleClick}
       onContextMenu={inactive ? undefined : (e) => {
         if (onLockToggle) { e.preventDefault(); onLockToggle(); }
       }}
-      onMouseEnter={() => !inactive && setHover(true)} onMouseLeave={() => setHover(false)}
+      onMouseEnter={() => (!inactive || hasLockedRedirect) && setHover(true)} onMouseLeave={() => setHover(false)}
       title={tierLocked
-        ? "Upgrade tier to unlock this option"
+        ? (hasLockedRedirect ? "Locked — click to upgrade" : "Upgrade tier to unlock this option")
         : onLockToggle
           ? "Click: select · Double-click: favorite · Right-click: lock"
           : undefined}
@@ -2719,15 +2767,15 @@ function Chip({ label, selected, onClick, onDoubleClick, onLockToggle, favorite,
         ...sizes[size], ...base,
         fontFamily: T.font_sans,
         fontWeight: 450,
-        cursor: inactive ? "not-allowed" : "pointer",
+        cursor: hasLockedRedirect ? "pointer" : (inactive ? "not-allowed" : "pointer"),
         borderRadius: T.r_md, userSelect: "none",
         display: "inline-flex", alignItems: "center", gap: 6,
         transition: `background ${T.dur_fast} ${T.ease}, color ${T.dur_fast} ${T.ease}, border-color ${T.dur_fast} ${T.ease}, box-shadow ${T.dur_fast} ${T.ease}`,
         opacity: tierLocked ? 0.7 : disabled ? 0.35 : 1,
         position: "relative", overflow: "hidden",
-        pointerEvents: tierLocked ? "none" : "auto",
+        pointerEvents: (tierLocked && !hasLockedRedirect) ? "none" : "auto",
       }}
-      aria-label={tierLocked ? "Locked option — upgrade tier to unlock" : undefined}>
+      aria-label={tierLocked ? (hasLockedRedirect ? "Locked option — click to upgrade" : "Locked option — upgrade tier to unlock") : undefined}>
       {/* Diagonal-stripe overlay for locked state — visually distinct from loading */}
       {tierLocked && (
         <span aria-hidden="true" style={{
@@ -3179,11 +3227,7 @@ function Nav({ page, onNavigate }) {
         {!isMobile && (
           <>
             <FuelLever currentPage={page} onNavigate={onNavigate} />
-            <TierLever tier={tier} onChange={setTier} onOpenShop={() => onNavigate("shop")} />
           </>
-        )}
-        {isMobile && (
-          <TierLever tier={tier} onChange={setTier} onOpenShop={() => onNavigate("shop")} />
         )}
         {isMobile && (
           <button type="button"
@@ -3763,7 +3807,7 @@ function HitButton({ onRandomize, isRolling, disabled, compact = false, fuelType
                 animation: isRolling ? "none" : "hitTextShimmer 1.8s ease-in-out infinite",
                 fontStyle: "italic",
               }}>
-                {isRolling ? "◉" : "HIT"}
+                {isRolling ? "◉" : "HIT!"}
               </span>
             </button>
 
@@ -3809,13 +3853,18 @@ function HitButton({ onRandomize, isRolling, disabled, compact = false, fuelType
 // GENRE SLOT PICKER — allows main-only, main+sub, or main+sub+micro commits
 // ════════════════════════════════════════════════════════════════════════════
 
-function GenreSlotPicker({ slots, onChange, slotLocks, onToggleSlotLock, maxSlots = 3, restrictSubgenres = false, locksDisabled = false }) {
+function GenreSlotPicker({ slots, onChange, slotLocks, onToggleSlotLock, maxSlots = 3, restrictSubgenres = false, locksDisabled = false, onNavigateToShop }) {
   const { layout } = useLayout();
   const isMobile = layout === "mobile";
   const [activeSlot, setActiveSlot] = useState(null);
   const [activeCat, setActiveCat] = useState(null);
   const [activeGenre, setActiveGenre] = useState(null);
   const [activeMicro, setActiveMicro] = useState(null);
+  const [searchQuery, setSearchQuery] = useState("");
+
+  // Lowercase query for case-insensitive matching
+  const q = searchQuery.trim().toLowerCase();
+  const matches = (s) => !q || s.toLowerCase().includes(q);
 
   const openSlot = (idx) => {
     setActiveSlot(idx);
@@ -3824,8 +3873,12 @@ function GenreSlotPicker({ slots, onChange, slotLocks, onToggleSlotLock, maxSlot
       const cat = Object.keys(GENRE_TREE).find(c => Object.keys(GENRE_TREE[c]).includes(ex.genre));
       setActiveCat(cat || null); setActiveGenre(ex.genre); setActiveMicro(ex.sub || null);
     } else { setActiveCat(null); setActiveGenre(null); setActiveMicro(null); }
+    setSearchQuery(""); // clear search on open
   };
-  const closeSlot = () => { setActiveSlot(null); setActiveCat(null); setActiveGenre(null); setActiveMicro(null); };
+  const closeSlot = () => {
+    setActiveSlot(null); setActiveCat(null); setActiveGenre(null); setActiveMicro(null);
+    setSearchQuery("");
+  };
 
   // INSTANT COMMIT: any selection mutates the slot immediately
   const commitSlot = (mainCat, subGenre, micro) => {
@@ -3948,10 +4001,64 @@ function GenreSlotPicker({ slots, onChange, slotLocks, onToggleSlotLock, maxSlot
             <Button variant="ghost" size="sm" onClick={closeSlot}>Close</Button>
           </div>
 
+          {/* Search bar — filters categories, subgenres, and microstyles live */}
+          <div style={{ marginBottom: T.s4 }}>
+            <div style={{ position: "relative" }}>
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search genres, subgenres, microstyles…"
+                style={{
+                  width: "100%", boxSizing: "border-box",
+                  padding: `10px 36px 10px 36px`,
+                  background: T.bg,
+                  border: `1px solid ${searchQuery ? T.borderFocus : T.border}`,
+                  borderRadius: T.r_md,
+                  color: T.text,
+                  fontFamily: T.font_sans,
+                  fontSize: 16,  // 16px to prevent iOS zoom
+                  outline: "none",
+                  transition: `border-color ${T.dur_fast} ${T.ease}`,
+                }}
+                onFocus={(e) => { e.currentTarget.style.borderColor = T.borderFocus; }}
+                onBlur={(e) => { e.currentTarget.style.borderColor = searchQuery ? T.borderFocus : T.border; }}
+              />
+              {/* Search icon (left) */}
+              <span style={{
+                position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)",
+                color: T.textMuted, fontSize: 14, pointerEvents: "none",
+              }}>⌕</span>
+              {/* Clear button (right) */}
+              {searchQuery && (
+                <button type="button"
+                  onClick={() => setSearchQuery("")}
+                  style={{
+                    position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)",
+                    width: 24, height: 24,
+                    background: "transparent", border: "none", color: T.textMuted,
+                    cursor: "pointer", fontSize: 16, lineHeight: 1,
+                    borderRadius: "50%",
+                  }}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = T.elevated; e.currentTarget.style.color = T.text; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = T.textMuted; }}
+                >✕</button>
+              )}
+            </div>
+          </div>
+
           <div style={{ marginBottom: T.s4 }}>
             <Label color={T.textTer} style={{ display: "block", marginBottom: T.s2 }}>Main genre (commits immediately)</Label>
             <div style={{ display: "flex", flexWrap: "wrap", gap: T.s1 }}>
-              {Object.keys(GENRE_TREE).map(cat => (
+              {Object.keys(GENRE_TREE).filter(cat => {
+                if (!q) return true;
+                // Show category if: its own name matches, OR any of its subgenres/microstyles match
+                if (matches(cat)) return true;
+                const subs = GENRE_TREE[cat];
+                return Object.keys(subs).some(sub =>
+                  matches(sub) || (subs[sub] || []).some(matches)
+                );
+              }).map(cat => (
                 <Chip key={cat} label={cat} selected={activeCat === cat}
                   onClick={() => {
                     if (activeCat === cat) {
@@ -3971,41 +4078,59 @@ function GenreSlotPicker({ slots, onChange, slotLocks, onToggleSlotLock, maxSlot
             <div style={{ marginBottom: T.s4 }}>
               <Label color={T.textTer} style={{ display: "block", marginBottom: T.s2 }}>
                 Subgenre <span style={{ color: T.textMuted, textTransform: "none", letterSpacing: 0 }}>
-                  (optional · refines your selection){restrictSubgenres ? " · free-fuel list" : ""}
+                  (optional · refines your selection){restrictSubgenres ? " · Pro unlocks full list" : ""}
                 </span>
               </Label>
               <div style={{ display: "flex", flexWrap: "wrap", gap: T.s1 }}>
                 {Object.keys(GENRE_TREE[activeCat])
-                  .filter(g => !restrictSubgenres || (FREE_SUBGENRES[activeCat] || []).includes(g))
-                  .map(g => (
-                    <Chip key={g} label={g} selected={activeGenre === g}
-                      onClick={() => {
-                        if (activeGenre === g) {
-                          setActiveGenre(null); setActiveMicro(null);
-                          commitSlot(activeCat, null, null);
-                        } else {
-                          setActiveGenre(g); setActiveMicro(null);
-                          commitSlot(activeCat, g, null);
-                        }
-                      }} size="sm" />
-                  ))}
+                  .filter(g => {
+                    if (!q) return true;
+                    if (matches(activeCat) || matches(g)) return true;
+                    return (GENRE_TREE[activeCat][g] || []).some(matches);
+                  })
+                  .map(g => {
+                    const isFreeAllowed = !restrictSubgenres || (FREE_SUBGENRES[activeCat] || []).includes(g);
+                    return (
+                      <Chip key={g} label={g} selected={activeGenre === g}
+                        tierLocked={!isFreeAllowed}
+                        onLockedClick={!isFreeAllowed && onNavigateToShop ? () => onNavigateToShop() : undefined}
+                        onClick={() => {
+                          if (activeGenre === g) {
+                            setActiveGenre(null); setActiveMicro(null);
+                            commitSlot(activeCat, null, null);
+                          } else {
+                            setActiveGenre(g); setActiveMicro(null);
+                            commitSlot(activeCat, g, null);
+                          }
+                        }} size="sm" />
+                    );
+                  })}
               </div>
             </div>
           )}
 
-          {activeCat && activeGenre && !restrictSubgenres && (
+          {activeCat && activeGenre && (
             <div>
               <Label color={T.textTer} style={{ display: "block", marginBottom: T.s2 }}>
-                Microstyle <span style={{ color: T.textMuted, textTransform: "none", letterSpacing: 0 }}>(optional)</span>
+                Microstyle <span style={{ color: T.textMuted, textTransform: "none", letterSpacing: 0 }}>
+                  (optional){restrictSubgenres ? " · Pro unlocks microstyles" : ""}
+                </span>
               </Label>
               <div style={{ display: "flex", flexWrap: "wrap", gap: T.s1 }}>
-                {(GENRE_TREE[activeCat]?.[activeGenre] || []).map(m => (
-                  <Chip key={m} label={m} selected={activeMicro === m}
-                    onClick={() => {
-                      const nextMicro = activeMicro === m ? null : m;
-                      setActiveMicro(nextMicro);
-                      commitSlot(activeCat, activeGenre, nextMicro);
-                    }} size="sm" />
+                {(GENRE_TREE[activeCat]?.[activeGenre] || [])
+                  .filter(m => {
+                    if (!q) return true;
+                    return matches(m) || matches(activeGenre) || matches(activeCat);
+                  })
+                  .map(m => (
+                    <Chip key={m} label={m} selected={activeMicro === m}
+                      tierLocked={restrictSubgenres}
+                      onLockedClick={restrictSubgenres && onNavigateToShop ? () => onNavigateToShop() : undefined}
+                      onClick={() => {
+                        const nextMicro = activeMicro === m ? null : m;
+                        setActiveMicro(nextMicro);
+                        commitSlot(activeCat, activeGenre, nextMicro);
+                      }} size="sm" />
                 ))}
               </div>
             </div>
@@ -4828,7 +4953,7 @@ function CasinoParticles({ isRolling }) {
 // ENGINE PAGE
 // ════════════════════════════════════════════════════════════════════════════
 
-function EnginePage() {
+function EnginePage({ onNavigate }) {
   const { tier, features } = useTier();
   const { layout } = useLayout();
   const { fuels, activeFuel, consumeFuel } = useFuel();
@@ -5455,7 +5580,8 @@ function EnginePage() {
               slotLocks={state.slotLocks} onToggleSlotLock={toggleSlotLock}
               maxSlots={effectiveLimits.maxSlots}
               restrictSubgenres={effectiveLimits.restrictSubgenres}
-              locksDisabled={!effectiveLimits.locksAvailable} />
+              locksDisabled={!effectiveLimits.locksAvailable}
+              onNavigateToShop={() => onNavigate && onNavigate("shop")} />
           </Section>
 
           <Section title="Mood"
@@ -5653,7 +5779,32 @@ function EnginePage() {
             : `${T.s8}px ${T.s8}px ${T.s10}px ${T.s7}px`,
         }}>
           <div style={{ marginBottom: T.s5, display: "flex", flexDirection: "column", gap: T.s3 }}>
-            <FuelGearshift compact={isMobile} />
+            {features.dailyFuel.trend > 0
+              ? <Joystick onNavigate={onNavigate} />
+              : <FuelGearshift compact={isMobile} />}
+            {/* Credits counter — shows current fuel remaining for active type */}
+            <div style={{
+              display: "flex", alignItems: "center", justifyContent: "space-between",
+              padding: `${T.s2}px ${T.s3}px`,
+              background: T.surface,
+              border: `1px solid ${FUEL_TYPES[activeFuel].color}44`,
+              borderRadius: T.r_md,
+              fontFamily: T.font_mono, fontSize: T.fs_xs,
+            }}>
+              <span style={{
+                color: T.textMuted, letterSpacing: "0.2em", fontWeight: 700,
+              }}>
+                CREDITS
+              </span>
+              <span style={{
+                color: FUEL_TYPES[activeFuel].color,
+                textShadow: `0 0 8px ${FUEL_TYPES[activeFuel].color}66`,
+                fontSize: T.fs_lg, fontWeight: 700,
+                letterSpacing: "0.05em",
+              }}>
+                {Number.isFinite(fuels[activeFuel]) ? fuels[activeFuel] : "∞"}
+              </span>
+            </div>
             <HitButton onRandomize={triggerHit} isRolling={isRolling}
               disabled={Number.isFinite(fuels[activeFuel]) && fuels[activeFuel] <= 0}
               compact={isMobile} fuelType={activeFuel} />
@@ -11249,6 +11400,541 @@ function PlaybookBlock({ block, isMobile }) {
 }
 
 // ════════════════════════════════════════════════════════════════════════════
+// TREND SETTER — VIP-only page, reached via joystick by switching to Trend fuel.
+// Generates prompts biased toward currently-viral songs/artists per region.
+// ════════════════════════════════════════════════════════════════════════════
+
+// Regional viral items researched April 2026. Each item = { artist, track, genre, style }
+// where `genre` maps into GENRE_TREE and `style` is a short prompt hint.
+const TREND_DATA = {
+  us: {
+    label: "USA",
+    flag: "🇺🇸",
+    items: [
+      { artist: "Doechii", track: "Anxiety", genre: "Alternative Hip-Hop", style: "rap with Gotye sample, introspective, viral TikTok" },
+      { artist: "Alex Warren", track: "Ordinary", genre: "Indie Pop", style: "singer-songwriter, emotional acoustic, TikTok breakout" },
+      { artist: "sombr", track: "back to friends", genre: "Bedroom Pop", style: "intimate indie, Gen-Z melancholy, acoustic-led" },
+      { artist: "Tate McRae", track: "Greedy / So Close To What", genre: "Dance-Pop", style: "modern dance-pop, Y2K-influenced, club-ready" },
+      { artist: "KATSEYE", track: "Gnarly / Gabriela", genre: "K-Pop 5th Gen", style: "global girl group, dance-pop, viral hooks" },
+      { artist: "Chappell Roan", track: "Pink Pony Club", genre: "Dance-Pop", style: "theatrical queer pop, disco-leaning, camp" },
+      { artist: "Gracie Abrams", track: "That's So True", genre: "Indie Pop", style: "Taylor-adjacent indie-pop, breathy vocal, intimate" },
+      { artist: "Lola Young", track: "Messy", genre: "Alt R&B", style: "British alt-soul, raspy vocal, confessional" },
+      { artist: "Post Malone", track: "I Had Some Help", genre: "Pop Country Crossover", style: "country-pop fusion, radio-ready, mid-tempo" },
+      { artist: "Shaboozey", track: "A Bar Song (Tipsy)", genre: "Pop Country Crossover", style: "country-rap hybrid, anthemic chorus, sing-along" },
+      { artist: "Morgan Wallen", track: "Love Somebody", genre: "Country-Pop", style: "modern country, arena pop-country, heartland" },
+      { artist: "Beyoncé", track: "Texas Hold 'Em", genre: "Pop Country Crossover", style: "country-pop statement, anthemic, crossover" },
+      { artist: "Kendrick Lamar", track: "Not Like Us / Luther", genre: "Conscious Hip-Hop", style: "West Coast rap, intricate wordplay, cultural moment" },
+      { artist: "Ken Carson", track: "Overseas / Jennifer's Body", genre: "Rage Rap", style: "distorted 808s, screamed Auto-Tune, Opium Records" },
+      { artist: "Playboi Carti", track: "MUSIC (album)", genre: "Rage Rap", style: "baby-voice, glitched synths, experimental" },
+      { artist: "Sabrina Carpenter", track: "Espresso / Please Please Please", genre: "Dance-Pop", style: "breezy disco-pop, witty lyrics, sunlit" },
+      { artist: "Taylor Swift", track: "The Fate of Ophelia / Opalite", genre: "Pop", style: "pop storytelling, cinematic production, Showgirl era" },
+      { artist: "Billie Eilish", track: "Birds of a Feather", genre: "Dark Pop", style: "whispered alt-pop, sparse production, brooding" },
+      { artist: "Ravyn Lenae", track: "Love Me Not", genre: "Alt R&B", style: "Chicago alt-R&B, silky vocals, Steve Lacy adjacent" },
+      { artist: "Tyla", track: "Water / Push 2 Start", genre: "Afropop Crossover", style: "amapiano-pop, log drums, silky South African" },
+      { artist: "Rema", track: "Calm Down / DND", genre: "Afropop Crossover", style: "Afrobeats-pop crossover, melodic, global" },
+      { artist: "Dave", track: "Raindance (w/ Tems)", genre: "UK Rap", style: "UK rap, piano-led, introspective" },
+      { artist: "PinkPantheress", track: "Illegal", genre: "UK Garage", style: "UK garage-pop hybrid, 2-step, bedroom glitch" },
+    ],
+  },
+  il: {
+    label: "Israel",
+    flag: "🇮🇱",
+    items: [
+      { artist: "Eyal Golan", track: "Contemporary Mizrahi hits", genre: "World / Global", style: "Mizrahi Hebrew pop, Middle Eastern melisma, anthemic" },
+      { artist: "Omer Adam", track: "Malkat HaDor", genre: "Pop", style: "Israeli mainstream pop, Mizrahi-inflected, radio king" },
+      { artist: "Noa Kirel", track: "Unicorn-era / post-Eurovision", genre: "Dance-Pop", style: "trilingual Israeli pop, choreographed, Eurovision polish" },
+      { artist: "Hanan Ben Ari", track: "Achi / singer-songwriter catalog", genre: "Indie Folk", style: "Hebrew singer-songwriter, literate lyrics, heartfelt" },
+      { artist: "Itay Levy", track: "Mizrahi pop hits", genre: "World / Global", style: "Mediterranean Hebrew pop, modern Mizrahi production" },
+      { artist: "Osher Cohen", track: "Mizrahi breakthrough tracks", genre: "World / Global", style: "new-generation Mizrahi, heartbreak lyrics, young IL voice" },
+      { artist: "Peer Tasi", track: "Mizrahi pop", genre: "Pop", style: "contemporary Israeli Mizrahi, youthful energy, streaming hits" },
+      { artist: "Eden Ben Zaken", track: "Mizrahi pop ballads", genre: "Pop", style: "Israeli pop diva, Middle Eastern strings, emotive vocals" },
+      { artist: "Static & Ben El", track: "Israeli pop-dance duo", genre: "Dance-Pop", style: "Israeli pop-hop fusion, Hebrew-English mix, summer radio" },
+      { artist: "Idan Raichel", track: "Ethnic fusion catalog", genre: "World / Global", style: "Israeli world-fusion, Hebrew-Amharic-Arabic, cinematic" },
+      { artist: "Tuna", track: "Israeli hip-hop catalog", genre: "Conscious Hip-Hop", style: "Hebrew hip-hop, spoken-word heavy, IL veteran" },
+      { artist: "Ido Maimon", track: "Sample-heavy productions", genre: "Conscious Hip-Hop", style: "Israeli hip-hop producer, jazz-sampled, crate-digger" },
+      { artist: "Nechi Nech", track: "Contemporary IL rap", genre: "Melodic Rap", style: "modern Hebrew rap, melodic flow, TikTok presence" },
+      { artist: "Berry Sakharof", track: "Kacha Ze / 90s resurgence", genre: "Indie Rock", style: "classic IL rock, Hebrew alt, chart-resurgent" },
+      { artist: "Maya Beisar", track: "Art-concept instrumental", genre: "Classical / Orchestral", style: "Israeli cello-and-electronics, Middle-Eastern, art-music" },
+      { artist: "Shira Ben Simchon", track: "Hebrew pop ballads", genre: "Pop", style: "emotional Hebrew pop, Idan Raichel collabs, melodic" },
+      { artist: "Narkis", track: "Yemenite tribute revival", genre: "World / Global", style: "Yemenite Israeli folk revival, traditional-modern fusion" },
+      { artist: "Tehran soundtrack", track: "Iran-themed Israeli TV", genre: "Soundtrack / Score", style: "Middle Eastern cinematic, Persian-Mizrahi fusion, atmospheric" },
+      { artist: "Ivri Lider", track: "Israeli pop legend", genre: "Pop", style: "IL pop icon, Hebrew storytelling, radio classic" },
+      { artist: "The Idan Raichel Project", track: "Multi-language fusion", genre: "World / Global", style: "Hebrew-Amharic-Arabic collaborative, piano-led, world" },
+    ],
+  },
+  uk: {
+    label: "UK",
+    flag: "🇬🇧",
+    items: [
+      { artist: "Central Cee", track: "BAND4BAND / Doja", genre: "UK Rap", style: "UK drill-melodic hybrid, confident flow, British slang" },
+      { artist: "Sam Fender", track: "Rein Me In (w/ Olivia Dean)", genre: "Indie Rock", style: "Geordie indie, heartland-rock, UK stadium-ready" },
+      { artist: "Olivia Dean", track: "So Easy / Messy", genre: "Alt R&B", style: "British neo-soul, warm vocals, jazz-inflected" },
+      { artist: "Raye", track: "Where Is My Husband! / Escapism", genre: "Alt R&B", style: "British pop-R&B, confessional, genre-bending" },
+      { artist: "Dave", track: "Raindance (w/ Tems)", genre: "UK Rap", style: "UK rap-pop fusion, piano-led, articulate" },
+      { artist: "PinkPantheress", track: "Illegal / Capable of love", genre: "UK Garage", style: "UK garage-pop crossover, 2-step, breathy whispers" },
+      { artist: "Lola Young", track: "Messy", genre: "Alt R&B", style: "British raw vocal, London alt-pop, raspy confessional" },
+      { artist: "sombr", track: "back to friends", genre: "Bedroom Pop", style: "NY-UK adjacent indie, bedroom-intimate, viral TikTok" },
+      { artist: "Harry Styles", track: "Aperture", genre: "Pop", style: "classic-pop craftsmanship, British charm, modern-retro" },
+      { artist: "Djo (Joe Keery)", track: "End of Beginning", genre: "Indie Rock", style: "dreamy indie-rock, Stranger Things adjacent, jangle" },
+      { artist: "Central Cee x Dave", track: "Sprinter", genre: "UK Rap", style: "UK rap crossover, drill-adjacent, summer anthem" },
+      { artist: "Skepta", track: "UK grime veteran catalog", genre: "Grime", style: "UK grime, 140 BPM, square-wave bass, bar-heavy" },
+      { artist: "Stormzy", track: "Gang Signs era + new", genre: "UK Rap", style: "UK rap-gospel hybrid, London mainstream, anthemic" },
+      { artist: "Jess Glynne", track: "Hold My Hand (Jet2 revival)", genre: "Dance-Pop", style: "British dance-pop, summer radio, viral meme-song" },
+      { artist: "Zara Larsson", track: "Lush Life / Midnight Sun", genre: "Dance-Pop", style: "Swedish-UK pop crossover, polished production, radio-ready" },
+      { artist: "Malcolm Todd", track: "Moody R&B singles", genre: "Alt R&B", style: "UK soulful melancholy, R&B-artistic, fashion-edit ready" },
+      { artist: "YUKIXDX", track: "Babydoll Hoodtrap", genre: "UK Rap", style: "UK underground rap, bass-heavy, TikTok viral" },
+      { artist: "Tame Impala (UK charts)", track: "First UK top-10", genre: "Psychedelic Rock", style: "psychedelic pop-rock, Kevin Parker, synth-heavy" },
+      { artist: "Bella Kay", track: "UK breakthrough", genre: "Indie Pop", style: "rising British indie, TikTok-origin, Gen-Z pop" },
+      { artist: "Ed Sheeran", track: "Azizam / new era", genre: "Pop", style: "UK pop craftsmanship, acoustic-pop, global radio" },
+    ],
+  },
+};
+
+function TrendSetterPage() {
+  const { layout } = useLayout();
+  const { fuels, consumeFuel, setActiveFuel } = useFuel();
+  const isMobile = layout === "mobile";
+  const [region, setRegion] = useState("us");
+  const [selectedItem, setSelectedItem] = useState(null);
+  const [copyState, setCopyState] = useState("idle");
+
+  // On unmount (user leaves Trend Setter), snap fuel back to free.
+  // Per product decision: always snap to free regardless of prior state.
+  useEffect(() => {
+    return () => {
+      setActiveFuel("free");
+    };
+  }, [setActiveFuel]);
+
+  const regionData = TREND_DATA[region];
+  const trendFuelLeft = fuels.trend;
+
+  const generatePrompt = (item) => {
+    // Deterministic prompt built from the viral item's metadata
+    return `${item.genre}, in the style of ${item.artist} "${item.track}", ${item.style}, modern mix, radio-ready production, 2026 viral energy`;
+  };
+
+  const doCopy = async (text) => {
+    const ok = await copyToClipboard(text);
+    setCopyState(ok ? "copied" : "error");
+    setTimeout(() => setCopyState("idle"), 2000);
+  };
+
+  return (
+    <div style={{
+      maxWidth: 1100, margin: "0 auto",
+      padding: isMobile ? `${T.s6}px ${T.s4}px ${T.s10}px` : `${T.s8}px ${T.s7}px ${T.s10}px`,
+    }}>
+      {/* Masthead */}
+      <div style={{ marginBottom: T.s8, paddingBottom: T.s6, borderBottom: `1px solid ${T.border}` }}>
+        <div style={{
+          display: "flex", alignItems: "center", gap: T.s3, marginBottom: T.s4,
+          fontSize: 10, fontFamily: T.font_mono, letterSpacing: "0.22em",
+        }}>
+          <span style={{ color: "#FFD700", fontWeight: 700, textShadow: "0 0 6px #FFD70066" }}>⭐ TREND SETTER · VIP</span>
+          <div style={{ flex: 1, height: 1, background: `linear-gradient(90deg, #FFD70066 0%, transparent 100%)` }} />
+          <span style={{ color: T.textMuted }}>
+            FUEL: {Number.isFinite(trendFuelLeft) ? trendFuelLeft : "∞"} / 50
+          </span>
+        </div>
+        <h1 style={{
+          fontSize: isMobile ? "clamp(48px, 13vw, 80px)" : "clamp(80px, 9vw, 140px)",
+          lineHeight: 0.92, letterSpacing: "-0.03em",
+          margin: 0, marginBottom: T.s4,
+          fontFamily: T.font_display, fontWeight: 400, fontStyle: "italic",
+          color: T.text,
+        }}>
+          Trend Setter
+        </h1>
+        <p style={{
+          fontSize: isMobile ? T.fs_lg : T.fs_xl, lineHeight: 1.4, color: T.textSec,
+          fontFamily: T.font_display, fontStyle: "italic", margin: 0, maxWidth: 640,
+        }}>
+          Ride the currents. Generate prompts biased toward what's peaking right now in your chosen region.
+        </p>
+      </div>
+
+      {/* Region tabs */}
+      <div style={{
+        display: "flex", gap: T.s2, marginBottom: T.s6, flexWrap: "wrap",
+      }}>
+        {Object.entries(TREND_DATA).map(([id, data]) => {
+          const active = region === id;
+          return (
+            <button key={id} type="button"
+              onClick={() => { setRegion(id); setSelectedItem(null); }}
+              style={{
+                display: "inline-flex", alignItems: "center", gap: T.s2,
+                padding: `${T.s3}px ${T.s4}px`,
+                background: active ? `linear-gradient(135deg, #FFD70022 0%, transparent 100%)` : T.surface,
+                border: `1px solid ${active ? "#FFD70088" : T.border}`,
+                borderRadius: T.r_md, cursor: "pointer",
+                fontSize: T.fs_md, fontFamily: T.font_sans,
+                fontWeight: active ? 600 : 500,
+                color: active ? T.text : T.textSec,
+                transition: `all ${T.dur_fast} ${T.ease}`,
+              }}>
+              <span style={{ fontSize: 20 }}>{data.flag}</span>
+              {data.label}
+              <span style={{ fontSize: 10, fontFamily: T.font_mono, color: T.textMuted, marginLeft: 4 }}>
+                {data.items.length}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Trend grid */}
+      <div style={{
+        display: "grid",
+        gridTemplateColumns: isMobile ? "1fr" : "repeat(auto-fill, minmax(280px, 1fr))",
+        gap: T.s3, marginBottom: T.s7,
+      }}>
+        {regionData.items.map((item, i) => {
+          const isSelected = selectedItem === item;
+          return (
+            <button key={i} type="button"
+              onClick={() => setSelectedItem(item)}
+              style={{
+                textAlign: "left", padding: T.s4,
+                background: isSelected
+                  ? `linear-gradient(135deg, #FFD70014 0%, transparent 100%)`
+                  : T.surface,
+                border: `1px solid ${isSelected ? "#FFD70088" : T.border}`,
+                borderRadius: T.r_lg, cursor: "pointer",
+                transition: `all ${T.dur_fast} ${T.ease}`,
+              }}>
+              <div style={{
+                fontSize: 9, fontFamily: T.font_mono, fontWeight: 700,
+                color: "#FFD700", letterSpacing: "0.22em", marginBottom: 6,
+              }}>
+                #{String(i + 1).padStart(2, "0")} · {regionData.flag}
+              </div>
+              <div style={{
+                fontSize: T.fs_lg, fontFamily: T.font_sans, fontWeight: 600,
+                color: T.text, marginBottom: 4, letterSpacing: "-0.01em",
+              }}>
+                {item.artist}
+              </div>
+              <div style={{
+                fontSize: T.fs_sm, fontFamily: T.font_display, fontStyle: "italic",
+                color: T.textSec, marginBottom: T.s2, lineHeight: 1.3,
+              }}>
+                {item.track}
+              </div>
+              <div style={{
+                fontSize: 10, fontFamily: T.font_mono, color: T.textMuted,
+                letterSpacing: "0.08em", textTransform: "uppercase",
+              }}>
+                {item.genre}
+              </div>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Selected item detail */}
+      {selectedItem && (
+        <div style={{
+          padding: T.s5,
+          background: `linear-gradient(135deg, #FFD70008 0%, transparent 100%)`,
+          border: `1px solid #FFD70044`, borderRadius: T.r_lg, marginBottom: T.s7,
+        }}>
+          <div style={{
+            fontSize: 10, fontFamily: T.font_mono, fontWeight: 700,
+            color: "#FFD700", letterSpacing: "0.22em", marginBottom: T.s3,
+          }}>
+            ▸ GENERATED TREND PROMPT
+          </div>
+          <div style={{
+            padding: T.s4, background: T.bg,
+            border: `1px solid ${T.border}`, borderRadius: T.r_md,
+            fontFamily: T.font_mono, fontSize: T.fs_md, lineHeight: 1.6,
+            color: T.text, marginBottom: T.s3,
+          }}>
+            {generatePrompt(selectedItem)}
+          </div>
+          <button type="button"
+            onClick={() => doCopy(generatePrompt(selectedItem))}
+            style={{
+              padding: `${T.s3}px ${T.s5}px`,
+              background: copyState === "copied" ? T.success : "#FFD700",
+              border: "none", borderRadius: T.r_md,
+              color: "#000", fontWeight: 700, fontSize: T.fs_md,
+              fontFamily: T.font_sans, cursor: "pointer",
+              letterSpacing: "0.05em",
+              transition: "all 160ms ease-out",
+            }}>
+            {copyState === "copied" ? "✓ Copied" : "Copy prompt"}
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// JOYSTICK — retro single-stick fuel selector (Atari-2600 style).
+// Shows 2-3 positions depending on tier. Moving to trend snaps to TrendSetterPage
+// with a tire-smoke animation and synthesized car-takeoff sound via Web Audio.
+// ════════════════════════════════════════════════════════════════════════════
+
+// Synthesize car-takeoff sound via Web Audio. ~3 seconds, decays naturally.
+// Uses oscillator with rising frequency + noise for tire screech texture.
+function playCarTakeoffSound() {
+  try {
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    if (!AudioCtx) return;
+    const ctx = new AudioCtx();
+    const now = ctx.currentTime;
+
+    // Engine low-rumble: rising sawtooth from 80Hz to 200Hz
+    const engine = ctx.createOscillator();
+    engine.type = "sawtooth";
+    engine.frequency.setValueAtTime(80, now);
+    engine.frequency.exponentialRampToValueAtTime(200, now + 2.5);
+    const engineGain = ctx.createGain();
+    engineGain.gain.setValueAtTime(0.25, now);
+    engineGain.gain.exponentialRampToValueAtTime(0.001, now + 3);
+    engine.connect(engineGain).connect(ctx.destination);
+    engine.start(now);
+    engine.stop(now + 3);
+
+    // High-pitched screech (tire slip)
+    const screech = ctx.createOscillator();
+    screech.type = "square";
+    screech.frequency.setValueAtTime(1800, now);
+    screech.frequency.exponentialRampToValueAtTime(400, now + 0.6);
+    const screechGain = ctx.createGain();
+    screechGain.gain.setValueAtTime(0.08, now);
+    screechGain.gain.exponentialRampToValueAtTime(0.001, now + 0.8);
+    screech.connect(screechGain).connect(ctx.destination);
+    screech.start(now);
+    screech.stop(now + 0.8);
+
+    // Noise burst (tire smoke / road)
+    const bufferSize = ctx.sampleRate * 3;
+    const noiseBuffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+    const noiseData = noiseBuffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) noiseData[i] = (Math.random() * 2 - 1) * (1 - i / bufferSize);
+    const noise = ctx.createBufferSource();
+    noise.buffer = noiseBuffer;
+    const noiseFilter = ctx.createBiquadFilter();
+    noiseFilter.type = "lowpass";
+    noiseFilter.frequency.value = 2000;
+    const noiseGain = ctx.createGain();
+    noiseGain.gain.setValueAtTime(0.12, now);
+    noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 2.5);
+    noise.connect(noiseFilter).connect(noiseGain).connect(ctx.destination);
+    noise.start(now);
+    noise.stop(now + 3);
+  } catch (err) {
+    // Silent fail — audio isn't critical
+    console.log("Audio unavailable:", err);
+  }
+}
+
+function Joystick({ onNavigate }) {
+  const { tier, features } = useTier();
+  const { fuels, activeFuel, setActiveFuel } = useFuel();
+  const [transitioning, setTransitioning] = useState(false);
+
+  // Available positions based on tier. Free gets [free]; Pro gets [free, pro];
+  // VIP gets [free, pro, trend]. Positions arranged horizontally on joystick tilt axis.
+  const hasTrend = features.dailyFuel.trend > 0;
+  const positions = hasTrend
+    ? ["free", "pro", "trend"]
+    : (tier !== "free" ? ["free", "pro"] : ["free"]);
+
+  const currentIdx = Math.max(0, positions.indexOf(activeFuel));
+
+  // Tilt angle based on position: 0 = left, 1 = center, 2 = right
+  // For 3 positions: -30°, 0°, +30°. For 2: -20°, +20°. For 1: 0°.
+  const tiltAngle = positions.length === 3
+    ? (currentIdx - 1) * 30
+    : positions.length === 2
+      ? (currentIdx * 2 - 1) * 20
+      : 0;
+
+  const handleSelect = (pos) => {
+    if (pos === activeFuel) return;
+    setActiveFuel(pos);
+    // If moving to trend → trigger animation + navigate
+    if (pos === "trend") {
+      setTransitioning(true);
+      playCarTakeoffSound();
+      setTimeout(() => {
+        onNavigate("trendsetter");
+        setTransitioning(false);
+      }, 1800); // animation duration
+    }
+  };
+
+  return (
+    <>
+      {/* Transition overlay — tire smoke animation */}
+      {transitioning && (
+        <div style={{
+          position: "fixed", inset: 0, zIndex: 10000, pointerEvents: "none",
+          background: "radial-gradient(ellipse at center, rgba(60,60,60,0.7) 0%, rgba(20,20,20,0.95) 80%)",
+          animation: "smokeBurst 1.8s ease-out forwards",
+        }}>
+          <style>{`
+            @keyframes smokeBurst {
+              0%   { opacity: 0; backdrop-filter: blur(0px); }
+              20%  { opacity: 1; backdrop-filter: blur(8px); }
+              80%  { opacity: 1; backdrop-filter: blur(14px); }
+              100% { opacity: 0; backdrop-filter: blur(0px); }
+            }
+            @keyframes smokePuff {
+              from { transform: scale(0.4) translateY(0); opacity: 0.8; }
+              to   { transform: scale(3) translateY(-80px); opacity: 0; }
+            }
+          `}</style>
+          {/* Multiple smoke puff particles */}
+          {Array.from({ length: 12 }).map((_, i) => {
+            const delay = Math.random() * 0.4;
+            const size = 80 + Math.random() * 120;
+            const x = 30 + Math.random() * 40;
+            const y = 40 + Math.random() * 40;
+            return (
+              <div key={i} style={{
+                position: "absolute", left: `${x}%`, top: `${y}%`,
+                width: size, height: size, borderRadius: "50%",
+                background: "radial-gradient(circle, rgba(220,220,220,0.4) 0%, transparent 70%)",
+                animation: `smokePuff 1.6s ease-out ${delay}s forwards`,
+                pointerEvents: "none",
+              }} />
+            );
+          })}
+          {/* Central text */}
+          <div style={{
+            position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -50%)",
+            fontSize: "clamp(32px, 6vw, 72px)",
+            fontFamily: T.font_display, fontStyle: "italic",
+            color: "#FFD700", textShadow: "0 0 20px #FFD70088, 0 4px 20px rgba(0,0,0,0.8)",
+            letterSpacing: "-0.02em",
+          }}>
+            ⭐ Going Trend
+          </div>
+        </div>
+      )}
+
+      {/* Joystick SVG */}
+      <div style={{
+        display: "flex", flexDirection: "column", alignItems: "center", gap: T.s2,
+        padding: T.s3,
+      }}>
+        <div style={{
+          fontSize: 9, fontFamily: T.font_mono, fontWeight: 700,
+          letterSpacing: "0.22em", color: T.textMuted, marginBottom: 2,
+        }}>
+          / FUEL SELECTOR
+        </div>
+        <svg viewBox="0 0 160 120" width={isJoystickMobileSize() ? 120 : 160} style={{ display: "block" }}>
+          <defs>
+            <radialGradient id="baseGrad" cx="50%" cy="50%">
+              <stop offset="0%" stopColor="#444" />
+              <stop offset="70%" stopColor="#222" />
+              <stop offset="100%" stopColor="#111" />
+            </radialGradient>
+            <radialGradient id="ballGrad" cx="40%" cy="35%">
+              <stop offset="0%" stopColor="#ff4444" />
+              <stop offset="50%" stopColor="#cc0000" />
+              <stop offset="100%" stopColor="#660000" />
+            </radialGradient>
+            <linearGradient id="stickGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stopColor="#222" />
+              <stop offset="50%" stopColor="#555" />
+              <stop offset="100%" stopColor="#222" />
+            </linearGradient>
+            <filter id="joystickShadow" x="-50%" y="-50%" width="200%" height="200%">
+              <feGaussianBlur in="SourceAlpha" stdDeviation="2" />
+              <feOffset dx="0" dy="3" result="offsetblur" />
+              <feComponentTransfer>
+                <feFuncA type="linear" slope="0.4" />
+              </feComponentTransfer>
+              <feMerge>
+                <feMergeNode />
+                <feMergeNode in="SourceGraphic" />
+              </feMerge>
+            </filter>
+          </defs>
+
+          {/* Base plate — rectangular with rounded corners */}
+          <rect x="10" y="70" width="140" height="45" rx="8" fill="url(#baseGrad)" stroke="#000" strokeWidth="1" filter="url(#joystickShadow)" />
+
+          {/* Position indicator dots along base */}
+          {positions.map((pos, i) => {
+            const dotX = positions.length === 1
+              ? 80
+              : positions.length === 2
+                ? 40 + i * 80
+                : 30 + i * 50;
+            const isActive = pos === activeFuel;
+            const color = FUEL_TYPES[pos].color;
+            return (
+              <g key={pos}>
+                <circle cx={dotX} cy={92} r={isActive ? 5 : 3.5}
+                  fill={isActive ? color : "#555"}
+                  stroke={isActive ? color : "#333"}
+                  strokeWidth="1"
+                  style={{
+                    cursor: "pointer",
+                    filter: isActive ? `drop-shadow(0 0 4px ${color})` : "none",
+                    transition: "all 220ms ease-out",
+                  }}
+                  onClick={() => handleSelect(pos)}
+                />
+                <text x={dotX} y={108}
+                  textAnchor="middle" fontSize="6" fontFamily="monospace"
+                  fill={isActive ? color : "#888"}
+                  style={{ pointerEvents: "none", letterSpacing: "0.1em", fontWeight: 700 }}>
+                  {pos.toUpperCase()}
+                </text>
+              </g>
+            );
+          })}
+
+          {/* Joystick stick — tilts based on position */}
+          <g transform={`rotate(${tiltAngle}, 80, 82)`} style={{ transition: "transform 320ms cubic-bezier(0.34, 1.56, 0.64, 1)" }}>
+            {/* Stick shaft */}
+            <rect x="77" y="30" width="6" height="55" rx="2" fill="url(#stickGrad)" stroke="#000" strokeWidth="0.5" />
+            {/* Ball top */}
+            <circle cx="80" cy="28" r="14" fill="url(#ballGrad)" stroke="#330000" strokeWidth="0.5" filter="url(#joystickShadow)" />
+            {/* Highlight on ball */}
+            <ellipse cx="75" cy="22" rx="5" ry="3" fill="rgba(255,255,255,0.3)" />
+          </g>
+
+          {/* Base mounting screws (decorative) */}
+          {[20, 140].map(x => (
+            <circle key={x} cx={x} cy={80} r={2} fill="#666" stroke="#222" strokeWidth="0.4" />
+          ))}
+          {[20, 140].map(x => (
+            <circle key={`b${x}`} cx={x} cy={105} r={2} fill="#666" stroke="#222" strokeWidth="0.4" />
+          ))}
+        </svg>
+
+        {/* Fuel remaining display */}
+        <div style={{
+          fontSize: 10, fontFamily: T.font_mono,
+          color: FUEL_TYPES[activeFuel].color,
+          textShadow: `0 0 6px ${FUEL_TYPES[activeFuel].color}66`,
+          letterSpacing: "0.15em", fontWeight: 700,
+        }}>
+          {FUEL_TYPES[activeFuel].label}: {Number.isFinite(fuels[activeFuel]) ? fuels[activeFuel] : "∞"}
+        </div>
+      </div>
+    </>
+  );
+}
+
+function isJoystickMobileSize() {
+  if (typeof window === "undefined") return false;
+  return window.innerWidth < 640;
+}
+
+// ════════════════════════════════════════════════════════════════════════════
 // SHOP PAGE — demo shop for purchasing tier upgrades with fake credits
 // ════════════════════════════════════════════════════════════════════════════
 
@@ -12173,11 +12859,12 @@ export default function HitEngine() {
                 <Nav page={page} onNavigate={setPage} />
                 <ErrorBoundary>
                   <div key={page} className="page-transition">
-                    {page === "engine"  && <EnginePage />}
+                    {page === "engine"  && <EnginePage onNavigate={setPage} />}
                     {page === "future"  && <FuturePage />}
                     {page === "history" && <HistoryPage />}
                     {page === "secrets" && <PlaybookPage />}
                     {page === "shop"    && <ShopPage />}
+                    {page === "trendsetter" && <TrendSetterPage />}
                   </div>
                 </ErrorBoundary>
                 <DailyBonusToast />
