@@ -11,26 +11,33 @@ import { useState, useEffect, useRef, useMemo, Component, createContext, useCont
 // ────────────────────────────────────────────────────────────────────────────
 // DESIGN SYSTEM TOKENS
 // ────────────────────────────────────────────────────────────────────────────
+// ────────────────────────────────────────────────────────────────────────────
+// DESIGN TOKENS
+// Themed values (colors, surfaces, borders) are CSS variables set at the
+// document root by the ThemeProvider. Un-themed values (spacing, fonts,
+// radii, durations) remain plain JS values.
+// ────────────────────────────────────────────────────────────────────────────
 const T = {
-  bg:         "#08090B",
-  surface:    "#0E0F12",
-  elevated:   "#15171C",
-  hover:      "#1A1C22",
-  border:     "#1F2128",
-  borderHi:   "#2A2D35",
-  borderFocus:"#3A3F4B",
-  text:       "#EDEEF0",
-  textSec:    "#A1A4AB",
-  textTer:    "#6B6E76",
-  textMuted:  "#464951",
-  accent:     "#5E6AD2",
-  accentHi:   "#7C8BFF",
-  accentLo:   "#3D47A6",
-  accentBg:   "rgba(94,106,210,0.08)",
-  accentBorder: "rgba(94,106,210,0.35)",
-  success:    "#4ADE80",
-  warning:    "#F5A524",
-  danger:     "#EF4444",
+  bg:         "var(--t-bg)",
+  bgTranslucent: "var(--t-bgTranslucent)",
+  surface:    "var(--t-surface)",
+  elevated:   "var(--t-elevated)",
+  hover:      "var(--t-hover)",
+  border:     "var(--t-border)",
+  borderHi:   "var(--t-borderHi)",
+  borderFocus:"var(--t-borderFocus)",
+  text:       "var(--t-text)",
+  textSec:    "var(--t-textSec)",
+  textTer:    "var(--t-textTer)",
+  textMuted:  "var(--t-textMuted)",
+  accent:     "var(--t-accent)",
+  accentHi:   "var(--t-accentHi)",
+  accentLo:   "var(--t-accentLo)",
+  accentBg:   "var(--t-accentBg)",
+  accentBorder: "var(--t-accentBorder)",
+  success:    "var(--t-success)",
+  warning:    "var(--t-warning)",
+  danger:     "var(--t-danger)",
   s1: 4, s2: 8, s3: 12, s4: 16, s5: 24, s6: 32, s7: 48, s8: 64, s9: 96, s10: 128,
   fs_xs: 11, fs_sm: 12, fs_md: 13, fs_base: 14, fs_lg: 16, fs_xl: 20,
   fs_2xl: 28, fs_3xl: 40, fs_4xl: 56, fs_5xl: 96,
@@ -43,6 +50,71 @@ const T = {
   font_mono: "'Geist Mono', ui-monospace, 'SF Mono', Menlo, monospace",
   font_display: "'Instrument Serif', 'Playfair Display', Georgia, serif",
 };
+
+// Theme palette definitions — applied as CSS variables by ThemeProvider.
+const THEME_PALETTES = {
+  dark: {
+    bg:          "#08090B",
+    bgTranslucent: "rgba(8,9,11,0.88)",
+    surface:     "#0E0F12",
+    elevated:    "#15171C",
+    hover:       "#1A1C22",
+    border:      "#1F2128",
+    borderHi:    "#2A2D35",
+    borderFocus: "#3A3F4B",
+    text:        "#EDEEF0",
+    textSec:     "#A1A4AB",
+    textTer:     "#6B6E76",
+    textMuted:   "#464951",
+    accent:      "#5E6AD2",
+    accentHi:    "#7C8BFF",
+    accentLo:    "#3D47A6",
+    accentBg:    "rgba(94,106,210,0.08)",
+    accentBorder:"rgba(94,106,210,0.35)",
+    success:     "#4ADE80",
+    warning:     "#F5A524",
+    danger:      "#EF4444",
+  },
+  light: {
+    // Linear-style light mode: near-white canvas, same indigo accent,
+    // soft gray borders. Calibrated for readability without harsh contrast.
+    bg:          "#FAFAFA",
+    bgTranslucent: "rgba(250,250,250,0.88)",
+    surface:     "#FFFFFF",
+    elevated:    "#F3F4F6",
+    hover:       "#EDEEF1",
+    border:      "#E4E5E9",
+    borderHi:    "#D1D3D9",
+    borderFocus: "#B4B7BF",
+    text:        "#16181C",
+    textSec:     "#4A4D54",
+    textTer:     "#7A7E87",
+    textMuted:   "#A8ACB3",
+    accent:      "#5E6AD2",
+    accentHi:    "#4A53B5",  // darker on light so it reads
+    accentLo:    "#8A93E0",
+    accentBg:    "rgba(94,106,210,0.07)",
+    accentBorder:"rgba(94,106,210,0.30)",
+    success:     "#16A34A",
+    warning:     "#CA8A04",
+    danger:      "#DC2626",
+  },
+};
+
+// Generate the CSS var block that ThemeProvider injects once at app root.
+// Default theme is dark (:root). Light theme applies when [data-theme="light"].
+function generateThemeCSS() {
+  const toVars = (palette) =>
+    Object.entries(palette).map(([k, v]) => `  --t-${k}: ${v};`).join("\n");
+  return `
+:root {
+${toVars(THEME_PALETTES.dark)}
+}
+[data-theme="light"] {
+${toVars(THEME_PALETTES.light)}
+}
+`;
+}
 
 const CASINO_OUTLINES = ["#FF2D9C","#FFD700","#00E5FF","#FF6B00","#00FF88","#E94FEF","#FF4D4D"];
 
@@ -418,6 +490,41 @@ function useTier() { return useContext(TierContext); }
 const LayoutContext = createContext({ layout: "desktop", setLayout: () => {}, auto: true, setAuto: () => {} });
 function useLayout() { return useContext(LayoutContext); }
 
+// ────────────────────────────────────────────────────────────────────────────
+// THEME CONTEXT — dark/light toggle with localStorage persistence.
+// Default is dark on first visit (per product decision). Switching sets the
+// data-theme attribute on <html>, which cascades the CSS variables defined
+// in THEME_PALETTES.
+// ────────────────────────────────────────────────────────────────────────────
+const ThemeContext = createContext({ theme: "dark", setTheme: () => {}, toggleTheme: () => {} });
+function useTheme() { return useContext(ThemeContext); }
+
+function ThemeProvider({ children }) {
+  const [theme, setThemeState] = useState(() => {
+    if (typeof localStorage === "undefined") return "dark";
+    try {
+      const saved = localStorage.getItem("he-theme-v1");
+      if (saved === "dark" || saved === "light") return saved;
+    } catch {}
+    return "dark";
+  });
+
+  // Apply theme to document root. Also inject the CSS var stylesheet once.
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    document.documentElement.dataset.theme = theme;
+    try { localStorage.setItem("he-theme-v1", theme); } catch {}
+  }, [theme]);
+
+  const setTheme = (next) => {
+    if (next === "dark" || next === "light") setThemeState(next);
+  };
+  const toggleTheme = () => setThemeState(t => t === "dark" ? "light" : "dark");
+
+  const value = useMemo(() => ({ theme, setTheme, toggleTheme }), [theme]);
+  return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
+}
+
 function LayoutProvider({ children }) {
   // Start with a best-guess default so SSR/first paint works; real detection happens in effect
   const detect = () => {
@@ -497,6 +604,44 @@ function LayoutToggle() {
           }}>⟲</button>
       )}
     </div>
+  );
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// THEME TOGGLE — sun/moon icon for dark/light mode switching.
+// ────────────────────────────────────────────────────────────────────────────
+function ThemeToggle() {
+  const { theme, toggleTheme } = useTheme();
+  const isDark = theme === "dark";
+  return (
+    <button type="button"
+      onClick={toggleTheme}
+      title={isDark ? "Switch to light mode" : "Switch to dark mode"}
+      aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
+      style={{
+        display: "inline-flex", alignItems: "center", justifyContent: "center",
+        width: 32, height: 32,
+        background: T.surface,
+        border: `1px solid ${T.border}`,
+        borderRadius: 6,
+        color: T.textSec,
+        cursor: "pointer",
+        fontSize: 15, lineHeight: 1,
+        flexShrink: 0,
+        transition: `all ${T.dur_fast} ${T.ease}`,
+      }}
+      onMouseEnter={e => {
+        e.currentTarget.style.borderColor = T.borderFocus;
+        e.currentTarget.style.color = T.text;
+        e.currentTarget.style.background = T.elevated;
+      }}
+      onMouseLeave={e => {
+        e.currentTarget.style.borderColor = T.border;
+        e.currentTarget.style.color = T.textSec;
+        e.currentTarget.style.background = T.surface;
+      }}>
+      {isDark ? "☀" : "☾"}
+    </button>
   );
 }
 
@@ -997,7 +1142,7 @@ function TierLever({ tier, onChange, onOpenShop }) {
         <div style={{
           position: "absolute",
           top: "calc(100% + 6px)", right: 0,
-          background: "rgba(8,9,11,0.96)",
+          background: T.bgTranslucent,
           backdropFilter: "blur(20px) saturate(150%)",
           border: `1px solid ${T.border}`,
           borderRadius: 8,
@@ -3211,9 +3356,68 @@ function safeTruncate(text, limit) {
 // Sanitizer: normalize punctuation to generator-friendly forms, but
 // preserve structural newlines and label colons that generators use to parse
 // directives. Only convert mid-sentence em/en-dashes and semicolons.
-function sunoSanitize(text) {
+// ─────────────────────────────────────────────────────────────────────────
+// SUNO VOCAL-TRIGGER SANITIZATION
+// When the user wants vocals (lyricsOn=true), certain words in the style
+// prompt will cause Suno to generate an instrumental instead. Research
+// sources (jackrighteous, hookgenius, undetectr, musicsmith) agree on the
+// following high-confidence triggers:
+//   - "instrumental" (primary trigger)
+//   - "no vocals" / "no voice" / "no singing" / "no rapping"
+//   - "wordless" / "voiceless" / "without lyrics" / "without vocals"
+//   - "a cappella" (inverse trigger — may confuse model about vocal-only)
+// This map is applied ONLY when lyricsOn=true, so instrumental prompts
+// still work correctly when the user explicitly wants an instrumental.
+// ─────────────────────────────────────────────────────────────────────────
+const SUNO_VOCAL_KILLERS = [
+  // Phrase-level strips — full patterns with context
+  { pat: /\binstrumental\s+only\b/gi,              replace: "" },
+  { pat: /\bno\s+vocals?\b/gi,                     replace: "" },
+  { pat: /\bno\s+singing\b/gi,                     replace: "" },
+  { pat: /\bno\s+rapping\b/gi,                     replace: "" },
+  { pat: /\bno\s+voice(s)?\b/gi,                   replace: "" },
+  { pat: /\bno\s+lyrics\b/gi,                      replace: "" },
+  { pat: /\bno\s+choir\b/gi,                       replace: "" },
+  { pat: /\bno\s+oohs?\b/gi,                       replace: "" },
+  { pat: /\bno\s+humming\b/gi,                     replace: "" },
+  { pat: /\bno\s+voice\s+samples\b/gi,             replace: "" },
+  { pat: /\bwithout\s+lyrics\b/gi,                 replace: "" },
+  { pat: /\bwithout\s+vocals?\b/gi,                replace: "" },
+  // Single-word killers — more dangerous, need careful replacements
+  { pat: /\bwordless\s+arrangement\b/gi,           replace: "" },
+  { pat: /\bwordless\b/gi,                         replace: "" },
+  { pat: /\bvoiceless\b/gi,                        replace: "" },
+  { pat: /\ba\s+cappella\b/gi,                     replace: "" },
+  { pat: /\bacappella\b/gi,                        replace: "" },
+  // The big one — "instrumental" standalone. Replace with safer synonyms.
+  // "instrumental epic" (Post-Rock microgenre) → "epic"
+  // "contemporary instrumental" (Smooth Jazz) → "contemporary"
+  { pat: /\binstrumental\s+(epic|ballad|piece|track)\b/gi, replace: "$1" },
+  { pat: /\b(contemporary|cinematic|ambient|orchestral)\s+instrumental\b/gi, replace: "$1" },
+  // Bare "instrumental" as adjective — strip it
+  { pat: /\binstrumental\b/gi,                     replace: "" },
+];
+
+function sanitizeVocalKillers(text) {
   if (!text) return text;
-  return text
+  let out = text;
+  for (const { pat, replace } of SUNO_VOCAL_KILLERS) {
+    out = out.replace(pat, replace);
+  }
+  // Cleanup from removed words: collapse whitespace, strip stray commas
+  out = out
+    .replace(/\s+/g, " ")
+    .replace(/,\s*,+/g, ",")
+    .replace(/,\s*$/g, "")
+    .replace(/^\s*,\s*/g, "")
+    .replace(/\s+,/g, ",")
+    .trim();
+  return out;
+}
+
+function sunoSanitize(text, lyricsOn = true) {
+  if (!text) return text;
+  let out = text
     .replace(/\s*—\s*/g, ", ")          // em-dash → comma
     .replace(/\s*–\s*/g, ", ")          // en-dash → comma
     .replace(/\s*;\s*/g, ", ")          // semicolon → comma
@@ -3227,13 +3431,17 @@ function sunoSanitize(text) {
     .replace(/,\s*$/g, "")              // trailing comma at end
     .replace(/\.\s*\./g, ".")           // double period
     .trim();
+  // When vocals are requested, strip words that would cause Suno to
+  // generate an instrumental by mistake.
+  if (lyricsOn) out = sanitizeVocalKillers(out);
+  return out;
 }
 
 function compressDetailedPrompt(state, lyricsOn, limit, mode) {
   const sentences = buildDetailedSentences(state, lyricsOn, mode);
   const packed = packSentencesToLimit(sentences, limit);
   const raw = packed.length > limit ? safeTruncate(packed, limit) : packed;
-  const finalText = sunoSanitize(raw);
+  const finalText = sunoSanitize(raw, lyricsOn);
   return {
     text: finalText, length: finalText.length,
     compressed: finalText.length < sentences.reduce((a, s) => a + s.text.length + 1, 0),
@@ -3259,12 +3467,12 @@ function compressShortPrompt(state, lyricsOn, limit) {
   const cands = [shortPromptL0, shortPromptL1, shortPromptL2, shortPromptL3, shortPromptL4]
     .map((fn, i) => ({ text: fn(state, lyricsOn), level: i }));
   const fitting = cands.filter(c => c.text.length <= limit);
-  if (fitting.length === 0) return { text: sunoSanitize(safeTruncate(cands[cands.length - 1].text, limit)), compressed: true, level: 5 };
+  if (fitting.length === 0) return { text: sunoSanitize(safeTruncate(cands[cands.length - 1].text, limit), lyricsOn), compressed: true, level: 5 };
   const best = fitting.sort((a, b) => b.text.length - a.text.length)[0];
   let text = best.text;
   if (text.length < limit - 10) text = padShortToBudget(text, limit, state);
   if (text.length > limit) text = safeTruncate(text, limit);
-  text = sunoSanitize(text);
+  text = sunoSanitize(text, lyricsOn);
   return { text, compressed: best.level > 0 || text !== best.text, level: best.level };
 }
 
@@ -3804,6 +4012,422 @@ class ErrorBoundary extends Component {
 }
 
 // ════════════════════════════════════════════════════════════════════════════
+// ANIMATED BANNER — nav logo replacement based on Hit Engine Banner design.
+// Original design was hero-sized (108-280px); scaled down for nav slot (~28px).
+// Dropped from original: canvas starfields (imperceptible at this size), nebula
+// drift (too subtle to read). Kept: outlined HIT, animated metal gradient on
+// ENGINE, sheen sweep pass, Anton condensed font.
+// Loads Anton + JetBrains Mono from Google Fonts once on mount.
+// ════════════════════════════════════════════════════════════════════════════
+
+let __animatedBannerFontLoaded = false;
+function ensureBannerFonts() {
+  if (__animatedBannerFontLoaded || typeof document === "undefined") return;
+  const href = "https://fonts.googleapis.com/css2?family=Anton&family=JetBrains+Mono:wght@500&display=swap";
+  const exists = Array.from(document.querySelectorAll("link[rel=stylesheet]"))
+    .some(l => l.href && l.href.includes("family=Anton"));
+  if (!exists) {
+    const link = document.createElement("link");
+    link.rel = "stylesheet";
+    link.href = href;
+    document.head.appendChild(link);
+  }
+  __animatedBannerFontLoaded = true;
+}
+
+function AnimatedBanner({ size = 112 }) {
+  useEffect(() => { ensureBannerFonts(); }, []);
+  const fontFamily = "'Anton', 'Bebas Neue', Impact, sans-serif";
+  const stroke = Math.max(1, Math.round(size / 36));  // ~3px at size 112, ~2px at 56
+  const hitRef = useRef(null);
+  const canvasRef = useRef(null);
+  const engineRef = useRef(null);
+  const engineCanvasRef = useRef(null);
+
+  // Starfield animation inside HIT + nebula pinpoints inside ENGINE.
+  // Canvas is masked via SVG data-URL so stars only show within letter shapes.
+  useEffect(() => {
+    const hit = hitRef.current;
+    const canvas = canvasRef.current;
+    const engine = engineRef.current;
+    const eCanvas = engineCanvasRef.current;
+    if (!hit || !canvas || !engine || !eCanvas) return;
+
+    const ctx = canvas.getContext("2d");
+    const eCtx = eCanvas.getContext("2d");
+    const DPR = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
+    let W = 0, H = 0, eW = 0, eH = 0;
+    const stars = [];
+    const eStars = [];
+    const rand = (a, b) => a + Math.random() * (b - a);
+
+    const makeStar = () => {
+      const r = rand(0.6, 3.2);
+      return {
+        x: rand(0, W), y: rand(0, H),
+        r, baseR: r,
+        twinkle: rand(0, Math.PI * 2),
+        twinkleSpeed: rand(0.6, 2.2),
+        driftX: rand(-0.15, 0.15),
+        driftY: rand(-0.08, 0.08),
+        spikes: Math.random() < 0.25 ? 4 : 0,
+        hue: Math.random() < 0.7 ? 0 : rand(20, 55),
+        life: rand(0, 1),
+        lifeSpeed: rand(0.003, 0.012),
+      };
+    };
+
+    const seedStars = () => {
+      stars.length = 0;
+      // Count scales with banner size — more stars at hero, fewer at nav
+      const count = Math.max(16, Math.floor(size * 0.35));
+      for (let i = 0; i < count; i++) stars.push(makeStar());
+    };
+
+    const seedEStars = () => {
+      eStars.length = 0;
+      const count = Math.max(12, Math.floor(size * 0.45));
+      for (let i = 0; i < count; i++) {
+        eStars.push({
+          x: rand(0, eW), y: rand(0, eH),
+          r: rand(0.4, 1.8),
+          twinkle: rand(0, Math.PI * 2),
+          twinkleSpeed: rand(1.2, 3.2),
+          hue: Math.random() < 0.5 ? rand(200, 260) : (Math.random() < 0.6 ? rand(270, 310) : rand(30, 55)),
+          sat: rand(60, 100),
+          spike: Math.random() < 0.18,
+        });
+      }
+    };
+
+    const resizeAll = () => {
+      const hitRect = hit.getBoundingClientRect();
+      W = hitRect.width; H = hitRect.height;
+      canvas.width = Math.max(2, Math.floor(W * DPR));
+      canvas.height = Math.max(2, Math.floor(H * DPR));
+      canvas.style.width = W + "px";
+      canvas.style.height = H + "px";
+
+      const eRect = engine.getBoundingClientRect();
+      eW = eRect.width; eH = eRect.height;
+      eCanvas.width = Math.max(2, Math.floor(eW * DPR));
+      eCanvas.height = Math.max(2, Math.floor(eH * DPR));
+      eCanvas.style.width = eW + "px";
+      eCanvas.style.height = eH + "px";
+
+      seedStars();
+      seedEStars();
+      applyMasks();
+    };
+
+    // SVG text masks so canvas pixels only render inside letter shapes.
+    const applyMasks = () => {
+      const hitCS = getComputedStyle(hit);
+      const hitSvg =
+        `<svg xmlns='http://www.w3.org/2000/svg' width='${W}' height='${H}' viewBox='0 0 ${W} ${H}'>
+          <text x='50%' y='50%' dominant-baseline='central' text-anchor='middle'
+                font-family=${JSON.stringify(hitCS.fontFamily)}
+                font-weight='${hitCS.fontWeight}'
+                font-size='${hitCS.fontSize}'
+                letter-spacing='${hitCS.letterSpacing}'
+                fill='#fff'
+                style='text-transform:uppercase'>HIT</text>
+        </svg>`;
+      const hitUrl = `url("data:image/svg+xml;utf8,${encodeURIComponent(hitSvg)}")`;
+      canvas.style.webkitMaskImage = hitUrl;
+      canvas.style.maskImage = hitUrl;
+      canvas.style.webkitMaskRepeat = "no-repeat";
+      canvas.style.maskRepeat = "no-repeat";
+      canvas.style.webkitMaskSize = "100% 100%";
+      canvas.style.maskSize = "100% 100%";
+
+      const eCS = getComputedStyle(engine);
+      const eSvg =
+        `<svg xmlns='http://www.w3.org/2000/svg' width='${eW}' height='${eH}' viewBox='0 0 ${eW} ${eH}'>
+          <text x='50%' y='50%' dominant-baseline='central' text-anchor='middle'
+                font-family=${JSON.stringify(eCS.fontFamily)}
+                font-weight='${eCS.fontWeight}'
+                font-size='${eCS.fontSize}'
+                letter-spacing='${eCS.letterSpacing}'
+                fill='#fff'
+                style='text-transform:uppercase'>ENGINE</text>
+        </svg>`;
+      const eUrl = `url("data:image/svg+xml;utf8,${encodeURIComponent(eSvg)}")`;
+      eCanvas.style.webkitMaskImage = eUrl;
+      eCanvas.style.maskImage = eUrl;
+      eCanvas.style.webkitMaskRepeat = "no-repeat";
+      eCanvas.style.maskRepeat = "no-repeat";
+      eCanvas.style.webkitMaskSize = "100% 100%";
+      eCanvas.style.maskSize = "100% 100%";
+    };
+
+    const drawSparkle = (x, y, r, alpha, hue, spikes) => {
+      const g = ctx.createRadialGradient(x, y, 0, x, y, r * 3);
+      if (hue === 0) {
+        g.addColorStop(0, `rgba(255,255,255,${alpha})`);
+        g.addColorStop(0.3, `rgba(255,240,210,${alpha * 0.55})`);
+        g.addColorStop(1, `rgba(255,240,210,0)`);
+      } else {
+        g.addColorStop(0, `rgba(255,255,255,${alpha})`);
+        g.addColorStop(0.3, `hsla(${hue}, 100%, 70%, ${alpha * 0.7})`);
+        g.addColorStop(1, `hsla(${hue}, 100%, 60%, 0)`);
+      }
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.arc(x, y, r * 3, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = `rgba(255,255,255,${Math.min(1, alpha * 1.2)})`;
+      ctx.beginPath(); ctx.arc(x, y, Math.max(0.4, r * 0.55), 0, Math.PI * 2); ctx.fill();
+      if (spikes) {
+        const L = r * 7;
+        const grad = ctx.createLinearGradient(x - L, y, x + L, y);
+        grad.addColorStop(0, "rgba(255,255,255,0)");
+        grad.addColorStop(0.5, `rgba(255,255,255,${alpha})`);
+        grad.addColorStop(1, "rgba(255,255,255,0)");
+        ctx.strokeStyle = grad; ctx.lineWidth = Math.max(0.5, r * 0.35);
+        ctx.beginPath(); ctx.moveTo(x - L, y); ctx.lineTo(x + L, y); ctx.stroke();
+        const grad2 = ctx.createLinearGradient(x, y - L, x, y + L);
+        grad2.addColorStop(0, "rgba(255,255,255,0)");
+        grad2.addColorStop(0.5, `rgba(255,255,255,${alpha})`);
+        grad2.addColorStop(1, "rgba(255,255,255,0)");
+        ctx.strokeStyle = grad2;
+        ctx.beginPath(); ctx.moveTo(x, y - L); ctx.lineTo(x, y + L); ctx.stroke();
+      }
+    };
+
+    const drawEngineStars = (dt) => {
+      eCtx.setTransform(DPR, 0, 0, DPR, 0, 0);
+      eCtx.clearRect(0, 0, eW, eH);
+      for (const s of eStars) {
+        s.twinkle += dt * s.twinkleSpeed;
+        const tw = Math.sin(s.twinkle) * 0.5 + 0.5;
+        const a = 0.2 + tw * 0.8;
+        const r = s.r * (0.7 + tw * 0.7);
+        const g = eCtx.createRadialGradient(s.x, s.y, 0, s.x, s.y, r * 4);
+        g.addColorStop(0, `hsla(${s.hue}, ${s.sat}%, 88%, ${a})`);
+        g.addColorStop(0.35, `hsla(${s.hue}, ${s.sat}%, 70%, ${a * 0.5})`);
+        g.addColorStop(1, `hsla(${s.hue}, ${s.sat}%, 60%, 0)`);
+        eCtx.fillStyle = g;
+        eCtx.beginPath(); eCtx.arc(s.x, s.y, r * 4, 0, Math.PI * 2); eCtx.fill();
+        eCtx.fillStyle = `rgba(255,255,255,${Math.min(1, a * 1.1)})`;
+        eCtx.beginPath(); eCtx.arc(s.x, s.y, Math.max(0.3, r * 0.55), 0, Math.PI * 2); eCtx.fill();
+        if (s.spike) {
+          const L = r * 6;
+          const grd = eCtx.createLinearGradient(s.x - L, s.y, s.x + L, s.y);
+          grd.addColorStop(0, "rgba(255,255,255,0)");
+          grd.addColorStop(0.5, `rgba(255,255,255,${a * 0.8})`);
+          grd.addColorStop(1, "rgba(255,255,255,0)");
+          eCtx.strokeStyle = grd; eCtx.lineWidth = Math.max(0.4, r * 0.3);
+          eCtx.beginPath(); eCtx.moveTo(s.x - L, s.y); eCtx.lineTo(s.x + L, s.y); eCtx.stroke();
+          const grd2 = eCtx.createLinearGradient(s.x, s.y - L, s.x, s.y + L);
+          grd2.addColorStop(0, "rgba(255,255,255,0)");
+          grd2.addColorStop(0.5, `rgba(255,255,255,${a * 0.8})`);
+          grd2.addColorStop(1, "rgba(255,255,255,0)");
+          eCtx.strokeStyle = grd2;
+          eCtx.beginPath(); eCtx.moveTo(s.x, s.y - L); eCtx.lineTo(s.x, s.y + L); eCtx.stroke();
+        }
+      }
+    };
+
+    let rafId = 0;
+    let last = performance.now();
+    const loop = (t) => {
+      const dt = Math.min(0.05, (t - last) / 1000);
+      last = t;
+      ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+      ctx.clearRect(0, 0, W, H);
+      // Deep wash so stars sit on cosmic background within letters
+      const wash = ctx.createLinearGradient(0, 0, W, H);
+      wash.addColorStop(0, "#050817");
+      wash.addColorStop(1, "#0a0610");
+      ctx.fillStyle = wash;
+      ctx.fillRect(0, 0, W, H);
+      // Stars
+      for (const s of stars) {
+        s.twinkle += dt * s.twinkleSpeed * 2.5;
+        s.x += s.driftX * dt * 60;
+        s.y += s.driftY * dt * 60;
+        s.life += s.lifeSpeed;
+        if (s.x < -10) s.x = W + 10;
+        if (s.x > W + 10) s.x = -10;
+        if (s.y < -10) s.y = H + 10;
+        if (s.y > H + 10) s.y = -10;
+        const tw = Math.sin(s.twinkle) * 0.5 + 0.5;
+        const alpha = 0.25 + tw * 0.75;
+        const r = s.baseR * (0.7 + tw * 0.6);
+        drawSparkle(s.x, s.y, r, alpha, s.hue, s.spikes);
+        if (s.life > 1) Object.assign(s, makeStar(), { life: 0 });
+      }
+      if (eW > 0 && eH > 0) drawEngineStars(dt);
+      rafId = requestAnimationFrame(loop);
+    };
+
+    resizeAll();
+    rafId = requestAnimationFrame(loop);
+    // Re-run resize on next frame — initial rects may still be settling.
+    requestAnimationFrame(() => resizeAll());
+    const onResize = () => resizeAll();
+    window.addEventListener("resize", onResize);
+    // Re-apply mask once fonts load (glyph metrics settle)
+    if (document.fonts && document.fonts.ready) {
+      document.fonts.ready.then(resizeAll);
+    }
+
+    return () => {
+      cancelAnimationFrame(rafId);
+      window.removeEventListener("resize", onResize);
+    };
+  }, [size]);
+
+  return (
+    <div style={{
+      display: "inline-flex",
+      alignItems: "center",
+      gap: `${Math.round(size * 0.1)}px`,
+      fontFamily,
+      fontSize: size,
+      lineHeight: 0.9,
+      letterSpacing: "0.02em",
+      textTransform: "uppercase",
+      userSelect: "none",
+      position: "relative",
+      whiteSpace: "nowrap",
+    }}>
+      <style>{`
+        @keyframes bannerFlowMetal {
+          0%   { background-position:   0% 50%; }
+          100% { background-position: 320% 50%; }
+        }
+        @keyframes bannerNebulaDrift {
+          0%   { background-position:   0% 40%; }
+          33%  { background-position:  40% 55%; }
+          66%  { background-position:  80% 45%; }
+          100% { background-position: 120% 40%; }
+        }
+        @keyframes bannerSheen {
+          0%,  8%   { background-position: 120% 50%; opacity: 0; }
+          20%       { opacity: 1; }
+          55%       { background-position: -20% 50%; opacity: 1; }
+          70%, 100% { background-position: -20% 50%; opacity: 0; }
+        }
+        .anbn-hit {
+          position: relative;
+          display: inline-block;
+          color: transparent;
+          -webkit-text-stroke: var(--anbn-stroke) currentColor;
+          filter:
+            drop-shadow(0 0 0.5px rgba(255,255,255,0.6))
+            drop-shadow(0 0 8px rgba(120, 90, 255, 0.15));
+        }
+        .anbn-hit-bg {
+          position: absolute;
+          inset: 0;
+          color: transparent;
+          -webkit-text-stroke: 0;
+          background: radial-gradient(ellipse at 50% 50%, #0a0d18 0%, #02030a 80%);
+          -webkit-background-clip: text;
+          background-clip: text;
+          pointer-events: none;
+        }
+        .anbn-hit-canvas {
+          position: absolute; inset: 0;
+          width: 100%; height: 100%;
+          display: block; pointer-events: none;
+        }
+        .anbn-engine {
+          position: relative;
+          display: inline-block;
+          background: linear-gradient(
+            100deg,
+            #fff3d6  0%, #ffb86b  6%,  #ff7a2a 12%, #ff2e14 18%,
+            #9b0a14 24%, #2a0418 32%, #0a0420 40%, #1a0b52 46%,
+            #3d1aa8 52%, #7a3df0 58%, #c470ff 64%, #ff6fd8 70%,
+            #7be0ff 78%, #e8faff 84%, #ffb86b 92%, #fff3d6 100%
+          );
+          background-size: 320% 100%;
+          background-position: 0% 50%;
+          background-clip: text;
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          color: transparent;
+          animation: bannerFlowMetal 7s linear infinite;
+          filter:
+            drop-shadow(0 1px 0 rgba(0,0,0,0.55))
+            drop-shadow(0 0 18px rgba(180, 80, 255, 0.28))
+            drop-shadow(0 0 30px rgba(255, 90, 20, 0.14));
+        }
+        .anbn-engine::after {
+          content: attr(data-text);
+          position: absolute; inset: 0;
+          background:
+            radial-gradient(60% 90% at 15% 40%, rgba(255,110,200,0.9) 0%, rgba(255,110,200,0) 55%),
+            radial-gradient(55% 85% at 55% 60%, rgba(120, 90, 255, 0.85) 0%, rgba(120,90,255,0) 55%),
+            radial-gradient(50% 80% at 85% 40%, rgba(90, 220, 255, 0.8) 0%, rgba(90,220,255,0) 55%),
+            radial-gradient(40% 70% at 35% 75%, rgba(255,170,90,0.7) 0%, rgba(255,170,90,0) 55%);
+          background-size: 260% 180%;
+          background-position: 0% 50%;
+          background-clip: text;
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          color: transparent;
+          animation: bannerNebulaDrift 12s linear infinite;
+          mix-blend-mode: screen;
+          pointer-events: none;
+          opacity: 0.85;
+        }
+        .anbn-engine::before {
+          content: attr(data-text);
+          position: absolute; inset: 0;
+          background: linear-gradient(
+            105deg,
+            transparent 35%,
+            rgba(255,255,255,0.9) 48%,
+            rgba(255,255,255,0.2) 52%,
+            transparent 65%
+          );
+          background-size: 250% 100%;
+          background-position: 120% 50%;
+          background-clip: text;
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          color: transparent;
+          animation: bannerSheen 4.5s ease-in-out infinite;
+          mix-blend-mode: screen;
+          pointer-events: none;
+        }
+        .anbn-engine-canvas {
+          position: absolute; inset: 0;
+          width: 100%; height: 100%;
+          pointer-events: none;
+          mix-blend-mode: screen;
+          opacity: 0.9;
+        }
+      `}</style>
+      <span
+        ref={hitRef}
+        className="anbn-hit"
+        style={{ "--anbn-stroke": `${stroke}px`, color: "var(--t-text)" }}
+      >
+        <span className="anbn-hit-bg" aria-hidden="true">HIT</span>
+        <canvas ref={canvasRef} className="anbn-hit-canvas" />
+        HIT
+      </span>
+      <span style={{
+        color: "var(--t-textSec)",
+        fontFamily: "'Instrument Serif', Georgia, serif",
+        fontStyle: "italic",
+        fontSize: size * 0.9,
+        transform: "translateY(-0.05em)",
+        padding: "0 0.05em",
+        fontWeight: 400,
+      }}>·</span>
+      <span ref={engineRef} className="anbn-engine" data-text="ENGINE">
+        <canvas ref={engineCanvasRef} className="anbn-engine-canvas" />
+        ENGINE
+      </span>
+    </div>
+  );
+}
+
+// ════════════════════════════════════════════════════════════════════════════
 // LOGO — Steady, no animation on HIT. Star pattern interior. ENGINE sweeps.
 // ════════════════════════════════════════════════════════════════════════════
 
@@ -4019,20 +4643,12 @@ function Nav({ page, onNavigate }) {
     <nav style={{
       padding: isMobile ? `${T.s2}px ${T.s4}px` : `${T.s3}px ${T.s6}px`,
       borderBottom: `1px solid ${T.border}`,
-      background: "rgba(8,9,11,0.88)",
+      background: T.bgTranslucent,
       backdropFilter: "blur(20px) saturate(150%)",
       position: "sticky", top: 0, zIndex: 100,
       display: "flex", alignItems: "center", justifyContent: "space-between",
       height: isMobile ? 52 : 56, gap: isMobile ? T.s2 : T.s4,
     }}>
-      {/* Mini chrome HIT-ENGINE logo */}
-      <div style={{ display: "flex", alignItems: "baseline", gap: 6, cursor: "pointer", flexShrink: 0 }}
-        onClick={() => { onNavigate("engine"); setMenuOpen(false); }}>
-        <HitLogo size={isMobile ? 18 : 22} />
-        <span style={{ color: T.textMuted, fontSize: isMobile ? 14 : 18, fontStyle: "italic", fontFamily: T.font_display }}>·</span>
-        <EngineLogo size={isMobile ? 18 : 22} />
-      </div>
-
       {/* Page links — desktop inline, mobile hamburger */}
       {!isMobile ? (
         <div style={{ display: "flex", gap: T.s1, flex: 1, justifyContent: "center" }}>
@@ -4097,6 +4713,7 @@ function Nav({ page, onNavigate }) {
           )}
         </button>
         {!isMobile && <LayoutToggle />}
+        {!isMobile && <ThemeToggle />}
         {!isMobile && (
           <>
             <FuelLever currentPage={page} onNavigate={onNavigate} />
@@ -4121,7 +4738,7 @@ function Nav({ page, onNavigate }) {
       {isMobile && menuOpen && (
         <div style={{
           position: "absolute", top: "100%", left: 0, right: 0,
-          background: "rgba(8,9,11,0.98)",
+          background: T.bg,
           borderBottom: `1px solid ${T.border}`,
           backdropFilter: "blur(20px) saturate(150%)",
           padding: T.s3,
@@ -4166,6 +4783,15 @@ function Nav({ page, onNavigate }) {
               letterSpacing: "0.2em", color: T.textMuted,
             }}>VIEW AS</span>
             <LayoutToggle />
+          </div>
+
+          {/* Theme toggle — in mobile menu */}
+          <div style={{ padding: "8px 12px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+            <span style={{
+              fontSize: 10, fontFamily: T.font_mono, fontWeight: 700,
+              letterSpacing: "0.2em", color: T.textMuted,
+            }}>THEME</span>
+            <ThemeToggle />
           </div>
         </div>
       )}
@@ -5622,6 +6248,35 @@ function OutputBlock({ title, subtitle, text, onCopy, copyState, multiline, leng
 // right-click lock, double-click favorite, joystick, etc.
 // ════════════════════════════════════════════════════════════════════════════
 
+// Static style objects for tip cards — hoisted to avoid re-creating per-render.
+const TIP_CARD_WRAPPER_STYLE = {
+  display: "flex", gap: T.s3,
+  padding: T.s3,
+  background: T.bg,
+  border: `1px solid ${T.border}`,
+  borderRadius: T.r_md,
+};
+const TIP_CARD_ICON_STYLE = {
+  flexShrink: 0,
+  width: 28, height: 28,
+  display: "inline-flex", alignItems: "center", justifyContent: "center",
+  background: `linear-gradient(135deg, ${V.neonGold}22 0%, transparent 100%)`,
+  border: `1px solid ${V.neonGold}66`,
+  borderRadius: T.r_sm,
+  color: V.neonGold,
+  fontSize: 14, fontWeight: 700,
+};
+const TIP_CARD_BODY_STYLE = { flex: 1, minWidth: 0 };
+const TIP_CARD_TITLE_STYLE = {
+  fontSize: T.fs_sm, fontWeight: 600, color: T.text,
+  marginBottom: 4,
+  letterSpacing: "-0.005em",
+};
+const TIP_CARD_TEXT_STYLE = {
+  fontSize: T.fs_xs, color: T.textSec,
+  lineHeight: 1.5,
+};
+
 function TipsManual() {
   const [open, setOpen] = useState(false);
   const { layout } = useLayout();
@@ -5677,6 +6332,11 @@ function TipsManual() {
       icon: "★",
       title: "Trend Setter page (VIP)",
       body: "Move the joystick to TREND to visit a curated list of currently-viral tracks per region (US/Israel/UK). Click any card to generate a trend-biased prompt.",
+    },
+    {
+      icon: "✓",
+      title: "Vocal-killer protection",
+      body: "When Song mode is on, the engine automatically strips words that would make Suno/Udio accidentally generate an instrumental — like 'instrumental', 'no vocals', 'wordless', 'a cappella'. Switch to Instrumental mode if you actually want those words included.",
     },
   ];
 
@@ -5740,7 +6400,7 @@ function TipsManual() {
               fontSize: T.fs_md, fontWeight: 700, color: T.text,
               letterSpacing: "0.01em",
             }}>
-              How to use — 10 quick tips
+              How to use — 11 quick tips
             </div>
             <div style={{
               fontSize: T.fs_xs, color: T.textMuted,
@@ -5777,37 +6437,11 @@ function TipsManual() {
             gap: T.s3,
           }}>
             {tips.map((tip, i) => (
-              <div key={i} style={{
-                display: "flex", gap: T.s3,
-                padding: T.s3,
-                background: T.bg,
-                border: `1px solid ${T.border}`,
-                borderRadius: T.r_md,
-              }}>
-                <span style={{
-                  flexShrink: 0,
-                  width: 28, height: 28,
-                  display: "inline-flex", alignItems: "center", justifyContent: "center",
-                  background: `linear-gradient(135deg, ${V.neonGold}22 0%, transparent 100%)`,
-                  border: `1px solid ${V.neonGold}66`,
-                  borderRadius: T.r_sm,
-                  color: V.neonGold,
-                  fontSize: 14, fontWeight: 700,
-                }}>{tip.icon}</span>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{
-                    fontSize: T.fs_sm, fontWeight: 600, color: T.text,
-                    marginBottom: 4,
-                    letterSpacing: "-0.005em",
-                  }}>
-                    {tip.title}
-                  </div>
-                  <div style={{
-                    fontSize: T.fs_xs, color: T.textSec,
-                    lineHeight: 1.5,
-                  }}>
-                    {tip.body}
-                  </div>
+              <div key={i} style={TIP_CARD_WRAPPER_STYLE}>
+                <span style={TIP_CARD_ICON_STYLE}>{tip.icon}</span>
+                <div style={TIP_CARD_BODY_STYLE}>
+                  <div style={TIP_CARD_TITLE_STYLE}>{tip.title}</div>
+                  <div style={TIP_CARD_TEXT_STYLE}>{tip.body}</div>
                 </div>
               </div>
             ))}
@@ -6663,19 +7297,12 @@ function EnginePage({ onNavigate }) {
           {/* HERO — chrome HIT-ENGINE type */}
           <div style={{ marginBottom: isMobile ? T.s5 : T.s8 }}>
             <h1 style={{
-              display: "flex", alignItems: "baseline", gap: "0.2em",
+              display: "flex", alignItems: "baseline",
               flexWrap: "wrap",
               lineHeight: 1,
               margin: 0, marginBottom: isMobile ? T.s3 : T.s5,
-              fontFamily: T.font_display,
-              letterSpacing: "-0.02em",
             }}>
-              <HitLogo size={isMobile ? 56 : 112} />
-              <span style={{
-                color: "#5A6275", fontStyle: "italic",
-                fontSize: isMobile ? 36 : 80, fontWeight: 300,
-              }}>·</span>
-              <EngineLogo size={isMobile ? 56 : 112} />
+              <AnimatedBanner size={isMobile ? 56 : 112} />
             </h1>
             <p style={{
               color: T.text, fontSize: T.fs_lg, lineHeight: 1.5,
@@ -12820,6 +13447,25 @@ const TREND_DATA = {
   },
 };
 
+// Static style objects for trend cards — hoisted out of map() to avoid
+// re-creating per-item on every render.
+const TREND_CARD_NUM_STYLE = {
+  fontSize: 9, fontFamily: T.font_mono, fontWeight: 700,
+  color: "#FFD700", letterSpacing: "0.22em", marginBottom: 6,
+};
+const TREND_CARD_ARTIST_STYLE = {
+  fontSize: T.fs_lg, fontFamily: T.font_sans, fontWeight: 600,
+  color: T.text, marginBottom: 4, letterSpacing: "-0.01em",
+};
+const TREND_CARD_TRACK_STYLE = {
+  fontSize: T.fs_sm, fontFamily: T.font_display, fontStyle: "italic",
+  color: T.textSec, marginBottom: T.s2, lineHeight: 1.3,
+};
+const TREND_CARD_GENRE_STYLE = {
+  fontSize: 10, fontFamily: T.font_mono, color: T.textMuted,
+  letterSpacing: "0.08em", textTransform: "uppercase",
+};
+
 function TrendSetterPage() {
   const { layout } = useLayout();
   const { fuels, consumeFuel, setActiveFuel } = useFuel();
@@ -12840,8 +13486,11 @@ function TrendSetterPage() {
   const trendFuelLeft = fuels.trend;
 
   const generatePrompt = (item) => {
-    // Deterministic prompt built from the viral item's metadata
-    return `${item.genre}, in the style of ${item.artist} "${item.track}", ${item.style}, modern mix, radio-ready production, 2026 viral energy`;
+    // Deterministic prompt built from the viral item's metadata.
+    // Trend Setter implies user wants vocals (most viral tracks have vocals),
+    // so we sanitize Suno's vocal-killer words from the output.
+    const raw = `${item.genre}, in the style of ${item.artist} "${item.track}", ${item.style}, modern mix, radio-ready production, 2026 viral energy`;
+    return sunoSanitize(raw, true);
   };
 
   const doCopy = async (text) => {
@@ -12934,30 +13583,12 @@ function TrendSetterPage() {
                 borderRadius: T.r_lg, cursor: "pointer",
                 transition: `all ${T.dur_fast} ${T.ease}`,
               }}>
-              <div style={{
-                fontSize: 9, fontFamily: T.font_mono, fontWeight: 700,
-                color: "#FFD700", letterSpacing: "0.22em", marginBottom: 6,
-              }}>
+              <div style={TREND_CARD_NUM_STYLE}>
                 #{String(i + 1).padStart(2, "0")} · {regionData.flag}
               </div>
-              <div style={{
-                fontSize: T.fs_lg, fontFamily: T.font_sans, fontWeight: 600,
-                color: T.text, marginBottom: 4, letterSpacing: "-0.01em",
-              }}>
-                {item.artist}
-              </div>
-              <div style={{
-                fontSize: T.fs_sm, fontFamily: T.font_display, fontStyle: "italic",
-                color: T.textSec, marginBottom: T.s2, lineHeight: 1.3,
-              }}>
-                {item.track}
-              </div>
-              <div style={{
-                fontSize: 10, fontFamily: T.font_mono, color: T.textMuted,
-                letterSpacing: "0.08em", textTransform: "uppercase",
-              }}>
-                {item.genre}
-              </div>
+              <div style={TREND_CARD_ARTIST_STYLE}>{item.artist}</div>
+              <div style={TREND_CARD_TRACK_STYLE}>{item.track}</div>
+              <div style={TREND_CARD_GENRE_STYLE}>{item.genre}</div>
             </button>
           );
         })}
@@ -13064,6 +13695,15 @@ function playCarTakeoffSound() {
   }
 }
 
+// Static style for smoke puff particles — hoisted to avoid re-creating
+// 12 identical objects per transition render cycle.
+const SMOKE_PUFF_STATIC_STYLE = {
+  position: "absolute",
+  borderRadius: "50%",
+  background: "radial-gradient(circle, rgba(220,220,220,0.4) 0%, transparent 70%)",
+  pointerEvents: "none",
+};
+
 function Joystick({ onNavigate }) {
   const { tier, features } = useTier();
   const { fuels, activeFuel, setActiveFuel } = useFuel();
@@ -13071,6 +13711,10 @@ function Joystick({ onNavigate }) {
   const isMobile = layout === "mobile";
   const [transitioning, setTransitioning] = useState(false);
   const [hoverPos, setHoverPos] = useState(null);
+  // Drag state — when non-null, overrides the discrete tiltAngle with a
+  // continuous value so the handle tracks the pointer 1:1.
+  const [dragAngle, setDragAngle] = useState(null);
+  const svgRef = useRef(null);
 
   // Available positions based on tier
   const hasTrend = features.dailyFuel.trend > 0;
@@ -13080,13 +13724,18 @@ function Joystick({ onNavigate }) {
 
   const currentIdx = Math.max(0, positions.indexOf(activeFuel));
 
-  // Joystick tilt angle: -1 = left, 0 = center, +1 = right
-  // For 3: -22°, 0°, +22°. For 2: -18°, +18°. For 1: 0°.
-  const tiltAngle = positions.length === 3
-    ? (currentIdx - 1) * 22
+  // Compute the discrete tilt angle for a given position index.
+  // 3 positions: -22°, 0°, +22°. 2 positions: -18°, +18°. 1: 0°.
+  const angleForIdx = (idx) => positions.length === 3
+    ? (idx - 1) * 22
     : positions.length === 2
-      ? (currentIdx * 2 - 1) * 18
+      ? (idx * 2 - 1) * 18
       : 0;
+
+  // Joystick tilt angle: -1 = left, 0 = center, +1 = right
+  const discreteTilt = angleForIdx(currentIdx);
+  // During drag, use live pointer-tracked angle; otherwise use discrete.
+  const tiltAngle = dragAngle != null ? dragAngle : discreteTilt;
 
   const handleSelect = (pos) => {
     if (pos === activeFuel) return;
@@ -13099,6 +13748,58 @@ function Joystick({ onNavigate }) {
         setTransitioning(false);
       }, 1800);
     }
+  };
+
+  // ─── DRAG HANDLERS ────────────────────────────────────────────────
+  // Convert a pointer event's clientX into the joystick's angular tilt.
+  // The SVG is uniformly scaled, so we map pointer position into SVG
+  // coordinates using the bounding rect, then compute angle from the
+  // pivot point (JOYSTICK_CX, JOYSTICK_BASE_Y - 8).
+  const pointerToAngle = (e) => {
+    const svg = svgRef.current;
+    if (!svg) return 0;
+    const rect = svg.getBoundingClientRect();
+    // Normalize pointer X into SVG viewBox coords
+    const svgX = ((e.clientX - rect.left) / rect.width) * VB_W;
+    const dx = svgX - JOYSTICK_CX;
+    // Max horizontal reach at ball height is ~80px (shaft ~85 long).
+    // Convert horizontal offset to tilt angle via arcsin approximation.
+    const maxReach = 85;
+    const normalized = Math.max(-1, Math.min(1, dx / maxReach));
+    // Angular range clamp — same as the discrete positions allow
+    const maxAngle = positions.length === 3 ? 22 : positions.length === 2 ? 18 : 0;
+    return normalized * maxAngle;
+  };
+
+  // Snap a live angle to the nearest valid position index.
+  const angleToNearestIdx = (angle) => {
+    let bestIdx = 0, bestDelta = Infinity;
+    for (let i = 0; i < positions.length; i++) {
+      const delta = Math.abs(angle - angleForIdx(i));
+      if (delta < bestDelta) { bestDelta = delta; bestIdx = i; }
+    }
+    return bestIdx;
+  };
+
+  const handlePointerDown = (e) => {
+    if (positions.length < 2) return; // nothing to drag to
+    e.preventDefault();
+    e.currentTarget.setPointerCapture(e.pointerId);
+    setDragAngle(pointerToAngle(e));
+  };
+
+  const handlePointerMove = (e) => {
+    if (dragAngle == null) return;
+    setDragAngle(pointerToAngle(e));
+  };
+
+  const handlePointerUp = (e) => {
+    if (dragAngle == null) return;
+    const targetIdx = angleToNearestIdx(dragAngle);
+    const targetPos = positions[targetIdx];
+    setDragAngle(null); // release drag — CSS transition re-engages toward discrete
+    try { e.currentTarget.releasePointerCapture(e.pointerId); } catch {}
+    if (targetPos !== activeFuel) handleSelect(targetPos);
   };
 
   // Layout constants for the SVG
@@ -13156,11 +13857,10 @@ function Joystick({ onNavigate }) {
             const y = 40 + Math.random() * 40;
             return (
               <div key={i} style={{
-                position: "absolute", left: `${x}%`, top: `${y}%`,
-                width: size, height: size, borderRadius: "50%",
-                background: "radial-gradient(circle, rgba(220,220,220,0.4) 0%, transparent 70%)",
+                ...SMOKE_PUFF_STATIC_STYLE,
+                left: `${x}%`, top: `${y}%`,
+                width: size, height: size,
                 animation: `smokePuff 1.6s ease-out ${delay}s forwards`,
-                pointerEvents: "none",
               }} />
             );
           })}
@@ -13188,9 +13888,13 @@ function Joystick({ onNavigate }) {
           / FUEL SELECTOR
         </div>
         <svg
+          ref={svgRef}
           viewBox={`0 0 ${VB_W} ${VB_H}`}
           width={displayWidth}
-          style={{ display: "block", maxWidth: "100%" }}
+          style={{ display: "block", maxWidth: "100%", touchAction: "none" }}
+          onPointerMove={handlePointerMove}
+          onPointerUp={handlePointerUp}
+          onPointerCancel={handlePointerUp}
         >
           <defs>
             {/* Base plate gradient — metallic grey */}
@@ -13376,7 +14080,11 @@ function Joystick({ onNavigate }) {
 
           {/* Tilting shaft group */}
           <g transform={`rotate(${tiltAngle}, ${JOYSTICK_CX}, ${JOYSTICK_BASE_Y - 8})`}
-            style={{ transition: "transform 320ms cubic-bezier(0.34, 1.56, 0.64, 1)" }}>
+            onPointerDown={handlePointerDown}
+            style={{
+              transition: dragAngle != null ? "none" : "transform 320ms cubic-bezier(0.34, 1.56, 0.64, 1)",
+              cursor: positions.length < 2 ? "default" : (dragAngle != null ? "grabbing" : "grab"),
+            }}>
             {/* Shaft */}
             <rect
               x={JOYSTICK_CX - 5} y={JOYSTICK_BASE_Y - 85}
@@ -14339,6 +15047,9 @@ export default function HitEngine() {
           animation: pageFadeIn 380ms cubic-bezier(0.16, 1, 0.3, 1);
         }
       `}</style>
+      {/* Theme CSS variables — dark default, [data-theme="light"] override */}
+      <style>{generateThemeCSS()}</style>
+      <ThemeProvider>
       <TierProvider>
         <LayoutProvider>
           <FuelProvider>
@@ -14398,6 +15109,7 @@ export default function HitEngine() {
           </FuelProvider>
         </LayoutProvider>
       </TierProvider>
+      </ThemeProvider>
     </>
   );
 }
