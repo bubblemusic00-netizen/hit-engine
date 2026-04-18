@@ -1418,6 +1418,7 @@ const GENRE_TREE = {
     "Trap": ["Atlanta trap","futuristic trap","SoundCloud trap","southern slow","dark trap","plug-trap"],
     "Melodic Rap": ["trap ballad","sung-rap hybrid","heartbreak trap","emo-melodic","cloud-melodic"],
     "Drill": ["UK drill","NY drill","Brooklyn menace","Chicago drill","Irish drill","Bronx drill"],
+    "Afro Drill": ["UK Afro drill","Lagos drill","London-Afro drill","Afrobeat-drill hybrid","Odumodublvck lineage","Afro-drill fusion"],
     "Boom Bap": ["golden era","90s east coast","vinyl break","dirty sample","neo-boom bap"],
     "Conscious Hip-Hop": ["jazz-sample underground","spoken-word driven","modal-loop cipher","socio-political rap"],
     "Lo-Fi Hip-Hop": ["dusty chill","study-beats","tape-warped boom bap","japanese lo-fi"],
@@ -1445,6 +1446,7 @@ const GENRE_TREE = {
     "Afroswing": ["J Hus-style afroswing","UK Afrobeats hybrid","London afroswing","melodic afroswing","NSG era","Kojo Funds lineage"],
   },
   "R&B / Soul": {
+    "Afro R&B": ["Afro-soul crossover","Tems-lineage","Tyla-style","Afrobeats-R&B hybrid","smooth Afro-R&B","London Afro-R&B"],
     "Alt R&B": ["noir ballad","glass-pad ambient","fractured soul","digital gospel","cloud R&B","after-hours R&B","cinematic R&B"],
     "Trap Soul": ["808 ballad","midnight confessional","auto-tuned intimacy","sung-trap","emo trap soul"],
     "Neo-Soul": ["warm-keys groove","organic live-band","70s Philly update","bedroom neo","jazz-inflected","chamber neo-soul"],
@@ -1500,6 +1502,10 @@ const GENRE_TREE = {
     "Melodic Techno": ["afterlife-style melodic","hypnotic melodic techno","euphoric melodic techno","dark melodic techno","progressive melodic","cinematic melodic techno","Anjunadeep melodic","organic melodic techno"],
     "Melodic House": ["afterhours euphoria","progressive-emotional","sunrise chord","organic house","indie dance","Keinemusik-style"],
     "Afro House": ["spiritual percussion","Cape Town deep","tribal trance","3-step Afro","soulful Afro","Keinemusik Afro"],
+    "Afro Tech": ["Afro-driven techno","tribal techno","drumbeat afro-tech","shamanic afro-tech","Afterlife afro-tech","Keinemusik afro-tech"],
+    "Afro Deep": ["deep afro house","spiritual afro-deep","meditative afro-deep","Black Coffee-lineage","Cape Town afro-deep","jazz afro-deep"],
+    "Indie Dance": ["nu-disco indie","groovy indie-dance","Keinemusik indie","DJ Tennis-lineage","alt-electronic","disco-house indie"],
+    "Indie House": ["indie-vocal house","guitar-led house","Fred again..-style","bedroom-pop house","songwriter house","alt-house"],
     "Amapiano": ["log-drum groove","soulful piano","Johannesburg party","private school piano","sgubhu"],
     "Techno": ["peak-time warehouse","Detroit lineage","Berlin hypnotic","schranz","acid techno","hypnotic techno"],
     "Dark Techno": ["industrial crush","Blade Runner kick","dystopian drone","warehouse darkness","raw dark techno"],
@@ -1563,6 +1569,7 @@ const GENRE_TREE = {
     "Drum and Bass Latino": ["Latin DnB","Spanish-language DnB","reggaeton-DnB hybrid"],
   },
   "Rock": {
+    "Alt Rock": ["90s alt radio","modern alt","guitar-driven alt","grunge-adjacent alt","Arctic Monkeys-lineage","The Strokes revival"],
     "Alternative Rock": ["modern alt","90s alternative","college-radio alt","anthem alt"],
     "Indie Rock": ["jangle pop-rock","lo-fi indie","DIY indie","dream-indie"],
     "Post-Rock": ["cinematic crescendo","slowcore long-form","crystalline guitar","instrumental epic"],
@@ -1602,8 +1609,13 @@ const GENRE_TREE = {
   },
   "World / Global": {
     "Afrobeats": ["Lagos pop","UK-Afro crossover","amapiano-fused","Afropop","Naija-pop"],
+    "Afropop": ["melodic Afropop","modern Afropop","Afropop crossover","Tiwa Savage-lineage","Yemi Alade-style","Wizkid-era Afropop"],
     "Afrofusion": ["continental hybrid","jazz-Afrobeats","worldbeat","Afro-soul"],
+    "Afro Fusion": ["Burna Boy lineage","Afro-R&B fusion","Afro-electronic","Afro-soul-pop","Afro-jazz hybrid","modern Afro Fusion"],
+    "Afro Futurism": ["speculative Afro","Janelle Monáe lineage","cosmic Afro","sci-fi Afro-soul","Afro-electronic futurism","Outkast-ancestral Afro-futurism"],
     "Afrobeat": ["Fela-lineage","Afrobeat revival","ethio-afrobeat"],
+    "Afrobeat Brasileiro": ["Brazilian Afrobeat","São Paulo Afro","Afro-samba","Afrobeat-baile hybrid","Rio Afrobeat","Bahia Afrobeat"],
+    "Latin Afrobeat": ["Spanish-Afro hybrid","Afro-reggaeton crossover","Colombian Afrobeat","Afro-Latin fusion","tropical Afro-Latino","Latin diaspora Afrobeat"],
     "Gqom": ["Durban gqom","3-step gqom","heavy gqom"],
     "Dancehall": ["modern dancehall","riddim-led","Jamaica-to-UK","dembow-dancehall"],
     "Reggae": ["roots reggae","dub","lovers rock","dancehall-roots"],
@@ -3964,15 +3976,51 @@ function TriToggle({ value, onChange }) {
 }
 
 // Section — wraps a group of options. Single consistent shell.
-function Section({ title, children, hint, toggle, onToggleChange, extra }) {
+function Section({ title, children, hint, toggle, onToggleChange, extra, filled }) {
   const disabled = toggle === "off";
+  // LED shows when a section is active (toggle not "off"). Green = user has
+  // picked at least one element in this section; red = section still empty.
+  const showLed = !disabled && filled !== undefined;
+  const ledGreen = filled === true;
   return (
     <div style={{ paddingTop: T.s6, paddingBottom: T.s2 }}>
+      <style>{`
+        @keyframes sectionLedPulseGreen {
+          0%, 100% {
+            background: #10b981;
+            box-shadow: 0 0 3px #10b98166, 0 0 0 0 #10b98133;
+          }
+          50% {
+            background: #34d399;
+            box-shadow: 0 0 6px #10b981bb, 0 0 0 2px #10b98111;
+          }
+        }
+        @keyframes sectionLedPulseRed {
+          0%, 100% {
+            background: #ef4444;
+            box-shadow: 0 0 3px #ef444466, 0 0 0 0 #ef444433;
+          }
+          50% {
+            background: #f87171;
+            box-shadow: 0 0 6px #ef4444bb, 0 0 0 2px #ef444411;
+          }
+        }
+      `}</style>
       <div style={{
         display: "flex", alignItems: "center", justifyContent: "space-between",
         gap: T.s4, marginBottom: T.s4, flexWrap: "wrap",
       }}>
         <div style={{ display: "flex", alignItems: "center", gap: T.s3 }}>
+          {showLed && (
+            <span
+              aria-label={ledGreen ? "section has selection" : "section empty"}
+              style={{
+                display: "inline-block",
+                width: 9, height: 9, borderRadius: "50%",
+                animation: `${ledGreen ? "sectionLedPulseGreen" : "sectionLedPulseRed"} 1.8s ease-in-out infinite`,
+                flexShrink: 0,
+              }} />
+          )}
           <Label color={disabled ? T.textMuted : T.textSec} size={T.fs_sm}>{title}</Label>
           {hint && <span style={{ fontSize: T.fs_sm, color: T.textTer, fontFamily: T.font_sans }}>{hint}</span>}
         </div>
@@ -4036,6 +4084,196 @@ function ensureBannerFonts() {
     document.head.appendChild(link);
   }
   __animatedBannerFontLoaded = true;
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// SALES MODAL — Reusable upgrade prompt shown when a user hits a tier-gated
+// feature. Smart-salesman framing: explains what they unlock, why it matters,
+// concrete CTA. Dismissible via backdrop, ESC, or "Maybe later".
+// ════════════════════════════════════════════════════════════════════════════
+
+// Copy map: tailor the pitch per feature so it feels specific, not generic.
+const SALES_COPY = {
+  presetShuffle: {
+    tier: "vip",
+    headline: "Shuffle the full preset deck",
+    subline: "You're looking at 5 curated presets. VIP unlocks the full 50 — all shufflable, every session.",
+    bullet: [
+      "All 50 presets, ranked and random",
+      "Trend Fuel: 50 daily viral-track prompts",
+      "No random subgenre gates — the whole tree",
+    ],
+    cta: "Upgrade to VIP",
+  },
+  sortByPopularity: {
+    tier: "vip",
+    headline: "Sort genres by what's hot right now",
+    subline: "Arrange the 280+ genre tree by current streaming popularity. Spot rising sounds before they break.",
+    bullet: [
+      "Re-rank any genre list live",
+      "Plus: all VIP tools (Trend Fuel, shuffle deck, custom options)",
+    ],
+    cta: "Upgrade to VIP",
+  },
+  proPresets: {
+    tier: "pro",
+    headline: "Unlock 5 curated presets",
+    subline: "Pro gives you 5 hand-picked starting points — solid prompts, tuned for real genres, every session.",
+    bullet: [
+      "5 curated presets (VIP gets all 50 + shuffle)",
+      "Pro Fuel: 3 daily hits (Free has 1)",
+      "Full subgenre tree unlocked",
+    ],
+    cta: "Upgrade to Pro",
+  },
+};
+
+function SalesModal({ open, onClose, onUpgrade, feature }) {
+  // ESC key closes
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e) => { if (e.key === "Escape") onClose && onClose(); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open, onClose]);
+  if (!open) return null;
+  const copy = SALES_COPY[feature] || SALES_COPY.proPresets;
+  const tierColor =
+    copy.tier === "vip" ? "#C792EA" :
+    copy.tier === "pro" ? "#FF1744" :
+    T.accent;
+  return (
+    <>
+      <style>{`
+        @keyframes salesModalBackdrop {
+          from { opacity: 0; }
+          to   { opacity: 1; }
+        }
+        @keyframes salesModalPanel {
+          from { opacity: 0; transform: translate(-50%, -48%) scale(0.96); }
+          to   { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+        }
+      `}</style>
+      <div
+        onClick={onClose}
+        style={{
+          position: "fixed", inset: 0, zIndex: 9998,
+          background: "rgba(5, 6, 10, 0.72)",
+          backdropFilter: "blur(4px)",
+          WebkitBackdropFilter: "blur(4px)",
+          animation: "salesModalBackdrop 180ms ease-out",
+        }}
+      />
+      <div
+        role="dialog"
+        aria-modal="true"
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          position: "fixed",
+          top: "50%", left: "50%",
+          transform: "translate(-50%, -50%)",
+          zIndex: 9999,
+          width: "min(480px, calc(100vw - 32px))",
+          maxHeight: "calc(100vh - 64px)",
+          overflowY: "auto",
+          background: T.surface,
+          border: `1px solid ${tierColor}44`,
+          borderRadius: T.r_lg,
+          boxShadow: `0 20px 60px rgba(0,0,0,0.45), 0 0 0 1px ${tierColor}22, 0 0 40px ${tierColor}22`,
+          padding: `${T.s6}px`,
+          animation: "salesModalPanel 240ms cubic-bezier(0.16, 1, 0.3, 1)",
+        }}
+      >
+        {/* Tier badge */}
+        <div style={{
+          display: "inline-flex", alignItems: "center", gap: 6,
+          padding: "4px 10px",
+          background: `${tierColor}18`,
+          border: `1px solid ${tierColor}55`,
+          borderRadius: 999,
+          fontSize: 10, fontFamily: T.font_mono, fontWeight: 700,
+          color: tierColor, letterSpacing: "0.2em",
+          marginBottom: T.s4,
+        }}>
+          <span style={{
+            width: 6, height: 6, borderRadius: "50%",
+            background: tierColor,
+            boxShadow: `0 0 8px ${tierColor}`,
+          }} />
+          {copy.tier.toUpperCase()}
+        </div>
+
+        {/* Headline */}
+        <div style={{
+          fontSize: 22, fontFamily: T.font_sans, fontWeight: 600,
+          color: T.text, lineHeight: 1.15, letterSpacing: "-0.015em",
+          marginBottom: T.s3,
+        }}>
+          {copy.headline}
+        </div>
+
+        {/* Subline */}
+        <div style={{
+          fontSize: T.fs_md, fontFamily: T.font_sans, color: T.textSec,
+          lineHeight: 1.5, marginBottom: T.s5,
+        }}>
+          {copy.subline}
+        </div>
+
+        {/* Bullets */}
+        <div style={{ marginBottom: T.s6 }}>
+          {(copy.bullet || []).map((b, i) => (
+            <div key={i} style={{
+              display: "flex", alignItems: "flex-start", gap: T.s3,
+              padding: `${T.s2}px 0`,
+              fontSize: T.fs_sm, fontFamily: T.font_sans,
+              color: T.textSec, lineHeight: 1.45,
+            }}>
+              <span style={{
+                color: tierColor,
+                fontSize: 14, lineHeight: 1.3, flexShrink: 0,
+              }}>✓</span>
+              <span>{b}</span>
+            </div>
+          ))}
+        </div>
+
+        {/* CTA row */}
+        <div style={{ display: "flex", gap: T.s3, justifyContent: "flex-end", flexWrap: "wrap" }}>
+          <button type="button" onClick={onClose}
+            style={{
+              padding: "10px 18px",
+              background: "transparent",
+              border: `1px solid ${T.border}`,
+              borderRadius: T.r_md,
+              color: T.textSec,
+              fontFamily: T.font_sans, fontSize: T.fs_sm, fontWeight: 500,
+              cursor: "pointer",
+              transition: `all ${T.dur_fast} ${T.ease}`,
+            }}
+            onMouseEnter={e => { e.currentTarget.style.color = T.text; e.currentTarget.style.borderColor = T.borderFocus; }}
+            onMouseLeave={e => { e.currentTarget.style.color = T.textSec; e.currentTarget.style.borderColor = T.border; }}
+          >Maybe later</button>
+          <button type="button" onClick={() => { onUpgrade && onUpgrade(); onClose && onClose(); }}
+            style={{
+              padding: "10px 22px",
+              background: tierColor,
+              border: `1px solid ${tierColor}`,
+              borderRadius: T.r_md,
+              color: "#fff",
+              fontFamily: T.font_sans, fontSize: T.fs_sm, fontWeight: 600,
+              letterSpacing: "0.01em",
+              cursor: "pointer",
+              boxShadow: `0 4px 14px ${tierColor}55`,
+              transition: `all ${T.dur_fast} ${T.ease}`,
+            }}
+            onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-1px)"; e.currentTarget.style.boxShadow = `0 6px 20px ${tierColor}77`; }}
+            onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = `0 4px 14px ${tierColor}55`; }}
+          >{copy.cta} →</button>
+        </div>
+      </div>
+    </>
+  );
 }
 
 function AnimatedBanner({ size = 112 }) {
@@ -5519,7 +5757,7 @@ function GenreSlotPicker({ slots, onChange, slotLocks, onToggleSlotLock, maxSlot
           <div style={{ marginBottom: T.s4 }}>
             <Label color={T.textTer} style={{ display: "block", marginBottom: T.s2 }}>Main genre (commits immediately)</Label>
             <div style={{ display: "flex", flexWrap: "wrap", gap: T.s1 }}>
-              {Object.keys(GENRE_TREE).filter(cat => {
+              {Object.keys(GENRE_TREE).sort((a, b) => a.localeCompare(b)).filter(cat => {
                 if (!q) return true;
                 // Show category if: its own name matches, OR any of its subgenres/microstyles match
                 if (matches(cat)) return true;
@@ -5552,6 +5790,7 @@ function GenreSlotPicker({ slots, onChange, slotLocks, onToggleSlotLock, maxSlot
               </Label>
               <div style={{ display: "flex", flexWrap: "wrap", gap: T.s1 }}>
                 {Object.keys(GENRE_TREE[activeCat])
+                  .sort((a, b) => a.localeCompare(b))
                   .filter(g => {
                     if (!q) return true;
                     if (matches(activeCat) || matches(g)) return true;
@@ -5587,6 +5826,8 @@ function GenreSlotPicker({ slots, onChange, slotLocks, onToggleSlotLock, maxSlot
               </Label>
               <div style={{ display: "flex", flexWrap: "wrap", gap: T.s1 }}>
                 {(GENRE_TREE[activeCat]?.[activeGenre] || [])
+                  .slice()
+                  .sort((a, b) => a.localeCompare(b))
                   .filter(m => {
                     if (!q) return true;
                     return matches(m) || matches(activeGenre) || matches(activeCat);
@@ -6654,9 +6895,22 @@ function EnginePage({ onNavigate }) {
   const shortPromptRef = useRef(null);
 
   // ── PRESETS SHUFFLE ─────────────────────────────────────────────────
-  // Show 5 random presets out of the 50-preset catalog. Reshuffles on each
-  // EnginePage mount + when the user clicks the reshuffle button.
+  // Gate: Free/Pro see the same fixed 5 curated starting points. Only VIP
+  // (and Admin) can shuffle through the full 50-preset catalog. This makes
+  // the catalog a concrete upgrade reason rather than a volume brag.
+  const canShufflePresets = tier === "vip" || tier === "admin";
+  // Fixed 5 curated presets — a balanced sampler across genre families.
+  const PRO_PRESET_IDS = [
+    "modern-trap",
+    "moody-rnb",
+    "afrobeats-summer",
+    "dark-pop",
+    "lofi-study",
+  ];
   const shuffle5Presets = () => {
+    if (!canShufflePresets) {
+      return PRO_PRESET_IDS.slice();
+    }
     const ids = PRESETS.map(p => p.id);
     // Fisher-Yates partial shuffle — pick 5 unique IDs
     const copy = [...ids];
@@ -6670,6 +6924,9 @@ function EnginePage({ onNavigate }) {
   const visiblePresets = visiblePresetIds
     .map(id => PRESETS.find(p => p.id === id))
     .filter(Boolean);
+
+  // Sales modal — opens when a tier-gated feature is clicked.
+  const [salesModalFeature, setSalesModalFeature] = useState(null);
 
   // showToast — transient notification near HIT button. Auto-dismiss 3.4s.
   const showToast = (text, kind = "warn") => {
@@ -7322,30 +7579,48 @@ function EnginePage({ onNavigate }) {
                   Presets
                 </Label>
                 <button type="button"
-                  onClick={() => setVisiblePresetIds(shuffle5Presets())}
-                  title="Shuffle — show 5 different presets"
+                  onClick={() => {
+                    if (canShufflePresets) {
+                      setVisiblePresetIds(shuffle5Presets());
+                    } else {
+                      setSalesModalFeature("presetShuffle");
+                    }
+                  }}
+                  title={canShufflePresets
+                    ? "Shuffle — show 5 different presets"
+                    : "VIP only — click to learn more"}
                   style={{
                     display: "inline-flex", alignItems: "center", gap: 4,
                     padding: isMobile ? `6px 10px` : `3px 8px`,
                     minHeight: isMobile ? 32 : "auto",
                     background: "transparent",
-                    border: `1px solid ${T.border}`,
+                    border: `1px solid ${canShufflePresets ? T.border : "#C792EA55"}`,
                     borderRadius: T.r_sm,
-                    color: T.textMuted,
+                    color: canShufflePresets ? T.textMuted : "#C792EA",
                     fontFamily: T.font_mono, fontSize: T.fs_xs, fontWeight: 700,
                     letterSpacing: "0.15em",
                     cursor: "pointer",
                     transition: `all ${T.dur_fast} ${T.ease}`,
                   }}
                   onMouseEnter={e => {
-                    e.currentTarget.style.borderColor = T.borderFocus;
-                    e.currentTarget.style.color = T.text;
+                    if (canShufflePresets) {
+                      e.currentTarget.style.borderColor = T.borderFocus;
+                      e.currentTarget.style.color = T.text;
+                    } else {
+                      e.currentTarget.style.borderColor = "#C792EA";
+                      e.currentTarget.style.background = "#C792EA10";
+                    }
                   }}
                   onMouseLeave={e => {
-                    e.currentTarget.style.borderColor = T.border;
-                    e.currentTarget.style.color = T.textMuted;
+                    if (canShufflePresets) {
+                      e.currentTarget.style.borderColor = T.border;
+                      e.currentTarget.style.color = T.textMuted;
+                    } else {
+                      e.currentTarget.style.borderColor = "#C792EA55";
+                      e.currentTarget.style.background = "transparent";
+                    }
                   }}>
-                  ⟳ SHUFFLE
+                  {canShufflePresets ? "⟳ SHUFFLE" : "🔒 SHUFFLE"}
                 </button>
               </div>
               <div style={{ display: "flex", flexWrap: "wrap", gap: T.s2 }}>
@@ -7388,7 +7663,8 @@ function EnginePage({ onNavigate }) {
             <LyricalSwitch value={lyricsOn} onChange={setLyricsOn} />
           </Section>
 
-          <Section title="Genre slots" hint="Up to 3. Main genre alone is fine.">
+          <Section title="Genre slots" hint="Up to 3. Main genre alone is fine."
+            filled={(state.slots || []).some(s => s && s.genre)}>
             <GenreSlotPicker slots={state.slots} onChange={v => set("slots", v)}
               slotLocks={state.slotLocks} onToggleSlotLock={toggleSlotLock}
               maxSlots={effectiveLimits.maxSlots}
@@ -7398,6 +7674,7 @@ function EnginePage({ onNavigate }) {
           </Section>
 
           <Section title="Mood"
+            filled={!!state.mood}
             toggle={state.toggles.mood} onToggleChange={v => setToggle("mood", v)}
             extra={renderLockBtn("mood")}>
             <div style={{ display: "flex", flexWrap: "wrap", gap: T.s1 }}>
@@ -7418,6 +7695,7 @@ function EnginePage({ onNavigate }) {
           </Section>
 
           <Section title="Energy arc"
+            filled={!!state.energy}
             toggle={state.toggles.energy} onToggleChange={v => setToggle("energy", v)}
             extra={renderLockBtn("energy")}>
             <div style={{ display: "flex", flexWrap: "wrap", gap: T.s1 }}>
@@ -7438,6 +7716,7 @@ function EnginePage({ onNavigate }) {
           </Section>
 
           <Section title="Groove" hint="Sets the rhythmic feel."
+            filled={state.groove && state.groove !== "default"}
             toggle={state.toggles.groove} onToggleChange={v => setToggle("groove", v)}
             extra={renderLockBtn("groove")}>
             <div style={{ display: "flex", flexWrap: "wrap", gap: T.s1 }}>
@@ -7458,6 +7737,7 @@ function EnginePage({ onNavigate }) {
           </Section>
 
           <Section title="BPM"
+            filled={state.bpm > 0}
             hint={state.bpm > 0
               ? `${state.bpm} BPM — locked in`
               : (state.toggles.bpm === "off"
@@ -7560,6 +7840,7 @@ function EnginePage({ onNavigate }) {
           {lyricsOn && (
             <>
               <Section title="Vocalist"
+                filled={!!state.vocalist}
                 toggle={state.toggles.vocalist} onToggleChange={v => setToggle("vocalist", v)}
                 extra={renderLockBtn("vocalist")}>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: T.s1 }}>
@@ -7580,6 +7861,7 @@ function EnginePage({ onNavigate }) {
               </Section>
 
               <Section title="Language" hint="Shifts vocal phrasing and cadence."
+                filled={!!state.language}
                 toggle={state.toggles.language} onToggleChange={v => setToggle("language", v)}
                 extra={renderLockBtn("language")}>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: T.s1 }}>
@@ -7599,6 +7881,7 @@ function EnginePage({ onNavigate }) {
               </Section>
 
               <Section title="Lyrical vibe" hint="How the words frame the song."
+                filled={!!state.lyricalVibe}
                 toggle={state.toggles.lyricalVibe} onToggleChange={v => setToggle("lyricalVibe", v)}
                 extra={renderLockBtn("lyricalVibe")}>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: T.s1 }}>
@@ -7621,6 +7904,7 @@ function EnginePage({ onNavigate }) {
           )}
 
           <Section title="Specific instruments"
+            filled={(state.specificInstruments || []).length > 0}
             hint={
               state.toggles.specificInstruments === "off" ? "Excluded."
               : state.toggles.specificInstruments === "on"
@@ -7650,6 +7934,7 @@ function EnginePage({ onNavigate }) {
           </Section>
 
           <Section title="Harmonic style"
+            filled={!!state.harmonic}
             toggle={state.toggles.harmonic} onToggleChange={v => setToggle("harmonic", v)}
             extra={renderLockBtn("harmonic")}>
             <div style={{ display: "flex", flexWrap: "wrap", gap: T.s1 }}>
@@ -7670,6 +7955,7 @@ function EnginePage({ onNavigate }) {
           </Section>
 
           <Section title="Sound texture"
+            filled={!!state.texture}
             toggle={state.toggles.texture} onToggleChange={v => setToggle("texture", v)}
             extra={renderLockBtn("texture")}>
             <div style={{ display: "flex", flexWrap: "wrap", gap: T.s1 }}>
@@ -7690,6 +7976,7 @@ function EnginePage({ onNavigate }) {
           </Section>
 
           <Section title="Mix character"
+            filled={!!state.mix}
             toggle={state.toggles.mix} onToggleChange={v => setToggle("mix", v)}
             extra={renderLockBtn("mix")}>
             <div style={{ display: "flex", flexWrap: "wrap", gap: T.s1 }}>
@@ -7811,6 +8098,13 @@ function EnginePage({ onNavigate }) {
           )}
         </div>
       </div>
+      {/* Sales modal — reusable upgrade prompt for tier-gated features */}
+      <SalesModal
+        open={!!salesModalFeature}
+        feature={salesModalFeature}
+        onClose={() => setSalesModalFeature(null)}
+        onUpgrade={() => { onNavigate && onNavigate("shop"); }}
+      />
     </div>
   );
 }
@@ -8044,6 +8338,20 @@ const GENRE_LINEAGE = {
 
   // ── MISC ────────────────────────────────────────────────────────────────
   "Miami Bass":          { parents: ["Electro","Hip-Hop"], era: "1984–", description: "Florida's sub-bass party music. Proto-crunk.", traits: ["sub bass","electro drums","party chants"], artists: ["2 Live Crew","Luke","DJ Magic Mike","Uncle Al","Poison Clan","DJ Laz","95 South","Quad City DJ's","Tag Team","69 Boyz","MC Shy-D","Splack Pack","Anquette","Clay D","Trick Daddy"] },
+
+  // ── NEW GENRES (2026 additions) ────────────────────────────────────────
+  "Afro Tech":           { parents: ["Techno","Afro House"], era: "2018–", description: "Techno with Afro percussion and tribal drumbeat sensibility. The Afterlife-meets-Keinemusik sound.", traits: ["tribal percussion","driving techno","shamanic vocals","128-132 BPM"], artists: ["Adam Port","&ME","Rampa","Keinemusik","Mörda","Themba","Shimza","Culoe De Song","Black Coffee","Da Africa Deep","Caiiro","Atjazz","Enoo Napa","Stimela","DJ Merlon","Mr Silk"] },
+  "Afro Deep":           { parents: ["Deep House","Afro House"], era: "2010–", description: "Deep house with African spiritual depth. Black Coffee's church.", traits: ["deep chords","spiritual vocals","slow build","118-122 BPM"], artists: ["Black Coffee","Culoe De Song","Atjazz","Themba","Boddhi Satva","Osunlade","Djeff","Da Capo","Ralf GUM","Caiiro","Enoo Napa","Kid Fonque","Fka Mash","Sio","Sun-El Musician","Msaki"] },
+  "Indie Dance":         { parents: ["Electronic","Indie"], era: "2005–", description: "Dance music filtered through indie-rock sensibility. Nu-disco cousins with songwriter DNA.", traits: ["indie vocals","disco-house groove","analog synths","120-124 BPM"], artists: ["DJ Tennis","Tiga","Hot Chip","LCD Soundsystem","The Juan MacLean","Poolside","Moullinex","Crazy P","Cut Copy","Classixx","Holy Ghost!","Rüfüs Du Sol","Gerd Janson","Prins Thomas","Roosevelt","Jungle"] },
+  "Indie House":         { parents: ["House","Indie"], era: "2018–", description: "House with indie-pop vocals and guitar-forward melodies. The Fred again.. era.", traits: ["indie vocals","guitar-led house","emotional progressions","120-125 BPM"], artists: ["Fred again..","Jamie xx","Four Tet","Bicep","Overmono","Joy Orbison","Barry Can't Swim","Interplanetary Criminal","Skream","Eli & Fur","Floating Points","Caribou","Mura Masa","Kaytranada","Kettama","Ross from Friends"] },
+  "Alt Rock":            { parents: ["Rock","Punk"], era: "1985–", description: "Alternative rock — guitar-led, non-mainstream, college radio DNA. Shorter-label cousin of Alternative Rock.", traits: ["jangly-to-distorted guitars","introspective lyrics","indie spirit","verse-chorus craft"], artists: ["Arctic Monkeys","The Strokes","Foo Fighters","Radiohead","The Killers","Muse","Green Day","R.E.M.","Pixies","Pearl Jam","Weezer","The 1975","Blur","Oasis","The Black Keys","Cage the Elephant","Queens of the Stone Age"] },
+  "Afro Futurism":       { parents: ["Electronic","R&B / Soul","Jazz"], era: "1970s–", description: "Speculative Black music imagining cosmic futures. Sun Ra's sci-fi, modernized.", traits: ["cosmic textures","genre-defying","Afro-diaspora themes","sci-fi aesthetic"], artists: ["Sun Ra","Janelle Monáe","Flying Lotus","Thundercat","Erykah Badu","OutKast","Shabaka Hutchings","Kamasi Washington","Moses Sumney","Rosie Lowe","Arlo Parks","Solange","Georgia Anne Muldrow","Ras G","Sampa the Great","Georgia"] },
+  "Afrobeat Brasileiro": { parents: ["Afrobeat","Samba"], era: "2010–", description: "Brazilian take on Fela-lineage Afrobeat. São Paulo meets Lagos.", traits: ["Afrobeat horns","samba percussion","Brazilian vocals","long jams"], artists: ["Bixiga 70","Abayomy Afrobeat Orquestra","Orquestra Afrosinfônica","Iconili","Bixiga","Tagua Tagua","Azymuth (modern)","BaianaSystem","Afrocidade","Metá Metá","Sambalanço Trio","Curumin","Criolo","Emicida"] },
+  "Afropop":             { parents: ["Afrobeats","Pop"], era: "2010–", description: "Mainstream pop-oriented Afrobeats. Radio-ready, hook-first.", traits: ["pop hooks","Afro-percussion","melodic vocals","90-105 BPM"], artists: ["Tyla","Tiwa Savage","Yemi Alade","Ayra Starr","Wizkid","Davido","Libianca","Joeboy","CKay","Fireboy DML","Rema","Simi","Niniola","Omah Lay","Asake","Asa"] },
+  "Latin Afrobeat":      { parents: ["Afrobeats","Reggaeton"], era: "2022–", description: "Spanish-language Afrobeats crossover. Latin diaspora meets West Africa.", traits: ["Afrobeats production","Spanish vocals","reggaeton adjacent","melodic hybrid"], artists: ["Kapo","Shakira (Soltera-era)","Elena Rose","Farruko (Afro-era)","Piso 21","Manuel Turizo","Ovy On The Drums","Maluma","Feid","J Balvin","Rauw Alejandro","Bad Bunny","Ryan Castro","Alleh & Yorghaki","Hamilton"] },
+  "Afro Fusion":         { parents: ["Afrobeats","Afrobeat","R&B / Soul"], era: "2018–", description: "Burna Boy's genre-crossing Afrobeats — fuses reggae, dancehall, R&B, and jazz.", traits: ["genre-fluid","Afrobeats root","English + pidgin","cosmopolitan production"], artists: ["Burna Boy","Tems","Rema","Ayra Starr","Omah Lay","Fireboy DML","Seun Kuti","Made Kuti","Wizkid","Davido","Adekunle Gold","Simi","Oxlade","Asake","Black Sherif"] },
+  "Afro R&B":            { parents: ["Afrobeats","Contemporary R&B","Alt R&B"], era: "2018–", description: "R&B vocals over Afrobeats production. Tems-and-Tyla's lane.", traits: ["Afrobeats drums","R&B melisma","dual-language","intimate mood"], artists: ["Tems","Tyla","Ayra Starr","Libianca","Odeal","Oxlade","Arlo Parks","Amaarae","Raveena","Joeboy","Lojay","Ojerime","Nonso Amadi","Gyakie","Bloody Civilian","Tiana Major9"] },
+  "Afro Drill":          { parents: ["Drill","Afrobeats"], era: "2021–", description: "UK drill fused with Afrobeats melody. Lagos-meets-London bar.", traits: ["drill 808s","Afrobeats hooks","pidgin + UK slang","140 BPM"], artists: ["Odumodublvck","Kwengface","Darkoo","Shaybo","Ms Banks","BlaqBonez","PsychoYP","Fireboy DML (drill collabs)","OdumoduBlvck","BENJIIVIBES","Lil Kesh","Mohbad","Zilla Oaks","Boj","A2","Lancey Foux"] },
 };
 
 // Helper: compute children for each node by reversing the parents map.
@@ -10512,19 +10820,31 @@ function GenrePopularityChart({ genre }) {
 // Genres are sorted by their 2026 popularity (most relevant now at top).
 // Each row shows a tiny sparkline so you can see a genre's life-curve at a glance.
 // ════════════════════════════════════════════════════════════════════════════
-function GenreBrowser({ selectedGenre, onSelectGenre }) {
+function GenreBrowser({ selectedGenre, onSelectGenre, onNavigate }) {
   const { layout } = useLayout();
+  const { tier } = useTier();
   const isMobile = layout === "mobile";
   const [search, setSearch] = useState("");
   const [mobileShowDetail, setMobileShowDetail] = useState(false);
 
-  // Precompute: all genres sorted by current (2026) popularity, descending.
-  // This turns the sidebar into a "what's hot right now" ranked list.
+  // Sort mode — "alpha" (A→Z) or "popularity" (current-year hot list).
+  // Free/Pro default to alpha and are gated out of popularity sort.
+  // VIP/Admin default to popularity (the "what's hot" view is premium).
+  const canSortByPopularity = tier === "vip" || tier === "admin";
+  const [sortMode, setSortMode] = useState(canSortByPopularity ? "popularity" : "alpha");
+  const [salesModalOpen, setSalesModalOpen] = useState(false);
+
+  // Precompute sorted lists for both modes; active mode decides which renders.
   const sortedGenres = useMemo(() => {
-    return Object.keys(GENRE_LINEAGE)
-      .map(g => ({ name: g, current: getCurrentPopularity(g) }))
-      .sort((a, b) => b.current - a.current);
-  }, []);
+    const all = Object.keys(GENRE_LINEAGE).map(g => ({
+      name: g,
+      current: getCurrentPopularity(g),
+    }));
+    if (sortMode === "popularity") {
+      return all.sort((a, b) => b.current - a.current);
+    }
+    return all.sort((a, b) => a.name.localeCompare(b.name));
+  }, [sortMode]);
 
   // Search filters across the full list
   const searchLower = search.trim().toLowerCase();
@@ -10594,7 +10914,7 @@ function GenreBrowser({ selectedGenre, onSelectGenre }) {
         borderRadius: T.r_lg,
         overflow: "hidden",
       }}>
-        {/* Header with explanatory label */}
+        {/* Header with explanatory label + sort toggle */}
         <div style={{
           padding: "12px 14px 10px",
           borderBottom: `1px solid ${T.border}`,
@@ -10602,13 +10922,66 @@ function GenreBrowser({ selectedGenre, onSelectGenre }) {
         }}>
           <div style={{
             fontSize: 10, fontFamily: T.font_mono, fontWeight: 700,
-            color: T.textMuted, letterSpacing: "0.18em", marginBottom: 4,
-          }}>SORTED BY CURRENT POPULARITY</div>
-          <div style={{
-            fontSize: 10, color: T.textTer, fontFamily: T.font_sans,
-            lineHeight: 1.4,
+            color: T.textMuted, letterSpacing: "0.18em", marginBottom: 6,
           }}>
-            {visibleGenres.length} genres · most relevant today first
+            {sortMode === "popularity" ? "SORTED BY CURRENT POPULARITY" : "SORTED ALPHABETICALLY"}
+          </div>
+          <div style={{
+            display: "flex", alignItems: "center", justifyContent: "space-between",
+            gap: T.s2, flexWrap: "wrap",
+          }}>
+            <div style={{
+              fontSize: 10, color: T.textTer, fontFamily: T.font_sans,
+              lineHeight: 1.4,
+            }}>
+              {visibleGenres.length} genres · {sortMode === "popularity" ? "most relevant today first" : "A to Z"}
+            </div>
+            {/* Sort toggle — two-pill segmented control */}
+            <div style={{
+              display: "inline-flex", gap: 2,
+              padding: 2,
+              background: T.bg,
+              border: `1px solid ${T.border}`,
+              borderRadius: T.r_sm,
+            }}>
+              <button type="button"
+                onClick={() => setSortMode("alpha")}
+                style={{
+                  padding: "4px 10px",
+                  background: sortMode === "alpha" ? T.accent : "transparent",
+                  border: "none",
+                  borderRadius: 4,
+                  color: sortMode === "alpha" ? "#fff" : T.textMuted,
+                  fontFamily: T.font_mono, fontSize: 10, fontWeight: 700,
+                  letterSpacing: "0.12em",
+                  cursor: "pointer",
+                  transition: `all ${T.dur_fast} ${T.ease}`,
+                }}>A–Z</button>
+              <button type="button"
+                onClick={() => {
+                  if (canSortByPopularity) {
+                    setSortMode("popularity");
+                  } else {
+                    setSalesModalOpen(true);
+                  }
+                }}
+                title={canSortByPopularity ? "Sort by current streaming popularity" : "VIP only — click to learn more"}
+                style={{
+                  padding: "4px 10px",
+                  background: sortMode === "popularity" ? T.accent : "transparent",
+                  border: "none",
+                  borderRadius: 4,
+                  color: sortMode === "popularity"
+                    ? "#fff"
+                    : (canSortByPopularity ? T.textMuted : "#C792EA"),
+                  fontFamily: T.font_mono, fontSize: 10, fontWeight: 700,
+                  letterSpacing: "0.12em",
+                  cursor: "pointer",
+                  transition: `all ${T.dur_fast} ${T.ease}`,
+                }}>
+                {canSortByPopularity ? "POPULAR ⚡" : "🔒 POPULAR"}
+              </button>
+            </div>
           </div>
         </div>
 
@@ -10672,6 +11045,12 @@ function GenreBrowser({ selectedGenre, onSelectGenre }) {
           />
         </div>
       )}
+      <SalesModal
+        open={salesModalOpen}
+        feature="sortByPopularity"
+        onClose={() => setSalesModalOpen(false)}
+        onUpgrade={() => { onNavigate && onNavigate("shop"); }}
+      />
     </div>
   );
 }
@@ -10756,7 +11135,7 @@ function GenreRow({ genre, rank, current, isSelected, onClick }) {
 }
 
 
-function HistoryPage() {
+function HistoryPage({ onNavigate }) {
   const { layout } = useLayout();
   const { features } = useTier();
   const isMobile = layout === "mobile";
@@ -10894,6 +11273,7 @@ function HistoryPage() {
           <GenreBrowser
             selectedGenre={selectedLineage}
             onSelectGenre={setSelectedLineage}
+            onNavigate={onNavigate}
           />
         </div>
       )}
@@ -15206,7 +15586,7 @@ export default function HitEngine() {
                   <div key={page} className="page-transition">
                     {page === "engine"  && <EnginePage onNavigate={setPage} />}
                     {page === "future"  && <FuturePage />}
-                    {page === "history" && <HistoryPage />}
+                    {page === "history" && <HistoryPage onNavigate={setPage} />}
                     {page === "secrets" && <PlaybookPage />}
                     {page === "shop"    && <ShopPage />}
                     {page === "trendsetter" && <TrendSetterPage />}
