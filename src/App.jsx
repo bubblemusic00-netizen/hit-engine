@@ -339,6 +339,67 @@ function fuelDisplay(v) {
   return String(v);
 }
 
+// ────────────────────────────────────────────────────────────────────────────
+// CUSTOM OPTIONS CONTEXT
+// Pro+ users can add their own options to chip-list sections. Persisted in
+// localStorage, keyed by section id. Shape: { [sectionId]: string[] }
+// ────────────────────────────────────────────────────────────────────────────
+const CustomOptionsContext = createContext({
+  customOptions: {},
+  addCustomOption: () => {},
+  removeCustomOption: () => {},
+});
+function useCustomOptions() { return useContext(CustomOptionsContext); }
+
+function CustomOptionsProvider({ children }) {
+  const [customOptions, setCustomOptions] = useState(() => {
+    if (typeof localStorage === "undefined") return {};
+    try {
+      const raw = localStorage.getItem("he-custom-options-v1");
+      return raw ? JSON.parse(raw) : {};
+    } catch { return {}; }
+  });
+
+  useEffect(() => {
+    try { localStorage.setItem("he-custom-options-v1", JSON.stringify(customOptions)); } catch {}
+  }, [customOptions]);
+
+  const addCustomOption = (sectionId, value) => {
+    const trimmed = String(value || "").trim();
+    if (!trimmed) return;
+    setCustomOptions(prev => {
+      const existing = prev[sectionId] || [];
+      // Dedupe case-insensitively
+      if (existing.some(v => v.toLowerCase() === trimmed.toLowerCase())) return prev;
+      // Cap at 30 per section to prevent runaway storage
+      if (existing.length >= 30) return prev;
+      return { ...prev, [sectionId]: [...existing, trimmed] };
+    });
+  };
+
+  const removeCustomOption = (sectionId, value) => {
+    setCustomOptions(prev => {
+      const existing = prev[sectionId] || [];
+      const next = existing.filter(v => v !== value);
+      if (next.length === 0) {
+        const { [sectionId]: _, ...rest } = prev;
+        return rest;
+      }
+      return { ...prev, [sectionId]: next };
+    });
+  };
+
+  const value = useMemo(() => ({
+    customOptions, addCustomOption, removeCustomOption,
+  }), [customOptions]);
+
+  return (
+    <CustomOptionsContext.Provider value={value}>
+      {children}
+    </CustomOptionsContext.Provider>
+  );
+}
+
 const TierContext = createContext({
   tier: "free", setTier: () => {}, features: TIER_FEATURES.free,
   ownedTiers: new Set(["free"]), purchaseTier: () => ({ ok: false }),
@@ -2224,7 +2285,7 @@ function shortPromptL0(state, lyricsOn) {
   if (lyricsOn) {
     const vocal = useField(state.toggles.vocalist, state.vocalist) || "sung lead vocal";
     parts.push(vocal.toLowerCase());
-    const langLabel = LANGUAGES.find(l => l.code === state.language)?.label || "English";
+    const langLabel = LANGUAGES.find(l => l.code === state.language)?.label || state.language || "English";
     if (state.toggles.language !== "off") parts.push(`${langLabel.toLowerCase()} lyrics`);
     const vibe = useField(state.toggles.lyricalVibe, state.lyricalVibe);
     if (vibe) parts.push(`${vibe.toLowerCase()} lyrics`);
@@ -2254,7 +2315,7 @@ function shortPromptL1(state, lyricsOn) {
   if (lyricsOn) {
     const vocal = useField(state.toggles.vocalist, state.vocalist) || "sung lead vocal";
     parts.push(vocal.toLowerCase());
-    const langLabel = LANGUAGES.find(l => l.code === state.language)?.label || "English";
+    const langLabel = LANGUAGES.find(l => l.code === state.language)?.label || state.language || "English";
     if (state.toggles.language !== "off") parts.push(`${langLabel.toLowerCase()} lyrics`);
   } else parts.push("no vocals");
   const si = resolveSpecificInstruments(state).slice(0, 4);
@@ -2278,7 +2339,7 @@ function shortPromptL2(state, lyricsOn) {
   if (lyricsOn) {
     const vocal = useField(state.toggles.vocalist, state.vocalist) || "sung vocal";
     parts.push(compressPhrase(vocal));
-    const langLabel = LANGUAGES.find(l => l.code === state.language)?.label || "English";
+    const langLabel = LANGUAGES.find(l => l.code === state.language)?.label || state.language || "English";
     if (state.toggles.language !== "off" && state.language !== "en") parts.push(`${langLabel.toLowerCase()} lyrics`);
   } else parts.push("no vocals");
   const si = resolveSpecificInstruments(state).slice(0, 3);
@@ -2298,7 +2359,7 @@ function shortPromptL3(state, lyricsOn) {
   else {
     parts.push(compressPhrase(state.vocalist || "sung vocal"));
     if (state.toggles.language !== "off" && state.language !== "en") {
-      const langLabel = LANGUAGES.find(l => l.code === state.language)?.label;
+      const langLabel = LANGUAGES.find(l => l.code === state.language)?.label || state.language;
       if (langLabel) parts.push(`${langLabel.toLowerCase()} lyrics`);
     }
   }
@@ -2313,7 +2374,7 @@ function shortPromptL4(state, lyricsOn) {
   parts.push(`${inferBPM(state)}bpm`);
   if (!lyricsOn) parts.push("no vox");
   else if (state.toggles.language !== "off" && state.language !== "en") {
-    const langLabel = LANGUAGES.find(l => l.code === state.language)?.label;
+    const langLabel = LANGUAGES.find(l => l.code === state.language)?.label || state.language;
     if (langLabel) parts.push(`${langLabel.toLowerCase()} lyrics`);
   }
   if (state.mood) parts.push(compressPhrase(state.mood));
@@ -2354,7 +2415,7 @@ function buildDetailedSentences(state, lyricsOn, mode) {
   if (lyricsOn) {
     const vocal = useField(state.toggles.vocalist, state.vocalist) || "clear lead vocal, confident and forward in the mix";
     const langLabel = state.toggles.language !== "off"
-      ? (LANGUAGES.find(l => l.code === state.language)?.label || "English")
+      ? (LANGUAGES.find(l => l.code === state.language)?.label || state.language || "English")
       : null;
     const langBit = langLabel ? `, ${langLabel.toLowerCase()} lyrics` : "";
     sentences.push({ priority: 3,
@@ -2712,7 +2773,7 @@ function Button({ children, variant = "secondary", size = "md", onClick, disable
 // tierLocked: option exists in the catalog but is hidden behind a tier gate. Displayed
 // with the label blurred. Non-interactive UNLESS onLockedClick is provided — in which
 // case clicking the locked chip fires the redirect handler (e.g. navigate to Shop).
-function Chip({ label, selected, onClick, onDoubleClick, onLockToggle, favorite, locked, disabled, size = "md", casinoOutline, tierLocked, onLockedClick }) {
+function Chip({ label, selected, onClick, onDoubleClick, onLockToggle, favorite, locked, disabled, size = "md", casinoOutline, tierLocked, onLockedClick, titleOverride }) {
   const [hover, setHover] = useState(false);
   const { layout } = useLayout();
   const isMobile = layout === "mobile";
@@ -2758,7 +2819,9 @@ function Chip({ label, selected, onClick, onDoubleClick, onLockToggle, favorite,
         if (onLockToggle) { e.preventDefault(); onLockToggle(); }
       }}
       onMouseEnter={() => (!inactive || hasLockedRedirect) && setHover(true)} onMouseLeave={() => setHover(false)}
-      title={tierLocked
+      title={titleOverride
+        ? titleOverride
+        : tierLocked
         ? (hasLockedRedirect ? "Locked — click to upgrade" : "Upgrade tier to unlock this option")
         : onLockToggle
           ? "Click: select · Double-click: favorite · Right-click: lock"
@@ -2821,7 +2884,137 @@ function Chip({ label, selected, onClick, onDoubleClick, onLockToggle, favorite,
   );
 }
 
-// TriToggle — Off / Auto / On. Linear-style segmented control.
+// AddCustomChip — renders as a "+" button that expands into an inline input
+// when clicked. Enter commits, Escape/blur cancels. Pro+ tier only; for Free
+// users, it renders a tier-locked placeholder that navigates to the Shop.
+function AddCustomChip({ sectionId, onNavigateToShop }) {
+  const { features } = useTier();
+  const { addCustomOption } = useCustomOptions();
+  const { layout } = useLayout();
+  const isMobile = layout === "mobile";
+  const [editing, setEditing] = useState(false);
+  const [value, setValue] = useState("");
+  const [hover, setHover] = useState(false);
+  const inputRef = useRef(null);
+
+  // Tier gate: feature is Pro+ only. We piggyback on presets as our Pro-gate
+  // indicator since custom options are a similar "power user" feature.
+  const allowed = features?.presets === true;
+
+  useEffect(() => {
+    if (editing && inputRef.current) inputRef.current.focus();
+  }, [editing]);
+
+  const commit = () => {
+    addCustomOption(sectionId, value);
+    setValue("");
+    setEditing(false);
+  };
+  const cancel = () => { setValue(""); setEditing(false); };
+
+  const baseStyle = {
+    padding: isMobile ? "9px 12px" : "4px 10px",
+    fontSize: isMobile ? T.fs_md : T.fs_sm,
+    minHeight: isMobile ? 40 : 24,
+    height: isMobile ? undefined : 24,
+    fontFamily: T.font_sans,
+    fontWeight: 500,
+    borderRadius: T.r_md,
+    userSelect: "none",
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 4,
+    transition: `all ${T.dur_fast} ${T.ease}`,
+    cursor: "pointer",
+  };
+
+  // FREE TIER: tier-locked state, click navigates to Shop
+  if (!allowed) {
+    return (
+      <span
+        onClick={() => onNavigateToShop && onNavigateToShop()}
+        onMouseEnter={() => setHover(true)}
+        onMouseLeave={() => setHover(false)}
+        title="Custom options are a Pro feature — click to upgrade"
+        style={{
+          ...baseStyle,
+          background: "transparent",
+          border: `1px dashed ${T.border}`,
+          color: T.textMuted,
+          opacity: 0.65,
+          position: "relative", overflow: "hidden",
+        }}
+      >
+        <span aria-hidden="true" style={{
+          position: "absolute", inset: 0,
+          backgroundImage: `repeating-linear-gradient(135deg,
+            rgba(148,158,182,0.06) 0 4px,
+            transparent 4px 8px)`,
+          pointerEvents: "none",
+        }} />
+        <span style={{ fontSize: 12, opacity: 0.7 }}>⚿</span>
+        <span>+ add</span>
+      </span>
+    );
+  }
+
+  // INPUT MODE
+  if (editing) {
+    return (
+      <span style={{
+        ...baseStyle,
+        background: T.elevated,
+        border: `1px solid ${T.accentBorder}`,
+        padding: isMobile ? "4px 8px" : "2px 6px",
+      }}>
+        <input
+          ref={inputRef}
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") { e.preventDefault(); commit(); }
+            else if (e.key === "Escape") { e.preventDefault(); cancel(); }
+          }}
+          onBlur={() => {
+            // Commit on blur if there's content, otherwise cancel
+            if (value.trim()) commit(); else cancel();
+          }}
+          placeholder="your own option…"
+          style={{
+            width: isMobile ? 140 : 120,
+            border: "none", outline: "none",
+            background: "transparent",
+            color: T.text,
+            fontFamily: T.font_sans,
+            fontSize: isMobile ? 16 : T.fs_sm,  // 16px prevents iOS zoom
+            padding: isMobile ? "4px 2px" : "0 2px",
+          }}
+        />
+      </span>
+    );
+  }
+
+  // IDLE MODE — plus button
+  return (
+    <span
+      onClick={() => setEditing(true)}
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      title="Add your own option — Enter to save, right-click to delete custom chips"
+      style={{
+        ...baseStyle,
+        background: hover ? T.hover : "transparent",
+        border: `1px dashed ${hover ? T.accentBorder : T.border}`,
+        color: hover ? T.text : T.textSec,
+      }}
+    >
+      <span style={{ fontSize: 14, lineHeight: 1, fontWeight: 700 }}>+</span>
+      <span>custom</span>
+    </span>
+  );
+}
+
+
 function TriToggle({ value, onChange }) {
   const { features } = useTier();
   const onAllowed = features ? features.hasOnToggle !== false : true;
@@ -4957,6 +5150,7 @@ function EnginePage({ onNavigate }) {
   const { tier, features } = useTier();
   const { layout } = useLayout();
   const { fuels, activeFuel, consumeFuel } = useFuel();
+  const { customOptions, removeCustomOption } = useCustomOptions();
   const isMobile = layout === "mobile";
   const [state, setState] = useState(ENGINE_DEF);
   const [lyricsOn, setLyricsOn] = useState(true);
@@ -5166,6 +5360,47 @@ function EnginePage({ onNavigate }) {
   };
 
   // ─────────────────────────────────────────────────────────────────────
+  // CUSTOM OPTIONS TAIL
+  // Renders after the built-in chips in each chip-list section.
+  // For each custom entry: a chip that behaves identically to built-in
+  //   chips (click = select, double-click = favorite) BUT right-click
+  //   deletes the custom entry (since you can't lock a custom option).
+  // Then renders the AddCustomChip (+) button.
+  // sectionId must match the keys used by state/set (e.g. "mood", "groove").
+  // getter: (entry) => { isSelected, onClick } — section-specific behavior
+  //   since some sections use `state.mood === value` and others use `===g.id`.
+  // ─────────────────────────────────────────────────────────────────────
+  const renderCustomTail = (sectionId, getter) => {
+    const entries = customOptions[sectionId] || [];
+    return (
+      <>
+        {entries.map((entry) => {
+          const { isSelected, onClick } = getter(entry);
+          return (
+            <Chip
+              key={`custom:${entry}`}
+              label={entry}
+              selected={isSelected}
+              favorite={favSetFor(sectionId).has(entry)}
+              locked={optionLockSetFor(sectionId).has(entry)}
+              casinoOutline={casinoOutlines.get(`${sectionId}:${entry}`)}
+              onClick={onClick}
+              onDoubleClick={() => toggleFavorite(sectionId, entry)}
+              onLockToggle={() => removeCustomOption(sectionId, entry)}
+              titleOverride="Custom option · Click: select · Right-click: delete"
+              size="sm"
+            />
+          );
+        })}
+        <AddCustomChip
+          sectionId={sectionId}
+          onNavigateToShop={() => onNavigate && onNavigate("shop")}
+        />
+      </>
+    );
+  };
+
+  // ─────────────────────────────────────────────────────────────────────
   // MODE SYNC: Instrumental auto-disables lyric sections.
   // Song auto-enables them. User can override manually after.
   // ─────────────────────────────────────────────────────────────────────
@@ -5233,6 +5468,19 @@ function EnginePage({ onNavigate }) {
         .filter(v => pool.includes(v));
       if (favs.length > 0 && Math.random() < 0.7) return pickOne(favs);
       return pickOne(pool);
+    };
+
+    // withCustom — prepends user-added custom entries to the randomizer pool
+    // for a given section AND boosts their priority. 60% chance to pick from
+    // custom entries if any exist; otherwise falls through to normal favPick.
+    // Custom entries are always present in the pool even outside the priority roll.
+    const withCustom = (sectionKey, pool) => {
+      const customs = customOptions[sectionKey] || [];
+      if (customs.length === 0) return favPick(sectionKey, pool);
+      // 60% chance: pick from custom entries (the "prioritized" behavior)
+      if (Math.random() < 0.6) return pickOne(customs);
+      // Otherwise: merge customs into pool and let favPick handle
+      return favPick(sectionKey, [...customs, ...pool]);
     };
 
     // Helper: either preserve existing or randomize, depending on sectionLock
@@ -5318,24 +5566,24 @@ function EnginePage({ onNavigate }) {
       slots: nextSlots,
       slotLocks,
       toggles: { ...state.toggles },
-      mood:      maybe("mood",     () => favPick("mood", clipPool(MOODS))),
-      energy:    maybe("energy",   () => favPick("energy", clipPool(ENERGIES))),
-      groove:    maybe("groove",   () => favPick("groove", clipPool(GROOVES.slice(1).map(g => g.id))), "default"),
-      vocalist:  maybe("vocalist", () => favPick("vocalist", clipPool(VOCALISTS))),
+      mood:      maybe("mood",     () => withCustom("mood", clipPool(MOODS))),
+      energy:    maybe("energy",   () => withCustom("energy", clipPool(ENERGIES))),
+      groove:    maybe("groove",   () => withCustom("groove", clipPool(GROOVES.slice(1).map(g => g.id))), "default"),
+      vocalist:  maybe("vocalist", () => withCustom("vocalist", clipPool(VOCALISTS))),
       // Language: sectionLock OR legacy languageLocked both preserve
       language:  (secLocks.language || state.languageLocked)
                    ? state.language
                    : (chosen.has("language")
-                       ? favPick("language", clipPool(LANGUAGES.map(l => l.code)))
+                       ? withCustom("language", clipPool(LANGUAGES.map(l => l.code)))
                        : "en"),
       languageLocked: state.languageLocked,
-      lyricalVibe: maybe("lyricalVibe", () => favPick("lyricalVibe", clipPool(LYRICAL_VIBES))),
+      lyricalVibe: maybe("lyricalVibe", () => withCustom("lyricalVibe", clipPool(LYRICAL_VIBES))),
       specificInstruments:   specInsts,
       specificArticulations: specArts,
       specificCount:         specCount,
-      mix:       maybe("mix",      () => favPick("mix", clipPool(MIX_CHARS))),
-      harmonic:  maybe("harmonic", () => favPick("harmonic", clipPool(HARMONIC_STYLES))),
-      texture:   maybe("texture",  () => favPick("texture", clipPool(SOUND_TEXTURES))),
+      mix:       maybe("mix",      () => withCustom("mix", clipPool(MIX_CHARS))),
+      harmonic:  maybe("harmonic", () => withCustom("harmonic", clipPool(HARMONIC_STYLES))),
+      texture:   maybe("texture",  () => withCustom("texture", clipPool(SOUND_TEXTURES))),
       favorites: state.favorites || [],
       sectionLocks: state.sectionLocks,
       optionLocks:  state.optionLocks,
@@ -5598,6 +5846,10 @@ function EnginePage({ onNavigate }) {
                   onDoubleClick={() => toggleFavorite("mood", o)}
                   onLockToggle={() => toggleOptionLock("mood", o)} />
               ))}
+              {renderCustomTail("mood", (e) => ({
+                isSelected: state.mood === e,
+                onClick: () => set("mood", state.mood === e ? "" : e),
+              }))}
             </div>
           </Section>
 
@@ -5615,6 +5867,10 @@ function EnginePage({ onNavigate }) {
                   onDoubleClick={() => toggleFavorite("energy", o)}
                   onLockToggle={() => toggleOptionLock("energy", o)} />
               ))}
+              {renderCustomTail("energy", (e) => ({
+                isSelected: state.energy === e,
+                onClick: () => set("energy", state.energy === e ? "" : e),
+              }))}
             </div>
           </Section>
 
@@ -5632,6 +5888,10 @@ function EnginePage({ onNavigate }) {
                   onDoubleClick={() => toggleFavorite("groove", g.id)}
                   onLockToggle={() => toggleOptionLock("groove", g.id)} />
               ))}
+              {renderCustomTail("groove", (e) => ({
+                isSelected: state.groove === e,
+                onClick: () => set("groove", state.groove === e ? "" : e),
+              }))}
             </div>
           </Section>
 
@@ -5651,6 +5911,10 @@ function EnginePage({ onNavigate }) {
                       onDoubleClick={() => toggleFavorite("vocalist", o)}
                       onLockToggle={() => toggleOptionLock("vocalist", o)} />
                   ))}
+                  {renderCustomTail("vocalist", (e) => ({
+                    isSelected: state.vocalist === e,
+                    onClick: () => set("vocalist", state.vocalist === e ? "" : e),
+                  }))}
                 </div>
               </Section>
 
@@ -5667,6 +5931,10 @@ function EnginePage({ onNavigate }) {
                       onDoubleClick={() => toggleFavorite("language", lang.code)}
                       onLockToggle={() => toggleOptionLock("language", lang.code)} />
                   ))}
+                  {renderCustomTail("language", (e) => ({
+                    isSelected: state.language === e,
+                    onClick: () => set("language", state.language === e ? "" : e),
+                  }))}
                 </div>
               </Section>
 
@@ -5684,6 +5952,10 @@ function EnginePage({ onNavigate }) {
                       onDoubleClick={() => toggleFavorite("lyricalVibe", o)}
                       onLockToggle={() => toggleOptionLock("lyricalVibe", o)} />
                   ))}
+                  {renderCustomTail("lyricalVibe", (e) => ({
+                    isSelected: state.lyricalVibe === e,
+                    onClick: () => set("lyricalVibe", state.lyricalVibe === e ? "" : e),
+                  }))}
                 </div>
               </Section>
             </>
@@ -5732,6 +6004,10 @@ function EnginePage({ onNavigate }) {
                   onDoubleClick={() => toggleFavorite("harmonic", o)}
                   onLockToggle={() => toggleOptionLock("harmonic", o)} />
               ))}
+              {renderCustomTail("harmonic", (e) => ({
+                isSelected: state.harmonic === e,
+                onClick: () => set("harmonic", state.harmonic === e ? "" : e),
+              }))}
             </div>
           </Section>
 
@@ -5749,6 +6025,10 @@ function EnginePage({ onNavigate }) {
                   onDoubleClick={() => toggleFavorite("texture", o)}
                   onLockToggle={() => toggleOptionLock("texture", o)} />
               ))}
+              {renderCustomTail("texture", (e) => ({
+                isSelected: state.texture === e,
+                onClick: () => set("texture", state.texture === e ? "" : e),
+              }))}
             </div>
           </Section>
 
@@ -5766,6 +6046,10 @@ function EnginePage({ onNavigate }) {
                   onDoubleClick={() => toggleFavorite("mix", o)}
                   onLockToggle={() => toggleOptionLock("mix", o)} />
               ))}
+              {renderCustomTail("mix", (e) => ({
+                isSelected: state.mix === e,
+                onClick: () => set("mix", state.mix === e ? "" : e),
+              }))}
             </div>
           </Section>
         </div>
@@ -11737,10 +12021,12 @@ function playCarTakeoffSound() {
 function Joystick({ onNavigate }) {
   const { tier, features } = useTier();
   const { fuels, activeFuel, setActiveFuel } = useFuel();
+  const { layout } = useLayout();
+  const isMobile = layout === "mobile";
   const [transitioning, setTransitioning] = useState(false);
+  const [hoverPos, setHoverPos] = useState(null);
 
-  // Available positions based on tier. Free gets [free]; Pro gets [free, pro];
-  // VIP gets [free, pro, trend]. Positions arranged horizontally on joystick tilt axis.
+  // Available positions based on tier
   const hasTrend = features.dailyFuel.trend > 0;
   const positions = hasTrend
     ? ["free", "pro", "trend"]
@@ -11748,27 +12034,44 @@ function Joystick({ onNavigate }) {
 
   const currentIdx = Math.max(0, positions.indexOf(activeFuel));
 
-  // Tilt angle based on position: 0 = left, 1 = center, 2 = right
-  // For 3 positions: -30°, 0°, +30°. For 2: -20°, +20°. For 1: 0°.
+  // Joystick tilt angle: -1 = left, 0 = center, +1 = right
+  // For 3: -22°, 0°, +22°. For 2: -18°, +18°. For 1: 0°.
   const tiltAngle = positions.length === 3
-    ? (currentIdx - 1) * 30
+    ? (currentIdx - 1) * 22
     : positions.length === 2
-      ? (currentIdx * 2 - 1) * 20
+      ? (currentIdx * 2 - 1) * 18
       : 0;
 
   const handleSelect = (pos) => {
     if (pos === activeFuel) return;
     setActiveFuel(pos);
-    // If moving to trend → trigger animation + navigate
     if (pos === "trend") {
       setTransitioning(true);
       playCarTakeoffSound();
       setTimeout(() => {
         onNavigate("trendsetter");
         setTransitioning(false);
-      }, 1800); // animation duration
+      }, 1800);
     }
   };
+
+  // Layout constants for the SVG
+  // Viewport: 480×220 (desktop), scales down on mobile
+  // Joystick occupies left 140px, LCD panel right 320px
+  const VB_W = 480;
+  const VB_H = 220;
+  const JOYSTICK_CX = 80;
+  const JOYSTICK_BASE_Y = 160;
+  const SCREEN_AREA_X = 160;
+  const SCREEN_AREA_W = 300;
+  const SCREEN_COUNT = positions.length;
+  const SCREEN_GAP = 12;
+  const SCREEN_W = (SCREEN_AREA_W - SCREEN_GAP * (SCREEN_COUNT - 1)) / SCREEN_COUNT;
+  const SCREEN_H = 120;
+  const SCREEN_Y = 50;
+
+  // Responsive sizing: cap at 480 on desktop, fill width on mobile
+  const displayWidth = isMobile ? Math.min(360, typeof window !== "undefined" ? window.innerWidth - 40 : 320) : 480;
 
   return (
     <>
@@ -11790,8 +12093,16 @@ function Joystick({ onNavigate }) {
               from { transform: scale(0.4) translateY(0); opacity: 0.8; }
               to   { transform: scale(3) translateY(-80px); opacity: 0; }
             }
+            @keyframes lcdFlicker {
+              0%, 100% { opacity: 1; }
+              48%      { opacity: 0.94; }
+              49%      { opacity: 1; }
+            }
+            @keyframes lcdScan {
+              from { transform: translateY(-100%); }
+              to   { transform: translateY(200%); }
+            }
           `}</style>
-          {/* Multiple smoke puff particles */}
           {Array.from({ length: 12 }).map((_, i) => {
             const delay = Math.random() * 0.4;
             const size = 80 + Math.random() * 120;
@@ -11807,7 +12118,6 @@ function Joystick({ onNavigate }) {
               }} />
             );
           })}
-          {/* Central text */}
           <div style={{
             position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -50%)",
             fontSize: "clamp(32px, 6vw, 72px)",
@@ -11820,118 +12130,285 @@ function Joystick({ onNavigate }) {
         </div>
       )}
 
-      {/* Joystick SVG */}
+      {/* Joystick + LCD panel */}
       <div style={{
         display: "flex", flexDirection: "column", alignItems: "center", gap: T.s2,
-        padding: T.s3,
+        padding: `${T.s3}px 0`,
       }}>
         <div style={{
           fontSize: 9, fontFamily: T.font_mono, fontWeight: 700,
-          letterSpacing: "0.22em", color: T.textMuted, marginBottom: 2,
+          letterSpacing: "0.22em", color: T.textMuted,
         }}>
           / FUEL SELECTOR
         </div>
-        <svg viewBox="0 0 160 120" width={isJoystickMobileSize() ? 120 : 160} style={{ display: "block" }}>
+        <svg
+          viewBox={`0 0 ${VB_W} ${VB_H}`}
+          width={displayWidth}
+          style={{ display: "block", maxWidth: "100%" }}
+        >
           <defs>
-            <radialGradient id="baseGrad" cx="50%" cy="50%">
-              <stop offset="0%" stopColor="#444" />
-              <stop offset="70%" stopColor="#222" />
-              <stop offset="100%" stopColor="#111" />
-            </radialGradient>
-            <radialGradient id="ballGrad" cx="40%" cy="35%">
-              <stop offset="0%" stopColor="#ff4444" />
-              <stop offset="50%" stopColor="#cc0000" />
-              <stop offset="100%" stopColor="#660000" />
-            </radialGradient>
-            <linearGradient id="stickGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-              <stop offset="0%" stopColor="#222" />
-              <stop offset="50%" stopColor="#555" />
-              <stop offset="100%" stopColor="#222" />
+            {/* Base plate gradient — metallic grey */}
+            <linearGradient id="joyBase" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stopColor="#3a3a42" />
+              <stop offset="40%" stopColor="#28282e" />
+              <stop offset="100%" stopColor="#18181c" />
             </linearGradient>
-            <filter id="joystickShadow" x="-50%" y="-50%" width="200%" height="200%">
-              <feGaussianBlur in="SourceAlpha" stdDeviation="2" />
-              <feOffset dx="0" dy="3" result="offsetblur" />
-              <feComponentTransfer>
-                <feFuncA type="linear" slope="0.4" />
-              </feComponentTransfer>
-              <feMerge>
-                <feMergeNode />
-                <feMergeNode in="SourceGraphic" />
-              </feMerge>
+            {/* Ball top — glossy red */}
+            <radialGradient id="joyBall" cx="35%" cy="30%">
+              <stop offset="0%" stopColor="#ff6b6b" />
+              <stop offset="30%" stopColor="#e63333" />
+              <stop offset="75%" stopColor="#a01717" />
+              <stop offset="100%" stopColor="#550a0a" />
+            </radialGradient>
+            {/* Shaft — chromed metal */}
+            <linearGradient id="joyShaft" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stopColor="#1a1a1e" />
+              <stop offset="30%" stopColor="#5c5c64" />
+              <stop offset="55%" stopColor="#a8a8b0" />
+              <stop offset="75%" stopColor="#5c5c64" />
+              <stop offset="100%" stopColor="#1a1a1e" />
+            </linearGradient>
+            {/* Rubber collar/boot at base of shaft */}
+            <radialGradient id="joyBoot" cx="50%" cy="40%">
+              <stop offset="0%" stopColor="#2a2a30" />
+              <stop offset="100%" stopColor="#0a0a0c" />
+            </radialGradient>
+            {/* LCD screen bezel — dark plastic with subtle highlight */}
+            <linearGradient id="lcdBezel" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stopColor="#2a2a2e" />
+              <stop offset="50%" stopColor="#151518" />
+              <stop offset="100%" stopColor="#08080a" />
+            </linearGradient>
+            {/* LCD inner screen — dark green phosphor default */}
+            <linearGradient id="lcdScreenIdle" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stopColor="#0a1a0e" />
+              <stop offset="100%" stopColor="#050d08" />
+            </linearGradient>
+            {/* Drop shadow for components */}
+            <filter id="joyShadow" x="-20%" y="-20%" width="140%" height="140%">
+              <feGaussianBlur in="SourceAlpha" stdDeviation="3" />
+              <feOffset dx="0" dy="4" result="offsetblur" />
+              <feComponentTransfer><feFuncA type="linear" slope="0.5" /></feComponentTransfer>
+              <feMerge><feMergeNode /><feMergeNode in="SourceGraphic" /></feMerge>
+            </filter>
+            {/* Subtle inner shadow for LCD recessed look */}
+            <filter id="lcdRecess" x="0%" y="0%" width="100%" height="100%">
+              <feGaussianBlur in="SourceAlpha" stdDeviation="2" result="blur" />
+              <feOffset in="blur" dx="0" dy="2" result="offsetBlur" />
+              <feFlood floodColor="#000" floodOpacity="0.6" result="flood" />
+              <feComposite in="flood" in2="offsetBlur" operator="in" result="shadow" />
+              <feComposite in="shadow" in2="SourceGraphic" operator="over" />
             </filter>
           </defs>
 
-          {/* Base plate — rectangular with rounded corners */}
-          <rect x="10" y="70" width="140" height="45" rx="8" fill="url(#baseGrad)" stroke="#000" strokeWidth="1" filter="url(#joystickShadow)" />
+          {/* ============ UNIFIED CONTROLLER BODY — one big base plate tying everything together ============ */}
+          <rect x="10" y="30" width={VB_W - 20} height={VB_H - 50}
+            rx="14" fill="url(#joyBase)" stroke="#000" strokeWidth="1"
+            filter="url(#joyShadow)" />
 
-          {/* Position indicator dots along base */}
+          {/* Body highlight line along the top for depth */}
+          <rect x="14" y="34" width={VB_W - 28} height="1.5"
+            fill="rgba(255,255,255,0.08)" rx="1" />
+
+          {/* Mounting screws on corners */}
+          {[[24, 42], [VB_W - 24, 42], [24, VB_H - 32], [VB_W - 24, VB_H - 32]].map(([x, y], i) => (
+            <g key={`screw-${i}`}>
+              <circle cx={x} cy={y} r={4} fill="#555" stroke="#1a1a1e" strokeWidth="0.5" />
+              <circle cx={x} cy={y} r={3} fill="url(#joyBase)" />
+              <line x1={x - 2} y1={y} x2={x + 2} y2={y} stroke="#0a0a0c" strokeWidth="0.8" />
+            </g>
+          ))}
+
+          {/* ============ LCD SCREENS (right side) ============ */}
           {positions.map((pos, i) => {
-            const dotX = positions.length === 1
-              ? 80
-              : positions.length === 2
-                ? 40 + i * 80
-                : 30 + i * 50;
+            const x = SCREEN_AREA_X + i * (SCREEN_W + SCREEN_GAP);
             const isActive = pos === activeFuel;
+            const isHovered = hoverPos === pos;
             const color = FUEL_TYPES[pos].color;
+            const label = pos.toUpperCase();
+            const fuelCount = fuels[pos];
+            const fuelText = Number.isFinite(fuelCount) ? String(fuelCount) : "∞";
+
             return (
-              <g key={pos}>
-                <circle cx={dotX} cy={92} r={isActive ? 5 : 3.5}
-                  fill={isActive ? color : "#555"}
-                  stroke={isActive ? color : "#333"}
-                  strokeWidth="1"
+              <g key={pos}
+                style={{ cursor: "pointer" }}
+                onClick={() => handleSelect(pos)}
+                onMouseEnter={() => setHoverPos(pos)}
+                onMouseLeave={() => setHoverPos(null)}
+              >
+                {/* Bezel/frame */}
+                <rect x={x} y={SCREEN_Y} width={SCREEN_W} height={SCREEN_H}
+                  rx="6" fill="url(#lcdBezel)" stroke="#000" strokeWidth="1.5" />
+
+                {/* Recessed inner area — the actual "screen" */}
+                <rect x={x + 6} y={SCREEN_Y + 6} width={SCREEN_W - 12} height={SCREEN_H - 12}
+                  rx="3"
+                  fill={isActive
+                    ? `url(#lcdScreenActive-${pos})`
+                    : "url(#lcdScreenIdle)"}
                   style={{
-                    cursor: "pointer",
-                    filter: isActive ? `drop-shadow(0 0 4px ${color})` : "none",
-                    transition: "all 220ms ease-out",
+                    filter: "drop-shadow(inset 0 2px 4px rgba(0,0,0,0.8))",
+                    animation: isActive ? "lcdFlicker 3s infinite" : "none",
                   }}
-                  onClick={() => handleSelect(pos)}
                 />
-                <text x={dotX} y={108}
-                  textAnchor="middle" fontSize="6" fontFamily="monospace"
-                  fill={isActive ? color : "#888"}
-                  style={{ pointerEvents: "none", letterSpacing: "0.1em", fontWeight: 700 }}>
-                  {pos.toUpperCase()}
+
+                {/* Active-state screen gradient overlay */}
+                <defs>
+                  <linearGradient id={`lcdScreenActive-${pos}`} x1="0%" y1="0%" x2="0%" y2="100%">
+                    <stop offset="0%" stopColor={color} stopOpacity="0.18" />
+                    <stop offset="60%" stopColor={color} stopOpacity="0.05" />
+                    <stop offset="100%" stopColor="#000" stopOpacity="0.4" />
+                  </linearGradient>
+                </defs>
+
+                {/* Scanline overlay (subtle horizontal lines) */}
+                <g clipPath={`url(#lcdClip-${pos})`}>
+                  <clipPath id={`lcdClip-${pos}`}>
+                    <rect x={x + 6} y={SCREEN_Y + 6} width={SCREEN_W - 12} height={SCREEN_H - 12} rx="3" />
+                  </clipPath>
+                  {Array.from({ length: Math.floor((SCREEN_H - 12) / 3) }).map((_, idx) => (
+                    <line key={idx}
+                      x1={x + 6} x2={x + SCREEN_W - 6}
+                      y1={SCREEN_Y + 6 + idx * 3} y2={SCREEN_Y + 6 + idx * 3}
+                      stroke="rgba(0,0,0,0.25)" strokeWidth="1"
+                    />
+                  ))}
+                </g>
+
+                {/* Status dot indicator (top-left of screen) */}
+                <circle cx={x + 14} cy={SCREEN_Y + 16} r="3"
+                  fill={isActive ? color : "#1a3a20"}
+                  style={{
+                    filter: isActive ? `drop-shadow(0 0 4px ${color})` : "none",
+                  }} />
+                <text x={x + 22} y={SCREEN_Y + 20}
+                  fontSize="8" fontFamily="monospace" fontWeight="700"
+                  fill={isActive ? color : "#2a5a35"}
+                  letterSpacing="0.15em">
+                  {isActive ? "ON" : "STBY"}
                 </text>
+
+                {/* BIG label — the fuel type name */}
+                <text x={x + SCREEN_W / 2} y={SCREEN_Y + SCREEN_H / 2 + 4}
+                  textAnchor="middle"
+                  fontSize="22" fontFamily="monospace" fontWeight="900"
+                  fill={isActive ? color : "#2a5a35"}
+                  letterSpacing="0.12em"
+                  style={{
+                    filter: isActive ? `drop-shadow(0 0 6px ${color}aa)` : "none",
+                  }}>
+                  {label}
+                </text>
+
+                {/* Credit count — small retro readout at bottom */}
+                <text x={x + SCREEN_W / 2} y={SCREEN_Y + SCREEN_H - 18}
+                  textAnchor="middle"
+                  fontSize="10" fontFamily="monospace" fontWeight="700"
+                  fill={isActive ? color : "#1a3a20"}
+                  letterSpacing="0.1em"
+                  opacity={isActive ? 0.95 : 0.5}>
+                  ▸ {fuelText}
+                </text>
+
+                {/* Hover/active border highlight */}
+                <rect x={x + 1} y={SCREEN_Y + 1} width={SCREEN_W - 2} height={SCREEN_H - 2}
+                  rx="5" fill="none"
+                  stroke={isActive ? color : (isHovered ? "#666" : "transparent")}
+                  strokeWidth={isActive ? "1.5" : "1"}
+                  style={{
+                    filter: isActive ? `drop-shadow(0 0 6px ${color}aa)` : "none",
+                    transition: "stroke 160ms ease-out",
+                  }} />
               </g>
             );
           })}
 
-          {/* Joystick stick — tilts based on position */}
-          <g transform={`rotate(${tiltAngle}, 80, 82)`} style={{ transition: "transform 320ms cubic-bezier(0.34, 1.56, 0.64, 1)" }}>
-            {/* Stick shaft */}
-            <rect x="77" y="30" width="6" height="55" rx="2" fill="url(#stickGrad)" stroke="#000" strokeWidth="0.5" />
-            {/* Ball top */}
-            <circle cx="80" cy="28" r="14" fill="url(#ballGrad)" stroke="#330000" strokeWidth="0.5" filter="url(#joystickShadow)" />
-            {/* Highlight on ball */}
-            <ellipse cx="75" cy="22" rx="5" ry="3" fill="rgba(255,255,255,0.3)" />
+          {/* ============ JOYSTICK (left side) ============ */}
+          {/* Rubber boot/collar at shaft base */}
+          <ellipse cx={JOYSTICK_CX} cy={JOYSTICK_BASE_Y - 8}
+            rx="22" ry="9" fill="url(#joyBoot)" stroke="#000" strokeWidth="0.5" />
+
+          {/* Tilting shaft group */}
+          <g transform={`rotate(${tiltAngle}, ${JOYSTICK_CX}, ${JOYSTICK_BASE_Y - 8})`}
+            style={{ transition: "transform 320ms cubic-bezier(0.34, 1.56, 0.64, 1)" }}>
+            {/* Shaft */}
+            <rect
+              x={JOYSTICK_CX - 5} y={JOYSTICK_BASE_Y - 85}
+              width="10" height="78" rx="2.5"
+              fill="url(#joyShaft)"
+              stroke="#000" strokeWidth="0.5"
+            />
+            {/* Shaft ridges for grip */}
+            {[0, 1, 2].map(i => (
+              <rect key={i}
+                x={JOYSTICK_CX - 5} y={JOYSTICK_BASE_Y - 55 + i * 8}
+                width="10" height="1.5"
+                fill="rgba(0,0,0,0.35)" />
+            ))}
+            {/* Ball top with shadow */}
+            <circle cx={JOYSTICK_CX} cy={JOYSTICK_BASE_Y - 92}
+              r="22" fill="url(#joyBall)"
+              stroke="#2a0808" strokeWidth="0.8"
+              filter="url(#joyShadow)" />
+            {/* Ball highlight */}
+            <ellipse cx={JOYSTICK_CX - 7} cy={JOYSTICK_BASE_Y - 100}
+              rx="7" ry="4" fill="rgba(255,255,255,0.4)" />
+            {/* Secondary smaller highlight */}
+            <ellipse cx={JOYSTICK_CX - 10} cy={JOYSTICK_BASE_Y - 103}
+              rx="2.5" ry="1.5" fill="rgba(255,255,255,0.7)" />
           </g>
 
-          {/* Base mounting screws (decorative) */}
-          {[20, 140].map(x => (
-            <circle key={x} cx={x} cy={80} r={2} fill="#666" stroke="#222" strokeWidth="0.4" />
-          ))}
-          {[20, 140].map(x => (
-            <circle key={`b${x}`} cx={x} cy={105} r={2} fill="#666" stroke="#222" strokeWidth="0.4" />
-          ))}
+          {/* Position reference marks around the base */}
+          {positions.map((pos, i) => {
+            const angle = positions.length === 3
+              ? (i - 1) * 22
+              : positions.length === 2
+                ? (i * 2 - 1) * 18
+                : 0;
+            const rad = (angle - 90) * Math.PI / 180;
+            const markR = 30;
+            const mx = JOYSTICK_CX + Math.cos(rad) * markR;
+            const my = JOYSTICK_BASE_Y - 8 + Math.sin(rad) * markR;
+            const isActive = pos === activeFuel;
+            const color = FUEL_TYPES[pos].color;
+            return (
+              <circle key={`mark-${pos}`}
+                cx={mx} cy={my} r={isActive ? 2.5 : 1.5}
+                fill={isActive ? color : "#444"}
+                style={{
+                  filter: isActive ? `drop-shadow(0 0 3px ${color})` : "none",
+                  transition: "all 220ms ease-out",
+                }} />
+            );
+          })}
+
+          {/* Brand plate under joystick */}
+          <text x={JOYSTICK_CX} y={VB_H - 36}
+            textAnchor="middle"
+            fontSize="9" fontFamily="monospace" fontWeight="700"
+            fill="#555" letterSpacing="0.25em">
+            HIT-CTRL
+          </text>
+          <text x={JOYSTICK_CX} y={VB_H - 25}
+            textAnchor="middle"
+            fontSize="6" fontFamily="monospace"
+            fill="#333" letterSpacing="0.2em">
+            MODEL-88
+          </text>
         </svg>
 
-        {/* Fuel remaining display */}
+        {/* Active fuel label under the controller */}
         <div style={{
-          fontSize: 10, fontFamily: T.font_mono,
+          fontSize: 11, fontFamily: T.font_mono,
           color: FUEL_TYPES[activeFuel].color,
           textShadow: `0 0 6px ${FUEL_TYPES[activeFuel].color}66`,
-          letterSpacing: "0.15em", fontWeight: 700,
+          letterSpacing: "0.2em", fontWeight: 700,
         }}>
-          {FUEL_TYPES[activeFuel].label}: {Number.isFinite(fuels[activeFuel]) ? fuels[activeFuel] : "∞"}
+          ▸ {FUEL_TYPES[activeFuel].label.toUpperCase()}
         </div>
       </div>
     </>
   );
-}
-
-function isJoystickMobileSize() {
-  if (typeof window === "undefined") return false;
-  return window.innerWidth < 640;
 }
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -12819,6 +13296,7 @@ export default function HitEngine() {
       <TierProvider>
         <LayoutProvider>
           <FuelProvider>
+            <CustomOptionsProvider>
             <div style={{
               minHeight: "100vh",
               background: T.bg,
@@ -12870,6 +13348,7 @@ export default function HitEngine() {
                 <DailyBonusToast />
               </div>
             </div>
+            </CustomOptionsProvider>
           </FuelProvider>
         </LayoutProvider>
       </TierProvider>
