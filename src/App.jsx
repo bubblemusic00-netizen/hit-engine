@@ -146,12 +146,12 @@ const TIERS = {
 // Ordered rank for tier comparison (higher number = higher tier)
 const TIER_RANK = { free: 0, pro: 1, vip: 2, admin: 3 };
 
-// Subscription pricing in USD — monthly. Yearly plans are 25% off the annual total.
+// Subscription pricing in USD — monthly. Yearly plans are 20% off the annual total.
 // These are simulated demo prices; real payments are not processed.
 const TIER_PRICE = {
   free:  { monthly: 0,    yearly: 0    },
-  pro:   { monthly: 4.99, yearly: 44.99 }, // 25% off $59.88
-  vip:   { monthly: 9.99, yearly: 89.99 }, // 25% off $119.88
+  pro:   { monthly: 4.99, yearly: 47.99 }, // 20% off $59.88
+  vip:   { monthly: 9.99, yearly: 95.99 }, // 20% off $119.88
   admin: null, // dev-only tier
 };
 
@@ -3790,7 +3790,7 @@ function Chip({ label, selected, onClick, onDoubleClick, onLockToggle, favorite,
 // AddCustomChip — renders as a "+" button that expands into an inline input
 // when clicked. Enter commits, Escape/blur cancels. Pro+ tier only; for Free
 // users, it renders a tier-locked placeholder that navigates to the Shop.
-function AddCustomChip({ sectionId, onNavigateToShop }) {
+function AddCustomChip({ sectionId, onLockedClick }) {
   const { features } = useTier();
   const { addCustomOption } = useCustomOptions();
   const { layout } = useLayout();
@@ -3835,7 +3835,7 @@ function AddCustomChip({ sectionId, onNavigateToShop }) {
   if (!allowed) {
     return (
       <span
-        onClick={() => onNavigateToShop && onNavigateToShop()}
+        onClick={() => onLockedClick && onLockedClick()}
         onMouseEnter={() => setHover(true)}
         onMouseLeave={() => setHover(false)}
         title="Custom options are a Pro feature — click to upgrade"
@@ -4132,6 +4132,50 @@ const SALES_COPY = {
       "Plus: all VIP tools (shuffle deck, popularity sort, custom options)",
     ],
     cta: "Upgrade to VIP",
+  },
+  customOptions: {
+    tier: "pro",
+    headline: "Add your own custom tags",
+    subline: "Pro lets you inject any word, phrase, or tag into any section — mood, groove, instrument, whatever you imagine. Build the sound that isn't in the preset list.",
+    bullet: [
+      "Custom entries in every section",
+      "They get mixed into the randomizer pool",
+      "Plus: 100 daily Pro hits, slot/option locks, full subgenre tree",
+    ],
+    cta: "Upgrade to Pro",
+  },
+  lockedSubgenre: {
+    tier: "pro",
+    headline: "Unlock the full subgenre tree",
+    subline: "Free tier sees 5 starter subgenres per category. Pro unlocks all 280+ subgenres and 2000+ microstyles — the entire tree.",
+    bullet: [
+      "280+ subgenres across every main category",
+      "2000+ microstyles for ultra-specific prompts",
+      "Plus: custom tags, option locks, 100 daily hits",
+    ],
+    cta: "Upgrade to Pro",
+  },
+  slotLock: {
+    tier: "pro",
+    headline: "Lock slots during randomize",
+    subline: "Pro's lock system lets you preserve any slot, section, or chip across HIT clicks — so the randomizer only shuffles what you want.",
+    bullet: [
+      "Lock individual genre slots",
+      "Lock whole sections (mood, groove, etc.)",
+      "Lock favorite chips to bias randomization",
+    ],
+    cta: "Upgrade to Pro",
+  },
+  extraSlots: {
+    tier: "pro",
+    headline: "Combine up to 3 genres",
+    subline: "Free tier uses 1 genre slot. Pro unlocks 3 slots so you can layer hybrid prompts — 'trap × bossa nova × synthwave.'",
+    bullet: [
+      "Up to 3 genre slots per prompt",
+      "Each slot independently picks main + sub + microstyle",
+      "Plus: full subgenre tree, locks, custom tags",
+    ],
+    cta: "Upgrade to Pro",
   },
 };
 
@@ -5567,7 +5611,7 @@ function HitButton({ onRandomize, isRolling, disabled, compact = false, fuelType
 // GENRE SLOT PICKER — allows main-only, main+sub, or main+sub+micro commits
 // ════════════════════════════════════════════════════════════════════════════
 
-function GenreSlotPicker({ slots, onChange, slotLocks, onToggleSlotLock, maxSlots = 3, restrictSubgenres = false, locksDisabled = false, onNavigateToShop }) {
+function GenreSlotPicker({ slots, onChange, slotLocks, onToggleSlotLock, maxSlots = 3, restrictSubgenres = false, locksDisabled = false, onLockedClick }) {
   const { layout } = useLayout();
   const isMobile = layout === "mobile";
   const [activeSlot, setActiveSlot] = useState(null);
@@ -5617,18 +5661,35 @@ function GenreSlotPicker({ slots, onChange, slotLocks, onToggleSlotLock, maxSlot
         gap: T.s2,
       }}>
         {[0, 1, 2].map(i => {
-          // If this slot is beyond tier max, show a locked placeholder
+          // If this slot is beyond tier max, show a locked placeholder that
+          // opens the SalesModal on click (extraSlots upgrade copy).
           if (i >= maxSlots) {
             return (
-              <div key={i} style={{
-                position: "relative", minHeight: 82, padding: T.s3,
-                background: T.surface,
-                border: `1px dashed ${T.border}`,
-                borderRadius: T.r_md,
-                display: "flex", flexDirection: "column",
-                justifyContent: "center", alignItems: "flex-start",
-                gap: 6, opacity: 0.65,
-              }}>
+              <div key={i}
+                onClick={() => onLockedClick && onLockedClick("extraSlots")}
+                title="Pro unlocks slots 2 and 3 — click to upgrade"
+                style={{
+                  position: "relative", minHeight: 82, padding: T.s3,
+                  background: T.surface,
+                  border: `1px dashed ${T.border}`,
+                  borderRadius: T.r_md,
+                  display: "flex", flexDirection: "column",
+                  justifyContent: "center", alignItems: "flex-start",
+                  gap: 6, opacity: 0.75,
+                  cursor: "pointer",
+                  transition: `all ${T.dur_fast} ${T.ease}`,
+                }}
+                onMouseEnter={e => {
+                  e.currentTarget.style.background = "#FF174408";
+                  e.currentTarget.style.borderColor = "#FF174466";
+                  e.currentTarget.style.opacity = "0.95";
+                }}
+                onMouseLeave={e => {
+                  e.currentTarget.style.background = T.surface;
+                  e.currentTarget.style.borderColor = T.border;
+                  e.currentTarget.style.opacity = "0.75";
+                }}
+              >
                 <Label color={T.textTer}>Slot {i + 1}</Label>
                 <TierLock feature="" requiredTier="pro" compact={true} />
               </div>
@@ -5653,8 +5714,15 @@ function GenreSlotPicker({ slots, onChange, slotLocks, onToggleSlotLock, maxSlot
                 </Label>
                 {/* Per-slot lock button — dimmed + shows upgrade hint for Free tier */}
                 <button type="button"
-                  onClick={e => { e.stopPropagation(); onToggleSlotLock?.(i); }}
-                  title={locksDisabled ? "Pro feature — locks preserve slots during randomize" : (isLocked ? "Unlock slot" : "Lock slot against randomize")}
+                  onClick={e => {
+                    e.stopPropagation();
+                    if (locksDisabled) {
+                      onLockedClick && onLockedClick("slotLock");
+                    } else {
+                      onToggleSlotLock?.(i);
+                    }
+                  }}
+                  title={locksDisabled ? "Pro feature — click to unlock" : (isLocked ? "Unlock slot" : "Lock slot against randomize")}
                   style={{
                     background: isLocked ? `${V.neonGold}22` : "transparent",
                     border: `1px ${locksDisabled ? "dashed" : "solid"} ${isLocked ? V.neonGold : T.border}`,
@@ -5808,7 +5876,7 @@ function GenreSlotPicker({ slots, onChange, slotLocks, onToggleSlotLock, maxSlot
                     return (
                       <Chip key={g} label={g} selected={activeGenre === g}
                         tierLocked={!isFreeAllowed}
-                        onLockedClick={!isFreeAllowed && onNavigateToShop ? () => onNavigateToShop() : undefined}
+                        onLockedClick={!isFreeAllowed && onLockedClick ? () => onLockedClick("lockedSubgenre") : undefined}
                         onClick={() => {
                           if (activeGenre === g) {
                             setActiveGenre(null); setActiveMicro(null);
@@ -5842,7 +5910,7 @@ function GenreSlotPicker({ slots, onChange, slotLocks, onToggleSlotLock, maxSlot
                   .map(m => (
                     <Chip key={m} label={m} selected={activeMicro === m}
                       tierLocked={restrictSubgenres}
-                      onLockedClick={restrictSubgenres && onNavigateToShop ? () => onNavigateToShop() : undefined}
+                      onLockedClick={restrictSubgenres && onLockedClick ? () => onLockedClick("lockedSubgenre") : undefined}
                       onClick={() => {
                         const nextMicro = activeMicro === m ? null : m;
                         setActiveMicro(nextMicro);
@@ -7168,7 +7236,7 @@ function EnginePage({ onNavigate }) {
         })}
         <AddCustomChip
           sectionId={sectionId}
-          onNavigateToShop={() => onNavigate && onNavigate("shop")}
+          onLockedClick={() => setSalesModalFeature("customOptions")}
         />
       </>
     );
@@ -7684,7 +7752,7 @@ function EnginePage({ onNavigate }) {
               maxSlots={effectiveLimits.maxSlots}
               restrictSubgenres={effectiveLimits.restrictSubgenres}
               locksDisabled={!effectiveLimits.locksAvailable}
-              onNavigateToShop={() => onNavigate && onNavigate("shop")} />
+              onLockedClick={(f) => setSalesModalFeature(f || "lockedSubgenre")} />
           </Section>
 
           <Section title="Mood"
@@ -14843,7 +14911,7 @@ function ShopPage() {
       }}>
         {[
           { id: "monthly", label: "Monthly" },
-          { id: "yearly",  label: "Yearly", badge: "SAVE 35%" },
+          { id: "yearly",  label: "Yearly", badge: "SAVE 20%" },
         ].map(b => {
           const active = billing === b.id;
           return (
