@@ -4177,6 +4177,17 @@ const SALES_COPY = {
     ],
     cta: "Upgrade to Pro",
   },
+  moreOptions: {
+    tier: "pro",
+    headline: "See every option, not just the top 5",
+    subline: "Free tier shows 5 options per section. Pro reveals the whole shelf — every mood, groove, instrument, vocal style, texture, mix character we've catalogued.",
+    bullet: [
+      "Full catalog unlocked in every section",
+      "More variety = less repetitive prompts",
+      "Plus: custom tags, locks, 100 daily hits",
+    ],
+    cta: "Upgrade to Pro",
+  },
 };
 
 function SalesModal({ open, onClose, onUpgrade, feature }) {
@@ -7126,7 +7137,7 @@ function EnginePage({ onNavigate }) {
   // Per-section lock toggle — when true, section's current value is preserved
   const toggleSectionLock = (sectionKey) => {
     if (!effectiveLimits.locksAvailable) {
-      showToast("Locks are a Pro feature — upgrade to preserve values during randomize.", "warn");
+      setSalesModalFeature("slotLock");
       return;
     }
     setState(s => ({
@@ -7138,7 +7149,7 @@ function EnginePage({ onNavigate }) {
   // Per-option lock toggle — stored as "sectionKey:value" in optionLocks array
   const toggleOptionLock = (sectionKey, value) => {
     if (!effectiveLimits.locksAvailable) {
-      showToast("Locks are a Pro feature — upgrade to force specific options in rolls.", "warn");
+      setSalesModalFeature("slotLock");
       return;
     }
     if (!value) return;
@@ -7161,19 +7172,29 @@ function EnginePage({ onNavigate }) {
     if (!effectiveLimits.locksAvailable) {
       return (
         <button type="button"
-          onClick={() => showToast("Locks are a Pro feature — upgrade to preserve values during randomize.", "warn")}
+          onClick={() => setSalesModalFeature("slotLock")}
           title="Pro feature — click to learn more"
           style={{
             background: "transparent",
-            border: `1px dashed ${T.border}`,
-            color: T.textMuted,
+            border: `1px dashed #FF174455`,
+            color: "#FF1744",
             padding: "4px 10px", cursor: "pointer",
             fontSize: T.fs_xs, fontFamily: T.font_mono, fontWeight: 700,
             letterSpacing: "0.15em",
             borderRadius: T.r_sm,
             transition: `all ${T.dur_fast} ${T.ease}`,
             display: "inline-flex", alignItems: "center", gap: 4,
-            opacity: 0.55,
+            opacity: 0.85,
+          }}
+          onMouseEnter={e => {
+            e.currentTarget.style.background = "#FF174412";
+            e.currentTarget.style.borderColor = "#FF1744";
+            e.currentTarget.style.opacity = "1";
+          }}
+          onMouseLeave={e => {
+            e.currentTarget.style.background = "transparent";
+            e.currentTarget.style.borderColor = "#FF174455";
+            e.currentTarget.style.opacity = "0.85";
           }}>
           🔒 PRO
         </button>
@@ -7765,6 +7786,7 @@ function EnginePage({ onNavigate }) {
                   favorite={favSetFor("mood").has(o)}
                   locked={optionLockSetFor("mood").has(o)}
                   tierLocked={isOptionLocked(i)}
+                  onLockedClick={() => setSalesModalFeature("moreOptions")}
                   casinoOutline={casinoOutlines.get(`mood:${o}`)}
                   onClick={() => set("mood", state.mood === o ? "" : o)}
                   onDoubleClick={() => toggleFavorite("mood", o)} />
@@ -7786,6 +7808,7 @@ function EnginePage({ onNavigate }) {
                   favorite={favSetFor("energy").has(o)}
                   locked={optionLockSetFor("energy").has(o)}
                   tierLocked={isOptionLocked(i)}
+                  onLockedClick={() => setSalesModalFeature("moreOptions")}
                   casinoOutline={casinoOutlines.get(`energy:${o}`)}
                   onClick={() => set("energy", state.energy === o ? "" : o)}
                   onDoubleClick={() => toggleFavorite("energy", o)} />
@@ -7807,6 +7830,7 @@ function EnginePage({ onNavigate }) {
                   favorite={favSetFor("groove").has(g.id)}
                   locked={optionLockSetFor("groove").has(g.id)}
                   tierLocked={isOptionLocked(i)}
+                  onLockedClick={() => setSalesModalFeature("moreOptions")}
                   casinoOutline={casinoOutlines.get(`groove:${g.id}`)}
                   onClick={() => set("groove", g.id)}
                   onDoubleClick={() => toggleFavorite("groove", g.id)} />
@@ -7931,6 +7955,7 @@ function EnginePage({ onNavigate }) {
                       favorite={favSetFor("vocalist").has(o)}
                       locked={optionLockSetFor("vocalist").has(o)}
                       tierLocked={isOptionLocked(i)}
+                      onLockedClick={() => setSalesModalFeature("moreOptions")}
                       casinoOutline={casinoOutlines.get(`vocalist:${o}`)}
                       onClick={() => set("vocalist", state.vocalist === o ? "" : o)}
                       onDoubleClick={() => toggleFavorite("vocalist", o)} />
@@ -7972,6 +7997,7 @@ function EnginePage({ onNavigate }) {
                       favorite={favSetFor("lyricalVibe").has(o)}
                       locked={optionLockSetFor("lyricalVibe").has(o)}
                       tierLocked={isOptionLocked(i)}
+                      onLockedClick={() => setSalesModalFeature("moreOptions")}
                       casinoOutline={casinoOutlines.get(`lyricalVibe:${o}`)}
                       onClick={() => set("lyricalVibe", state.lyricalVibe === o ? "" : o)}
                       onDoubleClick={() => toggleFavorite("lyricalVibe", o)} />
@@ -8025,6 +8051,7 @@ function EnginePage({ onNavigate }) {
                   favorite={favSetFor("harmonic").has(o)}
                   locked={optionLockSetFor("harmonic").has(o)}
                   tierLocked={isOptionLocked(i)}
+                  onLockedClick={() => setSalesModalFeature("moreOptions")}
                   casinoOutline={casinoOutlines.get(`harmonic:${o}`)}
                   onClick={() => set("harmonic", state.harmonic === o ? "" : o)}
                   onDoubleClick={() => toggleFavorite("harmonic", o)} />
@@ -8046,6 +8073,7 @@ function EnginePage({ onNavigate }) {
                   favorite={favSetFor("texture").has(o)}
                   locked={optionLockSetFor("texture").has(o)}
                   tierLocked={isOptionLocked(i)}
+                  onLockedClick={() => setSalesModalFeature("moreOptions")}
                   casinoOutline={casinoOutlines.get(`texture:${o}`)}
                   onClick={() => set("texture", state.texture === o ? "" : o)}
                   onDoubleClick={() => toggleFavorite("texture", o)} />
@@ -8067,6 +8095,7 @@ function EnginePage({ onNavigate }) {
                   favorite={favSetFor("mix").has(o)}
                   locked={optionLockSetFor("mix").has(o)}
                   tierLocked={isOptionLocked(i)}
+                  onLockedClick={() => setSalesModalFeature("moreOptions")}
                   casinoOutline={casinoOutlines.get(`mix:${o}`)}
                   onClick={() => set("mix", state.mix === o ? "" : o)}
                   onDoubleClick={() => toggleFavorite("mix", o)} />
@@ -8464,6 +8493,34 @@ const GENRE_LINEAGE = {
   "Afro Fusion":         { parents: ["Afrobeats","Afrobeat","R&B / Soul"], era: "2018–", description: "Burna Boy's genre-crossing Afrobeats — fuses reggae, dancehall, R&B, and jazz.", traits: ["genre-fluid","Afrobeats root","English + pidgin","cosmopolitan production"], artists: ["Burna Boy","Tems","Rema","Ayra Starr","Omah Lay","Fireboy DML","Seun Kuti","Made Kuti","Wizkid","Davido","Adekunle Gold","Simi","Oxlade","Asake","Black Sherif"] },
   "Afro R&B":            { parents: ["Afrobeats","Contemporary R&B","Alt R&B"], era: "2018–", description: "R&B vocals over Afrobeats production. Tems-and-Tyla's lane.", traits: ["Afrobeats drums","R&B melisma","dual-language","intimate mood"], artists: ["Tems","Tyla","Ayra Starr","Libianca","Odeal","Oxlade","Arlo Parks","Amaarae","Raveena","Joeboy","Lojay","Ojerime","Nonso Amadi","Gyakie","Bloody Civilian","Tiana Major9"] },
   "Afro Drill":          { parents: ["Drill","Afrobeats"], era: "2021–", description: "UK drill fused with Afrobeats melody. Lagos-meets-London bar.", traits: ["drill 808s","Afrobeats hooks","pidgin + UK slang","140 BPM"], artists: ["Odumodublvck","Kwengface","Darkoo","Shaybo","Ms Banks","BlaqBonez","PsychoYP","Fireboy DML (drill collabs)","OdumoduBlvck","BENJIIVIBES","Lil Kesh","Mohbad","Zilla Oaks","Boj","A2","Lancey Foux"] },
+
+  // ── ELECTRONIC FAMILY (LINEAGE BACKFILL) ──────────────────────────────
+  "Melodic Techno":      { parents: ["Techno","Progressive House"], era: "2015–", description: "Emotional, cinematic techno built for festival main stages. Defined by Afterlife and Anjunadeep labels — the Anyma/Tale of Us era.", traits: ["cinematic builds","emotional drops","122-128 BPM","hypnotic pads"], artists: ["Anyma","Tale of Us","Adriatique","ARTBAT","Argy","Massano","Mathame","Stephan Bodzin","Agents Of Time","Kasablanca","Miss Monique","Korolova","Layton Giordani","Colyn","Mind Against","RÜFÜS DU SOL"] },
+  "Melodic House":       { parents: ["Deep House","Progressive House"], era: "2013–", description: "Warm, euphoric house with soaring synth leads. Keinemusik and Anjunadeep lineage.", traits: ["sunrise chords","organic percussion","124 BPM","indie-dance crossover"], artists: ["Ben Böhmer","Keinemusik (&ME, Adam Port, Rampa)","Fred again..","Lane 8","Yotto","Hot Since 82","Patrick Topping","Solomun","Dixon","&ME","Rampa","Adam Port","Marsh","Nora En Pure","James Trystan","Monolink"] },
+  "Dark Techno":         { parents: ["Techno","Industrial Electronic"], era: "2010–", description: "Dystopian, warehouse-heavy techno with industrial textures.", traits: ["industrial kick","dark atmosphere","135-140 BPM","distorted drums"], artists: ["Charlotte de Witte","Amelie Lens","I Hate Models","Rebekah","999999999","Trym","FJAAK","Kobosil","SNTS","Perc","Ansome","Blawan","The Zenker Brothers","UMWELT","Randomer"] },
+  "Progressive House":   { parents: ["House","Trance"], era: "1992–", description: "Long-form, emotional house with big builds and euphoric drops. Currently in a 2024-26 mainstage revival.", traits: ["long builds","emotional leads","128 BPM","epic breakdowns"], artists: ["Eric Prydz","Deadmau5","John Digweed","Sasha","Cristoph","Jerome Isma-Ae","Mathame","Cosmic Gate","Armin van Buuren (progressive side)","Above & Beyond","Qrion","Anjunadeep artists","Nora En Pure","Yotto","Guy J"] },
+  "Drum and Bass":       { parents: ["Jungle","Electronic"], era: "1994–", description: "High-tempo breakbeat music with deep sub-bass. Broke into US festival mainstages 2024-26.", traits: ["170-180 BPM","chopped breaks","sub bass","liquid to neuro spectrum"], artists: ["Sub Focus","Andy C","Pendulum","Chase & Status","Wilkinson","Netsky","Dimension","Kanine","Hybrid Minds","Koven","1991","High Contrast","London Elektricity","Noisia","Camo & Krooked","Fred V"] },
+  "Future Bass":         { parents: ["Trap","Dubstep"], era: "2014–", description: "Emotional melodic bass music with pitched-up vocal chops and supersaw drops.", traits: ["supersaw drops","vocal chops","emotional","130-160 BPM"], artists: ["Flume","San Holo","ILLENIUM","Said the Sky","Slushii","Marshmello","Louis the Child","Whethan","Ekali","Crankdat","Chet Porter","Gryffin","Slumberjack","Mitis","MitiS","Unlike Pluto"] },
+  "Synthwave":           { parents: ["Electronic","New Wave"], era: "2008–", description: "80s-nostalgic synth music — Miami Vice and Drive soundtrack aesthetic.", traits: ["analog synths","reverbed drums","80s saxophone","120 BPM"], artists: ["Kavinsky","The Midnight","FM-84","Gunship","Timecop1983","Carpenter Brut","Perturbator","Dance With the Dead","Dynatron","Lazerhawk","Mitch Murder","Com Truise","Makeup and Vanity Set","Electric Youth","Power Glove"] },
+  "Trip-Hop":            { parents: ["Hip-Hop","Electronic"], era: "1991–", description: "Bristol-born fusion of hip-hop breaks, dub bass, and cinematic atmosphere. Dark downtempo.", traits: ["chopped breaks","dub bass","smoky atmosphere","70-100 BPM"], artists: ["Portishead","Massive Attack","Tricky","Morcheeba","DJ Shadow","UNKLE","Thievery Corporation","Kruder & Dorfmeister","Sneaker Pimps","Lamb","Zero 7","Bonobo","Emancipator","Ta-Ku","Nightmares on Wax"] },
+  "Ambient Electronic":  { parents: ["Ambient","Electronic"], era: "1978–", description: "Beat-optional electronic soundscapes. Brian Eno's lineage, modernized.", traits: ["drone pads","generative","deep-listen","no beat or minimal"], artists: ["Brian Eno","Aphex Twin (Selected Ambient Works)","Boards of Canada","Jon Hopkins","Tim Hecker","Nils Frahm","GAS","Stars of the Lid","Rival Consoles","Caterina Barbieri","Max Richter","Nala Sinephro","Fennesz","Oneohtrix Point Never","Kaitlyn Aurelia Smith"] },
+  "Hardstyle":           { parents: ["Hardcore Techno","Trance"], era: "2001–", description: "Reverse-bass kick + euphoric leads. Dutch and Belgian EDM tradition.", traits: ["reverse-bass kick","150 BPM","screeches","euphoric leads"], artists: ["Headhunterz","Wildstylez","Noisecontrollers","Brennan Heart","Showtek","D-Block & S-te-Fan","Da Tweekaz","Coone","Sound Rush","Sub Zero Project","Ran-D","Warface","Phuture Noize","Atmozfears","Devin Wild"] },
+  "IDM":                 { parents: ["Electronic","Ambient"], era: "1992–", description: "Intelligent Dance Music — Warp Records lineage. Experimental, glitchy, rhythm-forward.", traits: ["complex rhythms","glitchy edits","experimental","micro-sound design"], artists: ["Aphex Twin","Autechre","Boards of Canada","Squarepusher","Flying Lotus","Clark","Bibio","Mouse on Mars","μ-Ziq","Plaid","Prefuse 73","Nosaj Thing","Shigeto","Arca","Oneohtrix Point Never"] },
+  "Industrial Electronic": { parents: ["Industrial","Electronic"], era: "1975–", description: "Harsh machine music — EBM, power noise, and the modern hard-techno edge.", traits: ["metallic textures","distorted synths","machine aesthetic","aggressive"], artists: ["Nine Inch Noize","Front Line Assembly","Boy Harsher","HEALTH","3TEETH","Author & Punisher","Perturbator","Gesaffelstein","The Soft Moon","Drab Majesty","Street Sects","Pharmakon","Deli Girls","Lustmord","Puce Mary"] },
+  "Vaporwave":           { parents: ["Electronic","Chillwave"], era: "2011–", description: "Slowed-down, chopped 80s Muzak and corporate soft-pop. Ironic nostalgia aesthetic.", traits: ["slowed samples","chopped","80s source material","mallsoft/signalwave variants"], artists: ["Macintosh Plus","Saint Pepsi","Blank Banshee","Death's Dynamic Shroud","Internet Club","猫 シ Corp.","HKE","Luxury Elite","MindSpring Memories","Eco Virtual","Telepath","2814","Haircuts for Men","t e l e p a t h","INTERNET CLUB"] },
+  "Chillwave":           { parents: ["Ambient","Electronic"], era: "2009–", description: "Hazy, sun-bleached synth music — Tumblr-era hypnagogic pop.", traits: ["lo-fi synths","reverb wash","90-110 BPM","summer haze"], artists: ["Washed Out","Toro y Moi","Neon Indian","Com Truise","Tycho","Memoryhouse","Small Black","Twin Shadow","How to Dress Well","Ducktails","Youth Lagoon","Baths","Tanlines","Bibio","Teen Daze"] },
+  "Tropical House":      { parents: ["Deep House","Pop"], era: "2014–", description: "Kygo-lineage mellow house with flute/marimba leads. Summer pop crossover.", traits: ["flute/marimba lead","95-105 BPM","mellow drops","feel-good"], artists: ["Kygo","Matoma","Thomas Jack","Lost Frequencies","Felix Jaehn","Klingande","Bakermat","Robin Schulz","Jonas Blue","Sam Feldt","Sigala","Seeb","Bazzi","Shaun Frank","Elephante"] },
+  "3-Step":              { parents: ["Amapiano","Afro House"], era: "2023–", description: "Three-kick variant of amapiano emerging from South Africa 2023. Harder, faster cousin.", traits: ["three-kick pattern","log drums","120 BPM","South African"], artists: ["Uncle Waffles","Scotts Maphuma","Murumba Pitch","LeeMcKrazy","Shakes & Les","Djy Jaivane","Kabza De Small (3-step side)","DJ Maphorisa","Tyler ICU","Xduppy","Focalistic","DBN Gogo","Mellow & Sleazy","Major League DJz","ThackzinDJ"] },
+  "Gqom":                { parents: ["Kwaito","House"], era: "2010–", description: "Durban's raw, minimal dance music — bass-heavy with chant vocals.", traits: ["heavy kick","stripped arrangement","chants","124 BPM"], artists: ["DJ Lag","Rudeboyz","Distruction Boyz","Babes Wodumo","Naked Boys","Citizen Boy","Griffit Vigo","Emo Kid","Toxicated Keys","Dladla Mshunqisi","Mampintsha","Moonchild Sanelly","Okmalumkoolkat","Cruel Boyz","Gqom Oh!"] },
+  "Brazilian Funk":      { parents: ["Miami Bass","Freestyle"], era: "1989–", description: "Favela-born bass music — tamborzão rhythms, fast chants, global phenomenon in 2024-26.", traits: ["tamborzão beat","150 BPM","chanted vocals","Rio-São Paulo styles"], artists: ["Anitta","MC Kevin o Chris","MC Pedrinho","Ludmilla","Pedro Sampaio","Mc Danny","MC Ryan SP","MC Cabelinho","MC Lipi","MC Hariel","DJ Kevin","DJ GBR","Papatinho","MC IG","Tati Zaqui","MC Rebecca"] },
+  "Brazilian Phonk":     { parents: ["Phonk","Brazilian Funk"], era: "2022–", description: "Automotivo phonk-funk hybrid — Brazilian favela funk with Memphis phonk cowbells.", traits: ["cowbell","automotivo tempo","funk carioca roots","drift aesthetic"], artists: ["MC GW","DJ Blakes","MC Menor da VG","MC Menor HR","MC Kitinho","DJ Matt D","DJ Samir","Phonky Tribu","DJ Topo","MC Danny","Slowboy","MC Ryan SP","Mxrrg","DJ Holanda","MC Vuk Vuk"] },
+  "Speed Garage":        { parents: ["UK Garage","House"], era: "1997–", description: "Fast UK garage with sub-bass wobbles. Major 2024-26 revival after 25 years.", traits: ["135 BPM","sub-bass wobble","2-step feel","UK vocals"], artists: ["Interplanetary Criminal","Sammy Virji","Skepta (garage side)","Salute","Hamdi","DJ Q","Conducta","Chris Lorenzo","Badger","Miss Grit","T. Markakis","Notion","Main Phase","TS7","Sharda"] },
+  "Bassline / UK Bass":  { parents: ["UK Garage","Dubstep"], era: "2005–", description: "Leeds-originated UK bass music — fast, heavy, vocal.", traits: ["140 BPM","heavy sub","UK MC vocals","fast garage feel"], artists: ["TS7","DJ Q","Bassboy","Darkzy","Holy Goof","Window Kid","Notion","Skepsis","Chris Lorenzo","Hamdi","Badger","TRC","Distinkt","MC Viper","Toddla T"] },
+  "Hard Techno":         { parents: ["Techno","Industrial Electronic"], era: "2015–", description: "Fast, punishing techno — 150-180 BPM. Sara Landry and Berlin hardgroove revival.", traits: ["150-180 BPM","industrial kick","aggressive","distorted drums"], artists: ["Sara Landry","VTSS","I Hate Models","Trym","999999999","Héctor Oaks","FJAAK","Rene Wise","Airod","SPFDJ","Moscoman","Dax J","Paula Temple","Ellen Allien","Clara Cuvé"] },
+  "Dark Melodic Techno": { parents: ["Melodic Techno","Dark Techno"], era: "2018–", description: "Moodier, heavier Afterlife-adjacent sound. More menacing than mainline melodic techno.", traits: ["darker moods","cinematic tension","128 BPM","deep pads"], artists: ["Anyma","Massano","Mathame","Colyn","Layton Giordani","CamelPhat","ARTBAT","Kasablanca","Cristoph","Agents Of Time","Innellea","Chris Avantgarde","Space Motion","HI-LO (Oliver Heldens)","Sofi Tukker (techno side)"] },
+  "Dance Music Revival": { parents: ["Electronic","Pop"], era: "2023–", description: "2010s mainstage EDM brought back — big drops, recession-pop energy. Fred again.. and John Summit era.", traits: ["festival energy","big-room lead","128 BPM","mainstream pop crossover"], artists: ["John Summit","Fred again..","Dom Dolla","Chris Lake","Calvin Harris (2024+ era)","Skrillex (2024+ return)","Swedish House Mafia","Tiësto (mainstage return)","David Guetta","MK","Fisher","Diplo","Peggy Gou","Eliza Rose","Sonny Fodera"] },
+  "Phonk House":         { parents: ["Phonk","House"], era: "2023–", description: "Phonk cowbells over house tempo — Dom Dolla lineage.", traits: ["cowbell house hybrid","124 BPM","distorted vocals","festival-ready"], artists: ["Dom Dolla","Kettama","Interplanetary Criminal","Bumpy","Pawsa","Mall Grab","Folamour","Honey Dijon","Prospa","Hannah Laing","Hayden James","Sam Gellaitry","Cloonee","James Hype","Joshwa"] },
+  "Rave / Hardcore Revival": { parents: ["Rave","Hardcore Techno"], era: "2022–", description: "Y2K rave nostalgia — hoover synths, happy hardcore kicks, breakbeats. Gen Z rediscovering 90s.", traits: ["hoover synths","breakbeats","175 BPM","Y2K aesthetic"], artists: ["Salute","Partiboi69","Skrillex (rave side)","Prospa","Two Shell","LSDXOXO","Bklava","Slick Shoota","Hamdi","Interplanetary Criminal","Bailey Ibbs","Kettama","Surusinghe","Hannah Laing","Anabel Englund"] },
 };
 
 // Helper: compute children for each node by reversing the parents map.
