@@ -289,7 +289,7 @@ const TIER_FEATURES = {
 // FUEL SYSTEM — three fuel types. Daily counters persist via localStorage.
 // ────────────────────────────────────────────────────────────────────────────
 const FUEL_TYPES = {
-  free:  { id: "free",  label: "Free Hit",  color: "#00FF88", emoji: "🟢" },
+  free:  { id: "free",  label: "Free Hit",  color: "#3B82F6", emoji: "🔵" },
   pro:   { id: "pro",   label: "Pro Hit",   color: "#FF1744", emoji: "🔴" },
   vip:   { id: "vip",   label: "VIP Hit",   color: "#C792EA", emoji: "🟣" },
   trend: { id: "trend", label: "Trend Hit", color: "#FFD700", emoji: "⭐" },
@@ -3048,15 +3048,9 @@ function compressPhrase(s) { return s ? (PHRASE_COMPRESSIONS[s] || s) : s; }
 
 function inferBPM(state) {
   // If user explicitly set a BPM (via slider), honor it.
+  // Otherwise return null — callers must skip BPM output to keep the prompt clean.
   if (state.bpm && state.bpm > 0) return state.bpm;
-  const g = state.groove, e = (state.energy || "").toLowerCase();
-  const base = g === "half-time" ? 75 : g === "swing" ? 92 : g === "broken" ? 128 :
-               g === "experimental" ? 105 : g === "shuffle" ? 98 : g === "motorik" ? 120 :
-               g === "polyrhythm" ? 112 : g === "syncopated" ? 105 : g === "rubato" ? 72 : 110;
-  if (e.includes("driving") || e.includes("relentless")) return base + 20;
-  if (e.includes("euphoric") && e.includes("build")) return base + 10;
-  if (e.includes("intimate") || e.includes("bare")) return base - 20;
-  return base;
+  return null;
 }
 
 function genreTagsFromSlots(slots) {
@@ -3098,7 +3092,7 @@ function shortPromptL0(state, lyricsOn) {
   const parts = [];
   const gs = genreTagsFromSlots(state.slots);
   if (gs) parts.push(gs);
-  parts.push(`${inferBPM(state)} BPM`);
+  { const __b = inferBPM(state); if (__b) parts.push(`${__b} BPM`); }
   const mood = useField(state.toggles.mood, state.mood);
   if (mood) parts.push(mood.toLowerCase());
   const groove = useField(state.toggles.groove, state.groove !== "default" ? state.groove : null);
@@ -3128,7 +3122,7 @@ function shortPromptL1(state, lyricsOn) {
   const parts = [];
   const gs = genreTagsFromSlots(state.slots.map(s => s ? { ...s, micro: undefined } : s));
   if (gs) parts.push(gs);
-  parts.push(`${inferBPM(state)} BPM`);
+  { const __b = inferBPM(state); if (__b) parts.push(`${__b} BPM`); }
   const mood = useField(state.toggles.mood, state.mood);
   if (mood) parts.push(mood.toLowerCase());
   const groove = useField(state.toggles.groove, state.groove !== "default" ? state.groove : null);
@@ -3152,7 +3146,7 @@ function shortPromptL2(state, lyricsOn) {
   const parts = [];
   const gs = genreTagsFromSlots(state.slots.map(s => s ? { ...s, micro: undefined } : s));
   if (gs) parts.push(gs);
-  parts.push(`${inferBPM(state)}bpm`);
+  { const __b = inferBPM(state); if (__b) parts.push(`${__b}bpm`); }
   const mood = useField(state.toggles.mood, state.mood);
   if (mood) parts.push(compressPhrase(mood));
   const groove = useField(state.toggles.groove, state.groove !== "default" ? state.groove : null);
@@ -3176,7 +3170,7 @@ function shortPromptL3(state, lyricsOn) {
   const parts = [];
   const gs = state.slots.filter(Boolean).map(s => s.sub ? `${s.genre} ${s.sub}` : s.genre).join(", ");
   if (gs) parts.push(gs);
-  parts.push(`${inferBPM(state)}bpm`);
+  { const __b = inferBPM(state); if (__b) parts.push(`${__b}bpm`); }
   if (state.groove && state.groove !== "default" && state.groove !== "straight") parts.push(state.groove);
   if (!lyricsOn) parts.push("no vocals");
   else {
@@ -3194,7 +3188,7 @@ function shortPromptL4(state, lyricsOn) {
   const parts = [];
   const gs = state.slots.filter(Boolean).map(s => s.genre).join("/");
   if (gs) parts.push(gs);
-  parts.push(`${inferBPM(state)}bpm`);
+  { const __b = inferBPM(state); if (__b) parts.push(`${__b}bpm`); }
   if (!lyricsOn) parts.push("no vox");
   else if (state.toggles.language !== "off" && state.language !== "en") {
     const langLabel = LANGUAGES.find(l => l.code === state.language)?.label || state.language;
@@ -3229,10 +3223,17 @@ function buildDetailedSentences(state, lyricsOn, mode) {
   }
 
   // ── LINE 2: TEMPO + GROOVE (single compact tempo line) ─────────────
+  // Omit the tempo sentence entirely if the user hasn't set a BPM —
+  // prevents Suno from anchoring to a random number we invented.
   const groove = useField(state.toggles.groove, state.groove !== "default" ? state.groove : null);
-  const tempoBits = [`${bpm} BPM`];
-  if (groove) tempoBits.push(`${groove.toLowerCase()} groove`);
-  sentences.push({ priority: 2, text: `Tempo: ${tempoBits.join(", ")}.` });
+  if (bpm != null) {
+    const tempoBits = [`${bpm} BPM`];
+    if (groove) tempoBits.push(`${groove.toLowerCase()} groove`);
+    sentences.push({ priority: 2, text: `Tempo: ${tempoBits.join(", ")}.` });
+  } else if (groove) {
+    // BPM unspecified but groove is set — still communicate the rhythmic feel.
+    sentences.push({ priority: 2, text: `Groove: ${groove.toLowerCase()}.` });
+  }
 
   // ── LINE 3: VOCALS (explicit and early — critical for the generator) ────────
   if (lyricsOn) {
@@ -3520,9 +3521,11 @@ function calcPopHitScore(state, lyricsOn) {
   }
 
   const bpm = inferBPM(state);
-  if (bpm >= 95 && bpm <= 130)       { score += 10; notes.push("BPM in pop sweet spot"); }
-  else if (bpm >= 80 && bpm <= 140)  { score += 5; }
-  else if (bpm < 70 || bpm > 170)    { score -= 8; notes.push("BPM outside mass appeal"); }
+  if (bpm != null) {
+    if (bpm >= 95 && bpm <= 130)       { score += 10; notes.push("BPM in pop sweet spot"); }
+    else if (bpm >= 80 && bpm <= 140)  { score += 5; }
+    else if (bpm < 70 || bpm > 170)    { score -= 8; notes.push("BPM outside mass appeal"); }
+  }
 
   if (lyricsOn) {
     score += 10;
@@ -4107,6 +4110,9 @@ function AnimatedBanner({ size = 112 }) {
       canvas.height = Math.max(2, Math.floor(H * DPR));
       canvas.style.width = W + "px";
       canvas.style.height = H + "px";
+      // Clear any stale mask from prior implementation
+      canvas.style.webkitMaskImage = "";
+      canvas.style.maskImage = "";
 
       const eRect = engine.getBoundingClientRect();
       eW = eRect.width; eH = eRect.height;
@@ -4114,51 +4120,11 @@ function AnimatedBanner({ size = 112 }) {
       eCanvas.height = Math.max(2, Math.floor(eH * DPR));
       eCanvas.style.width = eW + "px";
       eCanvas.style.height = eH + "px";
+      eCanvas.style.webkitMaskImage = "";
+      eCanvas.style.maskImage = "";
 
       seedStars();
       seedEStars();
-      applyMasks();
-    };
-
-    // SVG text masks so canvas pixels only render inside letter shapes.
-    const applyMasks = () => {
-      const hitCS = getComputedStyle(hit);
-      const hitSvg =
-        `<svg xmlns='http://www.w3.org/2000/svg' width='${W}' height='${H}' viewBox='0 0 ${W} ${H}'>
-          <text x='50%' y='50%' dominant-baseline='central' text-anchor='middle'
-                font-family=${JSON.stringify(hitCS.fontFamily)}
-                font-weight='${hitCS.fontWeight}'
-                font-size='${hitCS.fontSize}'
-                letter-spacing='${hitCS.letterSpacing}'
-                fill='#fff'
-                style='text-transform:uppercase'>HIT</text>
-        </svg>`;
-      const hitUrl = `url("data:image/svg+xml;utf8,${encodeURIComponent(hitSvg)}")`;
-      canvas.style.webkitMaskImage = hitUrl;
-      canvas.style.maskImage = hitUrl;
-      canvas.style.webkitMaskRepeat = "no-repeat";
-      canvas.style.maskRepeat = "no-repeat";
-      canvas.style.webkitMaskSize = "100% 100%";
-      canvas.style.maskSize = "100% 100%";
-
-      const eCS = getComputedStyle(engine);
-      const eSvg =
-        `<svg xmlns='http://www.w3.org/2000/svg' width='${eW}' height='${eH}' viewBox='0 0 ${eW} ${eH}'>
-          <text x='50%' y='50%' dominant-baseline='central' text-anchor='middle'
-                font-family=${JSON.stringify(eCS.fontFamily)}
-                font-weight='${eCS.fontWeight}'
-                font-size='${eCS.fontSize}'
-                letter-spacing='${eCS.letterSpacing}'
-                fill='#fff'
-                style='text-transform:uppercase'>ENGINE</text>
-        </svg>`;
-      const eUrl = `url("data:image/svg+xml;utf8,${encodeURIComponent(eSvg)}")`;
-      eCanvas.style.webkitMaskImage = eUrl;
-      eCanvas.style.maskImage = eUrl;
-      eCanvas.style.webkitMaskRepeat = "no-repeat";
-      eCanvas.style.maskRepeat = "no-repeat";
-      eCanvas.style.webkitMaskSize = "100% 100%";
-      eCanvas.style.maskSize = "100% 100%";
     };
 
     const drawSparkle = (x, y, r, alpha, hue, spikes) => {
@@ -4234,13 +4200,8 @@ function AnimatedBanner({ size = 112 }) {
       last = t;
       ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
       ctx.clearRect(0, 0, W, H);
-      // Deep wash so stars sit on cosmic background within letters
-      const wash = ctx.createLinearGradient(0, 0, W, H);
-      wash.addColorStop(0, "#050817");
-      wash.addColorStop(1, "#0a0610");
-      ctx.fillStyle = wash;
-      ctx.fillRect(0, 0, W, H);
-      // Stars
+      // Stars drawn on transparent canvas so the cosmic .hit-bg layer
+      // shows through behind them within letter shapes.
       for (const s of stars) {
         s.twinkle += dt * s.twinkleSpeed * 2.5;
         s.x += s.driftX * dt * 60;
@@ -4326,11 +4287,13 @@ function AnimatedBanner({ size = 112 }) {
           -webkit-background-clip: text;
           background-clip: text;
           pointer-events: none;
+          z-index: 1;
         }
         .anbn-hit-canvas {
           position: absolute; inset: 0;
           width: 100%; height: 100%;
           display: block; pointer-events: none;
+          z-index: 2;
         }
         .anbn-engine {
           position: relative;
@@ -4411,7 +4374,7 @@ function AnimatedBanner({ size = 112 }) {
         HIT
       </span>
       <span style={{
-        color: "var(--t-textSec)",
+        color: "#FFFFFF",
         fontFamily: "'Instrument Serif', Georgia, serif",
         fontStyle: "italic",
         fontSize: size * 0.9,
@@ -6158,7 +6121,7 @@ function PopHitMeter({ score, verdict, notes, showDebug, state, lyricsOn }) {
             <span style={{ color: T.textTer }}>GENRES:</span>
             <span>{(state.slots || []).filter(Boolean).map(s => s.genre).join(" + ") || "—"}</span>
             <span style={{ color: T.textTer }}>BPM:</span>
-            <span>{inferBPM(state)}</span>
+            <span>{inferBPM(state) ?? "—"}</span>
             <span style={{ color: T.textTer }}>MOOD:</span>
             <span>{state.mood || "—"}</span>
             <span style={{ color: T.textTer }}>LYRICS:</span>
@@ -6681,6 +6644,7 @@ function EnginePage({ onNavigate }) {
   const [casinoOutlines, setCasinoOutlines] = useState(new Map());
   const [toast, setToast] = useState(null); // { kind: "warn" | "info", text }
   const rollTimersRef = useRef([]);
+  const shortPromptRef = useRef(null);
 
   // ── PRESETS SHUFFLE ─────────────────────────────────────────────────
   // Show 5 random presets out of the 50-preset catalog. Reshuffles on each
@@ -7180,6 +7144,14 @@ function EnginePage({ onNavigate }) {
       setCasinoOutlines(new Map());
       doRandomize();
       setIsRolling(false);
+      // Smooth-scroll to the short prompt so the user sees the result.
+      // Small delay lets React commit the prompt update before we scroll.
+      setTimeout(() => {
+        shortPromptRef.current?.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+        });
+      }, 80);
     }, CYCLES * INTERVAL);
     rollTimersRef.current.push(done);
   };
@@ -7479,7 +7451,11 @@ function EnginePage({ onNavigate }) {
           </Section>
 
           <Section title="BPM"
-            hint={state.bpm > 0 ? `${state.bpm} BPM` : "Auto — inferred from groove + energy"}
+            hint={state.bpm > 0
+              ? `${state.bpm} BPM — locked in`
+              : (state.toggles.bpm === "off"
+                  ? "Excluded from prompt"
+                  : "Randomize on HIT, or set manually")}
             toggle={state.toggles.bpm} onToggleChange={v => setToggle("bpm", v)}
             extra={renderLockBtn("bpm")}>
             <div style={{ display: "flex", alignItems: "center", gap: T.s3, flexWrap: "wrap" }}>
@@ -7524,7 +7500,7 @@ function EnginePage({ onNavigate }) {
                   minWidth: 72, textAlign: "center",
                   letterSpacing: "0.05em",
                 }}>
-                  {state.bpm > 0 ? `${state.bpm} BPM` : "auto"}
+                  {state.bpm > 0 ? `${state.bpm} BPM` : "not set"}
                 </div>
                 <button type="button"
                   onClick={() => set("bpm", 60 + Math.floor(Math.random() * 71) * 2)}
@@ -7736,9 +7712,9 @@ function EnginePage({ onNavigate }) {
             : `${T.s8}px ${T.s8}px ${T.s10}px ${T.s7}px`,
         }}>
           <div style={{ marginBottom: T.s5, display: "flex", flexDirection: "column", gap: T.s3 }}>
-            {features.dailyFuel.trend > 0
-              ? <Joystick onNavigate={onNavigate} />
-              : <FuelGearshift compact={isMobile} />}
+            <HitButton onRandomize={triggerHit} isRolling={isRolling}
+              disabled={Number.isFinite(fuels[activeFuel]) && fuels[activeFuel] <= 0}
+              compact={isMobile} fuelType={activeFuel} />
             {/* Credits counter — shows current fuel remaining for active type */}
             <div style={{
               display: "flex", alignItems: "center", justifyContent: "space-between",
@@ -7762,9 +7738,9 @@ function EnginePage({ onNavigate }) {
                 {Number.isFinite(fuels[activeFuel]) ? fuels[activeFuel] : "∞"}
               </span>
             </div>
-            <HitButton onRandomize={triggerHit} isRolling={isRolling}
-              disabled={Number.isFinite(fuels[activeFuel]) && fuels[activeFuel] <= 0}
-              compact={isMobile} fuelType={activeFuel} />
+            {features.dailyFuel.trend > 0
+              ? <Joystick onNavigate={onNavigate} />
+              : <FuelGearshift compact={isMobile} />}
             {/* Transient toast — shows when user clicks HIT with 0 fuel */}
             {toast && (
               <div style={{
@@ -7811,10 +7787,12 @@ function EnginePage({ onNavigate }) {
                 <TierLock feature="Pop-hit match meter" requiredTier="pro" />
               )}
 
-              <OutputBlock title="Short prompt" subtitle="Comma-separated tags. For style fields."
-                text={shortResult.text} length={shortResult.text.length} limit={maxLen}
-                compressed={shortResult.compressed} compressionLevel={shortResult.level}
-                onCopy={() => doCopy("short", shortResult.text)} copyState={copyState.short} />
+              <div ref={shortPromptRef} style={{ scrollMarginTop: 72 }}>
+                <OutputBlock title="Short prompt" subtitle="Comma-separated tags. For style fields."
+                  text={shortResult.text} length={shortResult.text.length} limit={maxLen}
+                  compressed={shortResult.compressed} compressionLevel={shortResult.level}
+                  onCopy={() => doCopy("short", shortResult.text)} copyState={copyState.short} />
+              </div>
 
               <OutputBlock title="Detailed producer prompt" subtitle="Natural language. For description fields."
                 text={detailedResult.text} length={detailedResult.text.length} limit={maxLen}
@@ -13881,12 +13859,6 @@ function Joystick({ onNavigate }) {
         display: "flex", flexDirection: "column", alignItems: "center", gap: T.s2,
         padding: `${T.s3}px 0`,
       }}>
-        <div style={{
-          fontSize: 9, fontFamily: T.font_mono, fontWeight: 700,
-          letterSpacing: "0.22em", color: T.textMuted,
-        }}>
-          / FUEL SELECTOR
-        </div>
         <svg
           ref={svgRef}
           viewBox={`0 0 ${VB_W} ${VB_H}`}
