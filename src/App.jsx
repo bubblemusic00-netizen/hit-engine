@@ -5046,34 +5046,41 @@ function HitButton({ onRandomize, isRolling, disabled, compact = false, fuelType
           pointerEvents: "none",
         }}>!</div>
 
-        {/* ── FUEL-COLOR CORONA — outer ring tinted by active fuel ────── */}
+        {/* ── FUEL-COLOR CORONA — soft spherical aura tinted by active fuel ────── */}
         <div style={{
           position: "absolute",
-          inset: -22,
-          borderRadius: 26,
-          background: `radial-gradient(ellipse at center, ${fuelColor}44 0%, ${fuelColor}00 70%)`,
-          filter: "blur(8px)",
+          inset: -8,
+          borderRadius: "50%",
+          background: `radial-gradient(circle at center, ${fuelColor}33 0%, ${fuelColor}00 62%)`,
+          filter: "blur(6px)",
           pointerEvents: "none",
           zIndex: -1,
-          opacity: isRolling ? 1 : hover ? 0.8 : 0.55,
-          transition: "opacity 180ms ease-out",
+          opacity: isRolling ? 0.85 : hover ? 0.6 : 0.4,
+          transition: "opacity 220ms ease-out",
         }} />
 
-        {/* ── OUTER CONIC HALO ─────────────────────────────────────── */}
+        {/* ── SPHERICAL CONIC HALO ────────────────────────────────────────
+            Contained within the button rect (inset 0 — no outward bleed).
+            Circular clip, muted saturation, slow rotation — reads as a
+            gentle hypnotic shimmer rather than a casino wheel. */}
         <div style={{
           position: "absolute",
-          inset: -18,
-          borderRadius: 24,
+          inset: 0,
+          borderRadius: "50%",
           background: `conic-gradient(from 0deg,
-            ${V.hotPink} 0%, ${V.neonGold} 14%, ${V.cyan} 28%,
-            ${V.lime} 42%, ${V.orange} 56%, ${V.magenta} 70%,
-            ${V.red} 84%, ${V.hotPink} 100%)`,
-          filter: `blur(14px)`,
-          opacity: isRolling ? 0.95 : hover ? 0.75 : 0.42,
-          animation: `hitHaloRotate ${isRolling ? "1.2s" : "7s"} linear infinite`,
+            ${V.hotPink}cc 0%, ${V.neonGold}aa 14%, ${V.cyan}bb 28%,
+            ${V.lime}99 42%, ${V.orange}cc 56%, ${V.magenta}aa 70%,
+            ${V.red}cc 84%, ${V.hotPink}cc 100%)`,
+          filter: "blur(5px)",
+          opacity: isRolling ? 0.7 : hover ? 0.42 : 0.26,
+          animation: `hitHaloRotate ${isRolling ? "2s" : "14s"} linear infinite`,
           pointerEvents: "none",
-          transition: "opacity 180ms ease-out",
+          transition: "opacity 240ms ease-out",
           zIndex: 0,
+          // Mask: full opacity in the middle, fading to transparent at the edges
+          // so the halo doesn't have a hard circular cutoff but reads spherical.
+          WebkitMaskImage: "radial-gradient(circle at center, #000 45%, transparent 72%)",
+          maskImage: "radial-gradient(circle at center, #000 45%, transparent 72%)",
         }} />
 
         {/* ── FRAME WITH MARQUEE LIGHTS ────────────────────────────── */}
