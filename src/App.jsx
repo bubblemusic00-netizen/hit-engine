@@ -173,8 +173,13 @@ const TIER_FEATURES = {
     maxSlots: 1,                   // only 1 genre slot
     modes: ["simple", "moderated", "expanded", "chaos"],  // 4 of 5 modes (vast is Pro+)
     maxInstruments: 10,            // 10 per category (generous taste)
-    maxOptionsPerSection: 5,       // first 5 options per section, rest blurred
-    showOptionNames: true,         // labels shown (but blurred past index 5)
+    // Free tier shows only ~15-20% of each catalog. Floor of 3 so small
+    // pools (like ENERGIES with 8 items) still feel usable; larger pools
+    // (MOODS/LYRICAL_VIBES with 20) show 4. Hidden items are NOT rendered
+    // at all — user doesn't see them, doesn't know they exist. Upgrading
+    // reveals the full catalog.
+    maxOptionsPerSection: 3,
+    showOptionNames: true,
     hasOnToggle: false,            // tri-toggle capped at Off/Auto (no forced include)
     // ── Power-user tools (all Pro+)
     locks: false,                  // NO slot locks, section locks, option locks
@@ -970,6 +975,12 @@ function TierProvider({ children }) {
   const [streak, setStreak] = useState(seed?.streak || 0);
   // Daily bonus toast — streak-based welcome back UI
   const [dailyBonus, setDailyBonus] = useState(null);
+  // DEV MODE explicit flag — session-scoped, NOT persisted, NOT derived
+  // from ownedTiers. Controlled only by the nav's ⚡ DEV button. When ON,
+  // the tier gearshift can cycle tiers freely. When OFF, tier is locked
+  // to whatever the user is actually subscribed to.
+  // REMOVE BEFORE PUBLIC LAUNCH.
+  const [devModeActive, setDevModeActive] = useState(false);
 
   // Persist on every change
   useEffect(() => {
@@ -1057,56 +1068,69 @@ function TierProvider({ children }) {
     }
   };
 
-  // Auto-grant admin when ?debug=1 is in the URL. Non-persisted — comes and
-  // goes with the query param.
+  // Auto-grant admin + enable dev mode when ?debug=1 is in the URL.
+  // Non-persisted — comes and goes with the query param.
   useEffect(() => {
-    if (isDebugMode() && !ownedTiers.has("admin")) {
+    if (isDebugMode() && !devModeActive) {
       setOwnedTiers(prev => {
         const next = new Set(prev);
         next.add("admin");
         return next;
       });
+      setDevModeActive(true);
     }
   }, []);
 
-  // DEV MODE — easy-access admin toggle via nav button.
+  // DEV MODE — explicit on/off toggle. Flipping OFF drops the user back
+  // to whatever tier they actually own (or free). Flipping ON grants
+  // admin ownership so all tier features are unlocked + fuel refills.
   // REMOVE BEFORE PUBLIC LAUNCH.
   const toggleDevMode = () => {
-    if (ownedTiers.has("admin")) {
-      setOwnedTiers(prev => {
-        const next = new Set(prev);
-        next.delete("admin");
-        return next;
-      });
-      if (tier === "admin") {
+    setDevModeActive(prev => {
+      const nextOn = !prev;
+      if (nextOn) {
+        // Turning ON — grant admin ownership + set active tier to admin
+        setOwnedTiers(prevOwned => {
+          const next = new Set(prevOwned);
+          next.add("admin");
+          return next;
+        });
+        _setTierInternal("admin");
+      } else {
+        // Turning OFF — revoke admin ownership, fall back to highest
+        // actually-owned tier (or free if none)
+        setOwnedTiers(prevOwned => {
+          const next = new Set(prevOwned);
+          next.delete("admin");
+          return next;
+        });
         const remaining = [...ownedTiers].filter(x => x !== "admin");
         const best = remaining.sort((a, b) => (TIER_RANK[b] ?? 0) - (TIER_RANK[a] ?? 0))[0] || "free";
         _setTierInternal(best);
       }
-    } else {
-      setOwnedTiers(prev => {
-        const next = new Set(prev);
-        next.add("admin");
-        return next;
-      });
-      _setTierInternal("admin");
-    }
+      return nextOn;
+    });
   };
 
-  // DEV MODE — jump directly to any tier. Grants ownership of all lower
-  // tiers (so upgrade paths stay consistent) and sets the active tier.
+  // DEV MODE — jump directly to any tier's UI/features. Only works while
+  // dev mode is ON. Does NOT toggle dev mode off when switching away from
+  // admin — user stays in dev mode and can keep cycling tiers freely.
+  // Grants ownership of all lower tiers so upgrade paths read correctly.
   // REMOVE BEFORE PUBLIC LAUNCH.
   const setDevTier = (targetTier) => {
     const allTiers = ["free", "pro", "vip", "admin"];
     if (!allTiers.includes(targetTier)) return;
     setOwnedTiers(prev => {
       const next = new Set(prev);
-      // Grant ownership up to the target tier (free is always owned)
+      // Grant ownership up to the target tier. KEEP admin ownership while
+      // dev mode is on, regardless of what tier is currently selected, so
+      // the user doesn't accidentally exit dev mode by cycling.
       allTiers.forEach(t => {
         if (TIER_RANK[t] <= TIER_RANK[targetTier]) next.add(t);
       });
-      // Revoke admin if downgrading out of admin
-      if (targetTier !== "admin") next.delete("admin");
+      // Always keep admin ownership while dev mode is active so the user
+      // can freely cycle between tiers without losing dev privileges.
+      next.add("admin");
       return next;
     });
     _setTierInternal(targetTier);
@@ -1117,11 +1141,11 @@ function TierProvider({ children }) {
     tier, setTier, features,
     ownedTiers, purchaseTier, revokeTier,
     streak, dailyBonus, dismissDailyBonus: () => setDailyBonus(null),
-    isDebug: isDebugMode() || ownedTiers.has("admin"),
+    isDebug: isDebugMode() || devModeActive,
     toggleDevMode,
     setDevTier,
-    devModeActive: ownedTiers.has("admin"),
-  }), [tier, features, ownedTiers, streak, dailyBonus]);
+    devModeActive,
+  }), [tier, features, ownedTiers, streak, dailyBonus, devModeActive]);
   return <TierContext.Provider value={value}>{children}</TierContext.Provider>;
 }
 
@@ -4537,15 +4561,17 @@ function Cubicle({ id, icon, title, description, valuePreview, filled, isOpen, o
   // (e.g. BPM which lives below the grid and never collapses).
   const headerClickable = !disabled && !alwaysOpen;
 
-  // Open state — keep cubicle IN PLACE in the grid (no reposition to full-
-  // width). Give it a crisp white outline so the user can see what's active
-  // without layout shift.
+  // ── POPOVER DROP-DOWN MODEL ──────────────────────────────────────────
+  // Cubicle tile STAYS IN PLACE in the grid — never repositions, never
+  // resizes. When opened, the content panel is absolute-positioned
+  // OUTSIDE the grid cell: it drops from the bottom of the tile, spans
+  // the full grid-row width, and overlays sibling cubicles below without
+  // disturbing layout. The tile itself gets a crisp white outline so the
+  // user can see which one is active. This is the real "drop-down"
+  // pattern — content appears, layout stays put.
+
   const WHITE_OUTLINE = "#FFFFFF";
 
-  // Border / surface choices per state.
-  // Open: always white outline (supersedes filled gold).
-  // Filled + closed: subtle gold tint + soft shadow halo.
-  // Empty + closed: clean neutral surface with very subtle depth.
   const borderColor = isOpen
     ? WHITE_OUTLINE
     : (filled === true ? V.neonGold + "66" : T.border);
@@ -4554,140 +4580,44 @@ function Cubicle({ id, icon, title, description, valuePreview, filled, isOpen, o
     : (filled === true
         ? `0 0 12px ${V.neonGold}22, 0 2px 8px rgba(0,0,0,0.06)`
         : `0 1px 3px rgba(0,0,0,0.06), inset 0 1px 0 rgba(255,255,255,0.02)`);
-  // Glass-morphism surface: layered gradient over the base tile color
   const surfaceGradient = filled === true
     ? `linear-gradient(145deg, ${V.neonGold}12 0%, ${T.surface} 40%, ${T.surface} 100%)`
     : (isOpen
         ? `linear-gradient(145deg, rgba(255,255,255,0.04) 0%, ${T.surface} 50%, ${T.surface} 100%)`
         : `linear-gradient(145deg, ${T.surface} 0%, ${T.elevated} 100%)`);
 
-  return (
-    <div
-      style={{
-        background: surfaceGradient,
-        border: `${isOpen ? 2 : 1}px solid ${borderColor}`,
-        borderRadius: T.r_md,
-        boxShadow: shadowGlow,
-        overflow: "hidden",
-        transition: `all 240ms cubic-bezier(0.16, 1, 0.3, 1)`,
-        opacity: disabled ? 0.5 : 1,
-        position: "relative",
-      }}>
-      {/* Inline keyframes — scoped via string template so they don't collide */}
-      <style>{`
-        @keyframes cubicleLedPulseGreen {
-          0%, 100% { box-shadow: 0 0 0 0 #10b98100, 0 0 6px #10b981aa; }
-          50%      { box-shadow: 0 0 0 4px #10b98122, 0 0 10px #10b981ee; }
-        }
-        @keyframes cubicleLedPulseRed {
-          0%, 100% { box-shadow: 0 0 0 0 #ef444400, 0 0 5px #ef4444aa; }
-          50%      { box-shadow: 0 0 0 3px #ef444422, 0 0 8px #ef4444cc; }
-        }
-        @keyframes cubicleBorderShimmer {
-          0%, 100% { opacity: 0.5; }
-          50%      { opacity: 1; }
-        }
-      `}</style>
-
-      {/* Filled cubicles get a top-edge gold shimmer bar */}
-      {filled === true && (
-        <div style={{
-          position: "absolute", top: 0, left: 0, right: 0, height: 1,
-          background: `linear-gradient(90deg, transparent 0%, ${V.neonGold} 50%, transparent 100%)`,
-          animation: "cubicleBorderShimmer 3.2s ease-in-out infinite",
-          pointerEvents: "none",
-        }} />
-      )}
-
-      {/* Header — clickable toggle (non-clickable when alwaysOpen) */}
+  // alwaysOpen cubicles (BPM) render as a traditional expand-in-place
+  // panel since they live below the grid on their own row.
+  if (alwaysOpen) {
+    return (
       <div
-        onClick={() => {
-          if (!headerClickable) return;
-          playSwitchSound();
-          onToggle(id);
-        }}
         style={{
-          display: "flex", alignItems: "center", justifyContent: "space-between",
-          gap: T.s2, padding: `${T.s3}px ${T.s3}px`,
-          cursor: disabled ? "not-allowed" : (alwaysOpen ? "default" : "pointer"),
-          userSelect: "none",
-          minHeight: 64,
-          transition: `background 200ms ${T.ease}`,
-        }}
-        onMouseEnter={e => { if (headerClickable && !isOpen) e.currentTarget.style.background = `${T.accent}08`; }}
-        onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}>
-        <div style={{ display: "flex", alignItems: "center", gap: T.s3, minWidth: 0, flex: 1 }}>
-          {/* Icon square — larger, tinted, drop-shadow on fill */}
-          {icon && (
-            <div style={{
-              flexShrink: 0,
-              width: 36, height: 36,
-              display: "flex", alignItems: "center", justifyContent: "center",
-              fontSize: 20, lineHeight: 1,
-              borderRadius: T.r_sm,
-              background: filled === true
-                ? `linear-gradient(135deg, ${V.neonGold}22 0%, ${V.neonGold}08 100%)`
-                : `linear-gradient(135deg, ${T.elevated} 0%, ${T.surface} 100%)`,
-              border: `1px solid ${filled === true ? V.neonGold + "55" : T.border}`,
-              filter: filled === true ? `drop-shadow(0 0 3px ${V.neonGold}88)` : "none",
-              transition: `all 240ms ${T.ease}`,
-            }}>
-              {icon}
-            </div>
-          )}
-          <div style={{ display: "flex", flexDirection: "column", gap: 2, minWidth: 0, flex: 1 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: T.s2 }}>
-              {showLed && (
-                <span style={{
-                  display: "inline-block", flexShrink: 0,
-                  width: 7, height: 7, borderRadius: "50%",
-                  background: ledGreen ? "#10b981" : "#ef4444",
-                  animation: `${ledGreen ? "cubicleLedPulseGreen" : "cubicleLedPulseRed"} 2s ease-in-out infinite`,
-                }} />
-              )}
-              <div style={{
-                fontSize: T.fs_sm, fontWeight: 600, color: T.text,
-                fontFamily: T.font_sans, letterSpacing: "0.015em",
-                whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
-              }}>{title}</div>
-            </div>
-            {description && (
-              <div style={{
-                fontSize: 10.5, color: T.textTer, fontFamily: T.font_sans,
-                lineHeight: 1.35, letterSpacing: "0.01em",
-                whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
-              }}>{description}</div>
-            )}
-            {valuePreview && (
-              <div style={{
-                fontSize: 11, fontFamily: T.font_mono,
-                color: filled === true ? V.neonGold : T.textTer,
-                whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
-                letterSpacing: filled === true ? "0.02em" : "0",
-                textShadow: filled === true ? `0 0 6px ${V.neonGold}44` : "none",
-              }}>{valuePreview}</div>
-            )}
-          </div>
-        </div>
-        {/* Chevron — hidden when alwaysOpen since toggling isn't possible */}
-        {!alwaysOpen && (
-          <div style={{
-            flexShrink: 0,
-            width: 26, height: 26,
-            display: "flex", alignItems: "center", justifyContent: "center",
-            borderRadius: "50%",
-            background: isOpen ? (filled === true ? `${V.neonGold}22` : `${T.accent}18`) : "transparent",
-            color: isOpen ? (filled === true ? V.neonGold : T.accent) : T.textTer,
-            fontSize: 16, fontWeight: 700, lineHeight: 1,
-            transition: `all 200ms ${T.ease}`,
-          }}>
-            {isOpen ? "−" : "+"}
-          </div>
-        )}
-      </div>
-
-      {/* Expanded body */}
-      {isOpen && (
+          background: surfaceGradient,
+          border: `1px solid ${borderColor}`,
+          borderRadius: T.r_md,
+          boxShadow: shadowGlow,
+          overflow: "hidden",
+          transition: `all 240ms cubic-bezier(0.16, 1, 0.3, 1)`,
+          opacity: disabled ? 0.5 : 1,
+          position: "relative",
+        }}>
+        <style>{`
+          @keyframes cubicleLedPulseGreen {
+            0%, 100% { box-shadow: 0 0 0 0 #10b98100, 0 0 6px #10b981aa; }
+            50%      { box-shadow: 0 0 0 4px #10b98122, 0 0 10px #10b981ee; }
+          }
+          @keyframes cubicleLedPulseRed {
+            0%, 100% { box-shadow: 0 0 0 0 #ef444400, 0 0 5px #ef4444aa; }
+            50%      { box-shadow: 0 0 0 3px #ef444422, 0 0 8px #ef4444cc; }
+          }
+        `}</style>
+        <CubicleHeader
+          id={id} icon={icon} title={title} description={description}
+          valuePreview={valuePreview} filled={filled} isOpen={true}
+          disabled={disabled} showLed={showLed} ledGreen={ledGreen}
+          headerClickable={false}
+          onClick={() => {}}
+        />
         <div style={{
           padding: `${T.s3}px ${T.s4}px ${T.s4}px`,
           borderTop: `1px solid ${filled === true ? V.neonGold + "33" : T.border}`,
@@ -4704,10 +4634,219 @@ function Cubicle({ id, icon, title, description, valuePreview, filled, isOpen, o
           )}
           {children}
         </div>
+      </div>
+    );
+  }
+
+  // Collapsible cubicle: tile stays in place (closed) OR tile stays in
+  // place + absolute-positioned popover panel drops beneath (open).
+  return (
+    <div style={{ position: "relative" }}>
+      {/* The tile itself — always rendered in its grid slot, always this size */}
+      <div
+        style={{
+          background: surfaceGradient,
+          border: `${isOpen ? 2 : 1}px solid ${borderColor}`,
+          borderRadius: T.r_md,
+          boxShadow: shadowGlow,
+          overflow: "hidden",
+          transition: `all 240ms cubic-bezier(0.16, 1, 0.3, 1)`,
+          opacity: disabled ? 0.5 : 1,
+          position: "relative",
+          zIndex: isOpen ? 5 : 1,
+        }}>
+        <style>{`
+          @keyframes cubicleLedPulseGreen {
+            0%, 100% { box-shadow: 0 0 0 0 #10b98100, 0 0 6px #10b981aa; }
+            50%      { box-shadow: 0 0 0 4px #10b98122, 0 0 10px #10b981ee; }
+          }
+          @keyframes cubicleLedPulseRed {
+            0%, 100% { box-shadow: 0 0 0 0 #ef444400, 0 0 5px #ef4444aa; }
+            50%      { box-shadow: 0 0 0 3px #ef444422, 0 0 8px #ef4444cc; }
+          }
+          @keyframes cubicleBorderShimmer {
+            0%, 100% { opacity: 0.5; }
+            50%      { opacity: 1; }
+          }
+          @keyframes cubiclePopoverIn {
+            from { opacity: 0; transform: translateY(-6px) scale(0.995); }
+            to   { opacity: 1; transform: translateY(0) scale(1); }
+          }
+        `}</style>
+        {filled === true && (
+          <div style={{
+            position: "absolute", top: 0, left: 0, right: 0, height: 1,
+            background: `linear-gradient(90deg, transparent 0%, ${V.neonGold} 50%, transparent 100%)`,
+            animation: "cubicleBorderShimmer 3.2s ease-in-out infinite",
+            pointerEvents: "none",
+          }} />
+        )}
+        <CubicleHeader
+          id={id} icon={icon} title={title} description={description}
+          valuePreview={valuePreview} filled={filled} isOpen={isOpen}
+          disabled={disabled} showLed={showLed} ledGreen={ledGreen}
+          headerClickable={headerClickable}
+          onClick={() => {
+            if (!headerClickable) return;
+            playSwitchSound();
+            onToggle(id);
+          }}
+        />
+      </div>
+
+      {/* ── DROP-DOWN POPOVER ─ anchored to the tile's bottom edge.
+          Spans the full grid-row width so chips have room to breathe.
+          Does NOT push sibling cubicles — they stay where they were. */}
+      {isOpen && (
+        <>
+          {/* Invisible scrim — click-outside closes the popover */}
+          <div
+            onClick={() => onToggle(id)}
+            style={{
+              position: "fixed",
+              inset: 0,
+              zIndex: 4,
+              background: "transparent",
+            }}
+          />
+          <div
+            role="region"
+            aria-label={`${title} options`}
+            style={{
+              position: "absolute",
+              top: "calc(100% + 8px)",
+              // Expand sideways to the full width of the grid row by
+              // over-reaching the tile's own boundaries. The negative
+              // margins here pull the panel out to a usable width; the
+              // popover is clamped by the enclosing grid-row width below.
+              left: "50%",
+              transform: "translateX(-50%)",
+              width: "min(880px, calc(100vw - 48px))",
+              maxWidth: "calc(100vw - 48px)",
+              zIndex: 6,
+              background: `linear-gradient(180deg, ${T.surface} 0%, ${T.elevated}F0 100%)`,
+              border: `1px solid ${filled === true ? V.neonGold + "44" : T.border}`,
+              borderTop: `2px solid ${WHITE_OUTLINE}`,
+              borderRadius: T.r_md,
+              boxShadow: `
+                0 24px 64px rgba(0,0,0,0.55),
+                0 10px 24px rgba(0,0,0,0.35),
+                0 0 0 1px rgba(255,255,255,0.06),
+                inset 0 1px 0 rgba(255,255,255,0.06)
+              `,
+              padding: `${T.s3}px ${T.s4}px ${T.s4}px`,
+              animation: "cubiclePopoverIn 180ms cubic-bezier(0.16, 1, 0.3, 1)",
+              backdropFilter: "blur(20px) saturate(140%)",
+            }}>
+            {/* Pointer arrow — small triangle linking popover to its tile origin */}
+            <div
+              aria-hidden="true"
+              style={{
+                position: "absolute",
+                top: -7, left: "50%",
+                transform: "translateX(-50%) rotate(45deg)",
+                width: 12, height: 12,
+                background: T.surface,
+                borderTop: `2px solid ${WHITE_OUTLINE}`,
+                borderLeft: `1px solid ${filled === true ? V.neonGold + "44" : T.border}`,
+              }}
+            />
+            {(extra || hint) && (
+              <div style={{
+                display: "flex", alignItems: "center", justifyContent: "space-between",
+                gap: T.s2, flexWrap: "wrap", marginBottom: T.s3,
+              }}>
+                {hint && <span style={{ fontSize: T.fs_sm, color: T.textTer, fontFamily: T.font_sans }}>{hint}</span>}
+                {extra && <div style={{ display: "flex", alignItems: "center", gap: T.s3, marginLeft: "auto" }}>{extra}</div>}
+              </div>
+            )}
+            {children}
+          </div>
+        </>
       )}
     </div>
   );
 }
+
+// Reusable cubicle header — the collapsed-state clickable tile top.
+// Extracted so both the alwaysOpen variant and the collapsible variant
+// render identical headers. (Previously the header JSX was inlined twice.)
+function CubicleHeader({ id, icon, title, description, valuePreview, filled, isOpen, disabled, showLed, ledGreen, headerClickable, onClick }) {
+  return (
+    <div
+      onClick={onClick}
+      style={{
+        display: "flex", alignItems: "center", justifyContent: "space-between",
+        gap: T.s2, padding: `${T.s3}px ${T.s3}px`,
+        cursor: disabled ? "not-allowed" : (headerClickable ? "pointer" : "default"),
+        userSelect: "none",
+        minHeight: 64,
+        transition: `background 200ms ${T.ease}`,
+      }}
+    >
+      <div style={{ display: "flex", alignItems: "center", gap: T.s3, flex: 1, minWidth: 0 }}>
+        {icon && (
+          <span style={{
+            fontSize: 20, lineHeight: 1, flexShrink: 0,
+            filter: disabled ? "grayscale(100%) opacity(0.5)" : "none",
+          }}>{icon}</span>
+        )}
+        <div style={{ display: "flex", flexDirection: "column", gap: 2, minWidth: 0, flex: 1 }}>
+          <div style={{
+            display: "flex", alignItems: "center", gap: T.s2,
+            fontSize: T.fs_md, fontFamily: T.font_sans,
+            fontWeight: 600, color: disabled ? T.textMuted : T.text,
+            lineHeight: 1.2,
+          }}>
+            {title}
+            {showLed && (
+              <span
+                aria-label={ledGreen ? "section has selection" : "section empty"}
+                style={{
+                  display: "inline-block",
+                  width: 8, height: 8, borderRadius: "50%",
+                  background: ledGreen ? "#10b981" : "#ef4444",
+                  animation: `${ledGreen ? "cubicleLedPulseGreen" : "cubicleLedPulseRed"} 1.8s ease-in-out infinite`,
+                  flexShrink: 0,
+                }} />
+            )}
+          </div>
+          {description && (
+            <div style={{
+              fontSize: T.fs_xs, color: disabled ? T.textMuted : T.textTer,
+              fontFamily: T.font_sans, lineHeight: 1.3,
+              overflow: "hidden", textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+            }}>{description}</div>
+          )}
+          {valuePreview && !isOpen && (
+            <div style={{
+              fontSize: T.fs_xs, color: filled === true ? V.neonGold : T.textSec,
+              fontFamily: T.font_mono, fontWeight: 500, letterSpacing: "0.02em",
+              marginTop: 2, lineHeight: 1.2,
+              overflow: "hidden", textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+            }}>{valuePreview}</div>
+          )}
+        </div>
+      </div>
+      {headerClickable && (
+        <div style={{
+          width: 26, height: 26,
+          display: "flex", alignItems: "center", justifyContent: "center",
+          borderRadius: "50%",
+          background: isOpen ? (filled === true ? `${V.neonGold}22` : `${T.accent}18`) : "transparent",
+          color: isOpen ? (filled === true ? V.neonGold : T.accent) : T.textTer,
+          fontSize: 16, fontWeight: 700, lineHeight: 1,
+          transition: `all 200ms ${T.ease}`,
+        }}>
+          {isOpen ? "−" : "+"}
+        </div>
+      )}
+    </div>
+  );
+}
+
 
 function CubicleGrid({ children, isMobile }) {
   return (
@@ -9584,10 +9723,65 @@ function EnginePage({ onNavigate }) {
   // allowed count for this section. Used to blur + fully disable locked chips.
   // Also guarantees minimum 5 options per section even if the caller passes
   // a smaller list. Callers pass the TOTAL option count — the cap is computed
-  // here so we never lock below the floor of 5.
+  // here so we never lock below the floor of 3.
   const isOptionLocked = (idx) => {
-    const cap = Math.max(5, effectiveLimits.maxOptionsPerSection);
+    const cap = Math.max(3, effectiveLimits.maxOptionsPerSection);
     return idx >= cap;
+  };
+
+  // ── TIER-GATED VISIBILITY ───────────────────────────────────────────
+  // Returns a subset of a section's options based on the user's tier.
+  // Free tier sees 15-20% of each catalog so there's a real reason to
+  // upgrade. Pro sees 60%. VIP/Admin see everything.
+  //
+  // Deterministic seeded pick: the same subset appears on every load
+  // (keyed by sectionId), so the UI feels stable — not randomized each
+  // visit. We use the total list length as a tail stabilizer to handle
+  // the rare case of catalog updates changing the seed output.
+  //
+  // Pro-fuel / VIP-fuel on a free account: the effectiveLimits system
+  // already elevates maxOptionsPerSection when non-free fuel is active,
+  // so we defer to that — meaning a free user spending Pro fuel WILL
+  // see more options for that roll, matching the "fuel as upgrade" model.
+  const TIER_VISIBILITY_RATIO = {
+    free:  0.18,   // 18% — sits in the 15-20% range
+    pro:   0.60,
+    vip:   1.0,
+    admin: 1.0,
+  };
+  const visibleForTier = (sectionId, allOptions) => {
+    if (!Array.isArray(allOptions) || allOptions.length === 0) return allOptions || [];
+    // When pro/vip fuel is active on a free account, expand visibility.
+    // The effectiveLimits gate (maxOptionsPerSection) already reflects this,
+    // so we use it as a floor — visible subset never drops below what fuel
+    // would expose.
+    const ratio = TIER_VISIBILITY_RATIO[tier] ?? 1.0;
+    // Admin / VIP: never filter
+    if (ratio >= 1.0) return allOptions;
+    // Compute tier-based cap (min 3 to avoid a completely sparse section)
+    const tierCap = Math.max(3, Math.ceil(allOptions.length * ratio));
+    // Fuel cap — if non-free fuel, effectiveLimits expands options so we
+    // want to honor that. Use it as a FLOOR so fuel can raise visibility.
+    const fuelCap = Math.max(3, effectiveLimits.maxOptionsPerSection || 0);
+    const cap = Math.min(allOptions.length, Math.max(tierCap, Math.min(fuelCap, allOptions.length)));
+    // Seeded shuffle: deterministic by section name + list length
+    let seed = 0;
+    const src = `${sectionId}:${allOptions.length}`;
+    for (let i = 0; i < src.length; i++) seed = ((seed * 31) + src.charCodeAt(i)) >>> 0;
+    const rng = () => {
+      seed = (seed * 9301 + 49297) % 233280;
+      return seed / 233280;
+    };
+    // Fisher-Yates on a copy, then take the first `cap` and re-sort by
+    // original index so the display order reads natural (user-facing
+    // order matches the source catalog, subset just has gaps).
+    const indices = allOptions.map((_, i) => i);
+    for (let i = indices.length - 1; i > 0; i--) {
+      const j = Math.floor(rng() * (i + 1));
+      [indices[i], indices[j]] = [indices[j], indices[i]];
+    }
+    const chosen = indices.slice(0, cap).sort((a, b) => a - b);
+    return chosen.map(i => allOptions[i]);
   };
 
   // ── TIER + FUEL ENFORCEMENT ─────────────────────────────────────────
@@ -10138,9 +10332,9 @@ function EnginePage({ onNavigate }) {
     const slotLocks = locksActive ? (state.slotLocks || [false, false, false]) : [false, false, false];
     const secLocks  = locksActive ? (state.sectionLocks || {}) : {};
 
-    // clipPool — respects tier maxOptionsPerSection (floor 5) so tier-locked
+    // clipPool — respects tier maxOptionsPerSection (floor 3) so tier-locked
     // options are never chosen by randomizer.
-    const poolCap = Math.max(5, effectiveLimits.maxOptionsPerSection);
+    const poolCap = Math.max(3, effectiveLimits.maxOptionsPerSection);
     const clipPool = (pool) => pool.slice(0, poolCap);
 
     const eligible = RANDOMIZER_SECTIONS.filter(s => {
@@ -10731,12 +10925,12 @@ function EnginePage({ onNavigate }) {
                 {(() => {
                   const useCollapse = !effectiveLimits.restrictSubgenres;
                   const { visibleItems, hiddenCount } = useCollapse
-                    ? getCollapsibleSlice("mood", MOODS)
-                    : { visibleItems: MOODS, hiddenCount: 0 };
+                    ? getCollapsibleSlice("mood", visibleForTier("mood", MOODS))
+                    : { visibleItems: visibleForTier("mood", MOODS), hiddenCount: 0 };
                   return (
                     <>
-                      {visibleItems.map((o) => {
-                        const i = MOODS.indexOf(o);
+                      {visibleItems.map((o, visIdx) => {
+                        const i = visIdx;  // position within filtered/visible list, not raw catalog
                         return (
                           <Chip key={o} label={o} selected={state.mood === o}
                             favorite={favSetFor("mood").has(o)}
@@ -10775,12 +10969,12 @@ function EnginePage({ onNavigate }) {
                 {(() => {
                   const useCollapse = !effectiveLimits.restrictSubgenres;
                   const { visibleItems, hiddenCount } = useCollapse
-                    ? getCollapsibleSlice("energy", ENERGIES)
-                    : { visibleItems: ENERGIES, hiddenCount: 0 };
+                    ? getCollapsibleSlice("energy", visibleForTier("energy", ENERGIES))
+                    : { visibleItems: visibleForTier("energy", ENERGIES), hiddenCount: 0 };
                   return (
                     <>
-                      {visibleItems.map((o) => {
-                        const i = ENERGIES.indexOf(o);
+                      {visibleItems.map((o, visIdx) => {
+                        const i = visIdx;  // position within filtered/visible list, not raw catalog
                         return (
                           <Chip key={o} label={o} selected={state.energy === o}
                             favorite={favSetFor("energy").has(o)}
@@ -10869,12 +11063,12 @@ function EnginePage({ onNavigate }) {
                   {(() => {
                     const useCollapse = !effectiveLimits.restrictSubgenres;
                     const { visibleItems, hiddenCount } = useCollapse
-                      ? getCollapsibleSlice("vocalist", VOCALISTS)
-                      : { visibleItems: VOCALISTS, hiddenCount: 0 };
+                      ? getCollapsibleSlice("vocalist", visibleForTier("vocalist", VOCALISTS))
+                      : { visibleItems: visibleForTier("vocalist", VOCALISTS), hiddenCount: 0 };
                     return (
                       <>
-                        {visibleItems.map((o) => {
-                          const i = VOCALISTS.indexOf(o);
+                        {visibleItems.map((o, visIdx) => {
+                          const i = visIdx;  // position within filtered/visible list, not raw catalog
                           return (
                             <Chip key={o} label={o} selected={state.vocalist === o}
                               favorite={favSetFor("vocalist").has(o)}
@@ -10916,12 +11110,12 @@ function EnginePage({ onNavigate }) {
                   {(() => {
                     const useCollapse = !effectiveLimits.restrictSubgenres;
                     const { visibleItems, hiddenCount } = useCollapse
-                      ? getCollapsibleSlice("lyricalVibe", LYRICAL_VIBES)
-                      : { visibleItems: LYRICAL_VIBES, hiddenCount: 0 };
+                      ? getCollapsibleSlice("lyricalVibe", visibleForTier("lyricalVibe", LYRICAL_VIBES))
+                      : { visibleItems: visibleForTier("lyricalVibe", LYRICAL_VIBES), hiddenCount: 0 };
                     return (
                       <>
-                        {visibleItems.map((o) => {
-                          const i = LYRICAL_VIBES.indexOf(o);
+                        {visibleItems.map((o, visIdx) => {
+                          const i = visIdx;  // position within filtered/visible list, not raw catalog
                           return (
                             <Chip key={o} label={o} selected={state.lyricalVibe === o}
                               favorite={favSetFor("lyricalVibe").has(o)}
@@ -11010,12 +11204,12 @@ function EnginePage({ onNavigate }) {
                 {(() => {
                   const useCollapse = !effectiveLimits.restrictSubgenres;
                   const { visibleItems, hiddenCount } = useCollapse
-                    ? getCollapsibleSlice("harmonic", HARMONIC_STYLES)
-                    : { visibleItems: HARMONIC_STYLES, hiddenCount: 0 };
+                    ? getCollapsibleSlice("harmonic", visibleForTier("harmonic", HARMONIC_STYLES))
+                    : { visibleItems: visibleForTier("harmonic", HARMONIC_STYLES), hiddenCount: 0 };
                   return (
                     <>
-                      {visibleItems.map((o) => {
-                        const i = HARMONIC_STYLES.indexOf(o);
+                      {visibleItems.map((o, visIdx) => {
+                        const i = visIdx;  // position within filtered/visible list, not raw catalog
                         return (
                           <Chip key={o} label={o} selected={state.harmonic === o}
                             favorite={favSetFor("harmonic").has(o)}
@@ -11054,12 +11248,12 @@ function EnginePage({ onNavigate }) {
                 {(() => {
                   const useCollapse = !effectiveLimits.restrictSubgenres;
                   const { visibleItems, hiddenCount } = useCollapse
-                    ? getCollapsibleSlice("texture", SOUND_TEXTURES)
-                    : { visibleItems: SOUND_TEXTURES, hiddenCount: 0 };
+                    ? getCollapsibleSlice("texture", visibleForTier("texture", SOUND_TEXTURES))
+                    : { visibleItems: visibleForTier("texture", SOUND_TEXTURES), hiddenCount: 0 };
                   return (
                     <>
-                      {visibleItems.map((o) => {
-                        const i = SOUND_TEXTURES.indexOf(o);
+                      {visibleItems.map((o, visIdx) => {
+                        const i = visIdx;  // position within filtered/visible list, not raw catalog
                         return (
                           <Chip key={o} label={o} selected={state.texture === o}
                             favorite={favSetFor("texture").has(o)}
@@ -11098,12 +11292,12 @@ function EnginePage({ onNavigate }) {
                 {(() => {
                   const useCollapse = !effectiveLimits.restrictSubgenres;
                   const { visibleItems, hiddenCount } = useCollapse
-                    ? getCollapsibleSlice("mix", MIX_CHARS)
-                    : { visibleItems: MIX_CHARS, hiddenCount: 0 };
+                    ? getCollapsibleSlice("mix", visibleForTier("mix", MIX_CHARS))
+                    : { visibleItems: visibleForTier("mix", MIX_CHARS), hiddenCount: 0 };
                   return (
                     <>
-                      {visibleItems.map((o) => {
-                        const i = MIX_CHARS.indexOf(o);
+                      {visibleItems.map((o, visIdx) => {
+                        const i = visIdx;  // position within filtered/visible list, not raw catalog
                         return (
                           <Chip key={o} label={o} selected={state.mix === o}
                             favorite={favSetFor("mix").has(o)}
