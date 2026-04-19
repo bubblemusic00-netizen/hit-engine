@@ -1293,18 +1293,7 @@ function FuelLever({ currentPage, onNavigate }) {
     const allocation = TIER_FEATURES[tier]?.dailyFuel?.[fuelId] ?? 0;
     if (allocation === 0) return; // locked
 
-    // DEBUG: confirm this handler is actually firing + play sound two ways
-    // (pool + fresh Audio fallback) to isolate whether the pool is broken.
-    console.log("[fuel-click]", fuelId, "firing handleSelect");
     playFuelButtonSound();
-    try {
-      const fallback = new Audio("/BUTTON-SOUND.mp3");
-      fallback.volume = 0.55;
-      const p = fallback.play();
-      if (p && typeof p.catch === "function") p.catch(err => console.log("[fuel-click] fallback blocked:", err.message));
-    } catch (e) {
-      console.log("[fuel-click] fallback error:", e.message);
-    }
     setShakeKey(k => k + 1);
     setActiveFuel(fuelId);
   };
@@ -18273,7 +18262,16 @@ function Joystick({ onNavigate, onLockedClick }) {
             return (
               <g key={pos}
                 style={{ cursor: "pointer", opacity: locked ? 0.55 : 1 }}
-                onClick={() => handleSelect(pos)}
+                onClick={() => {
+                  // Play button sound only when the LCD tile is clicked
+                  // (screen click), not during drag/tap on the joystick
+                  // handle itself. Skip if clicking the active tile or
+                  // a locked one (no state change anyway).
+                  if (pos !== activeFuel && !isLocked(pos)) {
+                    playFuelButtonSound();
+                  }
+                  handleSelect(pos);
+                }}
                 onMouseEnter={() => setHoverPos(pos)}
                 onMouseLeave={() => setHoverPos(null)}
               >
