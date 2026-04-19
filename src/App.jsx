@@ -5471,6 +5471,12 @@ function AnimatedBanner({ size = 112 }) {
         .anbn-engine {
           position: relative;
           display: inline-block;
+          /* --mx / --my: cursor position in percent across the ENGINE span.
+             --hover-strength: 0 when not hovered, 1 when hovered.
+             Updated live via onMouseMove from the React layer. */
+          --mx: 50%;
+          --my: 50%;
+          --hover-strength: 0;
           background: linear-gradient(
             100deg,
             #fff3d6  0%, #ffb86b  6%,  #ff7a2a 12%, #ff2e14 18%,
@@ -5489,7 +5495,16 @@ function AnimatedBanner({ size = 112 }) {
             drop-shadow(0 1px 0 rgba(0,0,0,0.55))
             drop-shadow(0 0 18px rgba(180, 80, 255, 0.28))
             drop-shadow(0 0 30px rgba(255, 90, 20, 0.14));
+          cursor: crosshair;
+          transition: filter 260ms ease;
         }
+        .anbn-engine:hover {
+          filter:
+            drop-shadow(0 1px 0 rgba(0,0,0,0.55))
+            drop-shadow(0 0 22px rgba(255, 120, 220, 0.42))
+            drop-shadow(0 0 38px rgba(120, 200, 255, 0.22));
+        }
+        /* Ambient nebula layer — drifts when NOT hovered (fade out on hover). */
         .anbn-engine::after {
           content: attr(data-text);
           position: absolute; inset: 0;
@@ -5507,7 +5522,10 @@ function AnimatedBanner({ size = 112 }) {
           animation: bannerNebulaDrift 12s linear infinite;
           mix-blend-mode: screen;
           pointer-events: none;
-          opacity: 0.85;
+          /* Fade ambient layer out as hover strength rises — cursor-tracked
+             layer takes over the visual duty when hovered. */
+          opacity: calc(0.85 * (1 - var(--hover-strength)));
+          transition: opacity 260ms ease;
         }
         .anbn-engine::before {
           content: attr(data-text);
@@ -5528,6 +5546,38 @@ function AnimatedBanner({ size = 112 }) {
           animation: bannerSheen 4.5s ease-in-out infinite;
           mix-blend-mode: screen;
           pointer-events: none;
+        }
+        /* ── CURSOR-TRACKED SPOTLIGHT ─────────────────────────────────
+           A third text-clipped layer: two radial gradients anchored at
+           cursor position. Brighter, saturated, follows the mouse.
+           Opacity ramps with --hover-strength so it fades in/out cleanly
+           on enter/leave. Pointer-events none so it doesn't steal events
+           from the parent. */
+        .anbn-engine-spotlight {
+          position: absolute; inset: 0;
+          background:
+            radial-gradient(
+              circle at var(--mx) var(--my),
+              rgba(255, 80, 200, 0.95) 0%,
+              rgba(255, 80, 200, 0.35) 18%,
+              rgba(140, 80, 255, 0.25) 36%,
+              rgba(60, 180, 255, 0) 55%
+            ),
+            radial-gradient(
+              circle at var(--mx) var(--my),
+              rgba(120, 230, 255, 0.8) 0%,
+              rgba(120, 230, 255, 0) 28%
+            );
+          background-clip: text;
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          color: transparent;
+          mix-blend-mode: screen;
+          pointer-events: none;
+          opacity: var(--hover-strength);
+          transform: scale(calc(1 + 0.02 * var(--hover-strength)));
+          transform-origin: center;
+          transition: opacity 260ms ease, transform 260ms ease;
         }
         .anbn-engine-canvas {
           position: absolute; inset: 0;
@@ -5648,8 +5698,31 @@ function AnimatedBanner({ size = 112 }) {
           ))}
         </svg>
       </span>
-      <span ref={engineRef} className="anbn-engine" data-text="ENGINE">
+      <span
+        ref={engineRef}
+        className="anbn-engine"
+        data-text="ENGINE"
+        onMouseMove={(e) => {
+          const el = e.currentTarget;
+          const rect = el.getBoundingClientRect();
+          // Clamp to [0, 100] so extreme edges don't produce negative %
+          const mx = Math.max(0, Math.min(100, ((e.clientX - rect.left) / rect.width) * 100));
+          const my = Math.max(0, Math.min(100, ((e.clientY - rect.top)  / rect.height) * 100));
+          el.style.setProperty("--mx", `${mx}%`);
+          el.style.setProperty("--my", `${my}%`);
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.setProperty("--hover-strength", "1");
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.setProperty("--hover-strength", "0");
+        }}
+      >
         <canvas ref={engineCanvasRef} className="anbn-engine-canvas" />
+        {/* Cursor-tracked spotlight layer — follows the mouse, fades in/out
+            on hover. pointer-events none so it doesn't block the parent's
+            mouse events. */}
+        <span className="anbn-engine-spotlight" aria-hidden="true" data-text="ENGINE">ENGINE</span>
         ENGINE
       </span>
     </div>
