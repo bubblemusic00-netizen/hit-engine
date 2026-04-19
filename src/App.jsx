@@ -1267,205 +1267,58 @@ function TierLever({ tier, onChange, onOpenShop }) {
 }
 
 
+
+
 // ────────────────────────────────────────────────────────────────────────────
-// FUEL LEVER — tactile gear-shift: FREE (green) · PRO (red) · VIP (purple)
+// TIER BADGE — static display of the user's subscribed plan.
+// Shows the tier the user is on (FREE / PRO / VIP) as a read-only badge.
+// No click, no sound, no state changes — purely informational, tucked in
+// the top-right of the nav so users always see their current plan. Styled
+// with the plan's color but muted so it doesn't compete with interactive
+// elements. Upgrade path lives elsewhere (sales modal from locked chips).
 // ────────────────────────────────────────────────────────────────────────────
-function FuelLever({ currentPage, onNavigate }) {
-  const { activeFuel, setActiveFuel, fuels } = useFuel();
+function TierBadge() {
   const { tier } = useTier();
-  const [shakeKey, setShakeKey] = useState(0);
-
-  // Horizontal gear box:
-  //   green  = free (0)
-  //   red    = pro  (1)
-  //   purple = vip  (2)
-  const positions = ["free", "pro", "vip"];
-  const activeIdx = positions.indexOf(activeFuel);
-  const slotW = 30;
-  const gateH = 38;
-  const trackPadding = 12;
-  const trackInner = positions.length * slotW;
-  const housingW = trackInner + trackPadding * 2;
-  const activeColor = FUEL_TYPES[activeFuel]?.color || "#888";
-
-  const handleSelect = (fuelId) => {
-    if (fuelId === activeFuel) return;
-    const allocation = TIER_FEATURES[tier]?.dailyFuel?.[fuelId] ?? 0;
-    if (allocation === 0) return; // locked
-
-    playFuelButtonSound();
-    setShakeKey(k => k + 1);
-    setActiveFuel(fuelId);
+  const { layout } = useLayout();
+  const isMobile = layout === "mobile";
+  // Tier → display meta. ADMIN is internal/dev only, shown subtly.
+  const META = {
+    free:  { label: "FREE",  color: "#3B82F6", dot: "#3B82F6" },
+    pro:   { label: "PRO",   color: "#FF1744", dot: "#FF1744" },
+    vip:   { label: "VIP",   color: "#C792EA", dot: "#C792EA" },
+    admin: { label: "ADMIN", color: "#FFD700", dot: "#FFD700" },
   };
-
-  const knobX = trackPadding + activeIdx * slotW + slotW / 2 - 12; // 12 = knob half width
-
+  const m = META[tier] || META.free;
   return (
-    <>
-      <style>{`
-        @keyframes gearShiftShake-${shakeKey % 100} {
-          0%,100% { transform: translate(0,0) rotate(0deg); }
-          25%     { transform: translate(0.5px, -0.5px) rotate(0.4deg); }
-          50%     { transform: translate(-0.5px, 0.5px) rotate(-0.3deg); }
-          75%     { transform: translate(0.3px, 0.3px) rotate(0.2deg); }
-        }
-        @keyframes gearKnobPulse {
-          0%,100% { filter: brightness(1); }
-          50%     { filter: brightness(1.15); }
-        }
-      `}</style>
-      <div style={{
-        position: "relative",
-        display: "inline-flex", alignItems: "center",
-        padding: "4px",
-        background: `
-          linear-gradient(180deg, #14161c 0%, #0a0b10 50%, #050608 100%)`,
-        border: `1px solid #1f232b`,
-        borderRadius: 10,
-        boxShadow: `
-          inset 0 1px 0 rgba(255,255,255,0.04),
-          inset 0 -1px 0 rgba(0,0,0,0.6),
-          0 2px 6px rgba(0,0,0,0.5),
-          0 0 20px ${activeColor}22`,
-        transition: "box-shadow 260ms cubic-bezier(0.34, 1.56, 0.64, 1)",
-      }}>
-        {/* ── HOUSING / GATE ────────────────────────────────────── */}
-        <div style={{
-          position: "relative",
-          width: housingW, height: gateH,
-          background: `
-            linear-gradient(180deg, #0a0b0e 0%, #1a1c22 40%, #0a0b0e 100%)`,
-          borderRadius: 6,
-          border: "1px solid #2a2d36",
-          boxShadow: `
-            inset 0 2px 4px rgba(0,0,0,0.9),
-            inset 0 -1px 0 rgba(255,255,255,0.05)`,
-          overflow: "hidden",
-        }}>
-          {/* Deep horizontal channel the stick slides in */}
-          <div style={{
-            position: "absolute",
-            left: trackPadding, right: trackPadding,
-            top: "50%", height: 3, marginTop: -1.5,
-            background: `
-              linear-gradient(180deg, #000 0%, #0a0b0e 50%, #1a1c22 100%)`,
-            borderRadius: 2,
-            boxShadow: `inset 0 1px 2px rgba(0,0,0,1)`,
-          }} />
-          {/* Three gate notches — subtle dimples where stick locks */}
-          {positions.map((_, i) => (
-            <div key={i} style={{
-              position: "absolute",
-              left: trackPadding + i * slotW + slotW / 2 - 4,
-              top: "50%", marginTop: -5,
-              width: 8, height: 10,
-              background: "radial-gradient(ellipse, rgba(0,0,0,0.6) 0%, transparent 70%)",
-              borderRadius: "50%",
-            }} />
-          ))}
-
-          {/* ── THE KNOB (gear-shift ball) ─────────────────────── */}
-          <div
-            key={`knob-shake-${shakeKey}`}
-            style={{
-              position: "absolute",
-              left: knobX,
-              top: "50%", marginTop: -12,
-              width: 24, height: 24,
-              animation: `gearShiftShake-${shakeKey % 100} 200ms ease-out`,
-              transition: "left 320ms cubic-bezier(0.34, 1.56, 0.64, 1)",
-              zIndex: 2,
-              pointerEvents: "none",
-            }}>
-            {/* Emissive glow halo — matches active fuel color */}
-            <div style={{
-              position: "absolute", inset: -6,
-              borderRadius: "50%",
-              background: `radial-gradient(circle, ${activeColor}88 0%, ${activeColor}00 70%)`,
-              filter: "blur(4px)",
-              animation: "gearKnobPulse 2.4s ease-in-out infinite",
-            }} />
-            {/* Stick shaft — small chrome connector visible below knob */}
-            <div style={{
-              position: "absolute",
-              left: "50%", marginLeft: -2,
-              top: "80%", width: 4, height: 6,
-              background: "linear-gradient(90deg, #444 0%, #999 50%, #444 100%)",
-              borderRadius: 1,
-            }} />
-            {/* Ball / knob head */}
-            <div style={{
-              position: "relative",
-              width: 24, height: 24, borderRadius: "50%",
-              background: `
-                radial-gradient(circle at 28% 28%,
-                  ${activeColor}FF 0%,
-                  ${activeColor}DD 25%,
-                  ${activeColor}77 55%,
-                  #1a1a1a 100%)`,
-              boxShadow: `
-                inset 0 1px 3px rgba(255,255,255,0.45),
-                inset 0 -3px 4px rgba(0,0,0,0.6),
-                0 0 14px ${activeColor}AA,
-                0 0 28px ${activeColor}55,
-                0 3px 5px rgba(0,0,0,0.8)`,
-              border: `1px solid rgba(0,0,0,0.5)`,
-            }}>
-              {/* Specular highlight dot */}
-              <div style={{
-                position: "absolute",
-                top: 3, left: 5,
-                width: 5, height: 4,
-                background: "radial-gradient(ellipse, rgba(255,255,255,0.7) 0%, rgba(255,255,255,0) 80%)",
-                borderRadius: "50%",
-                filter: "blur(0.5px)",
-              }} />
-            </div>
-          </div>
-
-          {/* ── CLICK ZONES (invisible) for each position ──────── */}
-          {positions.map((p, i) => {
-            const locked = (TIER_FEATURES[tier]?.dailyFuel?.[p] ?? 0) === 0;
-            const f = FUEL_TYPES[p];
-            const isActive = p === activeFuel;
-            return (
-              <button key={p} type="button"
-                onClick={() => handleSelect(p)}
-                disabled={locked}
-                title={locked
-                  ? `${f.label} · Locked — upgrade tier`
-                  : `${f.label} · ${fuels[p] === Infinity ? "∞" : fuels[p]} left today`}
-                style={{
-                  position: "absolute",
-                  left: trackPadding + i * slotW, top: 0,
-                  width: slotW, height: "100%",
-                  background: "transparent", border: "none",
-                  cursor: locked ? "not-allowed" : "pointer",
-                  zIndex: 3,
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                  justifyContent: "flex-end",
-                  padding: 0, paddingBottom: 3,
-                }}>
-                <span style={{
-                  color: locked ? T.textMuted : (isActive ? f.color : T.textTer),
-                  fontFamily: T.font_mono,
-                  fontSize: 7, fontWeight: 700, letterSpacing: "0.15em",
-                  textShadow: isActive && !locked ? `0 0 4px ${f.color}` : "none",
-                  opacity: locked ? 0.3 : (isActive ? 1 : 0.5),
-                  transition: "all 240ms ease-out",
-                  lineHeight: 1,
-                }}>{f.label.split(" ")[0].toUpperCase()}</span>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-    </>
+    <div
+      title={`Your plan: ${m.label}`}
+      style={{
+        display: "inline-flex", alignItems: "center", gap: 6,
+        padding: isMobile ? "6px 10px" : "5px 10px",
+        height: isMobile ? 34 : 32,
+        background: `linear-gradient(180deg, ${m.color}14 0%, ${m.color}06 100%)`,
+        border: `1px solid ${m.color}55`,
+        borderRadius: 6,
+        color: m.color,
+        fontFamily: T.font_mono,
+        fontSize: 10, fontWeight: 700,
+        letterSpacing: "0.18em",
+        textShadow: `0 0 6px ${m.color}44`,
+        boxShadow: `inset 0 1px 0 ${m.color}22, 0 0 10px ${m.color}14`,
+        userSelect: "none",
+        cursor: "default",
+      }}
+    >
+      <span style={{
+        display: "inline-block",
+        width: 7, height: 7, borderRadius: "50%",
+        background: m.dot,
+        boxShadow: `0 0 6px ${m.dot}, 0 0 12px ${m.dot}88`,
+      }} />
+      {m.label}
+    </div>
   );
 }
-
 
 // ────────────────────────────────────────────────────────────────────────────
 // GENRE TREE
@@ -5854,7 +5707,7 @@ function Nav({ page, onNavigate }) {
         {!isMobile && <ThemeToggle />}
         {!isMobile && (
           <>
-            <FuelLever currentPage={page} onNavigate={onNavigate} />
+            <TierBadge />
           </>
         )}
         {isMobile && (
@@ -5910,8 +5763,8 @@ function Nav({ page, onNavigate }) {
             <div style={{
               fontSize: 10, fontFamily: T.font_mono, fontWeight: 700,
               letterSpacing: "0.2em", color: T.textMuted, marginBottom: 8,
-            }}>FUEL SELECTOR</div>
-            <FuelLever currentPage={page} onNavigate={(p) => { onNavigate(p); setMenuOpen(false); }} />
+            }}>YOUR PLAN</div>
+            <TierBadge />
           </div>
 
           {/* Layout toggle — in mobile menu */}
@@ -7727,7 +7580,7 @@ function SpecificInstrumentsPicker({
               ‹
             </button>
             {/* SCROLLABLE TAB STRIP */}
-            <div data-no-swipe="true" style={{
+            <div style={{
               flex: 1, minWidth: 0,
               display: "flex", gap: T.s1, overflowX: "auto", overflowY: "hidden",
               scrollbarWidth: "thin",
@@ -11192,7 +11045,7 @@ function EnginePage({ onNavigate }) {
                 }}>60</span>
                 <input
                   type="range"
-                  data-no-swipe="true"
+                 
                   min="60"
                   max="200"
                   step="1"
@@ -18167,7 +18020,7 @@ function Joystick({ onNavigate, onLockedClick }) {
       }}>
         <svg
           ref={svgRef}
-          data-no-swipe="true"
+         
           viewBox={`0 0 ${VB_W} ${VB_H}`}
           width={displayWidth}
           style={{ display: "block", maxWidth: "100%", touchAction: "none" }}
@@ -19309,215 +19162,6 @@ function DailyBonusToast() {
 }
 
 
-// ════════════════════════════════════════════════════════════════════════════
-// PAGE CAROUSEL — cinematic slide between pages via side arrow buttons
-// ════════════════════════════════════════════════════════════════════════════
-//
-// Architecture:
-// - Takes an ORDERED list of {id, render} pages
-// - A transform track (translateX of -index * 100%) holds the pages side-by-side
-// - Two floating arrow buttons (‹ ›) on the left/right edges advance the carousel
-// - Arrow buttons disable cleanly at first/last page
-// - Lazy mounts ONLY the current page plus its immediate neighbors (prev/next)
-//   to avoid the cost of keeping EnginePage running in 5 clones
-// - External page changes (nav tab click) animate via the same transform
-// - 900ms cubic-bezier(0.65, 0, 0.35, 1) — cinematic ease-in-out slide
-//
-// ════════════════════════════════════════════════════════════════════════════
-
-function PageCarousel({ pages, currentPage, onPageChange }) {
-  const trackRef = useRef(null);
-  const { layout } = useLayout();
-  const isMobile = layout === "mobile";
-  const currentIdx = Math.max(0, pages.findIndex(p => p.id === currentPage));
-  const prevIdxRef = useRef(currentIdx);
-
-  // ─── TRANSITION ──────────────────────────────────────────────────────
-  // When currentIdx changes, animate the track to its new target position.
-  // A useEffect handles this rather than inlining the transform, so external
-  // page changes (nav tab clicks, arrow clicks, or whatever triggers the
-  // parent's onPageChange) all take the same animated path.
-  useEffect(() => {
-    const track = trackRef.current;
-    if (!track) return;
-    track.style.transition = "transform 900ms cubic-bezier(0.65, 0, 0.35, 1)";
-    track.style.transform = `translateX(${-currentIdx * 100}%)`;
-    prevIdxRef.current = currentIdx;
-  }, [currentIdx]);
-
-  // Only render current ± 1 for perf. Adjacent pages are needed so the
-  // destination page is visible during the 900ms slide; everything else
-  // stays as an empty placeholder that preserves track layout.
-  const shouldMount = (idx) => Math.abs(idx - currentIdx) <= 1;
-
-  // ─── ARROW BUTTONS ────────────────────────────────────────────────────
-  const canPrev = currentIdx > 0;
-  const canNext = currentIdx < pages.length - 1;
-  const goPrev = () => {
-    if (!canPrev) return;
-    playSwitchSound();
-    onPageChange(pages[currentIdx - 1].id);
-  };
-  const goNext = () => {
-    if (!canNext) return;
-    playSwitchSound();
-    onPageChange(pages[currentIdx + 1].id);
-  };
-
-  const arrowBase = {
-    position: "fixed",
-    top: "50%",
-    transform: "translateY(-50%)",
-    zIndex: 50,
-    width: isMobile ? 44 : 52,
-    height: isMobile ? 72 : 96,
-    display: "grid",
-    placeItems: "center",
-    background: `linear-gradient(135deg, ${T.surface}ee 0%, ${T.elevated}dd 100%)`,
-    backdropFilter: "blur(10px) saturate(1.2)",
-    WebkitBackdropFilter: "blur(10px) saturate(1.2)",
-    border: `1px solid ${V.neonGold}66`,
-    color: V.neonGold,
-    cursor: "pointer",
-    fontFamily: T.font_mono,
-    fontSize: isMobile ? 32 : 40,
-    fontWeight: 300,
-    lineHeight: 1,
-    boxShadow: `
-      0 0 0 1px ${V.neonGold}22,
-      0 8px 32px rgba(0,0,0,0.5),
-      inset 0 1px 0 ${V.neonGold}33
-    `,
-    textShadow: `0 0 12px ${V.neonGold}99, 0 0 24px ${V.neonGold}44`,
-    transition: "all 240ms cubic-bezier(0.4, 0, 0.2, 1)",
-    userSelect: "none",
-    WebkitTapHighlightColor: "transparent",
-  };
-
-  const arrowDisabled = {
-    opacity: 0.25,
-    cursor: "default",
-    color: T.textMuted,
-    borderColor: T.border,
-    textShadow: "none",
-  };
-
-  return (
-    <>
-      <style>{`
-        .page-carousel-arrow:not(:disabled):hover {
-          background: linear-gradient(135deg, ${T.elevated}f0 0%, ${V.neonGold}22 100%) !important;
-          border-color: ${V.neonGold} !important;
-          box-shadow:
-            0 0 0 1px ${V.neonGold},
-            0 12px 40px rgba(0,0,0,0.6),
-            0 0 24px ${V.neonGold}44,
-            inset 0 1px 0 ${V.neonGold}88 !important;
-          transform: translateY(-50%) scale(1.05) !important;
-        }
-        .page-carousel-arrow:not(:disabled):active {
-          transform: translateY(-50%) scale(0.96) !important;
-        }
-      `}</style>
-      <div style={{
-        position: "relative",
-        width: "100%",
-        overflowX: "hidden",
-        overflowY: "visible",
-      }}>
-        <div
-          ref={trackRef}
-          style={{
-            display: "flex",
-            width: `${pages.length * 100}%`,
-            transform: `translateX(${-currentIdx * 100}%)`,
-            willChange: "transform",
-          }}
-        >
-          {pages.map((p, idx) => (
-            <div
-              key={p.id}
-              style={{
-                width: `${100 / pages.length}%`,
-                flex: `0 0 ${100 / pages.length}%`,
-                minHeight: idx === currentIdx ? undefined : "1px",
-              }}
-              aria-hidden={idx !== currentIdx}
-            >
-              {shouldMount(idx) ? p.render() : null}
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* LEFT ARROW — fixed-position, vertically centered */}
-      <button
-        type="button"
-        className="page-carousel-arrow"
-        onClick={goPrev}
-        disabled={!canPrev}
-        aria-label="Previous page"
-        title={canPrev ? `Previous: ${pages[currentIdx - 1].id}` : "No previous page"}
-        style={{
-          ...arrowBase,
-          left: isMobile ? 6 : 14,
-          borderRadius: `${T.r_md}px ${T.r_lg}px ${T.r_lg}px ${T.r_md}px`,
-          paddingRight: 4,
-          ...(canPrev ? {} : arrowDisabled),
-        }}
-      >‹</button>
-
-      {/* RIGHT ARROW — fixed-position, vertically centered */}
-      <button
-        type="button"
-        className="page-carousel-arrow"
-        onClick={goNext}
-        disabled={!canNext}
-        aria-label="Next page"
-        title={canNext ? `Next: ${pages[currentIdx + 1].id}` : "No next page"}
-        style={{
-          ...arrowBase,
-          right: isMobile ? 6 : 14,
-          borderRadius: `${T.r_lg}px ${T.r_md}px ${T.r_md}px ${T.r_lg}px`,
-          paddingLeft: 4,
-          ...(canNext ? {} : arrowDisabled),
-        }}
-      >›</button>
-    </>
-  );
-}
-
-
-// ────────────────────────────────────────────────────────────────────────────
-// PageRouter — wires the current `page` state into either the carousel (for
-// the 5 main pages) or a direct render (for the trendsetter transition).
-// Tier-gated pages (secrets/Playbook) are excluded from the carousel when
-// the tier can't see them, so swipes don't land on an inaccessible page.
-// ────────────────────────────────────────────────────────────────────────────
-function PageRouter({ page, onNavigate }) {
-  const { features } = useTier();
-  // Main-carousel page order — matches Nav links visual order so swipe
-  // direction reads naturally (swipe left = next tab to the right).
-  // `secrets` only present when the tier can see the Playbook.
-  const carouselPages = [
-    { id: "engine",  render: () => <EnginePage onNavigate={onNavigate} /> },
-    { id: "history", render: () => <HistoryPage onNavigate={onNavigate} /> },
-    { id: "future",  render: () => <FuturePage /> },
-    { id: "shop",    render: () => <ShopPage /> },
-    ...(features.vipSecretsPage ? [{ id: "secrets", render: () => <PlaybookPage /> }] : []),
-  ];
-  // Trendsetter is a special transition destination, not a regular page —
-  // it lives outside the carousel and gets its own mount.
-  if (page === "trendsetter") {
-    return (
-      <div key="trendsetter" className="page-transition">
-        <TrendSetterPage />
-      </div>
-    );
-  }
-  return <PageCarousel pages={carouselPages} currentPage={page} onPageChange={onNavigate} />;
-}
-
 export default function HitEngine() {
   const [page, setPage] = useState("engine");
 
@@ -19613,7 +19257,14 @@ export default function HitEngine() {
               <div style={{ position: "relative", zIndex: 1 }}>
                 <Nav page={page} onNavigate={setPage} />
                 <ErrorBoundary>
-                  <PageRouter page={page} onNavigate={setPage} />
+                  <div key={page} className="page-transition">
+                    {page === "engine"  && <EnginePage onNavigate={setPage} />}
+                    {page === "future"  && <FuturePage />}
+                    {page === "history" && <HistoryPage onNavigate={setPage} />}
+                    {page === "secrets" && <PlaybookPage />}
+                    {page === "shop"    && <ShopPage />}
+                    {page === "trendsetter" && <TrendSetterPage />}
+                  </div>
                 </ErrorBoundary>
                 <DailyBonusToast />
               </div>
