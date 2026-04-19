@@ -1293,7 +1293,18 @@ function FuelLever({ currentPage, onNavigate }) {
     const allocation = TIER_FEATURES[tier]?.dailyFuel?.[fuelId] ?? 0;
     if (allocation === 0) return; // locked
 
+    // DEBUG: confirm this handler is actually firing + play sound two ways
+    // (pool + fresh Audio fallback) to isolate whether the pool is broken.
+    console.log("[fuel-click]", fuelId, "firing handleSelect");
     playFuelButtonSound();
+    try {
+      const fallback = new Audio("/BUTTON-SOUND.mp3");
+      fallback.volume = 0.55;
+      const p = fallback.play();
+      if (p && typeof p.catch === "function") p.catch(err => console.log("[fuel-click] fallback blocked:", err.message));
+    } catch (e) {
+      console.log("[fuel-click] fallback error:", e.message);
+    }
     setShakeKey(k => k + 1);
     setActiveFuel(fuelId);
   };
