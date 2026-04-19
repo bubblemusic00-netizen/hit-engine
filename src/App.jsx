@@ -2260,6 +2260,124 @@ const SUGGESTION_MAP = {
 };
 
 // ────────────────────────────────────────────────────────────────────────────
+// INSTRUMENT_GENRES — Per-instrument suggested subgenres. When the user
+// clicks the ✨ button on a specific instrument chip, the suggestion pool
+// for the "genre" target field is built from this map. Values must match
+// actual subgenre keys in GENRE_TREE (middle level). 3 picks per instrument.
+// VIP-only feature.
+// ────────────────────────────────────────────────────────────────────────────
+const INSTRUMENT_GENRES = {
+  // Keys
+  "Grand piano":               ["Neo-Soul","Contemporary R&B","Indie Folk","Chamber Pop","Classical Crossover"],
+  "Rhodes electric piano":     ["Neo-Soul","Contemporary R&B","Jazz-Rap","Lo-Fi Hip-Hop","Alternative R&B"],
+  "Hammond B3 organ":          ["Gospel","Blues Rock","Southern Soul","Jazz-Funk","Progressive Rock"],
+  "Wurlitzer":                 ["Soul","Indie Rock","Jazz-Funk","Alternative R&B"],
+  "Harpsichord":               ["Baroque Pop","Chamber Pop","Dark Cabaret","Neoclassical"],
+  // Synths
+  "Moog sub bass":             ["Synthwave","Electro","Industrial","Darkwave"],
+  "Juno-60 pads":              ["Synthwave","Dream Pop","Vaporwave","Shoegaze"],
+  "Prophet-5 lead":            ["Synthwave","New Wave","Italo Disco","Electroclash"],
+  "Modular Eurorack":          ["IDM","Ambient","Experimental Electronic","Minimal Techno"],
+  "FM DX7":                    ["80s Synth-Pop","Yacht Rock","New Jack Swing","Chillwave"],
+  "Korg MS-20":                ["Industrial","Techno","Noise","Experimental Electronic"],
+  "TB-303 bass":               ["Acid House","Acid Techno","Electro","Tech House"],
+  "Analog poly lead":          ["Synthwave","Italo Disco","80s Synth-Pop","New Wave"],
+  "Wavetable synth":           ["Future Bass","Brostep","Dubstep","IDM"],
+  "Granular synth":            ["Ambient","IDM","Drone","Experimental Electronic"],
+  // Strings
+  "Violin solo":               ["Classical Crossover","Chamber Pop","Indie Folk","Neoclassical"],
+  "Cello":                     ["Chamber Pop","Neoclassical","Post-Rock","Dark Cabaret","Baroque Pop"],
+  "Viola":                     ["Chamber Pop","Neoclassical","Indie Folk"],
+  "Double bass":               ["Bebop","Cool Jazz","Rockabilly","Gypsy Jazz","Contemporary Jazz"],
+  "Full string section":       ["Orchestral Pop","Film Score","Classical Crossover","Chamber Pop"],
+  "Pizzicato strings":         ["Chamber Pop","Baroque Pop","Twee Pop","Orchestral Pop"],
+  "String ensemble pad":       ["Orchestral Pop","Dream Pop","Film Score","Post-Rock"],
+  // Guitars
+  "Fender Strat clean":        ["Surf Rock","Blues Rock","Indie Rock","Contemporary R&B"],
+  "Les Paul distortion":       ["Hard Rock","Blues Rock","Alternative Rock","Stoner Rock"],
+  "Nylon classical":           ["Bossa Nova","Flamenco","Latin Jazz","Chamber Pop"],
+  "Acoustic steel-string":     ["Indie Folk","Country","Americana","Singer-Songwriter"],
+  "12-string guitar":          ["Folk Rock","Jangle Pop","Indie Folk","Psychedelic Rock"],
+  "Pedal steel":               ["Country","Americana","Outlaw Country","Honky-Tonk"],
+  "Resonator slide":           ["Delta Blues","Country Blues","Americana","Bluegrass"],
+  "Telecaster twang":          ["Country","Rockabilly","Honky-Tonk","Alt-Country"],
+  "Jazz guitar hollowbody":    ["Bebop","Cool Jazz","Swing","Gypsy Jazz"],
+  "Baritone guitar":           ["Surf Rock","Spaghetti Western","Indie Rock","Post-Rock"],
+  "Lap steel":                 ["Hawaiian","Americana","Country","Ambient"],
+  // Bass
+  "Upright acoustic bass":     ["Bebop","Cool Jazz","Rockabilly","Gypsy Jazz"],
+  "Precision bass":            ["Funk","Classic Rock","Motown","Reggae"],
+  "Jazz bass":                 ["Funk","Fusion","Neo-Soul","Jazz-Funk"],
+  "Synth bass":                ["Synthwave","Electro","Funk","New Wave"],
+  "808 sub bass":              ["Trap","Drill","Phonk","Plugg","Rage Rap"],
+  "Fretless bass":             ["Fusion","Jazz-Funk","Progressive Rock","Neo-Soul"],
+  // Drums
+  "Acoustic kit close-mic":    ["Indie Rock","Alternative Rock","Pop Punk","Modern Rock"],
+  "TR-808":                    ["Trap","Electro","Miami Bass","Boogie","Southern Hip-Hop"],
+  "TR-909":                    ["House","Techno","Acid House","Tech House"],
+  "Linn LM-1":                 ["80s Synth-Pop","Minneapolis Funk","New Jack Swing"],
+  "SP-1200 sampler":           ["Boom Bap","Golden Era Hip-Hop","East Coast Rap"],
+  "MPC-style drums":           ["Boom Bap","Lo-Fi Hip-Hop","Neo-Soul","Jazz-Rap"],
+  "Brushes on snare":          ["Cool Jazz","Bebop","Bossa Nova","Jazz Ballad"],
+  "Breakbeat chops":           ["Jungle","Drum and Bass","Big Beat","Breakbeat"],
+  "Gated reverb kit":          ["80s Synth-Pop","New Wave","Arena Rock","80s Pop"],
+  // Percussion
+  "Congas":                    ["Salsa","Latin Jazz","Afro-Cuban","Boogaloo"],
+  "Djembe":                    ["Afrobeat","World Fusion","West African","Afropop"],
+  "Bongos":                    ["Latin Jazz","Afro-Cuban","Bossa Nova","Boogaloo"],
+  "Darbuka":                   ["Arabic Pop","Turkish Folk","Middle Eastern","World Fusion"],
+  "Hand claps":                ["Disco","80s Synth-Pop","Gospel","Funk"],
+  "Shakers":                   ["Amapiano","Afrobeats","Latin Pop","Bossa Nova"],
+  "Taiko drums":               ["Film Score","Cinematic","World Fusion","Epic Orchestral"],
+  "Tambourine":                ["Gospel","Folk Rock","Country Gospel","Indie Folk"],
+  // Brass
+  "Trumpet solo":              ["Bebop","Hard Bop","Latin Jazz","Ska"],
+  "Muted trumpet":             ["Cool Jazz","Film Noir","Chamber Jazz","Bebop"],
+  "French horn":               ["Film Score","Classical Crossover","Chamber Pop","Orchestral Pop"],
+  "Trombone":                  ["Ska","New Orleans Jazz","Funk","Latin Jazz"],
+  "Saxophone alto":            ["Bebop","Cool Jazz","Smooth Jazz","Jazz Ballad"],
+  "Saxophone tenor":           ["Hard Bop","Soul","Jazz-Funk","R&B"],
+  "Saxophone soprano":         ["Smooth Jazz","Contemporary Jazz","World Fusion"],
+  "Full brass section":        ["Big Band","Ska","Funk","Soul"],
+  // Woodwinds
+  "Flute":                     ["Chamber Pop","Jazz Fusion","Baroque Pop","New Age"],
+  "Clarinet":                  ["Klezmer","Dixieland","Chamber Pop","Swing"],
+  "Bass clarinet":             ["Chamber Jazz","Contemporary Classical","Free Jazz","Avant-Garde Jazz"],
+  "Oboe":                      ["Chamber Pop","Film Score","Orchestral Pop","Baroque Pop"],
+  "English horn":              ["Film Score","Orchestral Pop","Chamber Pop","Neoclassical"],
+  "Bassoon":                   ["Chamber Pop","Film Score","Dark Cabaret","Orchestral Pop"],
+  "Duduk":                     ["Film Score","Cinematic","World Fusion","Middle Eastern"],
+  "Tin whistle":               ["Celtic","Irish Folk","Folk Rock","Celtic Fusion"],
+  // World
+  "Sitar":                     ["Psychedelic Rock","Raga","World Fusion","Indian Classical"],
+  "Oud":                       ["Arabic Pop","Middle Eastern","World Fusion","Flamenco"],
+  "Erhu":                      ["Chinese Folk","World Fusion","Film Score","Cinematic"],
+  "Shakuhachi":                ["Japanese Traditional","Ambient","World Fusion","New Age"],
+  "Koto":                      ["Japanese Traditional","World Fusion","New Age","Ambient"],
+  "Kora":                      ["West African","Afrobeat","World Fusion","Mande Griot"],
+  "Didgeridoo":                ["Aboriginal","World Fusion","Ambient","Drone"],
+  "Tabla":                     ["Indian Classical","Raga","World Fusion","Bhangra"],
+  "Kalimba":                   ["Afrobeat","World Fusion","Ambient","Indie Folk"],
+  "Hang drum":                 ["Ambient","New Age","World Fusion","Downtempo"],
+  // Mallet
+  "Marimba":                   ["Afro-Cuban","Latin Jazz","World Fusion","Contemporary Classical"],
+  "Vibraphone":                ["Cool Jazz","Bebop","Hard Bop","Jazz Ballad"],
+  "Glockenspiel":              ["Indie Folk","Chamber Pop","Dream Pop","Twee Pop"],
+  "Tubular bells":             ["Film Score","Gothic Rock","Progressive Rock","Orchestral Pop"],
+  "Steel pan":                 ["Calypso","Soca","Reggae","World Fusion"],
+  // Voice / Choir
+  "Gospel choir":              ["Gospel","Southern Soul","Contemporary Gospel","Soul"],
+  "Children's choir":          ["Film Score","Orchestral Pop","Chamber Pop","Indie Pop"],
+  "Gregorian chant":           ["Sacred Medieval","Dark Ambient","Gothic","Neoclassical"],
+  "Throat singing":            ["World Fusion","Tuvan","Ambient","Drone"],
+  "Sample-chopped vocal":      ["UK Garage","Future Garage","Vaporwave","Chopped and Screwed"],
+  "Operatic soprano":          ["Classical Crossover","Symphonic Metal","Opera","Epic Orchestral"],
+  "Bulgarian women's choir":   ["World Fusion","Neoclassical","Dark Folk","Balkan"],
+  "Vocalise wordless":         ["Film Score","Chamber Pop","New Age","Dream Pop"],
+  "Orchestral choir stab":     ["Film Score","Epic Orchestral","Cinematic","Symphonic Metal"],
+};
+
+// ────────────────────────────────────────────────────────────────────────────
 // REVERSE COMPLEMENT MAPS — When the user picks a mood/groove/lyrical as
 // their starting element, these curated maps contribute directly to the
 // suggestion pools. They layer on top of the reverse-scan of SUGGESTION_MAP
@@ -4360,6 +4478,18 @@ function ensureBannerFonts() {
 
 // Copy map: tailor the pitch per feature so it feels specific, not generic.
 const SALES_COPY = {
+  instrumentSuggest: {
+    tier: "vip",
+    headline: "Per-instrument AI complements",
+    subline: "Pick any instrument. VIP suggests a matching mood, groove, lyrical vibe, vocalist, texture, energy, harmonic style, mix character, AND a subgenre — all tuned to that one instrument.",
+    bullet: [
+      "9-way suggestions per instrument (all sections + genre)",
+      "Tap ✨ on any instrument chip to open",
+      "🎲 reroll any card individually",
+      "Plus: all VIP tools (Trend Fuel, shuffle deck, sort by popularity)",
+    ],
+    cta: "Upgrade to VIP",
+  },
   presetShuffle: {
     tier: "vip",
     headline: "Shuffle the full preset deck",
@@ -6397,7 +6527,168 @@ function GenreSlotPicker({ slots, onChange, slotLocks, onToggleSlotLock, maxSlot
 // SPECIFIC INSTRUMENTS PICKER
 // ════════════════════════════════════════════════════════════════════════════
 
-function SpecificInstrumentsPicker({ state, setState, favorites, onFavorite, casinoOutlines, maxPerCategory = Infinity }) {
+// ─────────────────────────────────────────────────────────────────────
+// InstrumentSuggestPanel — mini-panel that renders inside the picker
+// when the user has an active per-instrument suggestion open. Shows a
+// compact grid of suggestion cards (mood / groove / lyrical / energy /
+// vocalist / harmonic / texture / mix / genre), each with a 🎲 reroll
+// and click-to-accept. Header has ACCEPT ALL / DISMISS.
+// ─────────────────────────────────────────────────────────────────────
+function InstrumentSuggestPanel({ instrSuggest, isMobile, onInstrReroll, onInstrAccept, onInstrAcceptAll, onInstrDismiss }) {
+  if (!instrSuggest) return null;
+  if (instrSuggest.noMappings) {
+    return (
+      <div style={{
+        padding: `${T.s2}px ${T.s3}px`,
+        background: `${V.neonGold}0A`,
+        border: `1px dashed ${V.neonGold}88`,
+        borderRadius: T.r_md,
+        fontSize: T.fs_sm, fontFamily: T.font_sans,
+        color: T.textSec,
+        display: "flex", alignItems: "center", justifyContent: "space-between",
+        gap: T.s2, flexWrap: "wrap",
+      }}>
+        <span>No suggestion data yet for {instrSuggest.inst}.</span>
+        <button type="button" onClick={onInstrDismiss}
+          style={{
+            background: "transparent", border: "none", color: T.textMuted,
+            fontSize: T.fs_xs, fontFamily: T.font_mono, fontWeight: 700,
+            cursor: "pointer", padding: 0, letterSpacing: "0.1em",
+          }}>DISMISS</button>
+      </div>
+    );
+  }
+  const values = instrSuggest.values || {};
+  // Order: mood, groove, lyricalVibe, energy, vocalist, harmonic, texture, mix, genre
+  const FIELD_ORDER = ["mood","groove","lyricalVibe","energy","vocalist","harmonic","texture","mix","genre"];
+  const labelFor = {
+    mood: "Mood", groove: "Groove", lyricalVibe: "Lyrical",
+    energy: "Energy", vocalist: "Vocalist", harmonic: "Harmonic",
+    texture: "Texture", mix: "Mix", genre: "Genre",
+  };
+  const cards = FIELD_ORDER.filter(f => f in values);
+  return (
+    <div style={{
+      padding: T.s3,
+      background: `${V.neonGold}0A`,
+      border: `1px dashed ${V.neonGold}88`,
+      borderRadius: T.r_md,
+      display: "flex", flexDirection: "column", gap: T.s2,
+    }}>
+      <div style={{
+        display: "flex", alignItems: "center", justifyContent: "space-between",
+        gap: T.s2, flexWrap: "wrap",
+      }}>
+        <div style={{
+          fontSize: 10, fontFamily: T.font_mono, fontWeight: 700,
+          color: V.neonGold, letterSpacing: "0.15em",
+        }}>
+          ✨ FOR {instrSuggest.inst.toUpperCase()}
+        </div>
+        <div style={{ display: "flex", gap: T.s1 }}>
+          <button type="button" onClick={onInstrAcceptAll}
+            style={{
+              padding: "3px 8px", background: V.neonGold,
+              border: `1px solid ${V.neonGold}`, borderRadius: T.r_sm,
+              color: "#000", fontSize: 10, fontFamily: T.font_mono,
+              fontWeight: 700, letterSpacing: "0.1em", cursor: "pointer",
+            }}>ACCEPT ALL</button>
+          <button type="button" onClick={onInstrDismiss}
+            style={{
+              padding: "3px 8px", background: "transparent",
+              border: `1px solid ${T.border}`, borderRadius: T.r_sm,
+              color: T.textMuted, fontSize: 10, fontFamily: T.font_mono,
+              fontWeight: 700, letterSpacing: "0.1em", cursor: "pointer",
+            }}>DISMISS</button>
+        </div>
+      </div>
+      <div style={{
+        display: "grid",
+        gridTemplateColumns: isMobile ? "1fr" : "repeat(3, minmax(0, 1fr))",
+        gap: T.s2,
+      }}>
+        {cards.map(field => {
+          const raw = values[field];
+          const display = raw && field === "groove"
+            ? (GROOVES.find(g => g.id === raw)?.label || raw)
+            : raw;
+          return (
+            <div key={field} style={{
+              display: "flex", flexDirection: "column", gap: 2,
+              padding: T.s2,
+              background: T.surface,
+              border: `1px solid ${T.border}`,
+              borderRadius: T.r_sm,
+              opacity: raw ? 1 : 0.4,
+            }}>
+              <div style={{
+                display: "flex", alignItems: "center", justifyContent: "space-between",
+                gap: T.s1,
+              }}>
+                <div style={{
+                  fontSize: 9, fontFamily: T.font_mono, fontWeight: 700,
+                  color: T.textMuted, letterSpacing: "0.15em",
+                }}>{labelFor[field].toUpperCase()}</div>
+                {raw && (
+                  <button type="button"
+                    onClick={() => onInstrReroll(field)}
+                    title="Reroll this suggestion"
+                    style={{
+                      padding: "2px 6px", background: "transparent",
+                      border: `1px solid ${T.border}`, borderRadius: T.r_sm,
+                      color: T.textMuted, fontSize: 11, cursor: "pointer",
+                      transition: `all ${T.dur_fast} ${T.ease}`,
+                    }}
+                    onMouseEnter={(e) => { e.currentTarget.style.borderColor = V.neonGold; e.currentTarget.style.color = V.neonGold; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.borderColor = T.border; e.currentTarget.style.color = T.textMuted; }}>
+                    🎲
+                  </button>
+                )}
+              </div>
+              {raw ? (
+                <button type="button"
+                  onClick={() => onInstrAccept(field, raw)}
+                  style={{
+                    padding: "6px 10px",
+                    background: `${V.neonGold}15`,
+                    border: `1px solid ${V.neonGold}`,
+                    borderRadius: T.r_sm,
+                    color: T.text,
+                    fontSize: T.fs_sm, fontFamily: T.font_sans,
+                    fontWeight: 500, cursor: "pointer", textAlign: "left",
+                    boxShadow: `0 0 6px ${V.neonGold}44`,
+                    transition: `all ${T.dur_fast} ${T.ease}`,
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = `${V.neonGold}30`;
+                    e.currentTarget.style.boxShadow = `0 0 10px ${V.neonGold}88`;
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = `${V.neonGold}15`;
+                    e.currentTarget.style.boxShadow = `0 0 6px ${V.neonGold}44`;
+                  }}>
+                  {display}
+                </button>
+              ) : (
+                <span style={{
+                  padding: "6px 10px",
+                  fontSize: T.fs_sm, fontFamily: T.font_sans,
+                  color: T.textMuted, fontStyle: "italic",
+                }}>Accepted ✓</span>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function SpecificInstrumentsPicker({
+  state, setState, favorites, onFavorite, casinoOutlines, maxPerCategory = Infinity,
+  canUseInstrSuggest, instrSuggest,
+  onInstrSuggestClick, onInstrReroll, onInstrAccept, onInstrAcceptAll, onInstrDismiss,
+}) {
   const { layout } = useLayout();
   const isMobile = layout === "mobile";
   const [expanded, setExpanded] = useState(null);
@@ -6618,23 +6909,80 @@ function SpecificInstrumentsPicker({ state, setState, favorites, onFavorite, cas
           <Label color={T.accentHi} style={{ display: "block", marginBottom: T.s2 }}>
             Selected · {selected.length}
           </Label>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: T.s1 }}>
+          {/* Column layout so each chip can have its own mini-panel inline
+              below it without disrupting sibling chips in the flex flow. */}
+          <div style={{ display: "flex", flexDirection: "column", gap: T.s2 }}>
             {selected.map(inst => {
               const artSel = arts[inst];
+              const isPanelOpen = instrSuggest && instrSuggest.inst === inst;
+              const hasMapping = !!(SUGGESTION_MAP[inst] || INSTRUMENT_GENRES[inst]);
               return (
-                <span key={inst} style={{
-                  display: "inline-flex", alignItems: "center", gap: 6,
-                  padding: "4px 10px", background: T.elevated,
-                  border: `1px solid ${T.accentBorder}`,
-                  borderRadius: T.r_md,
-                  fontSize: T.fs_sm, color: T.text,
-                  fontFamily: T.font_sans,
-                }}>
-                  {inst}
-                  {artSel && <span style={{ color: T.textTer, fontSize: T.fs_xs, fontFamily: T.font_mono }}>· {artSel}</span>}
-                  <button type="button" onClick={() => toggleInst(inst)}
-                    style={{ background: "transparent", border: "none", color: T.textTer, padding: 0, marginLeft: 2, cursor: "pointer", fontSize: T.fs_base, lineHeight: 1 }}>×</button>
-                </span>
+                <div key={inst} style={{ display: "flex", flexDirection: "column", gap: T.s1 }}>
+                  {/* Chip row */}
+                  <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: T.s1 }}>
+                    <span style={{
+                      display: "inline-flex", alignItems: "center", gap: 6,
+                      padding: "4px 10px", background: T.elevated,
+                      border: `1px solid ${isPanelOpen ? V.neonGold : T.accentBorder}`,
+                      borderRadius: T.r_md,
+                      fontSize: T.fs_sm, color: T.text,
+                      fontFamily: T.font_sans,
+                      transition: `border-color ${T.dur_fast} ${T.ease}`,
+                    }}>
+                      {inst}
+                      {artSel && <span style={{ color: T.textTer, fontSize: T.fs_xs, fontFamily: T.font_mono }}>· {artSel}</span>}
+                      <button type="button" onClick={() => toggleInst(inst)}
+                        style={{ background: "transparent", border: "none", color: T.textTer, padding: 0, marginLeft: 2, cursor: "pointer", fontSize: T.fs_base, lineHeight: 1 }}>×</button>
+                    </span>
+                    {/* ✨ SUGGEST button — VIP-gated. Locked users still see
+                        the button but clicking opens SalesModal via parent. */}
+                    {hasMapping && (
+                      <button type="button"
+                        onClick={() => onInstrSuggestClick && onInstrSuggestClick(inst)}
+                        title={canUseInstrSuggest
+                          ? "Suggest complements for this instrument"
+                          : "VIP feature — click for details"}
+                        style={{
+                          padding: "3px 9px",
+                          background: isPanelOpen ? `${V.neonGold}22` : "transparent",
+                          border: `1px dashed ${canUseInstrSuggest ? V.neonGold + "88" : T.border}`,
+                          borderRadius: T.r_md,
+                          color: canUseInstrSuggest ? V.neonGold : T.textMuted,
+                          fontSize: 10, fontFamily: T.font_mono,
+                          fontWeight: 700, letterSpacing: "0.1em",
+                          cursor: "pointer",
+                          display: "inline-flex", alignItems: "center", gap: 3,
+                          height: 22,
+                          transition: `all ${T.dur_fast} ${T.ease}`,
+                          boxShadow: isPanelOpen ? `0 0 6px ${V.neonGold}66` : "none",
+                        }}
+                        onMouseEnter={(e) => {
+                          if (!canUseInstrSuggest) return;
+                          e.currentTarget.style.background = `${V.neonGold}22`;
+                          e.currentTarget.style.borderColor = V.neonGold;
+                          e.currentTarget.style.boxShadow = `0 0 6px ${V.neonGold}66`;
+                        }}
+                        onMouseLeave={(e) => {
+                          if (isPanelOpen || !canUseInstrSuggest) return;
+                          e.currentTarget.style.background = "transparent";
+                          e.currentTarget.style.borderColor = V.neonGold + "88";
+                          e.currentTarget.style.boxShadow = "none";
+                        }}>
+                        {canUseInstrSuggest ? "✨ SUGGEST" : "🔒 VIP SUGGEST"}
+                      </button>
+                    )}
+                  </div>
+                  {/* Mini-panel — renders only when this chip is the open one */}
+                  {isPanelOpen && (
+                    <InstrumentSuggestPanel
+                      instrSuggest={instrSuggest}
+                      isMobile={isMobile}
+                      onInstrReroll={onInstrReroll}
+                      onInstrAccept={onInstrAccept}
+                      onInstrAcceptAll={onInstrAcceptAll}
+                      onInstrDismiss={onInstrDismiss} />
+                  )}
+                </div>
               );
             })}
           </div>
@@ -7622,6 +7970,110 @@ function EnginePage({ onNavigate }) {
   };
 
   const dismissSuggestions = () => setSuggestions(null);
+
+  // ── PER-INSTRUMENT SUGGESTIONS (VIP-ONLY) ───────────────────────────
+  // Click the ✨ button on an individual instrument chip (after selecting
+  // one). Panel shows suggestions across ALL 8 other sections (mood, groove,
+  // lyricalVibe, energy, vocalist, harmonic, texture, mix) PLUS a genre/
+  // subgenre from INSTRUMENT_GENRES. Scoped to ONE instrument at a time.
+  // State: { inst, values:{ sectionId:value } }
+  const canUseInstrSuggest = tier === "vip" || tier === "admin";
+  const [instrSuggest, setInstrSuggest] = useState(null);
+
+  const computeInstrSuggestions = (inst) => {
+    const entry = SUGGESTION_MAP[inst];
+    const genres = INSTRUMENT_GENRES[inst];
+    if (!entry && !genres) return { inst, noMappings: true };
+
+    const values = {};
+    const filledCandidates = POOL_FIELDS.filter(id => !sectionIsFilled(id));
+    filledCandidates.forEach(field => {
+      if (entry && entry[field] && entry[field].length > 0) {
+        values[field] = entry[field][Math.floor(Math.random() * entry[field].length)];
+      }
+    });
+    // Genre: only suggest if there's at least one empty slot
+    const slots = state.slots || [];
+    const hasEmptySlot = slots.some(s => !s);
+    if (hasEmptySlot && genres && genres.length > 0) {
+      values.genre = genres[Math.floor(Math.random() * genres.length)];
+    }
+    if (Object.keys(values).length === 0) return { inst, noMappings: true };
+    return { inst, values };
+  };
+
+  const handleInstrSuggestClick = (inst) => {
+    if (!canUseInstrSuggest) {
+      setSalesModalFeature("instrumentSuggest");
+      return;
+    }
+    // Toggle — click same instrument again to close
+    if (instrSuggest && instrSuggest.inst === inst) {
+      setInstrSuggest(null);
+      return;
+    }
+    setInstrSuggest(computeInstrSuggestions(inst));
+  };
+
+  const rerollInstrSuggestion = (field) => {
+    if (!instrSuggest || instrSuggest.noMappings) return;
+    const inst = instrSuggest.inst;
+    if (field === "genre") {
+      const genres = INSTRUMENT_GENRES[inst];
+      if (!genres || genres.length === 0) return;
+      const current = instrSuggest.values && instrSuggest.values.genre;
+      const filtered = genres.filter(v => v !== current);
+      const pool = filtered.length > 0 ? filtered : genres;
+      const next = pool[Math.floor(Math.random() * pool.length)];
+      setInstrSuggest(prev => prev && prev.values ? { ...prev, values: { ...prev.values, genre: next } } : prev);
+      return;
+    }
+    const entry = SUGGESTION_MAP[inst];
+    if (!entry || !entry[field]) return;
+    const current = instrSuggest.values && instrSuggest.values[field];
+    const filtered = entry[field].filter(v => v !== current);
+    const pool = filtered.length > 0 ? filtered : entry[field];
+    const next = pool[Math.floor(Math.random() * pool.length)];
+    setInstrSuggest(prev => prev && prev.values ? { ...prev, values: { ...prev.values, [field]: next } } : prev);
+  };
+
+  const acceptInstrSuggestion = (field, value) => {
+    if (!value) return;
+    if (field === "genre") {
+      // Commit to first empty slot
+      const slots = state.slots || [];
+      const emptyIdx = slots.findIndex(s => !s);
+      if (emptyIdx < 0) return;
+      const nextSlots = [...slots];
+      nextSlots[emptyIdx] = { genre: value, sub: null, micro: null };
+      set("slots", nextSlots);
+    } else {
+      set(field, value);
+    }
+    setInstrSuggest(prev => prev && prev.values ? { ...prev, values: { ...prev.values, [field]: null } } : prev);
+  };
+
+  const acceptAllInstrSuggestions = () => {
+    if (!instrSuggest || !instrSuggest.values) return;
+    const vals = instrSuggest.values;
+    // Genre first (needs slot lookup)
+    if (vals.genre) {
+      const slots = state.slots || [];
+      const emptyIdx = slots.findIndex(s => !s);
+      if (emptyIdx >= 0) {
+        const nextSlots = [...slots];
+        nextSlots[emptyIdx] = { genre: vals.genre, sub: null, micro: null };
+        setState(s => ({ ...s, slots: nextSlots }));
+      }
+    }
+    // All other fields
+    POOL_FIELDS.forEach(f => {
+      if (vals[f]) setState(s => ({ ...s, [f]: vals[f] }));
+    });
+    setInstrSuggest(null);
+  };
+
+  const dismissInstrSuggestions = () => setInstrSuggest(null);
 
   // ── PRESETS SHUFFLE ─────────────────────────────────────────────────
   // Gate: Free/Pro see the same fixed 5 curated starting points. Only VIP
@@ -9001,7 +9453,6 @@ function EnginePage({ onNavigate }) {
                     <CountStepper value={state.specificCount} onChange={v => set("specificCount", v)} />
                   </>
                 )}
-                {renderSectionSuggestButton("specificInstruments")}
                 {renderLockBtn("specificInstruments")}
               </div>
             }>
@@ -9011,8 +9462,14 @@ function EnginePage({ onNavigate }) {
               optionLocks={optionLockSetFor("specificInstruments")}
               onLockToggle={v => toggleOptionLock("specificInstruments", v)}
               casinoOutlines={casinoOutlines}
-              maxPerCategory={Math.max(5, effectiveLimits.maxOptionsPerSection)} />
-            {renderSectionSuggestPanel("specificInstruments")}
+              maxPerCategory={Math.max(5, effectiveLimits.maxOptionsPerSection)}
+              canUseInstrSuggest={canUseInstrSuggest}
+              instrSuggest={instrSuggest}
+              onInstrSuggestClick={handleInstrSuggestClick}
+              onInstrReroll={rerollInstrSuggestion}
+              onInstrAccept={acceptInstrSuggestion}
+              onInstrAcceptAll={acceptAllInstrSuggestions}
+              onInstrDismiss={dismissInstrSuggestions} />
           </Section>
 
           <Section title="Harmonic style"
