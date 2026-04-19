@@ -5118,18 +5118,20 @@ function AnimatedBanner({ size = 112 }) {
     const rand = (a, b) => a + Math.random() * (b - a);
 
     const makeStar = () => {
-      const r = rand(0.6, 3.2);
+      // Smaller size range (0.4-2.0 from 0.6-3.2) and slower motion —
+      // drift halved, twinkle slowed, lifecycle pace reduced.
+      const r = rand(0.4, 2.0);
       return {
         x: rand(0, W), y: rand(0, H),
         r, baseR: r,
         twinkle: rand(0, Math.PI * 2),
-        twinkleSpeed: rand(0.6, 2.2),
-        driftX: rand(-0.15, 0.15),
-        driftY: rand(-0.08, 0.08),
-        spikes: Math.random() < 0.25 ? 4 : 0,
+        twinkleSpeed: rand(0.3, 1.1),
+        driftX: rand(-0.07, 0.07),
+        driftY: rand(-0.04, 0.04),
+        spikes: Math.random() < 0.2 ? 4 : 0,
         hue: Math.random() < 0.7 ? 0 : rand(20, 55),
         life: rand(0, 1),
-        lifeSpeed: rand(0.003, 0.012),
+        lifeSpeed: rand(0.0015, 0.006),
       };
     };
 
@@ -5158,7 +5160,10 @@ function AnimatedBanner({ size = 112 }) {
 
     const resizeAll = () => {
       const hitRect = hit.getBoundingClientRect();
-      W = hitRect.width; H = hitRect.height;
+      // Canvas extends 20% horizontally and 24% vertically beyond the
+      // letter bbox so stars can drift past letter edges without being
+      // clipped. W/H here reflect the expanded drawing area.
+      W = hitRect.width * 1.2; H = hitRect.height * 1.24;
       canvas.width = Math.max(2, Math.floor(W * DPR));
       canvas.height = Math.max(2, Math.floor(H * DPR));
       canvas.style.width = W + "px";
@@ -5265,9 +5270,13 @@ function AnimatedBanner({ size = 112 }) {
         if (s.y < -10) s.y = H + 10;
         if (s.y > H + 10) s.y = -10;
         const tw = Math.sin(s.twinkle) * 0.5 + 0.5;
-        const alpha = 0.25 + tw * 0.75;
-        const r = s.baseR * (0.7 + tw * 0.6);
-        drawSparkle(s.x, s.y, r, alpha, s.hue, s.spikes);
+        // Life envelope — stars fade IN from 0 at life=0, peak at life=0.5,
+        // fade OUT to 0 at life=1, then respawn. Sin(life·π) gives the
+        // smooth bell shape. Combined with the twinkle for subtle breathing.
+        const lifeFade = Math.sin(s.life * Math.PI);
+        const alpha = lifeFade * (0.35 + tw * 0.65);
+        const r = s.baseR * (0.7 + tw * 0.6) * (0.6 + lifeFade * 0.4);
+        if (alpha > 0.02) drawSparkle(s.x, s.y, r, alpha, s.hue, s.spikes);
         if (s.life > 1) Object.assign(s, makeStar(), { life: 0 });
       }
       if (eW > 0 && eH > 0) drawEngineStars(dt);
@@ -5327,9 +5336,12 @@ function AnimatedBanner({ size = 112 }) {
           display: inline-block;
           color: transparent;
           -webkit-text-stroke: var(--anbn-stroke) currentColor;
+          /* Allow the canvas to extend beyond the letter bbox so drifting
+             stars are not clipped at the edges. */
+          overflow: visible;
           filter:
-            drop-shadow(0 0 0.5px rgba(255,255,255,0.6))
-            drop-shadow(0 0 8px rgba(120, 90, 255, 0.15));
+            drop-shadow(0 0 0.5px rgba(255, 215, 0, 0.75))
+            drop-shadow(0 0 8px rgba(255, 185, 40, 0.18));
         }
         .anbn-hit-bg {
           position: absolute;
@@ -5343,8 +5355,12 @@ function AnimatedBanner({ size = 112 }) {
           z-index: 1;
         }
         .anbn-hit-canvas {
-          position: absolute; inset: 0;
-          width: 100%; height: 100%;
+          /* Canvas extends 20% outward on all sides of the letter bbox
+             so drifting stars have room to float past letter edges without
+             being cut off by an invisible border. */
+          position: absolute;
+          top: -12%; left: -10%;
+          width: 120%; height: 124%;
           display: block; pointer-events: none;
           z-index: 2;
         }
@@ -5420,21 +5436,114 @@ function AnimatedBanner({ size = 112 }) {
       <span
         ref={hitRef}
         className="anbn-hit"
-        style={{ "--anbn-stroke": `${stroke}px`, color: "var(--t-text)" }}
+        style={{ "--anbn-stroke": `${stroke}px`, color: "#FFD700" }}
       >
         <span className="anbn-hit-bg" aria-hidden="true">HIT</span>
         <canvas ref={canvasRef} className="anbn-hit-canvas" />
         HIT
       </span>
-      <span style={{
-        color: "#FFFFFF",
-        fontFamily: "'Instrument Serif', Georgia, serif",
-        fontStyle: "italic",
-        fontSize: size * 0.9,
-        transform: "translateY(-0.05em)",
-        padding: "0 0.05em",
-        fontWeight: 400,
-      }}>·</span>
+      {/* ── Hollywood-sign golden LED star separator ─────────────────
+          5-point star rendered in SVG with layered neon glow — classic
+          Walk of Fame aesthetic. Breathing halo + core pulse for LED
+          life. Replaces the prior · dot. */}
+      <span
+        aria-hidden="true"
+        style={{
+          display: "inline-flex",
+          alignItems: "center", justifyContent: "center",
+          width: size * 0.7,
+          height: size * 0.7,
+          transform: "translateY(-0.03em)",
+          padding: "0 0.03em",
+          verticalAlign: "middle",
+          position: "relative",
+        }}
+      >
+        <style>{`
+          /* Elegant subtle breathe — single thin gold halo, no loud orange.
+             Whispers rather than blazes. */
+          @keyframes holywoodStarPulse {
+            0%,100% { filter: drop-shadow(0 0 3px #FFD70088); }
+            50%     { filter: drop-shadow(0 0 6px #FFD700aa); }
+          }
+          /* LED tip twinkle — gentler, less frantic flicker */
+          @keyframes holywoodStarTwinkle {
+            0%,100% { opacity: 0.85; }
+            50%     { opacity: 1; }
+          }
+        `}</style>
+        <svg
+          viewBox="0 0 100 100"
+          style={{
+            width: "100%", height: "100%",
+            animation: "holywoodStarPulse 3.8s ease-in-out infinite",
+            overflow: "visible",
+          }}>
+          <defs>
+            {/* Warm gold body gradient — cream highlight → gold → deep amber */}
+            <radialGradient id="holywoodStarBody" cx="40%" cy="35%" r="70%">
+              <stop offset="0%"   stopColor="#FFF7C8" />
+              <stop offset="25%"  stopColor="#FFE870" />
+              <stop offset="55%"  stopColor="#FFC215" />
+              <stop offset="85%"  stopColor="#C88A00" />
+              <stop offset="100%" stopColor="#6A4500" />
+            </radialGradient>
+            {/* Outer bevel/rim — darker amber, adds plaque depth */}
+            <linearGradient id="holywoodStarRim" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%"   stopColor="#FFE24A" />
+              <stop offset="100%" stopColor="#8A5B00" />
+            </linearGradient>
+            {/* LED bulb glow at each star tip */}
+            <radialGradient id="holywoodLed" cx="50%" cy="50%" r="50%">
+              <stop offset="0%"   stopColor="#FFF5B0" stopOpacity="1" />
+              <stop offset="50%"  stopColor="#FFD700" stopOpacity="0.9" />
+              <stop offset="100%" stopColor="#FF9A00" stopOpacity="0" />
+            </radialGradient>
+          </defs>
+
+          {/* 5-point star polygon (points: top, lower-right, upper-left,
+              upper-right, lower-left → traced in standard order) */}
+          {/* Outer rim layer for plaque depth */}
+          <polygon
+            points="50,6 61.8,38.2 95,38.2 68.1,57.8 78.9,90 50,70.4 21.1,90 31.9,57.8 5,38.2 38.2,38.2"
+            fill="url(#holywoodStarRim)"
+            stroke="#2a1800"
+            strokeWidth="1.5"
+            strokeLinejoin="round"
+          />
+          {/* Inner body — slightly inset so rim shows */}
+          <polygon
+            points="50,11 60.7,40.0 91.5,40.0 66.4,58.3 76.3,86.5 50,68.7 23.7,86.5 33.6,58.3 8.5,40.0 39.3,40.0"
+            fill="url(#holywoodStarBody)"
+            stroke="#FFE870"
+            strokeWidth="0.6"
+            strokeLinejoin="round"
+          />
+          {/* Top highlight — subtle shine on upper half */}
+          <polygon
+            points="50,11 60.7,40.0 91.5,40.0 66.4,58.3 50,50"
+            fill="rgba(255,255,255,0.22)"
+            style={{ mixBlendMode: "screen" }}
+          />
+          {/* 5 LED bulbs at each tip — twinkle independently */}
+          {[
+            { cx: 50, cy: 6,    delay: "0s"   },
+            { cx: 95, cy: 38.2, delay: "0.3s" },
+            { cx: 78.9, cy: 90, delay: "0.9s" },
+            { cx: 21.1, cy: 90, delay: "0.6s" },
+            { cx: 5,  cy: 38.2, delay: "1.2s" },
+          ].map((led, i) => (
+            <g key={i} style={{
+              animation: "holywoodStarTwinkle 4.4s ease-in-out infinite",
+              animationDelay: led.delay,
+              transformOrigin: `${led.cx}px ${led.cy}px`,
+            }}>
+              <circle cx={led.cx} cy={led.cy} r="3.6" fill="url(#holywoodLed)" />
+              <circle cx={led.cx} cy={led.cy} r="1.4" fill="#FFFBE0" />
+            </g>
+          ))}
+        </svg>
+      </span>
       <span ref={engineRef} className="anbn-engine" data-text="ENGINE">
         <canvas ref={engineCanvasRef} className="anbn-engine-canvas" />
         ENGINE
@@ -6392,10 +6501,13 @@ function HitButton({ onRandomize, isRolling, disabled, compact = false, fuelType
                 pointerEvents: "none",
                 filter: "blur(3px)",
               }} />
-              {/* HIT LABEL — "HIT" in white + eye-candy "!" in gold */}
+              {/* HIT LABEL — "HIT" + eye-candy "!" both italic for a
+                  unified leaning-forward feel. No rotation — pure
+                  italic font-style on the whole label. */}
               <span style={{
                 position: "relative", zIndex: 1,
                 display: "inline-block",
+                fontStyle: "italic",
                 animation: isRolling ? "none" : "hitTextShimmer 2.4s ease-in-out infinite",
               }}>
                 {isRolling ? (
@@ -6406,7 +6518,6 @@ function HitButton({ onRandomize, isRolling, disabled, compact = false, fuelType
                     <span style={{
                       display: "inline-block",
                       color: "#FFFFFF",
-                      fontStyle: "italic",
                       fontWeight: 900,
                       marginLeft: "0.04em",
                       textShadow: `
@@ -8404,25 +8515,152 @@ function CasinoParticles({ isRolling }) {
 // Pure SVG. Pointer-events none. Caller mounts it conditionally.
 // ════════════════════════════════════════════════════════════════════════════
 
-function CosmicVFX({ intensity = "light" }) {
+function CosmicVFX({ intensity = "light", active = true, wipeOriginX = "50%", wipeOriginY = "50%" }) {
   const deep = intensity === "deep";
+  // Windy-smoke cosmic dissolve — trimmed 20% from Nolan pacing for a
+  // slightly quicker breathe. Colors flow like wind-blown smoke rather
+  // than static mist: dominant horizontal drift on particles.
+  const ENTER_MS = 1300;
+  const EXIT_MS  = 1900;
+  const [visible, setVisible] = useState(active);
+  const [exiting, setExiting] = useState(false);
+  useEffect(() => {
+    let t;
+    if (active && !visible) { setVisible(true); setExiting(false); }
+    if (!active && visible) {
+      setExiting(true);
+      t = setTimeout(() => { setVisible(false); setExiting(false); }, EXIT_MS);
+    }
+    return () => clearTimeout(t);
+  }, [active, visible]);
+  if (!visible) return null;
+  // Three-layer particle field — FAR (slow, small, dim), MID (medium),
+  // NEAR (big bright motes that drift most). Creates real depth parallax
+  // during entry and exit, like dust drifting through IMAX space vistas.
+  const TOTAL_DUST = deep ? 180 : 120;
+  const dust = (() => {
+    let a = 0xc01dbabe;
+    const rng = () => {
+      a = (a + 0x6D2B79F5) | 0;
+      let t = a;
+      t = Math.imul(t ^ (t >>> 15), t | 1);
+      t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+    const particles = [];
+    // Nolan-aligned palette: restrained whites + pale teal-cyan (Interstellar
+    // cold space) + warm amber/cream accent (dust-in-sunlight). No neon.
+    const DUST_COLORS = [
+      "#FFFFFF", "#FFFFFF", "#FFFFFF",     // white dominant
+      "#DCEEFF", "#C8E4F4", "#A8D4EC",     // pale cold cyan
+      "#FFF2C8", "#FFE8B0",                // warm amber accent (sparse)
+      "#E8F0FF", "#F0FFEA",                // barely-tinted
+    ];
+    // Split into 3 depth layers. Weights: 50% far, 30% mid, 20% near.
+    for (let i = 0; i < TOTAL_DUST; i++) {
+      const roll = rng();
+      let layer, size, driftMult, durationMult, glowMult;
+      if (roll < 0.5) {
+        // FAR — tiny dim slow
+        layer = "far";
+        size = 0.5 + rng() * 1.2;
+        driftMult = 0.35;
+        durationMult = 1.3;
+        glowMult = 0.8;
+      } else if (roll < 0.8) {
+        // MID — medium
+        layer = "mid";
+        size = 1.4 + rng() * 2;
+        driftMult = 0.7;
+        durationMult = 1.0;
+        glowMult = 1.2;
+      } else {
+        // NEAR — big bright
+        layer = "near";
+        size = 2.8 + rng() * 2.5;
+        driftMult = 1.15;
+        durationMult = 0.85;
+        glowMult = 1.8;
+      }
+      particles.push({
+        layer,
+        left: rng() * 100,          // %
+        top:  rng() * 100,          // %
+        size,
+        delay: rng() * (exiting ? 1200 : 800), // ms — wide stagger
+        duration: (1600 + rng() * 1600) * durationMult, // ms
+        driftX: (rng() - 0.5) * 240 * driftMult, // px, wider reach
+        driftY: (-60 - rng() * 180) * driftMult, // rise
+        color: DUST_COLORS[Math.floor(rng() * DUST_COLORS.length)],
+        glowMult,
+      });
+    }
+    return particles;
+  })();
   return (
     <>
       <style>{`
-        @keyframes cosmicFadeIn {
-          from { opacity: 0; } to { opacity: 1; }
+        /* Nolan cosmic dissolve — long patient curves, wide dynamic range.
+           Scene emerges like IMAX space footage coming into focus, with
+           desaturation at the extremes for that cold space aesthetic. */
+        @keyframes cosmicDustIn {
+          0%   { opacity: 0; filter: blur(22px) brightness(1.6) saturate(0.4); transform: scale(1.08); }
+          35%  { opacity: 0.55; filter: blur(10px) brightness(1.25) saturate(0.75); }
+          70%  { opacity: 0.9; filter: blur(3px) brightness(1.08) saturate(0.95); }
+          100% { opacity: 1; filter: blur(0) brightness(1) saturate(1); transform: scale(1); }
         }
+        @keyframes cosmicDustOut {
+          0%   { opacity: 1; filter: blur(0) brightness(1) saturate(1); transform: scale(1); }
+          25%  { opacity: 0.88; filter: blur(3px) brightness(1.05) saturate(0.9); }
+          60%  { opacity: 0.55; filter: blur(10px) brightness(1.2) saturate(0.7); }
+          100% { opacity: 0; filter: blur(28px) brightness(1.5) saturate(0.3); transform: scale(1.1); }
+        }
+        /* Particle twinkle — Nolan cadence: slow in, linger bright,
+           slow out. No snap, no bounce, just long arcs. */
+        @keyframes cosmicDustTwinkleIn {
+          0%   { opacity: 0; transform: translate(var(--drift-x), var(--drift-y)) scale(0.2); }
+          30%  { opacity: 0.6; }
+          55%  { opacity: 1; }
+          80%  { opacity: 0.85; }
+          100% { opacity: 0; transform: translate(0, 0) scale(1); }
+        }
+        @keyframes cosmicDustTwinkleOut {
+          0%   { opacity: 0; transform: translate(0, 0) scale(1); }
+          15%  { opacity: 0.9; }
+          40%  { opacity: 1; }
+          70%  { opacity: 0.65; }
+          100% { opacity: 0; transform: translate(var(--drift-x), var(--drift-y)) scale(0.3); }
+        }
+        /* Windy-smoke drift — horizontal-dominant flow like wind-blown
+           cosmic smoke. Dominant sideways motion with subtle vertical
+           undulation; much longer curves and gentler rotation so the
+           gradients read as smoke rolling past, not as a warping blob. */
         @keyframes cosmicNebulaDriftA {
-          0%,100% { transform: translate(-14%, -10%) scale(1)    rotate(0deg); }
-          50%     { transform: translate(10%, 8%)    scale(1.15) rotate(6deg); }
+          0%    { transform: translate(-18%, -6%)  scale(1.02) rotate(-1deg); }
+          22%   { transform: translate(-8%, -8%)   scale(1.06) rotate(0.5deg); }
+          48%   { transform: translate(8%, -4%)    scale(1.1)  rotate(1.5deg); }
+          74%   { transform: translate(18%, -7%)   scale(1.05) rotate(0.8deg); }
+          100%  { transform: translate(22%, -5%)   scale(1.02) rotate(-0.5deg); }
         }
         @keyframes cosmicNebulaDriftB {
-          0%,100% { transform: translate(12%, 14%)  scale(1)    rotate(0deg); }
-          50%     { transform: translate(-10%, -8%) scale(1.18) rotate(-7deg); }
+          0%    { transform: translate(16%, 8%)    scale(1.02) rotate(1deg); }
+          25%   { transform: translate(4%, 6%)     scale(1.08) rotate(-0.5deg); }
+          55%   { transform: translate(-10%, 10%)  scale(1.12) rotate(-1.5deg); }
+          80%   { transform: translate(-20%, 7%)   scale(1.06) rotate(-0.8deg); }
+          100%  { transform: translate(-24%, 9%)   scale(1.02) rotate(0.4deg); }
         }
         @keyframes cosmicNebulaDriftC {
-          0%,100% { transform: translate(0, 0)    scale(1.1); }
-          50%     { transform: translate(4%, -6%) scale(1.3); }
+          0%    { transform: translate(-10%, 2%)   scale(1.08); }
+          50%   { transform: translate(10%, -2%)   scale(1.2); }
+          100%  { transform: translate(20%, 0%)    scale(1.08); }
+        }
+        /* Windy smoke color behavior — gentler hue drift + slow saturation
+           breathing. Readss as wind shifting the smoke's color temperature
+           subtly, not as an acid palette trip. */
+        @keyframes cosmicAcidHue {
+          0%,100% { filter: hue-rotate(0deg) saturate(1.1); }
+          33%     { filter: hue-rotate(-8deg) saturate(1.25); }
+          66%     { filter: hue-rotate(12deg) saturate(1.15); }
         }
         @keyframes cosmicStarTwinkle {
           0%,100% { opacity: 0.15; }
@@ -8456,10 +8694,6 @@ function CosmicVFX({ intensity = "light" }) {
           0%,100% { transform: translate(0, 0); }
           50%     { transform: translate(-3px, 1px); }
         }
-        @keyframes cosmicBarrelWarp {
-          0%,100% { transform: scale(1)    rotate(0deg);   filter: hue-rotate(0deg); }
-          50%     { transform: scale(1.05) rotate(1.5deg); filter: hue-rotate(20deg); }
-        }
         @keyframes cosmicScanBar {
           0%   { transform: translateY(-110%); opacity: 0; }
           10%  { opacity: 0.9; }
@@ -8472,297 +8706,359 @@ function CosmicVFX({ intensity = "light" }) {
           100% { transform: scaleX(20);  opacity: 0; }
         }
       `}</style>
-      <svg
-        viewBox="0 0 1000 1000"
-        preserveAspectRatio="xMidYMid slice"
-        style={{
+      <div style={{
+        position: "absolute", inset: 0,
+        pointerEvents: "none",
+        animation: exiting
+          ? `cosmicDustOut ${EXIT_MS}ms cubic-bezier(0.25, 0.1, 0.25, 1) forwards`
+          : `cosmicDustIn ${ENTER_MS}ms cubic-bezier(0.25, 0.1, 0.25, 1) forwards`,
+        willChange: "filter, opacity, transform",
+      }}>
+        {/* ── STARDUST PARTICLE FIELD — 3 depth layers ─────────────────
+            120-180 particles across FAR/MID/NEAR depth bands. Near layer
+            drifts widest and glows brightest; far layer drifts subtle
+            and stays dim — real parallax depth during entry and exit.
+            Sits above the main VFX so the dissolve reads as shimmering
+            cosmic dust catching IMAX-grade light. */}
+        <div style={{
           position: "absolute", inset: 0,
-          width: "100%", height: "100%",
-          opacity: deep ? 0.82 : 0.45,
-          animation: "cosmicFadeIn 220ms ease-out",
+          pointerEvents: "none",
+          zIndex: 3,
         }}>
-        <defs>
-          <radialGradient id={`cvNebA-${intensity}`} cx="50%" cy="50%" r="50%">
-            <stop offset="0%"   stopColor="#8A9AFF" stopOpacity={deep ? "0.95" : "0.75"} />
-            <stop offset="25%"  stopColor="#5E6AD2" stopOpacity={deep ? "0.75" : "0.5"} />
-            <stop offset="55%"  stopColor="#3A2A7A" stopOpacity="0.3" />
-            <stop offset="100%" stopColor="#1A0F3A" stopOpacity="0" />
-          </radialGradient>
-          <radialGradient id={`cvNebB-${intensity}`} cx="50%" cy="50%" r="50%">
-            <stop offset="0%"   stopColor="#8EF4FF" stopOpacity={deep ? "0.9" : "0.7"} />
-            <stop offset="30%"  stopColor="#C070FF" stopOpacity={deep ? "0.65" : "0.45"} />
-            <stop offset="65%"  stopColor="#4A1A8A" stopOpacity="0.25" />
-            <stop offset="100%" stopColor="#0A0520" stopOpacity="0" />
-          </radialGradient>
-          {deep && (
-            <radialGradient id={`cvNebC-${intensity}`} cx="50%" cy="50%" r="50%">
-              <stop offset="0%"   stopColor="#FFB0E8" stopOpacity="0.85" />
-              <stop offset="30%"  stopColor="#E060C0" stopOpacity="0.5" />
-              <stop offset="70%"  stopColor="#6A1A4A" stopOpacity="0.15" />
-              <stop offset="100%" stopColor="#100010" stopOpacity="0" />
+          {dust.map((p, i) => (
+            <span key={i} style={{
+              position: "absolute",
+              left: `${p.left}%`, top: `${p.top}%`,
+              width: p.size, height: p.size,
+              borderRadius: "50%",
+              background: p.color,
+              // Dynamic glow scaled to layer — near particles get tight
+              // luminous halos, far particles barely any glow.
+              boxShadow: `
+                0 0 ${p.size * 2 * p.glowMult}px ${p.color},
+                0 0 ${p.size * 4 * p.glowMult}px ${p.color}77,
+                0 0 ${p.size * 7 * p.glowMult}px ${p.color}33
+              `,
+              "--drift-x": `${p.driftX}px`,
+              "--drift-y": `${p.driftY}px`,
+              animation: exiting
+                ? `cosmicDustTwinkleOut ${p.duration}ms cubic-bezier(0.25, 0.1, 0.25, 1) ${p.delay}ms forwards`
+                : `cosmicDustTwinkleIn ${p.duration}ms cubic-bezier(0.25, 0.1, 0.25, 1) ${p.delay}ms forwards`,
+              pointerEvents: "none",
+              // Slight blur on far layer for depth of field
+              filter: p.layer === "far" ? "blur(0.5px)" : "none",
+            }} />
+          ))}
+        </div>
+        <svg
+          viewBox="0 0 1000 1000"
+          preserveAspectRatio="xMidYMid slice"
+          style={{
+            position: "absolute", inset: 0,
+            width: "100%", height: "100%",
+            opacity: deep ? 0.82 : 0.5,
+            animation: "cosmicAcidHue 8s ease-in-out infinite",
+          }}>
+          <defs>
+            {/* ─── ACID NEBULA PALETTE — teal / lime / magenta / hot pink ─── */}
+            <radialGradient id={`cvNebA-${intensity}`} cx="50%" cy="50%" r="50%">
+              <stop offset="0%"   stopColor="#5CFFE0" stopOpacity={deep ? "0.95" : "0.85"} />
+              <stop offset="22%"  stopColor="#30D0FF" stopOpacity={deep ? "0.8" : "0.65"} />
+              <stop offset="50%"  stopColor="#5E6AD2" stopOpacity="0.4" />
+              <stop offset="100%" stopColor="#1A0F3A" stopOpacity="0" />
             </radialGradient>
-          )}
-          {deep && (
-            <radialGradient id={`cvWell-${intensity}`} cx="50%" cy="50%" r="50%">
-              <stop offset="0%"   stopColor="#FFFFFF" stopOpacity="1" />
-              <stop offset="6%"   stopColor="#C8D8FF" stopOpacity="0.9" />
-              <stop offset="20%"  stopColor="#6E7FFF" stopOpacity="0.55" />
-              <stop offset="45%"  stopColor="#3A2A7A" stopOpacity="0.2" />
-              <stop offset="100%" stopColor="#000000" stopOpacity="0" />
+            <radialGradient id={`cvNebB-${intensity}`} cx="50%" cy="50%" r="50%">
+              <stop offset="0%"   stopColor="#D0FF3E" stopOpacity={deep ? "0.9" : "0.75"} />
+              <stop offset="28%"  stopColor="#FF60C0" stopOpacity={deep ? "0.75" : "0.6"} />
+              <stop offset="65%"  stopColor="#6A1A8A" stopOpacity="0.3" />
+              <stop offset="100%" stopColor="#0A0520" stopOpacity="0" />
             </radialGradient>
-          )}
-          <radialGradient id={`cvVignette-${intensity}`} cx="50%" cy="50%" r="55%">
-            <stop offset="0%"   stopColor="#000" stopOpacity="0" />
-            <stop offset={deep ? "55%" : "65%"}  stopColor="#000" stopOpacity="0" />
-            <stop offset={deep ? "80%" : "85%"}  stopColor="#1A0F3A" stopOpacity={deep ? "0.55" : "0.35"} />
-            <stop offset="100%" stopColor="#02010A" stopOpacity={deep ? "0.92" : "0.75"} />
-          </radialGradient>
-          {deep && (
-            <linearGradient id={`cvScan-${intensity}`} x1="0%" y1="0%" x2="0%" y2="100%">
-              <stop offset="0%"   stopColor="#6EEEFF" stopOpacity="0" />
-              <stop offset="45%"  stopColor="#B0E0FF" stopOpacity="0.85" />
-              <stop offset="50%"  stopColor="#FFFFFF" stopOpacity="1" />
-              <stop offset="55%"  stopColor="#B0E0FF" stopOpacity="0.85" />
-              <stop offset="100%" stopColor="#6EEEFF" stopOpacity="0" />
-            </linearGradient>
-          )}
-          <filter id={`cvBlur-${intensity}`} x="-20%" y="-20%" width="140%" height="140%">
-            <feGaussianBlur stdDeviation={deep ? "45" : "35"} />
-          </filter>
-          {deep && (
-            <filter id={`cvBlurSmall-${intensity}`} x="-20%" y="-20%" width="140%" height="140%">
-              <feGaussianBlur stdDeviation="18" />
+            {deep && (
+              <radialGradient id={`cvNebC-${intensity}`} cx="50%" cy="50%" r="50%">
+                <stop offset="0%"   stopColor="#FFB0E8" stopOpacity="0.9" />
+                <stop offset="30%"  stopColor="#FF3090" stopOpacity="0.6" />
+                <stop offset="70%"  stopColor="#6A1A4A" stopOpacity="0.15" />
+                <stop offset="100%" stopColor="#100010" stopOpacity="0" />
+              </radialGradient>
+            )}
+            {deep && (
+              <radialGradient id={`cvWell-${intensity}`} cx="50%" cy="50%" r="50%">
+                <stop offset="0%"   stopColor="#FFFFFF" stopOpacity="1" />
+                <stop offset="6%"   stopColor="#B0FFE0" stopOpacity="0.95" />
+                <stop offset="22%"  stopColor="#40E0FF" stopOpacity="0.6" />
+                <stop offset="50%"  stopColor="#3A2A7A" stopOpacity="0.2" />
+                <stop offset="100%" stopColor="#000000" stopOpacity="0" />
+              </radialGradient>
+            )}
+            <radialGradient id={`cvVignette-${intensity}`} cx="50%" cy="50%" r="55%">
+              <stop offset="0%"   stopColor="#000" stopOpacity="0" />
+              <stop offset={deep ? "55%" : "65%"}  stopColor="#000" stopOpacity="0" />
+              <stop offset={deep ? "80%" : "85%"}  stopColor="#1A0F3A" stopOpacity={deep ? "0.55" : "0.35"} />
+              <stop offset="100%" stopColor="#02010A" stopOpacity={deep ? "0.92" : "0.75"} />
+            </radialGradient>
+            {deep && (
+              <linearGradient id={`cvScan-${intensity}`} x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%"   stopColor="#5CFFE0" stopOpacity="0" />
+                <stop offset="45%"  stopColor="#B0FFE8" stopOpacity="0.85" />
+                <stop offset="50%"  stopColor="#FFFFFF" stopOpacity="1" />
+                <stop offset="55%"  stopColor="#B0FFE8" stopOpacity="0.85" />
+                <stop offset="100%" stopColor="#5CFFE0" stopOpacity="0" />
+              </linearGradient>
+            )}
+            <filter id={`cvBlur-${intensity}`} x="-20%" y="-20%" width="140%" height="140%">
+              <feGaussianBlur stdDeviation={deep ? "45" : "35"} />
             </filter>
-          )}
-          <filter id={`cvStarGlow-${intensity}`} x="-300%" y="-300%" width="700%" height="700%">
-            <feGaussianBlur stdDeviation="1.4" />
-            <feMerge>
-              <feMergeNode />
-              <feMergeNode in="SourceGraphic" />
-            </feMerge>
-          </filter>
-          {deep && (
-            <filter id={`cvTurbulence-${intensity}`} x="-10%" y="-10%" width="120%" height="120%">
-              <feTurbulence type="fractalNoise" baseFrequency="0.013" numOctaves="2" seed="7">
+            {deep && (
+              <filter id={`cvBlurSmall-${intensity}`} x="-20%" y="-20%" width="140%" height="140%">
+                <feGaussianBlur stdDeviation="18" />
+              </filter>
+            )}
+            <filter id={`cvStarGlow-${intensity}`} x="-300%" y="-300%" width="700%" height="700%">
+              <feGaussianBlur stdDeviation="1.4" />
+              <feMerge>
+                <feMergeNode />
+                <feMergeNode in="SourceGraphic" />
+              </feMerge>
+            </filter>
+            {/* ─── ACID WAVE DISPLACEMENT ─── applied to every nebula layer.
+                Fractal-noise turbulence with animated frequency creates
+                liquid oil-slick warp. Stronger on deep. */}
+            <filter id={`cvAcidWave-${intensity}`} x="-20%" y="-20%" width="140%" height="140%">
+              {/* Wind-smoke turbulence — gentler than acid, slower animation,
+                  scale halved. Creates soft undulation like smoke in a
+                  light breeze rather than oil-slick melt. */}
+              <feTurbulence type="fractalNoise" baseFrequency="0.006" numOctaves="2" seed="13">
                 <animate attributeName="baseFrequency"
-                  values="0.013;0.028;0.013" dur="3.6s" repeatCount="indefinite" />
+                  values="0.005;0.009;0.004;0.008;0.005"
+                  dur={deep ? "12s" : "16s"}
+                  repeatCount="indefinite" />
               </feTurbulence>
-              <feDisplacementMap in="SourceGraphic" scale="38" />
+              <feDisplacementMap in="SourceGraphic" scale={deep ? "34" : "26"} />
             </filter>
+            {deep && (
+              <filter id={`cvTurbulence-${intensity}`} x="-10%" y="-10%" width="120%" height="120%">
+                <feTurbulence type="fractalNoise" baseFrequency="0.013" numOctaves="2" seed="7">
+                  <animate attributeName="baseFrequency"
+                    values="0.013;0.028;0.013" dur="3.6s" repeatCount="indefinite" />
+                </feTurbulence>
+                <feDisplacementMap in="SourceGraphic" scale="42" />
+              </filter>
+            )}
+            {deep && (
+              <radialGradient id={`cvShock-${intensity}`} cx="50%" cy="50%" r="50%">
+                <stop offset="0%"   stopColor="#FFFFFF" stopOpacity="0" />
+                <stop offset="80%"  stopColor="#5CFFE0" stopOpacity="0.9" />
+                <stop offset="95%"  stopColor="#FF60C0" stopOpacity="0.65" />
+                <stop offset="100%" stopColor="#000" stopOpacity="0" />
+              </radialGradient>
+            )}
+          </defs>
+
+          {/* Deep space base */}
+          <rect width="1000" height="1000" fill="#02010A" opacity={deep ? "0.72" : "0.45"} />
+
+          {/* ───── NEBULAS — windy-smoke motion, wrapped in acid wave ───── */}
+          <g filter={`url(#cvAcidWave-${intensity})`}>
+            <g style={{ animation: "cosmicNebulaDriftA 22s linear infinite" }}>
+              <ellipse cx="350" cy="400" rx="420" ry="330"
+                fill={`url(#cvNebA-${intensity})`} filter={`url(#cvBlur-${intensity})`} />
+            </g>
+            <g style={{ animation: "cosmicNebulaDriftB 26s linear infinite" }}>
+              <ellipse cx="720" cy="620" rx="380" ry="300"
+                fill={`url(#cvNebB-${intensity})`} filter={`url(#cvBlur-${intensity})`} />
+            </g>
+            {deep && (
+              <g style={{ animation: "cosmicNebulaDriftC 30s linear infinite" }}>
+                <ellipse cx="550" cy="300" rx="280" ry="180"
+                  fill={`url(#cvNebC-${intensity})`} filter={`url(#cvBlurSmall-${intensity})`} />
+              </g>
+            )}
+          </g>
+
+          {/* Far starfield */}
+          <g style={{ animation: "cosmicStarDriftFar 14s linear infinite" }}>
+            {(() => {
+              let a = 0x6d2b79f5;
+              const rng = () => {
+                a = (a + 0x6D2B79F5) | 0;
+                let t = a;
+                t = Math.imul(t ^ (t >>> 15), t | 1);
+                t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+                return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+              };
+              const stars = [];
+              const STAR_COLORS = ["#FFFFFF", "#E5FFE9", "#C8FFE0", "#A8FFEF", "#FFE8F5", "#D0FFFF"];
+              const count = deep ? 100 : 60;
+              for (let i = 0; i < count; i++) {
+                const cx = rng() * 1000;
+                const cy = rng() * 1000;
+                const r = 0.4 + rng() * 1.4;
+                const delay = rng() * 4;
+                const duration = 1.3 + rng() * 2.6;
+                const color = STAR_COLORS[Math.floor(rng() * STAR_COLORS.length)];
+                stars.push(
+                  <circle key={`f${i}`} cx={cx} cy={cy} r={r} fill={color}
+                    style={{
+                      animation: `cosmicStarTwinkle ${duration}s ease-in-out infinite`,
+                      animationDelay: `${delay}s`,
+                    }} />
+                );
+              }
+              return stars;
+            })()}
+          </g>
+
+          {/* Near starfield — bigger, brighter */}
+          <g style={{ animation: "cosmicStarDriftNear 6s linear infinite" }}>
+            {(() => {
+              let a = 0x13579bdf;
+              const rng = () => {
+                a = (a + 0x6D2B79F5) | 0;
+                let t = a;
+                t = Math.imul(t ^ (t >>> 15), t | 1);
+                t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+                return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+              };
+              const stars = [];
+              const count = deep ? 40 : 20;
+              for (let i = 0; i < count; i++) {
+                const cx = rng() * 1000;
+                const cy = rng() * 1000;
+                const r = 1.4 + rng() * 2.6;
+                const delay = rng() * 3;
+                const duration = 0.9 + rng() * 1.6;
+                stars.push(
+                  <circle key={`n${i}`} cx={cx} cy={cy} r={r} fill="#FFFFFF"
+                    filter={`url(#cvStarGlow-${intensity})`}
+                    style={{
+                      animation: `cosmicStarTwinkle ${duration}s ease-in-out infinite`,
+                      animationDelay: `${delay}s`,
+                    }} />
+                );
+              }
+              return stars;
+            })()}
+          </g>
+
+          {/* ───── DEEP ONLY: wormhole, shockwave, speed lines, chromatic ───── */}
+          {deep && (() => {
+            let a = 0xabcdef01;
+            const rng = () => {
+              a = (a + 0x6D2B79F5) | 0;
+              let t = a;
+              t = Math.imul(t ^ (t >>> 15), t | 1);
+              t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+              return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+            };
+            const streaks = [];
+            for (let i = 0; i < 14; i++) {
+              const angle = (i / 14) * Math.PI * 2 + rng() * 0.3;
+              const dist = 140 + rng() * 280;
+              const cx = 500 + Math.cos(angle) * dist;
+              const cy = 500 + Math.sin(angle) * dist;
+              const delay = rng() * 1.4;
+              const duration = 0.8 + rng() * 0.8;
+              streaks.push(
+                <rect key={`streak${i}`}
+                  x={cx - 2} y={cy - 0.8}
+                  width={4} height={1.6}
+                  fill="#FFFFFF"
+                  transform={`rotate(${(angle * 180) / Math.PI}, ${cx}, ${cy})`}
+                  style={{
+                    transformOrigin: `${cx}px ${cy}px`,
+                    animation: `cosmicStarStreak ${duration}s ease-out infinite`,
+                    animationDelay: `${delay}s`,
+                    filter: `drop-shadow(0 0 3px #FFFFFF)`,
+                  }} />
+              );
+            }
+            return <>{streaks}</>;
+          })()}
+          {deep && (
+            <g filter={`url(#cvTurbulence-${intensity})`} style={{ animation: "cosmicNebulaDriftC 6s ease-in-out infinite", transformOrigin: "500px 500px" }}>
+              <circle cx="500" cy="500" r="280" fill={`url(#cvWell-${intensity})`} />
+            </g>
+          )}
+          {deep && [0, 0.4, 0.8, 1.2].map((delay, i) => (
+            <circle key={`wh${i}`}
+              cx="500" cy="500" r="140"
+              fill="none"
+              stroke="#5CFFE0"
+              strokeWidth="2"
+              opacity="0.75"
+              style={{
+                transformOrigin: "500px 500px",
+                animation: "cosmicWormholePulse 1.6s ease-out infinite",
+                animationDelay: `${delay}s`,
+                filter: `drop-shadow(0 0 6px #5CFFE0)`,
+              }} />
+          ))}
+          {deep && (
+            <circle cx="500" cy="500" r="120"
+              fill="none"
+              stroke={`url(#cvShock-${intensity})`}
+              strokeWidth="6"
+              style={{
+                transformOrigin: "500px 500px",
+                animation: "cosmicShockwave 2s ease-out infinite",
+                filter: `drop-shadow(0 0 8px #5CFFE0)`,
+              }} />
+          )}
+          {deep && (() => {
+            const rays = [];
+            for (let i = 0; i < 24; i++) {
+              const angle = (i / 24) * Math.PI * 2;
+              const x1 = 500 + Math.cos(angle) * 80;
+              const y1 = 500 + Math.sin(angle) * 80;
+              const x2 = 500 + Math.cos(angle) * 600;
+              const y2 = 500 + Math.sin(angle) * 600;
+              rays.push(
+                <line key={`ray${i}`}
+                  x1={x1} y1={y1} x2={x2} y2={y2}
+                  stroke="#B0FFE8" strokeWidth="1.2"
+                  strokeDasharray="40 160"
+                  opacity="0.45"
+                  style={{
+                    animation: `cosmicSpeedLines 1.2s linear infinite`,
+                    animationDelay: `${(i % 6) * 0.1}s`,
+                    filter: "drop-shadow(0 0 2px #5CFFE0)",
+                  }} />
+              );
+            }
+            return <>{rays}</>;
+          })()}
+          {deep && (
+            <g style={{ mixBlendMode: "screen", animation: "cosmicChromaShiftR 0.18s linear infinite" }}>
+              <circle cx="500" cy="500" r="340" fill="none"
+                stroke="#FF3090" strokeWidth="1.5" opacity="0.5" />
+              <circle cx="500" cy="500" r="520" fill="none"
+                stroke="#FF3090" strokeWidth="1" opacity="0.3" />
+            </g>
           )}
           {deep && (
-            <radialGradient id={`cvShock-${intensity}`} cx="50%" cy="50%" r="50%">
-              <stop offset="0%"   stopColor="#FFFFFF" stopOpacity="0" />
-              <stop offset="80%"  stopColor="#6EEEFF" stopOpacity="0.9" />
-              <stop offset="95%"  stopColor="#B050FF" stopOpacity="0.6" />
-              <stop offset="100%" stopColor="#000" stopOpacity="0" />
-            </radialGradient>
+            <g style={{ mixBlendMode: "screen", animation: "cosmicChromaShiftB 0.18s linear infinite" }}>
+              <circle cx="500" cy="500" r="340" fill="none"
+                stroke="#30E0FF" strokeWidth="1.5" opacity="0.55" />
+              <circle cx="500" cy="500" r="520" fill="none"
+                stroke="#30E0FF" strokeWidth="1" opacity="0.3" />
+            </g>
           )}
-        </defs>
 
-        {/* Deep space base */}
-        <rect width="1000" height="1000" fill="#03010A" opacity={deep ? "0.75" : "0.45"} />
+          {/* Vignette */}
+          <rect width="1000" height="1000" fill={`url(#cvVignette-${intensity})`} />
 
-        {/* Nebulas — 2 for light, 3 for deep */}
-        <g style={{ animation: "cosmicNebulaDriftA 12s ease-in-out infinite" }}>
-          <ellipse cx="350" cy="400" rx="420" ry="330"
-            fill={`url(#cvNebA-${intensity})`} filter={`url(#cvBlur-${intensity})`} />
-        </g>
-        <g style={{ animation: "cosmicNebulaDriftB 15s ease-in-out infinite" }}>
-          <ellipse cx="720" cy="620" rx="380" ry="300"
-            fill={`url(#cvNebB-${intensity})`} filter={`url(#cvBlur-${intensity})`} />
-        </g>
-        {deep && (
-          <g style={{ animation: "cosmicNebulaDriftC 18s ease-in-out infinite" }}>
-            <ellipse cx="550" cy="300" rx="280" ry="180"
-              fill={`url(#cvNebC-${intensity})`} filter={`url(#cvBlurSmall-${intensity})`} />
-          </g>
-        )}
-
-        {/* Far starfield */}
-        <g style={{ animation: "cosmicStarDriftFar 14s linear infinite" }}>
-          {(() => {
-            let a = 0x6d2b79f5;
-            const rng = () => {
-              a = (a + 0x6D2B79F5) | 0;
-              let t = a;
-              t = Math.imul(t ^ (t >>> 15), t | 1);
-              t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-              return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-            };
-            const stars = [];
-            const STAR_COLORS = ["#FFFFFF", "#E5E9FF", "#C8D0FF", "#A8B4FF", "#FFE8F5", "#D0F0FF"];
-            const count = deep ? 100 : 60;
-            for (let i = 0; i < count; i++) {
-              const cx = rng() * 1000;
-              const cy = rng() * 1000;
-              const r = 0.4 + rng() * 1.4;
-              const delay = rng() * 4;
-              const duration = 1.3 + rng() * 2.6;
-              const color = STAR_COLORS[Math.floor(rng() * STAR_COLORS.length)];
-              stars.push(
-                <circle key={`f${i}`} cx={cx} cy={cy} r={r} fill={color}
-                  style={{
-                    animation: `cosmicStarTwinkle ${duration}s ease-in-out infinite`,
-                    animationDelay: `${delay}s`,
-                  }} />
-              );
-            }
-            return stars;
-          })()}
-        </g>
-
-        {/* Near starfield — bigger, brighter */}
-        <g style={{ animation: "cosmicStarDriftNear 6s linear infinite" }}>
-          {(() => {
-            let a = 0x13579bdf;
-            const rng = () => {
-              a = (a + 0x6D2B79F5) | 0;
-              let t = a;
-              t = Math.imul(t ^ (t >>> 15), t | 1);
-              t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-              return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-            };
-            const stars = [];
-            const count = deep ? 40 : 20;
-            for (let i = 0; i < count; i++) {
-              const cx = rng() * 1000;
-              const cy = rng() * 1000;
-              const r = 1.4 + rng() * 2.6;
-              const delay = rng() * 3;
-              const duration = 0.9 + rng() * 1.6;
-              stars.push(
-                <circle key={`n${i}`} cx={cx} cy={cy} r={r} fill="#FFFFFF"
-                  filter={`url(#cvStarGlow-${intensity})`}
-                  style={{
-                    animation: `cosmicStarTwinkle ${duration}s ease-in-out infinite`,
-                    animationDelay: `${delay}s`,
-                  }} />
-              );
-            }
-            return stars;
-          })()}
-        </g>
-
-        {/* ───── DEEP ONLY: wormhole, shockwave, speed lines, chromatic ──── */}
-        {deep && (() => {
-          // Warp-speed streaks
-          let a = 0xabcdef01;
-          const rng = () => {
-            a = (a + 0x6D2B79F5) | 0;
-            let t = a;
-            t = Math.imul(t ^ (t >>> 15), t | 1);
-            t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-            return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-          };
-          const streaks = [];
-          for (let i = 0; i < 14; i++) {
-            const angle = (i / 14) * Math.PI * 2 + rng() * 0.3;
-            const dist = 140 + rng() * 280;
-            const cx = 500 + Math.cos(angle) * dist;
-            const cy = 500 + Math.sin(angle) * dist;
-            const delay = rng() * 1.4;
-            const duration = 0.8 + rng() * 0.8;
-            streaks.push(
-              <rect key={`streak${i}`}
-                x={cx - 2} y={cy - 0.8}
-                width={4} height={1.6}
-                fill="#FFFFFF"
-                transform={`rotate(${(angle * 180) / Math.PI}, ${cx}, ${cy})`}
-                style={{
-                  transformOrigin: `${cx}px ${cy}px`,
-                  animation: `cosmicStarStreak ${duration}s ease-out infinite`,
-                  animationDelay: `${delay}s`,
-                  filter: `drop-shadow(0 0 3px #FFFFFF)`,
-                }} />
-            );
-          }
-          return <>{streaks}</>;
-        })()}
-        {deep && (
-          <g filter={`url(#cvTurbulence-${intensity})`} style={{ animation: "cosmicBarrelWarp 3.2s ease-in-out infinite", transformOrigin: "500px 500px" }}>
-            <circle cx="500" cy="500" r="280" fill={`url(#cvWell-${intensity})`} />
-          </g>
-        )}
-        {deep && [0, 0.4, 0.8, 1.2].map((delay, i) => (
-          <circle key={`wh${i}`}
-            cx="500" cy="500" r="140"
-            fill="none"
-            stroke="#6EEEFF"
-            strokeWidth="2"
-            opacity="0.7"
-            style={{
-              transformOrigin: "500px 500px",
-              animation: "cosmicWormholePulse 1.6s ease-out infinite",
-              animationDelay: `${delay}s`,
-              filter: `drop-shadow(0 0 6px #6EEEFF)`,
-            }} />
-        ))}
-        {deep && (
-          <circle cx="500" cy="500" r="120"
-            fill="none"
-            stroke={`url(#cvShock-${intensity})`}
-            strokeWidth="6"
-            style={{
-              transformOrigin: "500px 500px",
-              animation: "cosmicShockwave 2s ease-out infinite",
-              filter: `drop-shadow(0 0 8px #6EEEFF)`,
-            }} />
-        )}
-        {deep && (() => {
-          const rays = [];
-          for (let i = 0; i < 24; i++) {
-            const angle = (i / 24) * Math.PI * 2;
-            const x1 = 500 + Math.cos(angle) * 80;
-            const y1 = 500 + Math.sin(angle) * 80;
-            const x2 = 500 + Math.cos(angle) * 600;
-            const y2 = 500 + Math.sin(angle) * 600;
-            rays.push(
-              <line key={`ray${i}`}
-                x1={x1} y1={y1} x2={x2} y2={y2}
-                stroke="#B0D8FF" strokeWidth="1.2"
-                strokeDasharray="40 160"
-                opacity="0.4"
-                style={{
-                  animation: `cosmicSpeedLines 1.2s linear infinite`,
-                  animationDelay: `${(i % 6) * 0.1}s`,
-                  filter: "drop-shadow(0 0 2px #6EEEFF)",
-                }} />
-            );
-          }
-          return <>{rays}</>;
-        })()}
-        {deep && (
-          <g style={{ mixBlendMode: "screen", animation: "cosmicChromaShiftR 0.18s linear infinite" }}>
-            <circle cx="500" cy="500" r="340" fill="none"
-              stroke="#FF3355" strokeWidth="1.5" opacity="0.45" />
-            <circle cx="500" cy="500" r="520" fill="none"
-              stroke="#FF3355" strokeWidth="1" opacity="0.3" />
-          </g>
-        )}
-        {deep && (
-          <g style={{ mixBlendMode: "screen", animation: "cosmicChromaShiftB 0.18s linear infinite" }}>
-            <circle cx="500" cy="500" r="340" fill="none"
-              stroke="#33AAFF" strokeWidth="1.5" opacity="0.5" />
-            <circle cx="500" cy="500" r="520" fill="none"
-              stroke="#33AAFF" strokeWidth="1" opacity="0.3" />
-          </g>
-        )}
-
-        {/* Vignette */}
-        <rect width="1000" height="1000" fill={`url(#cvVignette-${intensity})`} />
-
-        {/* Scan bar — deep only */}
-        {deep && (
-          <rect x="0" y="0" width="1000" height="8"
-            fill={`url(#cvScan-${intensity})`}
-            style={{
-              animation: "cosmicScanBar 1.6s linear infinite",
-              mixBlendMode: "screen",
-              filter: "blur(3px)",
-            }} />
-        )}
-      </svg>
+          {/* Scan bar — deep only */}
+          {deep && (
+            <rect x="0" y="0" width="1000" height="8"
+              fill={`url(#cvScan-${intensity})`}
+              style={{
+                animation: "cosmicScanBar 1.6s linear infinite",
+                mixBlendMode: "screen",
+                filter: "blur(3px)",
+              }} />
+          )}
+        </svg>
+      </div>
     </>
   );
 }
@@ -10018,16 +10314,20 @@ function EnginePage({ onNavigate }) {
         }} />
       )}
 
-      {/* Light cosmic fade on HIT roll — subtle atmospheric moment.
-          Deep VFX lives on the Going Trend transition, not here. */}
-      {isRolling && (
-        <div style={{
-          position: "absolute", inset: 0, pointerEvents: "none",
-          zIndex: 40, overflow: "hidden",
-        }}>
-          <CosmicVFX intensity="light" />
-        </div>
-      )}
+      {/* Light cosmic fade on HIT roll — liquid radial wipe from the
+          HIT button outward. Mounted always so the exit animation has
+          time to play when isRolling flips back to false. */}
+      <div style={{
+        position: "absolute", inset: 0, pointerEvents: "none",
+        zIndex: 40, overflow: "hidden",
+      }}>
+        <CosmicVFX
+          intensity="light"
+          active={isRolling}
+          wipeOriginX={isMobile ? "50%" : "80%"}
+          wipeOriginY={isMobile ? "30%" : "25%"}
+        />
+      </div>
 
       <style>{`
         @keyframes engineShake {
@@ -10071,7 +10371,7 @@ function EnginePage({ onNavigate }) {
       <div style={{
         flex: 1, minHeight: 0,
         display: "grid",
-        gridTemplateColumns: isMobile ? "1fr" : "65% 35%",
+        gridTemplateColumns: isMobile ? "1fr" : "60% 40%",
         overflow: isMobile ? "visible" : "hidden",
         position: "relative", zIndex: 1,
       }}>
@@ -17377,6 +17677,25 @@ function TrendSetterPage() {
 
 // Synthesize car-takeoff sound via Web Audio. ~3 seconds, decays naturally.
 // Uses oscillator with rising frequency + noise for tire screech texture.
+// Switch/toggle sound helper — pool of 3 Audio elements cycled so rapid
+// toggles don't cut off each other. Loaded lazily on first call and cached.
+let _switchAudioPool = null;
+let _switchAudioIdx = 0;
+function playSwitchSound() {
+  try {
+    if (typeof window === "undefined" || typeof Audio === "undefined") return;
+    if (!_switchAudioPool) {
+      _switchAudioPool = [new Audio("/switch-sound.mp3"), new Audio("/switch-sound.mp3"), new Audio("/switch-sound.mp3")];
+      _switchAudioPool.forEach(a => { a.volume = 0.5; a.preload = "auto"; });
+    }
+    const a = _switchAudioPool[_switchAudioIdx];
+    _switchAudioIdx = (_switchAudioIdx + 1) % _switchAudioPool.length;
+    a.currentTime = 0;
+    const p = a.play();
+    if (p && typeof p.catch === "function") p.catch(() => {}); // ignore autoplay rejections
+  } catch {}
+}
+
 function playCarTakeoffSound() {
   try {
     const AudioCtx = window.AudioContext || window.webkitAudioContext;
@@ -17479,6 +17798,9 @@ function Joystick({ onNavigate, onLockedClick }) {
       onLockedClick && onLockedClick();
       return;
     }
+    // Tactile switch click — fires on every legitimate position change
+    // (tap toggle between Free/Pro, drag-snap to any position).
+    playSwitchSound();
     setActiveFuel(pos);
     if (pos === "trend") {
       setTransitioning(true);
@@ -17486,7 +17808,7 @@ function Joystick({ onNavigate, onLockedClick }) {
       setTimeout(() => {
         onNavigate("trendsetter");
         setTransitioning(false);
-      }, 1800);
+      }, 3200);
     }
   };
 
@@ -17607,25 +17929,25 @@ function Joystick({ onNavigate, onLockedClick }) {
         <div style={{
           position: "fixed", inset: 0, zIndex: 10000, pointerEvents: "none",
           background: "#02010A",
-          animation: "trendCosmicFade 1.8s ease-out forwards",
+          animation: "trendCosmicFade 3.2s ease-out forwards",
           overflow: "hidden",
         }}>
           <style>{`
             @keyframes trendCosmicFade {
               0%   { opacity: 0; }
-              15%  { opacity: 1; }
-              80%  { opacity: 1; }
+              10%  { opacity: 1; }
+              85%  { opacity: 1; }
               100% { opacity: 0; }
             }
             @keyframes trendTitleZoom {
               0%   { transform: translate(-50%, -50%) scale(0.3); opacity: 0; filter: blur(20px); }
-              30%  { opacity: 1; filter: blur(0); }
-              70%  { opacity: 1; filter: blur(0); }
-              100% { transform: translate(-50%, -50%) scale(1.15); opacity: 0; filter: blur(8px); }
+              25%  { opacity: 1; filter: blur(0); }
+              75%  { opacity: 1; filter: blur(0); }
+              100% { transform: translate(-50%, -50%) scale(1.18); opacity: 0; filter: blur(10px); }
             }
           `}</style>
           {/* Deep cosmic scene fills the fixed-position container */}
-          <CosmicVFX intensity="deep" />
+          <CosmicVFX intensity="deep" active={transitioning} wipeOriginX="50%" wipeOriginY="50%" />
           {/* Title on top of the VFX */}
           <div style={{
             position: "absolute", top: "50%", left: "50%",
@@ -17642,7 +17964,7 @@ function Joystick({ onNavigate, onLockedClick }) {
             letterSpacing: "-0.02em",
             fontWeight: 900,
             zIndex: 2,
-            animation: "trendTitleZoom 1.8s cubic-bezier(0.2, 0.8, 0.3, 1) forwards",
+            animation: "trendTitleZoom 3.2s cubic-bezier(0.25, 0.1, 0.25, 1) forwards",
             whiteSpace: "nowrap",
           }}>
             ⭐ Going Trend
