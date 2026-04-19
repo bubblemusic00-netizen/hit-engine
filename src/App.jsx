@@ -6111,7 +6111,7 @@ function HitButton({ onRandomize, isRolling, disabled, compact = false, fuelType
 
   // 32 LEDs flicker around the frame perimeter — classic marquee.
   // Compact mode scales to 24 so phone frames don't get crowded.
-  const ledCount = compact ? 24 : 32;
+  const ledCount = compact ? 18 : 24;
   const btnPad = compact ? "22px 16px" : "34px 20px";
   const btnFontSize = compact ? 46 : 66;
 
@@ -6189,19 +6189,25 @@ function HitButton({ onRandomize, isRolling, disabled, compact = false, fuelType
           55%,100%{ opacity: 0.2; box-shadow: 0 0 1px currentColor; background: ${LED_OFF}; }
         }
 
-        /* Vegas marquee LED — realistic bulb flicker with warm off-ember.
-           Off state keeps a tiny filament warmth instead of going black, so
-           the ring reads as a real incandescent sign, not a flat LED panel. */
+        /* Bellagio Luxe LED flicker — gentle breathing rhythm for the
+           warm-metallic palette. Off state stays at 55% brightness so
+           the ring always reads as luminous; flicker is a soft luminance
+           pulse rather than a binary on/off switch. Refined, not frantic. */
         @keyframes hitLed {
-          0%,  49%  { opacity: 1;    filter: brightness(1.15); }
-          50%, 100% { opacity: 0.35; filter: brightness(0.45); }
+          0%,   50%  { opacity: 1;    filter: brightness(1.1) saturate(1.05); }
+          70%, 100%  { opacity: 0.62; filter: brightness(0.78); }
         }
         /* Chase wave — a bright pulse travels around the perimeter.
            Layered OVER the random flicker via a second element so bulbs
-           get extra-hot when the chase passes through. */
+           get extra-hot when the chase passes through. Smooth ramp-in,
+           held peak, gentle fade-out — reads as a luminous wave, not
+           a binary strobe. */
         @keyframes hitLedChase {
-          0%,  90%, 100% { opacity: 0; }
-          5%,  25%       { opacity: 1; }
+          0%,  88%, 100% { opacity: 0; }
+          4%             { opacity: 0.3; }
+          10%, 20%       { opacity: 1; }
+          30%            { opacity: 0.4; }
+          38%            { opacity: 0; }
         }
 
         /* Slow rotating inner ring — reads as CNC detail, not rave */
@@ -6290,10 +6296,14 @@ function HitButton({ onRandomize, isRolling, disabled, compact = false, fuelType
           maskImage: "radial-gradient(circle at center, #000 45%, transparent 75%)",
         }} />
 
-        {/* ── OUTER FRAME — brushed gold + charcoal ────────────────── */}
+        {/* ── OUTER FRAME — brushed gold marquee mount ─────────────────
+            Thick gold border holds a dark marquee backing panel. LED
+            bulbs sit on the backing panel (not on the gold frame itself)
+            so the ring reads like a real Vegas machine — gold trim →
+            dark marquee strip with bulbs → button body center. */}
         <div style={{
           position: "relative", zIndex: 1,
-          padding: 5,
+          padding: 26,
           background: `
             linear-gradient(180deg, #1a1408 0%, #0a0804 100%),
             linear-gradient(135deg, #d4a94e 0%, #8a6d2e 50%, #d4a94e 100%)
@@ -6305,60 +6315,62 @@ function HitButton({ onRandomize, isRolling, disabled, compact = false, fuelType
           boxShadow: `
             0 18px 50px rgba(0,0,0,0.75),
             0 4px 12px rgba(0,0,0,0.5),
-            inset 0 0 24px rgba(0,0,0,0.75),
-            inset 0 1px 0 rgba(255,215,120,0.25)
+            inset 0 0 24px rgba(0,0,0,0.85),
+            inset 0 1px 0 rgba(255,215,120,0.25),
+            inset 0 0 0 1px rgba(0,0,0,0.6)
           `,
           overflow: "visible",
         }}>
-          {/* ── VEGAS MARQUEE LED RING ─────────────────────────────────
-              Authentic casino-sign aesthetic: each bulb is a 3D radial
+          {/* ── HOLLYWOOD MARQUEE LED BARS ─────────────────────────────
+              Dressing-room / Hollywood-sign aesthetic: two rows of
+              bulbs, one along the top edge and one along the bottom
+              edge, with clean side frames. Each bulb is a 3D radial
               gradient (hot cream core → warm color body → dark rim),
-              seated in a brass-screw socket plate, casting a soft glow
-              onto the surrounding frame. Bulbs are inset from the corners
-              with visible frame between them so the ring reads like a
-              real marquee, not a perimeter stripe. A chase-wave pulse
-              travels around the ring layered over the random flicker. */}
+              seated in a brass-screw socket. Vibrant disco palette
+              (hot pink / electric blue / red / violet). Chase wave
+              sweeps left-to-right across both rows in sync, like a
+              stage-light bar sweep. */}
           {(() => {
-            // Pure casino rainbow palette — every bulb randomly picks
-            // from this set on mount. Seeded PRNG so the pattern is
-            // stable across re-renders but chaotic across reloads.
-            const CASINO_COLORS = [
-              V.hotPink, V.neonGold, V.cyan, V.orange, V.lime,
-              V.magenta, V.red, V.purple, "#FF8C42", "#60EFFF",
-              "#FF40A0", "#FFD700", "#B968FF", "#32FFB8",
+            // ── DISCO NEON PALETTE — purple / pink / blue / red ─────
+            // Vibrant 4-color set for that Hollywood neon/disco feel.
+            // Deterministic 10-slot distribution prevents color clumps:
+            //   - Hot Pink    30%
+            //   - Electric Blue 25%
+            //   - Red         25%
+            //   - Violet      20%
+            const HOT_PINK    = "#FF3E9D";
+            const ELEC_BLUE   = "#2E6BFF";
+            const RED         = "#FF2E5E";
+            const VIOLET      = "#A855F7";
+            const DISCO_RING = [
+              HOT_PINK,   ELEC_BLUE, VIOLET,  RED,
+              HOT_PINK,   VIOLET,    ELEC_BLUE, RED,
+              HOT_PINK,   VIOLET,
             ];
-            // Stable seeded PRNG so bulbs keep their colors across
-            // rerenders (e.g., when isRolling flips) but the full ring
-            // re-randomizes on a fresh page load.
-            let seed = 0x5E6AD2;
-            const rng = () => {
-              seed = (seed * 9301 + 49297) % 233280;
-              return seed / 233280;
-            };
-            const pickColor = (i) => {
-              // Warm up the PRNG differently per bulb index so adjacent
-              // bulbs don't correlate.
-              for (let k = 0; k < (i % 7) + 1; k++) rng();
-              return CASINO_COLORS[Math.floor(rng() * CASINO_COLORS.length)];
-            };
-            const count = ledCount;
-            const perSide = count / 4;
-            const INSET_PCT = 10; // distance from each corner as % of side length
-            const SPAN_PCT  = 100 - (2 * INSET_PCT); // 80%
-            const BULB_SIZE = 11;          // px — slightly bigger for presence
-            const SOCKET_SIZE = 18;        // socket plate diameter
-            const EDGE_OFFSET = -9;        // how far outside the frame the bulb sits
+            // Offset per index so the color cadence doesn't align with
+            // the row layout.
+            const pickColor = (i) => DISCO_RING[(i * 3 + 1) % DISCO_RING.length];
+            // ── HOLLYWOOD HORIZONTAL BAR LAYOUT ──────────────────────
+            // Bulbs ONLY on top and bottom sides, left and right frame
+            // edges stay clean. Classic dressing-room / Hollywood-sign
+            // lighting language.
+            const perRow = Math.max(4, Math.floor(ledCount / 2));
+            const count = perRow * 2;
+            const INSET_PCT = 8;  // distance from corners as % of row length
+            const SPAN_PCT  = 100 - (2 * INSET_PCT);
+            const BULB_SIZE = 11;         // px
+            const SOCKET_SIZE = 18;       // socket plate scales with bulb
+            const BAND_OFFSET = 13;       // px inward from outer frame edge
             const leds = [];
             for (let i = 0; i < count; i++) {
-              const side = Math.floor(i / perSide);
-              const posInSide = (i % perSide) / Math.max(1, (perSide - 1)); // 0..1
-              const sideCoord = `${INSET_PCT + posInSide * SPAN_PCT}%`;
-              const sideCoordRev = `${INSET_PCT + (1 - posInSide) * SPAN_PCT}%`;
-              let top, left;
-              if (side === 0)      { top = `${EDGE_OFFSET}px`; left = sideCoord; }
-              else if (side === 1) { left = `calc(100% - ${EDGE_OFFSET}px)`; top = sideCoord; }
-              else if (side === 2) { top  = `calc(100% - ${EDGE_OFFSET}px)`; left = sideCoordRev; }
-              else                 { left = `${EDGE_OFFSET}px`; top = sideCoordRev; }
+              const isTop = i < perRow;
+              const indexInRow = isTop ? i : (i - perRow);
+              const posInRow = indexInRow / Math.max(1, perRow - 1); // 0..1
+              const sideCoord = `${INSET_PCT + posInRow * SPAN_PCT}%`;
+              const top = isTop
+                ? `${BAND_OFFSET}px`
+                : `calc(100% - ${BAND_OFFSET}px)`;
+              const left = sideCoord;
               const color = pickColor(i);
               // Flicker timing — slightly longer than before so the eye
               // can appreciate each bulb's state.
@@ -6366,8 +6378,11 @@ function HitButton({ onRandomize, isRolling, disabled, compact = false, fuelType
                 ? (0.16 + (i * 37 % 5) * 0.04)
                 : (0.5 + (i * 41 % 7) * 0.1);
               const delay = (i * 37 % 11) * (isRolling ? 0.028 : 0.065);
-              // Chase-wave delay: the chase travels around in 2.4s total.
-              const chaseDelay = ((i / count) * 2.4).toFixed(3);
+              // Chase wave: runs LEFT-TO-RIGHT across both rows so top
+              // and bottom pulse in sync — reads as "stage light sweep"
+              // rather than a perimeter chase. Idle 3.5s, rolling 1.4s.
+              const chaseDuration = isRolling ? 1.4 : 3.5;
+              const chaseDelay = (posInRow * chaseDuration).toFixed(3);
               leds.push(
                 <div key={i} style={{
                   position: "absolute",
@@ -6448,7 +6463,7 @@ function HitButton({ onRandomize, isRolling, disabled, compact = false, fuelType
                     `,
                     opacity: 0,
                     mixBlendMode: "screen",
-                    animation: `hitLedChase 2.4s linear infinite`,
+                    animation: `hitLedChase ${chaseDuration}s linear infinite`,
                     animationDelay: `-${chaseDelay}s`,
                     pointerEvents: "none",
                   }} />
