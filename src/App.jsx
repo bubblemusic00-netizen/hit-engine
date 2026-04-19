@@ -5095,28 +5095,39 @@ function SalesModal({ open, onClose, onUpgrade, feature }) {
 function MusicalNotesMarquee({ compact = false }) {
   const { layout } = useLayout();
   const isMobile = layout === "mobile";
-  // 14 notes in a row — a mix of glyphs with slightly different weights,
-  // so the pattern doesn't feel repetitive on short loops. Doubled below
-  // for the seamless scroll effect.
+  // 14 notes — doubled below for the seamless scroll effect.
   const notes = ["♪", "♫", "♬", "♩", "♪", "♭", "♫", "♯", "♩", "♬", "𝄞", "♪", "♫", "♩"];
-  // Height sized so notes sit comfortably in a narrow strip above the
-  // wordmark. Mobile version is smaller — saves precious vertical space.
-  const stripHeight = isMobile ? 20 : 28;
-  const noteFontSize = isMobile ? 14 : 22;
-  // The left pane padding on its parent is T.s8 (64px) desktop / T.s4
-  // (16px) mobile. We use a negative margin to "escape" that gutter
-  // and extend the strip to the true viewport left edge, then widen
-  // via calc so the right side still ends where it used to (well
-  // before the ENGINE wordmark, via the fade mask).
+  // Thin, short decorative strip sitting above the banner, terminating
+  // at the left edge of the ENGINE word.
+  const stripHeight = isMobile ? 14 : 20;
+  const noteFontSize = isMobile ? 10 : 14;
+  // Left pane padding to escape: T.s8 desktop (64) / T.s4 mobile (16).
   const leftPaneGutter = isMobile ? 16 : 64;
-  const extraLeft = leftPaneGutter;
-  // Width: occupy the left portion of the viewport, ending before ENGINE.
-  // Desktop: ~50vw + gutter compensation. Mobile: full width + gutter.
-  const stripWidth = compact
-    ? "100%"
-    : (isMobile
-        ? `calc(100% + ${leftPaneGutter * 2}px)`
-        : `calc(min(620px, 52vw) + ${extraLeft}px)`);
+  // Width measured dynamically from the .anbn-engine span in the banner,
+  // so the strip always ends exactly at the left edge of ENGINE.
+  const [width, setWidth] = useState(isMobile ? 180 : 260);
+  useEffect(() => {
+    const measure = () => {
+      const el = document.querySelector(".anbn-engine");
+      if (!el) return;
+      const rect = el.getBoundingClientRect();
+      // rect.left is the viewport X of ENGINE's left edge.
+      // Strip spans from viewport X=0 to that X (minus a small padding
+      // so the fade doesn't overlap the ENGINE glyph).
+      const next = Math.max(80, rect.left - 4);
+      setWidth(next);
+    };
+    measure();
+    // Measure again after paint + after fonts load
+    const raf = requestAnimationFrame(measure);
+    const onResize = () => measure();
+    window.addEventListener("resize", onResize);
+    if (document.fonts?.ready) document.fonts.ready.then(measure);
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener("resize", onResize);
+    };
+  }, [isMobile]);
   return (
     <div
       onClick={() => { playSwitchSound(); window.location.reload(); }}
@@ -5124,20 +5135,18 @@ function MusicalNotesMarquee({ compact = false }) {
       aria-label="Refresh page"
       title="Click to refresh"
       style={{
-        width: stripWidth,
+        width: `${width}px`,
         height: stripHeight,
         overflow: "hidden",
         position: "relative",
         cursor: "pointer",
-        // Pull left by the parent's left-padding so we hit the screen edge.
-        marginLeft: `-${extraLeft}px`,
-        // Right-edge fade so the strip melts into background before the
-        // ENGINE wordmark — we don't need to know ENGINE's X coordinate,
-        // the fade handles the transition visually. Tightened to 78% so
-        // notes remain visible across more of the (now-longer) strip.
-        WebkitMaskImage: "linear-gradient(90deg, rgba(0,0,0,1) 0%, rgba(0,0,0,1) 78%, rgba(0,0,0,0) 100%)",
-        maskImage: "linear-gradient(90deg, rgba(0,0,0,1) 0%, rgba(0,0,0,1) 78%, rgba(0,0,0,0) 100%)",
-        marginBottom: isMobile ? 6 : 10,
+        // Pull left by the parent's left-padding to hit the true screen edge.
+        marginLeft: `-${leftPaneGutter}px`,
+        // Very soft right-edge fade so the strip terminates cleanly
+        // against ENGINE without a harsh cut.
+        WebkitMaskImage: "linear-gradient(90deg, rgba(0,0,0,1) 0%, rgba(0,0,0,1) 90%, rgba(0,0,0,0) 100%)",
+        maskImage: "linear-gradient(90deg, rgba(0,0,0,1) 0%, rgba(0,0,0,1) 90%, rgba(0,0,0,0) 100%)",
+        marginBottom: isMobile ? 4 : 6,
         userSelect: "none",
       }}
     >
@@ -11165,8 +11174,9 @@ function EnginePage({ onNavigate }) {
         }}>
           {/* HERO — chrome HIT-ENGINE type */}
           <div style={{ marginBottom: isMobile ? T.s5 : T.s8 }}>
-            {/* Musical notes marquee — thin strip of animated glyphs above
-                the wordmark. Click to refresh page. */}
+            {/* Musical notes marquee — thin strip aligned to end at ENGINE's
+                left edge. Extends from viewport left all the way up to but
+                not over the ENGINE word. Click refreshes page. */}
             <MusicalNotesMarquee />
             <h1 style={{
               display: "flex", alignItems: "baseline",
