@@ -3670,10 +3670,29 @@ function Button({ children, variant = "secondary", size = "md", onClick, disable
   );
 }
 
+// obfuscateLabel — Given a real genre/option name, return a block-char string
+// of roughly proportional length. Used to scrub tier-locked labels so the
+// real name never reaches the DOM. Not cryptographically secure — a paranoid
+// "keeps casual inspection from exposing premium content" measure only.
+// True content protection requires a backend; see Task 4 discussion.
+function obfuscateLabel(name) {
+  if (!name || typeof name !== "string") return "████";
+  // Map char count to block count with a floor + ceiling so very short or
+  // very long names still look plausible as blurred chips.
+  const len = Math.min(20, Math.max(4, Math.ceil(name.length * 0.8)));
+  // Split with a mid-word space to mimic how real labels wrap
+  if (len > 7) {
+    const firstWord = Math.floor(len * 0.45);
+    return "█".repeat(firstWord) + " " + "█".repeat(len - firstWord);
+  }
+  return "█".repeat(len);
+}
+
 // Chip — single select / multi-select option. Casino outline randomly applied during rolling.
 // tierLocked: option exists in the catalog but is hidden behind a tier gate. Displayed
-// with the label blurred. Non-interactive UNLESS onLockedClick is provided — in which
-// case clicking the locked chip fires the redirect handler (e.g. navigate to Shop).
+// with the label blurred AND scrubbed (real name never enters the rendered DOM).
+// Non-interactive UNLESS onLockedClick is provided — in which case clicking the locked
+// chip fires the redirect handler (e.g. opens SalesModal).
 function Chip({ label, selected, onClick, onDoubleClick, onLockToggle, favorite, locked, disabled, size = "md", casinoOutline, tierLocked, onLockedClick, titleOverride }) {
   const [hover, setHover] = useState(false);
   const { layout } = useLayout();
@@ -3781,7 +3800,7 @@ function Chip({ label, selected, onClick, onDoubleClick, onLockToggle, favorite,
           userSelect: tierLocked ? "none" : "auto",
           position: "relative", zIndex: 1,
         }}>
-        {label}
+        {tierLocked ? obfuscateLabel(label) : label}
       </span>
     </span>
   );
@@ -4185,6 +4204,17 @@ const SALES_COPY = {
       "Full catalog unlocked in every section",
       "More variety = less repetitive prompts",
       "Plus: custom tags, locks, 100 daily hits",
+    ],
+    cta: "Upgrade to Pro",
+  },
+  searchBar: {
+    tier: "pro",
+    headline: "Search the whole genre tree",
+    subline: "Pro unlocks live search across all 294 subgenres and 2000+ microstyles. Type 'house' or 'drill' — instantly find what you want instead of clicking through categories.",
+    bullet: [
+      "Live search across the full tree",
+      "One-click commit to any subgenre or microstyle",
+      "Plus: full subgenre tree, custom tags, locks, 100 daily hits",
     ],
     cta: "Upgrade to Pro",
   },
@@ -5794,51 +5824,226 @@ function GenreSlotPicker({ slots, onChange, slotLocks, onToggleSlotLock, maxSlot
             <Button variant="ghost" size="sm" onClick={closeSlot}>Close</Button>
           </div>
 
-          {/* Search bar — filters categories, subgenres, and microstyles live */}
+          {/* Search bar — Pro+ only. Free users see a locked placeholder that
+              opens the SalesModal on click. Gating rides on restrictSubgenres
+              so it tracks with the rest of the subgenre-access tier logic. */}
           <div style={{ marginBottom: T.s4 }}>
-            <div style={{ position: "relative" }}>
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search genres, subgenres, microstyles…"
+            {restrictSubgenres ? (
+              <div
+                onClick={() => onLockedClick && onLockedClick("searchBar")}
+                title="Pro feature — click to upgrade"
                 style={{
-                  width: "100%", boxSizing: "border-box",
+                  position: "relative",
+                  cursor: "pointer",
                   padding: `10px 36px 10px 36px`,
-                  background: T.bg,
-                  border: `1px solid ${searchQuery ? T.borderFocus : T.border}`,
+                  background: "#FF174408",
+                  border: `1px dashed #FF174455`,
                   borderRadius: T.r_md,
-                  color: T.text,
-                  fontFamily: T.font_sans,
-                  fontSize: 16,  // 16px to prevent iOS zoom
-                  outline: "none",
-                  transition: `border-color ${T.dur_fast} ${T.ease}`,
+                  color: "#FF1744",
+                  fontFamily: T.font_sans, fontSize: 16,
+                  display: "flex", alignItems: "center",
+                  transition: `all ${T.dur_fast} ${T.ease}`,
+                  userSelect: "none",
                 }}
-                onFocus={(e) => { e.currentTarget.style.borderColor = T.borderFocus; }}
-                onBlur={(e) => { e.currentTarget.style.borderColor = searchQuery ? T.borderFocus : T.border; }}
-              />
-              {/* Search icon (left) */}
-              <span style={{
-                position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)",
-                color: T.textMuted, fontSize: 14, pointerEvents: "none",
-              }}>⌕</span>
-              {/* Clear button (right) */}
-              {searchQuery && (
-                <button type="button"
-                  onClick={() => setSearchQuery("")}
+                onMouseEnter={e => {
+                  e.currentTarget.style.background = "#FF174412";
+                  e.currentTarget.style.borderColor = "#FF1744";
+                  e.currentTarget.style.boxShadow = "0 0 0 3px #FF174422";
+                }}
+                onMouseLeave={e => {
+                  e.currentTarget.style.background = "#FF174408";
+                  e.currentTarget.style.borderColor = "#FF174455";
+                  e.currentTarget.style.boxShadow = "none";
+                }}
+              >
+                <span style={{
+                  position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)",
+                  fontSize: 14, pointerEvents: "none",
+                }}>🔒</span>
+                <span style={{
+                  fontSize: 14, fontWeight: 600, flex: 1,
+                }}>
+                  Search genres — Pro feature
+                </span>
+                <span style={{
+                  fontSize: 10, fontFamily: T.font_mono, fontWeight: 700,
+                  letterSpacing: "0.15em", opacity: 0.85,
+                  marginLeft: T.s2,
+                }}>PRO →</span>
+              </div>
+            ) : (
+              <div style={{ position: "relative" }}>
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search genres, subgenres, microstyles…"
                   style={{
-                    position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)",
-                    width: 24, height: 24,
-                    background: "transparent", border: "none", color: T.textMuted,
-                    cursor: "pointer", fontSize: 16, lineHeight: 1,
-                    borderRadius: "50%",
+                    width: "100%", boxSizing: "border-box",
+                    padding: `10px 36px 10px 36px`,
+                    background: T.bg,
+                    border: `1px solid ${searchQuery ? T.borderFocus : T.border}`,
+                    borderRadius: T.r_md,
+                    color: T.text,
+                    fontFamily: T.font_sans,
+                    fontSize: 16,  // 16px to prevent iOS zoom
+                    outline: "none",
+                    transition: `border-color ${T.dur_fast} ${T.ease}`,
                   }}
-                  onMouseEnter={(e) => { e.currentTarget.style.background = T.elevated; e.currentTarget.style.color = T.text; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = T.textMuted; }}
-                >✕</button>
-              )}
-            </div>
+                  onFocus={(e) => { e.currentTarget.style.borderColor = T.borderFocus; }}
+                  onBlur={(e) => { e.currentTarget.style.borderColor = searchQuery ? T.borderFocus : T.border; }}
+                />
+                {/* Search icon (left) */}
+                <span style={{
+                  position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)",
+                  color: T.textMuted, fontSize: 14, pointerEvents: "none",
+                }}>⌕</span>
+                {/* Clear button (right) */}
+                {searchQuery && (
+                  <button type="button"
+                    onClick={() => setSearchQuery("")}
+                    style={{
+                      position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)",
+                      width: 24, height: 24,
+                      background: "transparent", border: "none", color: T.textMuted,
+                      cursor: "pointer", fontSize: 16, lineHeight: 1,
+                      borderRadius: "50%",
+                    }}
+                    onMouseEnter={(e) => { e.currentTarget.style.background = T.elevated; e.currentTarget.style.color = T.text; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = T.textMuted; }}
+                  >✕</button>
+                )}
+              </div>
+            )}
           </div>
+
+          {/* ── SEARCH RESULTS — when searching, surface subgenre + microstyle
+              matches directly as one-click commit chips. Otherwise UX forces
+              a category-click-to-expand step that hides the results. ───── */}
+          {q && (() => {
+            // Build flat lists of matching subgenres and microstyles
+            const subgenreHits = [];
+            const microHits = [];
+            Object.keys(GENRE_TREE).forEach(cat => {
+              const subs = GENRE_TREE[cat];
+              Object.keys(subs).forEach(sub => {
+                if (matches(sub)) {
+                  subgenreHits.push({ cat, sub });
+                }
+                (subs[sub] || []).forEach(micro => {
+                  if (matches(micro)) {
+                    microHits.push({ cat, sub, micro });
+                  }
+                });
+              });
+            });
+            subgenreHits.sort((a, b) => a.sub.localeCompare(b.sub));
+            microHits.sort((a, b) => a.micro.localeCompare(b.micro));
+            const MAX_SUB = 24;
+            const MAX_MICRO = 16;
+            const subVisible = subgenreHits.slice(0, MAX_SUB);
+            const microVisible = microHits.slice(0, MAX_MICRO);
+            const subOverflow = subgenreHits.length - subVisible.length;
+            const microOverflow = microHits.length - microVisible.length;
+            const totalHits = subgenreHits.length + microHits.length;
+            if (totalHits === 0) {
+              return (
+                <div style={{
+                  marginBottom: T.s4,
+                  padding: `${T.s3}px ${T.s4}px`,
+                  background: T.surface,
+                  border: `1px dashed ${T.border}`,
+                  borderRadius: T.r_md,
+                  fontSize: T.fs_sm, fontFamily: T.font_sans,
+                  color: T.textMuted,
+                }}>
+                  No genres found for "{searchQuery}" — try a different term.
+                </div>
+              );
+            }
+            return (
+              <div style={{ marginBottom: T.s4 }}>
+                <Label color={T.textTer} style={{ display: "block", marginBottom: T.s2 }}>
+                  Search results{" "}
+                  <span style={{ color: T.textMuted, textTransform: "none", letterSpacing: 0 }}>
+                    · click any to commit
+                  </span>
+                </Label>
+                {subVisible.length > 0 && (
+                  <div style={{ marginBottom: microVisible.length > 0 ? T.s3 : 0 }}>
+                    <div style={{
+                      fontSize: 10, fontFamily: T.font_mono, fontWeight: 700,
+                      color: T.textMuted, letterSpacing: "0.15em", marginBottom: 4,
+                    }}>SUBGENRES ({subgenreHits.length})</div>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: T.s1 }}>
+                      {subVisible.map(({ cat, sub }) => {
+                        const isFreeAllowed = !restrictSubgenres || (FREE_SUBGENRES[cat] || []).includes(sub);
+                        return (
+                          <Chip key={`${cat}:${sub}`}
+                            label={`${sub} · ${cat}`}
+                            selected={activeCat === cat && activeGenre === sub}
+                            tierLocked={!isFreeAllowed}
+                            onLockedClick={!isFreeAllowed && onLockedClick ? () => onLockedClick("lockedSubgenre") : undefined}
+                            onClick={() => {
+                              setActiveCat(cat);
+                              setActiveGenre(sub);
+                              setActiveMicro(null);
+                              commitSlot(cat, sub, null);
+                              setSearchQuery("");
+                            }}
+                            size="sm" />
+                        );
+                      })}
+                      {subOverflow > 0 && (
+                        <span style={{
+                          padding: "4px 10px", fontSize: T.fs_xs,
+                          fontFamily: T.font_mono, color: T.textMuted,
+                          fontWeight: 600, letterSpacing: "0.1em",
+                          alignSelf: "center",
+                        }}>+{subOverflow} more</span>
+                      )}
+                    </div>
+                  </div>
+                )}
+                {microVisible.length > 0 && (
+                  <div>
+                    <div style={{
+                      fontSize: 10, fontFamily: T.font_mono, fontWeight: 700,
+                      color: T.textMuted, letterSpacing: "0.15em", marginBottom: 4,
+                    }}>MICROSTYLES ({microHits.length})</div>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: T.s1 }}>
+                      {microVisible.map(({ cat, sub, micro }) => {
+                        const tierLockedMicro = restrictSubgenres;
+                        return (
+                          <Chip key={`${cat}:${sub}:${micro}`}
+                            label={`${micro} · ${sub}`}
+                            selected={activeCat === cat && activeGenre === sub && activeMicro === micro}
+                            tierLocked={tierLockedMicro}
+                            onLockedClick={tierLockedMicro && onLockedClick ? () => onLockedClick("lockedSubgenre") : undefined}
+                            onClick={() => {
+                              setActiveCat(cat);
+                              setActiveGenre(sub);
+                              setActiveMicro(micro);
+                              commitSlot(cat, sub, micro);
+                              setSearchQuery("");
+                            }}
+                            size="sm" />
+                        );
+                      })}
+                      {microOverflow > 0 && (
+                        <span style={{
+                          padding: "4px 10px", fontSize: T.fs_xs,
+                          fontFamily: T.font_mono, color: T.textMuted,
+                          fontWeight: 600, letterSpacing: "0.1em",
+                          alignSelf: "center",
+                        }}>+{microOverflow} more</span>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
 
           <div style={{ marginBottom: T.s4 }}>
             <Label color={T.textTer} style={{ display: "block", marginBottom: T.s2 }}>Main genre (commits immediately)</Label>
