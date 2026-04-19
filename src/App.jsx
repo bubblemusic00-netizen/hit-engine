@@ -2143,6 +2143,123 @@ const LYRICAL_VIBES = [
 ];
 
 // ────────────────────────────────────────────────────────────────────────────
+// TOP_5 curated shortlists — Each section collapses to these 5 entries by
+// default. Curated by "most versatile + most culturally current" — the
+// starter picks a new user will recognize and successfully build around.
+// Users can click "+ N more" to expand. Free tier sees a locked "PRO →"
+// button instead (still capped at 5, can't expand).
+// ────────────────────────────────────────────────────────────────────────────
+const TOP_5 = {
+  mood:      ["Euphoric","Dark & brooding","Melancholic","Nostalgic","Sensual"],
+  energy:    ["Steady groove throughout","Slow burn to explosion","Euphoric continuous build","Driving & relentless","Intimate & bare throughout"],
+  groove:    ["straight","swing","half-time","syncopated","broken"], // groove uses ids
+  vocalist:  ["Breathy female lead","Raw male baritone","Smooth tenor","Auto-tuned melodic delivery","Falsetto-led"],
+  lyricalVibe: ["Confessional diary","Heartbreak elegy","Braggadocio flex","Romantic devotion","Nostalgic storytelling"],
+  harmonic:  ["Minor-key introspection","Major-key lift","Modal ambiguity","Jazz extensions","Bluesy dominant"],
+  texture:   ["Thick & saturated","Smooth & liquid","Distressed & decayed","Airy & weightless","Granular & particulate"],
+  mix:       ["Punchy & compressed","Wide cinematic","Lo-fi tape warmth","Intimate close-mic","Heavy reverb cathedral"],
+};
+
+// ────────────────────────────────────────────────────────────────────────────
+// SUGGESTION_MAP — Instrument-driven "Suggest complements" feature.
+// When a user clicks the "✨ Suggest complements" button in the Specific
+// Instruments section, we pool these per-instrument associations across all
+// currently-selected instruments, then pick 1 from each {mood, groove,
+// lyricalVibe} pool. Values reference actual entries in MOODS, GROOVES
+// (by id), and LYRICAL_VIBES arrays — arrays give us 2-3 options per cell
+// so merged pools stay varied.
+// ────────────────────────────────────────────────────────────────────────────
+const SUGGESTION_MAP = {
+  // ── KEYS ──────────────────────────────────────────────────────────────
+  "Grand piano":               { mood: ["Melancholic","Tender","Nostalgic"], groove: ["rubato","straight"], lyricalVibe: ["Confessional diary","Heartbreak elegy","Letter to self"] },
+  "Rhodes electric piano":     { mood: ["Sensual","Nostalgic","Dreamlike"], groove: ["swing","half-time"], lyricalVibe: ["Romantic devotion","Nostalgic storytelling","Confessional diary"] },
+  "Hammond B3 organ":          { mood: ["Triumphant","Spiritual","Ecstatic"], groove: ["shuffle","syncopated"], lyricalVibe: ["Spiritual seeking","Party celebration","Political protest"] },
+  "Wurlitzer":                 { mood: ["Nostalgic","Tender","Bittersweet"], groove: ["swing","shuffle"], lyricalVibe: ["Confessional diary","Nostalgic storytelling","Heartbreak elegy"] },
+  "Harpsichord":               { mood: ["Haunted","Dreamlike","Bittersweet"], groove: ["straight","rubato"], lyricalVibe: ["Mythic / allegorical","Abstract poetry","Cinematic scene-setting"] },
+
+  // ── SYNTHS ────────────────────────────────────────────────────────────
+  "Moog sub bass":             { mood: ["Dark & brooding","Electric","Furious"], groove: ["motorik","straight"], lyricalVibe: ["Braggadocio flex","Hedonistic escapism","Defiant anthem"] },
+  "Juno-60 pads":              { mood: ["Dreamlike","Nostalgic","Serene"], groove: ["half-time","straight"], lyricalVibe: ["Nostalgic storytelling","Abstract poetry","Surreal dreamscape"] },
+  "Prophet-5 lead":             { mood: ["Euphoric","Dreamlike","Electric"], groove: ["motorik","straight"], lyricalVibe: ["Surreal dreamscape","Abstract poetry","Hedonistic escapism"] },
+  "FM DX7":                    { mood: ["Nostalgic","Dreamlike","Bittersweet"], groove: ["straight","shuffle"], lyricalVibe: ["Nostalgic storytelling","Letter to self","Romantic devotion"] },
+  "TB-303 bass":               { mood: ["Ecstatic","Electric","Euphoric"], groove: ["motorik","syncopated"], lyricalVibe: ["Hedonistic escapism","Party celebration","Abstract poetry"] },
+
+  // ── STRINGS ───────────────────────────────────────────────────────────
+  "Violin solo":               { mood: ["Melancholic","Haunted","Tender"], groove: ["rubato","straight"], lyricalVibe: ["Heartbreak elegy","Mythic / allegorical","Cinematic scene-setting"] },
+  "Cello":                     { mood: ["Melancholic","Haunted","Tender"], groove: ["rubato","half-time"], lyricalVibe: ["Heartbreak elegy","Existential questioning","Letter to self"] },
+  "Full string section":       { mood: ["Triumphant","Euphoric","Haunted"], groove: ["rubato","straight"], lyricalVibe: ["Cinematic scene-setting","Mythic / allegorical","Romantic devotion"] },
+  "Double bass":               { mood: ["Sensual","Nostalgic","Serene"], groove: ["swing","shuffle"], lyricalVibe: ["Confessional diary","Nostalgic storytelling","Letter to self"] },
+
+  // ── GUITARS ───────────────────────────────────────────────────────────
+  "Fender Strat clean":        { mood: ["Unbothered","Nostalgic","Tender"], groove: ["swing","straight"], lyricalVibe: ["Confessional diary","Nostalgic storytelling","Coming-of-age narrative"] },
+  "Les Paul distortion":       { mood: ["Defiant","Furious","Electric"], groove: ["straight","syncopated"], lyricalVibe: ["Defiant anthem","Braggadocio flex","Political protest"] },
+  "Nylon classical":           { mood: ["Sensual","Melancholic","Tender"], groove: ["rubato","swing"], lyricalVibe: ["Romantic devotion","Ode to a place","Heartbreak elegy"] },
+  "Acoustic steel-string":     { mood: ["Nostalgic","Tender","Bittersweet"], groove: ["straight","swing"], lyricalVibe: ["Confessional diary","Letter to self","Coming-of-age narrative"] },
+  "12-string guitar":          { mood: ["Nostalgic","Dreamlike","Serene"], groove: ["straight","rubato"], lyricalVibe: ["Nostalgic storytelling","Ode to a place","Coming-of-age narrative"] },
+  "Pedal steel":               { mood: ["Melancholic","Lonely","Nostalgic"], groove: ["rubato","half-time"], lyricalVibe: ["Heartbreak elegy","Ode to a place","Letter to self"] },
+  "Resonator slide":           { mood: ["Desperate","Haunted","Lonely"], groove: ["shuffle","swing"], lyricalVibe: ["Confessional diary","Heartbreak elegy","Mythic / allegorical"] },
+  "Jazz guitar hollowbody":    { mood: ["Sensual","Tender","Unbothered"], groove: ["swing","shuffle"], lyricalVibe: ["Romantic devotion","Nostalgic storytelling","Confessional diary"] },
+
+  // ── BASS ──────────────────────────────────────────────────────────────
+  "808 sub bass":              { mood: ["Dark & brooding","Electric","Defiant"], groove: ["half-time","syncopated"], lyricalVibe: ["Braggadocio flex","Hedonistic escapism","Stream-of-consciousness"] },
+  "Upright acoustic bass":     { mood: ["Sensual","Serene","Unbothered"], groove: ["swing","shuffle"], lyricalVibe: ["Nostalgic storytelling","Romantic devotion","Confessional diary"] },
+  "Synth bass":                { mood: ["Electric","Ecstatic","Euphoric"], groove: ["motorik","straight"], lyricalVibe: ["Hedonistic escapism","Party celebration","Braggadocio flex"] },
+
+  // ── DRUMS ─────────────────────────────────────────────────────────────
+  "Acoustic kit close-mic":    { mood: ["Defiant","Triumphant","Electric"], groove: ["straight","syncopated"], lyricalVibe: ["Coming-of-age narrative","Defiant anthem","Confessional diary"] },
+  "TR-808":                    { mood: ["Dark & brooding","Defiant","Electric"], groove: ["half-time","syncopated"], lyricalVibe: ["Braggadocio flex","Hedonistic escapism","Stream-of-consciousness"] },
+  "TR-909":                    { mood: ["Euphoric","Ecstatic","Electric"], groove: ["motorik","straight"], lyricalVibe: ["Hedonistic escapism","Party celebration","Abstract poetry"] },
+  "MPC-style drums":           { mood: ["Unbothered","Nostalgic","Sensual"], groove: ["swing","syncopated"], lyricalVibe: ["Confessional diary","Nostalgic storytelling","Stream-of-consciousness"] },
+  "Breakbeat chops":           { mood: ["Electric","Defiant","Ecstatic"], groove: ["broken","syncopated"], lyricalVibe: ["Stream-of-consciousness","Political protest","Hedonistic escapism"] },
+  "Brushes on snare":          { mood: ["Sensual","Tender","Unbothered"], groove: ["swing","rubato"], lyricalVibe: ["Romantic devotion","Nostalgic storytelling","Confessional diary"] },
+  "Gated reverb kit":          { mood: ["Triumphant","Nostalgic","Euphoric"], groove: ["straight","syncopated"], lyricalVibe: ["Defiant anthem","Nostalgic storytelling","Coming-of-age narrative"] },
+
+  // ── PERCUSSION ────────────────────────────────────────────────────────
+  "Congas":                    { mood: ["Sensual","Ecstatic","Euphoric"], groove: ["syncopated","shuffle"], lyricalVibe: ["Romantic devotion","Party celebration","Ode to a place"] },
+  "Djembe":                    { mood: ["Spiritual","Ecstatic","Triumphant"], groove: ["polyrhythm","syncopated"], lyricalVibe: ["Spiritual seeking","Mythic / allegorical","Ode to a place"] },
+  "Bongos":                    { mood: ["Sensual","Unbothered","Ecstatic"], groove: ["syncopated","swing"], lyricalVibe: ["Romantic devotion","Party celebration","Hedonistic escapism"] },
+  "Darbuka":                   { mood: ["Sensual","Haunted","Ecstatic"], groove: ["syncopated","polyrhythm"], lyricalVibe: ["Mythic / allegorical","Ode to a place","Spiritual seeking"] },
+  "Taiko drums":               { mood: ["Triumphant","Furious","Spiritual"], groove: ["straight","polyrhythm"], lyricalVibe: ["Mythic / allegorical","Cinematic scene-setting","Defiant anthem"] },
+  "Tambourine":                { mood: ["Ecstatic","Triumphant","Spiritual"], groove: ["straight","shuffle"], lyricalVibe: ["Spiritual seeking","Party celebration","Coming-of-age narrative"] },
+
+  // ── BRASS ─────────────────────────────────────────────────────────────
+  "Trumpet solo":              { mood: ["Triumphant","Sensual","Melancholic"], groove: ["swing","rubato"], lyricalVibe: ["Cinematic scene-setting","Romantic devotion","Nostalgic storytelling"] },
+  "Muted trumpet":             { mood: ["Sensual","Melancholic","Haunted"], groove: ["swing","rubato"], lyricalVibe: ["Romantic devotion","Letter to self","Heartbreak elegy"] },
+  "Saxophone tenor":           { mood: ["Sensual","Melancholic","Electric"], groove: ["swing","shuffle"], lyricalVibe: ["Romantic devotion","Confessional diary","Hedonistic escapism"] },
+  "Saxophone alto":            { mood: ["Sensual","Bittersweet","Tender"], groove: ["swing","rubato"], lyricalVibe: ["Romantic devotion","Letter to self","Stream-of-consciousness"] },
+  "Full brass section":        { mood: ["Triumphant","Ecstatic","Defiant"], groove: ["syncopated","straight"], lyricalVibe: ["Party celebration","Defiant anthem","Cinematic scene-setting"] },
+
+  // ── WOODWINDS ─────────────────────────────────────────────────────────
+  "Flute":                     { mood: ["Serene","Dreamlike","Tender"], groove: ["rubato","straight"], lyricalVibe: ["Ode to a place","Surreal dreamscape","Mythic / allegorical"] },
+  "Clarinet":                  { mood: ["Melancholic","Haunted","Bittersweet"], groove: ["swing","rubato"], lyricalVibe: ["Nostalgic storytelling","Mythic / allegorical","Heartbreak elegy"] },
+  "Duduk":                     { mood: ["Melancholic","Haunted","Lonely"], groove: ["rubato","half-time"], lyricalVibe: ["Heartbreak elegy","Ode to a place","Mythic / allegorical"] },
+  "Tin whistle":               { mood: ["Nostalgic","Tender","Spiritual"], groove: ["shuffle","rubato"], lyricalVibe: ["Ode to a place","Mythic / allegorical","Coming-of-age narrative"] },
+
+  // ── WORLD ─────────────────────────────────────────────────────────────
+  "Sitar":                     { mood: ["Spiritual","Dreamlike","Haunted"], groove: ["rubato","polyrhythm"], lyricalVibe: ["Spiritual seeking","Mythic / allegorical","Surreal dreamscape"] },
+  "Oud":                       { mood: ["Sensual","Melancholic","Spiritual"], groove: ["rubato","syncopated"], lyricalVibe: ["Ode to a place","Romantic devotion","Mythic / allegorical"] },
+  "Erhu":                      { mood: ["Melancholic","Haunted","Lonely"], groove: ["rubato","half-time"], lyricalVibe: ["Heartbreak elegy","Mythic / allegorical","Letter to self"] },
+  "Shakuhachi":                { mood: ["Spiritual","Serene","Haunted"], groove: ["rubato","half-time"], lyricalVibe: ["Spiritual seeking","Existential questioning","Ode to a place"] },
+  "Koto":                      { mood: ["Serene","Dreamlike","Spiritual"], groove: ["rubato","straight"], lyricalVibe: ["Ode to a place","Mythic / allegorical","Surreal dreamscape"] },
+  "Kora":                      { mood: ["Spiritual","Serene","Nostalgic"], groove: ["polyrhythm","syncopated"], lyricalVibe: ["Spiritual seeking","Ode to a place","Mythic / allegorical"] },
+  "Tabla":                     { mood: ["Spiritual","Ecstatic","Sensual"], groove: ["polyrhythm","syncopated"], lyricalVibe: ["Spiritual seeking","Ode to a place","Mythic / allegorical"] },
+  "Kalimba":                   { mood: ["Serene","Dreamlike","Tender"], groove: ["straight","polyrhythm"], lyricalVibe: ["Coming-of-age narrative","Ode to a place","Nostalgic storytelling"] },
+  "Hang drum":                 { mood: ["Serene","Spiritual","Dreamlike"], groove: ["rubato","half-time"], lyricalVibe: ["Spiritual seeking","Existential questioning","Surreal dreamscape"] },
+
+  // ── MALLET ────────────────────────────────────────────────────────────
+  "Marimba":                   { mood: ["Serene","Ecstatic","Unbothered"], groove: ["polyrhythm","syncopated"], lyricalVibe: ["Ode to a place","Coming-of-age narrative","Party celebration"] },
+  "Vibraphone":                { mood: ["Sensual","Dreamlike","Serene"], groove: ["swing","rubato"], lyricalVibe: ["Romantic devotion","Surreal dreamscape","Stream-of-consciousness"] },
+  "Glockenspiel":              { mood: ["Dreamlike","Tender","Nostalgic"], groove: ["rubato","straight"], lyricalVibe: ["Coming-of-age narrative","Surreal dreamscape","Nostalgic storytelling"] },
+  "Steel pan":                 { mood: ["Ecstatic","Unbothered","Euphoric"], groove: ["syncopated","swing"], lyricalVibe: ["Party celebration","Ode to a place","Hedonistic escapism"] },
+
+  // ── VOICE / CHOIR ─────────────────────────────────────────────────────
+  "Gospel choir":              { mood: ["Triumphant","Spiritual","Ecstatic"], groove: ["shuffle","syncopated"], lyricalVibe: ["Spiritual seeking","Political protest","Coming-of-age narrative"] },
+  "Gregorian chant":           { mood: ["Spiritual","Haunted","Serene"], groove: ["rubato","straight"], lyricalVibe: ["Spiritual seeking","Mythic / allegorical","Existential questioning"] },
+  "Throat singing":            { mood: ["Spiritual","Haunted","Furious"], groove: ["rubato","polyrhythm"], lyricalVibe: ["Spiritual seeking","Mythic / allegorical","Ode to a place"] },
+  "Bulgarian women's choir":   { mood: ["Spiritual","Haunted","Ecstatic"], groove: ["rubato","polyrhythm"], lyricalVibe: ["Mythic / allegorical","Ode to a place","Spiritual seeking"] },
+};
+
+// ────────────────────────────────────────────────────────────────────────────
 // MODES
 // ────────────────────────────────────────────────────────────────────────────
 const MODES = [
@@ -7185,6 +7302,175 @@ function EnginePage({ onNavigate }) {
   const rollTimersRef = useRef([]);
   const shortPromptRef = useRef(null);
 
+  // ── COLLAPSIBLE SECTIONS ────────────────────────────────────────────
+  // Each chip-list section collapses to its TOP_5 curated shortlist by
+  // default. Users click "+ N more" to expand; click "— collapse" to
+  // re-collapse. State is session-local (not persisted) so every visit
+  // starts clean. Free tier sees a locked PRO upsell button instead.
+  const [expandedSections, setExpandedSections] = useState({});
+  const toggleSectionExpanded = (sectionId) => {
+    setExpandedSections(prev => ({ ...prev, [sectionId]: !prev[sectionId] }));
+  };
+  // Returns { visibleItems, hiddenCount } based on expanded state + TOP_5 +
+  // always-show rules (locked, favorite, or currently selected items are
+  // never hidden, regardless of whether they're in the top 5).
+  const getCollapsibleSlice = (sectionId, fullItems, itemKey, selectedKey) => {
+    const isExpanded = !!expandedSections[sectionId];
+    if (isExpanded) return { visibleItems: fullItems, hiddenCount: 0 };
+    const topSet = new Set(TOP_5[sectionId] || []);
+    const favSet = favSetFor(sectionId);
+    const lockSet = optionLockSetFor(sectionId);
+    const selectedValue = selectedKey !== undefined ? selectedKey : state[sectionId];
+    const visible = [];
+    let hidden = 0;
+    fullItems.forEach((item) => {
+      const key = typeof itemKey === "function" ? itemKey(item) : item;
+      if (topSet.has(key) || favSet.has(key) || lockSet.has(key) || selectedValue === key) {
+        visible.push(item);
+      } else {
+        hidden += 1;
+      }
+    });
+    return { visibleItems: visible, hiddenCount: hidden };
+  };
+
+  // ── SMART SUGGESTIONS ───────────────────────────────────────────────
+  // ── SMART SUGGESTIONS ───────────────────────────────────────────────
+  // Global trigger: any selection in any section makes the button visible.
+  // Pools from SUGGESTION_MAP (instrument → {mood, groove, lyricalVibe}) for
+  // every selected instrument. Heuristic echo-fallbacks layer on top of that
+  // pool when the user has already picked mood/groove/lyrical themselves —
+  // we include their current selection's neighbors via SUGGESTION_MAP reverse
+  // scan, so non-instrument picks still drive suggestions.
+  // Output: picks 1 suggestion for each of the 3 currently-EMPTY target
+  // sections. Target sections chosen dynamically from the priority order
+  // [mood, groove, lyricalVibe] — skipping any already filled.
+  // Each suggestion chip has a 🎲 button to reroll just itself.
+  const [suggestions, setSuggestions] = useState(null); // null | { targets:[ids], values:{id:val} }
+
+  // Build pools based on ALL current state, not just instruments.
+  // Instrument selections are the primary pool source (direct SUGGESTION_MAP
+  // lookup). Mood/groove/lyrical picks contribute via reverse scan: for each
+  // user-selected value, find all instruments whose SUGGESTION_MAP entry
+  // contains that value, then pull that instrument's OTHER-section options
+  // into the pool. This lets any element drive suggestions.
+  const buildSuggestionPools = () => {
+    const moodPool = [];
+    const groovePool = [];
+    const lyricalPool = [];
+
+    // 1) Direct contributions from selected instruments
+    const insts = state.specificInstruments || [];
+    insts.forEach(inst => {
+      const entry = SUGGESTION_MAP[inst];
+      if (!entry) return;
+      if (entry.mood) moodPool.push(...entry.mood);
+      if (entry.groove) groovePool.push(...entry.groove);
+      if (entry.lyricalVibe) lyricalPool.push(...entry.lyricalVibe);
+    });
+
+    // 2) Reverse contributions: for each mood/groove/lyrical already chosen
+    // by the user, scan SUGGESTION_MAP for instruments that pair with that
+    // choice, then borrow their OTHER-section options into the pools.
+    const scanReverse = (userValue, field) => {
+      if (!userValue) return;
+      Object.values(SUGGESTION_MAP).forEach(entry => {
+        if (!entry[field]) return;
+        if (!entry[field].includes(userValue)) return;
+        // This instrument pairs with the user's pick. Add its other sections.
+        if (field !== "mood" && entry.mood) moodPool.push(...entry.mood);
+        if (field !== "groove" && entry.groove) groovePool.push(...entry.groove);
+        if (field !== "lyricalVibe" && entry.lyricalVibe) lyricalPool.push(...entry.lyricalVibe);
+      });
+    };
+    scanReverse(state.mood, "mood");
+    scanReverse(state.groove, "groove");
+    scanReverse(state.lyricalVibe, "lyricalVibe");
+
+    return { mood: moodPool, groove: groovePool, lyricalVibe: lyricalPool };
+  };
+
+  const pickRandom = (arr, exclude) => {
+    if (!arr || arr.length === 0) return null;
+    const filtered = exclude ? arr.filter(v => v !== exclude) : arr;
+    const pool = filtered.length > 0 ? filtered : arr;
+    return pool[Math.floor(Math.random() * pool.length)];
+  };
+
+  // Determine which sections to target. Default priority: mood, groove,
+  // lyricalVibe — skip any that already has a user selection (so we don't
+  // suggest things they've already decided). If all 3 are filled, fall back
+  // to all 3 (user explicitly asked, so re-suggest).
+  const pickTargetSections = () => {
+    const candidates = ["mood", "groove", "lyricalVibe"];
+    const empty = candidates.filter(id => !state[id] || (id === "groove" && state.groove === "default"));
+    return empty.length > 0 ? empty : candidates;
+  };
+
+  // Returns true when anything in state is selected — drives button visibility.
+  const hasAnySelection = () => {
+    if ((state.specificInstruments || []).length > 0) return true;
+    if (state.mood) return true;
+    if (state.groove && state.groove !== "default") return true;
+    if (state.lyricalVibe) return true;
+    if (state.vocalist) return true;
+    if (state.energy) return true;
+    if (state.harmonic) return true;
+    if (state.texture) return true;
+    if (state.mix) return true;
+    if ((state.slots || []).some(s => s && s.genre)) return true;
+    if (state.bpm > 0) return true;
+    return false;
+  };
+
+  const computeSuggestions = () => {
+    const pools = buildSuggestionPools();
+    const targets = pickTargetSections();
+    // Empty pool check
+    const anyNonEmpty = targets.some(id => pools[id] && pools[id].length > 0);
+    if (!anyNonEmpty) return { noMappings: true };
+    const values = {};
+    targets.forEach(id => {
+      values[id] = pickRandom(pools[id]);
+    });
+    return { targets, values };
+  };
+
+  const handleSuggestClick = () => {
+    const result = computeSuggestions();
+    setSuggestions(result);
+  };
+
+  const rerollSuggestion = (sectionId) => {
+    if (!suggestions || suggestions.noMappings) return;
+    const pools = buildSuggestionPools();
+    const currentValue = suggestions.values ? suggestions.values[sectionId] : null;
+    const next = pickRandom(pools[sectionId], currentValue);
+    setSuggestions(prev => {
+      if (!prev || !prev.values) return prev;
+      return { ...prev, values: { ...prev.values, [sectionId]: next } };
+    });
+  };
+
+  const acceptSuggestion = (sectionId, value) => {
+    if (!value) return;
+    set(sectionId, value);
+    setSuggestions(prev => {
+      if (!prev || !prev.values) return prev;
+      return { ...prev, values: { ...prev.values, [sectionId]: null } };
+    });
+  };
+
+  const acceptAllSuggestions = () => {
+    if (!suggestions || !suggestions.values) return;
+    Object.entries(suggestions.values).forEach(([id, val]) => {
+      if (val) set(id, val);
+    });
+    setSuggestions(null);
+  };
+
+  const dismissSuggestions = () => setSuggestions(null);
+
   // ── PRESETS SHUFFLE ─────────────────────────────────────────────────
   // Gate: Free/Pro see the same fixed 5 curated starting points. Only VIP
   // (and Admin) can shuffle through the full 50-preset catalog. This makes
@@ -7465,6 +7751,39 @@ function EnginePage({ onNavigate }) {
           onLockedClick={() => setSalesModalFeature("customOptions")}
         />
       </>
+    );
+  };
+
+  // ─────────────────────────────────────────────────────────────────────
+  // COLLAPSE CONTROLS — renders the "+ N more" / "— collapse" buttons
+  // at the end of a collapsible chip row. Passed hiddenCount=0 when
+  // the section is already fully expanded or not eligible for collapse;
+  // in that case only the "— collapse" button shows when expanded.
+  // Returns null when nothing needs rendering (no overflow, not expanded).
+  // ─────────────────────────────────────────────────────────────────────
+  const renderCollapseControls = (sectionId, hiddenCount) => {
+    const isExpanded = !!expandedSections[sectionId];
+    if (hiddenCount === 0 && !isExpanded) return null;
+    const label = isExpanded ? "— collapse" : `+ ${hiddenCount} more`;
+    const color = isExpanded ? T.textMuted : T.textSec;
+    return (
+      <button type="button"
+        onClick={() => toggleSectionExpanded(sectionId)}
+        style={{
+          padding: "4px 12px",
+          background: "transparent",
+          border: `1px dashed ${T.border}`,
+          borderRadius: T.r_md,
+          color,
+          fontSize: T.fs_sm, fontFamily: T.font_mono,
+          fontWeight: 600, letterSpacing: "0.06em",
+          cursor: "pointer", height: 24,
+          transition: `all ${T.dur_fast} ${T.ease}`,
+        }}
+        onMouseEnter={(e) => { e.currentTarget.style.borderColor = T.borderFocus; e.currentTarget.style.color = T.text; }}
+        onMouseLeave={(e) => { e.currentTarget.style.borderColor = T.border; e.currentTarget.style.color = color; }}>
+        {label}
+      </button>
     );
   };
 
@@ -7986,20 +8305,34 @@ function EnginePage({ onNavigate }) {
             toggle={state.toggles.mood} onToggleChange={v => setToggle("mood", v)}
             extra={renderLockBtn("mood")}>
             <div style={{ display: "flex", flexWrap: "wrap", gap: T.s1 }}>
-              {MOODS.map((o, i) => (
-                <Chip key={o} label={o} selected={state.mood === o}
-                  favorite={favSetFor("mood").has(o)}
-                  locked={optionLockSetFor("mood").has(o)}
-                  tierLocked={isOptionLocked(i)}
-                  onLockedClick={() => setSalesModalFeature("moreOptions")}
-                  casinoOutline={casinoOutlines.get(`mood:${o}`)}
-                  onClick={() => set("mood", state.mood === o ? "" : o)}
-                  onDoubleClick={() => toggleFavorite("mood", o)} />
-              ))}
-              {renderCustomTail("mood", (e) => ({
-                isSelected: state.mood === e,
-                onClick: () => set("mood", state.mood === e ? "" : e),
-              }))}
+              {(() => {
+                const useCollapse = !effectiveLimits.restrictSubgenres;
+                const { visibleItems, hiddenCount } = useCollapse
+                  ? getCollapsibleSlice("mood", MOODS)
+                  : { visibleItems: MOODS, hiddenCount: 0 };
+                return (
+                  <>
+                    {visibleItems.map((o) => {
+                      const i = MOODS.indexOf(o);
+                      return (
+                        <Chip key={o} label={o} selected={state.mood === o}
+                          favorite={favSetFor("mood").has(o)}
+                          locked={optionLockSetFor("mood").has(o)}
+                          tierLocked={isOptionLocked(i)}
+                          onLockedClick={() => setSalesModalFeature("moreOptions")}
+                          casinoOutline={casinoOutlines.get(`mood:${o}`)}
+                          onClick={() => set("mood", state.mood === o ? "" : o)}
+                          onDoubleClick={() => toggleFavorite("mood", o)} />
+                      );
+                    })}
+                    {renderCustomTail("mood", (e) => ({
+                      isSelected: state.mood === e,
+                      onClick: () => set("mood", state.mood === e ? "" : e),
+                    }))}
+                    {useCollapse && renderCollapseControls("mood", hiddenCount)}
+                  </>
+                );
+              })()}
             </div>
           </Section>
 
@@ -8008,20 +8341,34 @@ function EnginePage({ onNavigate }) {
             toggle={state.toggles.energy} onToggleChange={v => setToggle("energy", v)}
             extra={renderLockBtn("energy")}>
             <div style={{ display: "flex", flexWrap: "wrap", gap: T.s1 }}>
-              {ENERGIES.map((o, i) => (
-                <Chip key={o} label={o} selected={state.energy === o}
-                  favorite={favSetFor("energy").has(o)}
-                  locked={optionLockSetFor("energy").has(o)}
-                  tierLocked={isOptionLocked(i)}
-                  onLockedClick={() => setSalesModalFeature("moreOptions")}
-                  casinoOutline={casinoOutlines.get(`energy:${o}`)}
-                  onClick={() => set("energy", state.energy === o ? "" : o)}
-                  onDoubleClick={() => toggleFavorite("energy", o)} />
-              ))}
-              {renderCustomTail("energy", (e) => ({
-                isSelected: state.energy === e,
-                onClick: () => set("energy", state.energy === e ? "" : e),
-              }))}
+              {(() => {
+                const useCollapse = !effectiveLimits.restrictSubgenres;
+                const { visibleItems, hiddenCount } = useCollapse
+                  ? getCollapsibleSlice("energy", ENERGIES)
+                  : { visibleItems: ENERGIES, hiddenCount: 0 };
+                return (
+                  <>
+                    {visibleItems.map((o) => {
+                      const i = ENERGIES.indexOf(o);
+                      return (
+                        <Chip key={o} label={o} selected={state.energy === o}
+                          favorite={favSetFor("energy").has(o)}
+                          locked={optionLockSetFor("energy").has(o)}
+                          tierLocked={isOptionLocked(i)}
+                          onLockedClick={() => setSalesModalFeature("moreOptions")}
+                          casinoOutline={casinoOutlines.get(`energy:${o}`)}
+                          onClick={() => set("energy", state.energy === o ? "" : o)}
+                          onDoubleClick={() => toggleFavorite("energy", o)} />
+                      );
+                    })}
+                    {renderCustomTail("energy", (e) => ({
+                      isSelected: state.energy === e,
+                      onClick: () => set("energy", state.energy === e ? "" : e),
+                    }))}
+                    {useCollapse && renderCollapseControls("energy", hiddenCount)}
+                  </>
+                );
+              })()}
             </div>
           </Section>
 
@@ -8030,20 +8377,52 @@ function EnginePage({ onNavigate }) {
             toggle={state.toggles.groove} onToggleChange={v => setToggle("groove", v)}
             extra={renderLockBtn("groove")}>
             <div style={{ display: "flex", flexWrap: "wrap", gap: T.s1 }}>
-              {GROOVES.map((g, i) => (
-                <Chip key={g.id} label={g.label} selected={state.groove === g.id}
-                  favorite={favSetFor("groove").has(g.id)}
-                  locked={optionLockSetFor("groove").has(g.id)}
-                  tierLocked={isOptionLocked(i)}
-                  onLockedClick={() => setSalesModalFeature("moreOptions")}
-                  casinoOutline={casinoOutlines.get(`groove:${g.id}`)}
-                  onClick={() => set("groove", g.id)}
-                  onDoubleClick={() => toggleFavorite("groove", g.id)} />
-              ))}
-              {renderCustomTail("groove", (e) => ({
-                isSelected: state.groove === e,
-                onClick: () => set("groove", state.groove === e ? "" : e),
-              }))}
+              {(() => {
+                const useCollapse = !effectiveLimits.restrictSubgenres;
+                // Groove items are objects keyed by id — pass itemKey accessor.
+                // "default" is the no-op option — always keep it visible.
+                const alwaysVisibleIds = new Set(["default", ...(TOP_5.groove || [])]);
+                const { visibleItems, hiddenCount } = useCollapse
+                  ? (() => {
+                      const isExpanded = !!expandedSections["groove"];
+                      if (isExpanded) return { visibleItems: GROOVES, hiddenCount: 0 };
+                      const favSet = favSetFor("groove");
+                      const lockSet = optionLockSetFor("groove");
+                      const visible = [];
+                      let hidden = 0;
+                      GROOVES.forEach(g => {
+                        if (alwaysVisibleIds.has(g.id) || favSet.has(g.id) || lockSet.has(g.id) || state.groove === g.id) {
+                          visible.push(g);
+                        } else {
+                          hidden += 1;
+                        }
+                      });
+                      return { visibleItems: visible, hiddenCount: hidden };
+                    })()
+                  : { visibleItems: GROOVES, hiddenCount: 0 };
+                return (
+                  <>
+                    {visibleItems.map((g) => {
+                      const i = GROOVES.indexOf(g);
+                      return (
+                        <Chip key={g.id} label={g.label} selected={state.groove === g.id}
+                          favorite={favSetFor("groove").has(g.id)}
+                          locked={optionLockSetFor("groove").has(g.id)}
+                          tierLocked={isOptionLocked(i)}
+                          onLockedClick={() => setSalesModalFeature("moreOptions")}
+                          casinoOutline={casinoOutlines.get(`groove:${g.id}`)}
+                          onClick={() => set("groove", g.id)}
+                          onDoubleClick={() => toggleFavorite("groove", g.id)} />
+                      );
+                    })}
+                    {renderCustomTail("groove", (e) => ({
+                      isSelected: state.groove === e,
+                      onClick: () => set("groove", state.groove === e ? "" : e),
+                    }))}
+                    {useCollapse && renderCollapseControls("groove", hiddenCount)}
+                  </>
+                );
+              })()}
             </div>
           </Section>
 
@@ -8155,20 +8534,34 @@ function EnginePage({ onNavigate }) {
                 toggle={state.toggles.vocalist} onToggleChange={v => setToggle("vocalist", v)}
                 extra={renderLockBtn("vocalist")}>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: T.s1 }}>
-                  {VOCALISTS.map((o, i) => (
-                    <Chip key={o} label={o} selected={state.vocalist === o}
-                      favorite={favSetFor("vocalist").has(o)}
-                      locked={optionLockSetFor("vocalist").has(o)}
-                      tierLocked={isOptionLocked(i)}
-                      onLockedClick={() => setSalesModalFeature("moreOptions")}
-                      casinoOutline={casinoOutlines.get(`vocalist:${o}`)}
-                      onClick={() => set("vocalist", state.vocalist === o ? "" : o)}
-                      onDoubleClick={() => toggleFavorite("vocalist", o)} />
-                  ))}
-                  {renderCustomTail("vocalist", (e) => ({
-                    isSelected: state.vocalist === e,
-                    onClick: () => set("vocalist", state.vocalist === e ? "" : e),
-                  }))}
+                  {(() => {
+                    const useCollapse = !effectiveLimits.restrictSubgenres;
+                    const { visibleItems, hiddenCount } = useCollapse
+                      ? getCollapsibleSlice("vocalist", VOCALISTS)
+                      : { visibleItems: VOCALISTS, hiddenCount: 0 };
+                    return (
+                      <>
+                        {visibleItems.map((o) => {
+                          const i = VOCALISTS.indexOf(o);
+                          return (
+                            <Chip key={o} label={o} selected={state.vocalist === o}
+                              favorite={favSetFor("vocalist").has(o)}
+                              locked={optionLockSetFor("vocalist").has(o)}
+                              tierLocked={isOptionLocked(i)}
+                              onLockedClick={() => setSalesModalFeature("moreOptions")}
+                              casinoOutline={casinoOutlines.get(`vocalist:${o}`)}
+                              onClick={() => set("vocalist", state.vocalist === o ? "" : o)}
+                              onDoubleClick={() => toggleFavorite("vocalist", o)} />
+                          );
+                        })}
+                        {renderCustomTail("vocalist", (e) => ({
+                          isSelected: state.vocalist === e,
+                          onClick: () => set("vocalist", state.vocalist === e ? "" : e),
+                        }))}
+                        {useCollapse && renderCollapseControls("vocalist", hiddenCount)}
+                      </>
+                    );
+                  })()}
                 </div>
               </Section>
 
@@ -8197,20 +8590,34 @@ function EnginePage({ onNavigate }) {
                 toggle={state.toggles.lyricalVibe} onToggleChange={v => setToggle("lyricalVibe", v)}
                 extra={renderLockBtn("lyricalVibe")}>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: T.s1 }}>
-                  {LYRICAL_VIBES.map((o, i) => (
-                    <Chip key={o} label={o} selected={state.lyricalVibe === o}
-                      favorite={favSetFor("lyricalVibe").has(o)}
-                      locked={optionLockSetFor("lyricalVibe").has(o)}
-                      tierLocked={isOptionLocked(i)}
-                      onLockedClick={() => setSalesModalFeature("moreOptions")}
-                      casinoOutline={casinoOutlines.get(`lyricalVibe:${o}`)}
-                      onClick={() => set("lyricalVibe", state.lyricalVibe === o ? "" : o)}
-                      onDoubleClick={() => toggleFavorite("lyricalVibe", o)} />
-                  ))}
-                  {renderCustomTail("lyricalVibe", (e) => ({
-                    isSelected: state.lyricalVibe === e,
-                    onClick: () => set("lyricalVibe", state.lyricalVibe === e ? "" : e),
-                  }))}
+                  {(() => {
+                    const useCollapse = !effectiveLimits.restrictSubgenres;
+                    const { visibleItems, hiddenCount } = useCollapse
+                      ? getCollapsibleSlice("lyricalVibe", LYRICAL_VIBES)
+                      : { visibleItems: LYRICAL_VIBES, hiddenCount: 0 };
+                    return (
+                      <>
+                        {visibleItems.map((o) => {
+                          const i = LYRICAL_VIBES.indexOf(o);
+                          return (
+                            <Chip key={o} label={o} selected={state.lyricalVibe === o}
+                              favorite={favSetFor("lyricalVibe").has(o)}
+                              locked={optionLockSetFor("lyricalVibe").has(o)}
+                              tierLocked={isOptionLocked(i)}
+                              onLockedClick={() => setSalesModalFeature("moreOptions")}
+                              casinoOutline={casinoOutlines.get(`lyricalVibe:${o}`)}
+                              onClick={() => set("lyricalVibe", state.lyricalVibe === o ? "" : o)}
+                              onDoubleClick={() => toggleFavorite("lyricalVibe", o)} />
+                          );
+                        })}
+                        {renderCustomTail("lyricalVibe", (e) => ({
+                          isSelected: state.lyricalVibe === e,
+                          onClick: () => set("lyricalVibe", state.lyricalVibe === e ? "" : e),
+                        }))}
+                        {useCollapse && renderCollapseControls("lyricalVibe", hiddenCount)}
+                      </>
+                    );
+                  })()}
                 </div>
               </Section>
             </>
@@ -8227,7 +8634,7 @@ function EnginePage({ onNavigate }) {
             toggle={state.toggles.specificInstruments}
             onToggleChange={v => setToggle("specificInstruments", v)}
             extra={
-              <div style={{ display: "flex", alignItems: "center", gap: T.s2 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: T.s2, flexWrap: "wrap" }}>
                 {state.toggles.specificInstruments === "on" && (
                   <>
                     <Label color={T.textTer}>Count</Label>
@@ -8251,20 +8658,34 @@ function EnginePage({ onNavigate }) {
             toggle={state.toggles.harmonic} onToggleChange={v => setToggle("harmonic", v)}
             extra={renderLockBtn("harmonic")}>
             <div style={{ display: "flex", flexWrap: "wrap", gap: T.s1 }}>
-              {HARMONIC_STYLES.map((o, i) => (
-                <Chip key={o} label={o} selected={state.harmonic === o}
-                  favorite={favSetFor("harmonic").has(o)}
-                  locked={optionLockSetFor("harmonic").has(o)}
-                  tierLocked={isOptionLocked(i)}
-                  onLockedClick={() => setSalesModalFeature("moreOptions")}
-                  casinoOutline={casinoOutlines.get(`harmonic:${o}`)}
-                  onClick={() => set("harmonic", state.harmonic === o ? "" : o)}
-                  onDoubleClick={() => toggleFavorite("harmonic", o)} />
-              ))}
-              {renderCustomTail("harmonic", (e) => ({
-                isSelected: state.harmonic === e,
-                onClick: () => set("harmonic", state.harmonic === e ? "" : e),
-              }))}
+              {(() => {
+                const useCollapse = !effectiveLimits.restrictSubgenres;
+                const { visibleItems, hiddenCount } = useCollapse
+                  ? getCollapsibleSlice("harmonic", HARMONIC_STYLES)
+                  : { visibleItems: HARMONIC_STYLES, hiddenCount: 0 };
+                return (
+                  <>
+                    {visibleItems.map((o) => {
+                      const i = HARMONIC_STYLES.indexOf(o);
+                      return (
+                        <Chip key={o} label={o} selected={state.harmonic === o}
+                          favorite={favSetFor("harmonic").has(o)}
+                          locked={optionLockSetFor("harmonic").has(o)}
+                          tierLocked={isOptionLocked(i)}
+                          onLockedClick={() => setSalesModalFeature("moreOptions")}
+                          casinoOutline={casinoOutlines.get(`harmonic:${o}`)}
+                          onClick={() => set("harmonic", state.harmonic === o ? "" : o)}
+                          onDoubleClick={() => toggleFavorite("harmonic", o)} />
+                      );
+                    })}
+                    {renderCustomTail("harmonic", (e) => ({
+                      isSelected: state.harmonic === e,
+                      onClick: () => set("harmonic", state.harmonic === e ? "" : e),
+                    }))}
+                    {useCollapse && renderCollapseControls("harmonic", hiddenCount)}
+                  </>
+                );
+              })()}
             </div>
           </Section>
 
@@ -8273,20 +8694,34 @@ function EnginePage({ onNavigate }) {
             toggle={state.toggles.texture} onToggleChange={v => setToggle("texture", v)}
             extra={renderLockBtn("texture")}>
             <div style={{ display: "flex", flexWrap: "wrap", gap: T.s1 }}>
-              {SOUND_TEXTURES.map((o, i) => (
-                <Chip key={o} label={o} selected={state.texture === o}
-                  favorite={favSetFor("texture").has(o)}
-                  locked={optionLockSetFor("texture").has(o)}
-                  tierLocked={isOptionLocked(i)}
-                  onLockedClick={() => setSalesModalFeature("moreOptions")}
-                  casinoOutline={casinoOutlines.get(`texture:${o}`)}
-                  onClick={() => set("texture", state.texture === o ? "" : o)}
-                  onDoubleClick={() => toggleFavorite("texture", o)} />
-              ))}
-              {renderCustomTail("texture", (e) => ({
-                isSelected: state.texture === e,
-                onClick: () => set("texture", state.texture === e ? "" : e),
-              }))}
+              {(() => {
+                const useCollapse = !effectiveLimits.restrictSubgenres;
+                const { visibleItems, hiddenCount } = useCollapse
+                  ? getCollapsibleSlice("texture", SOUND_TEXTURES)
+                  : { visibleItems: SOUND_TEXTURES, hiddenCount: 0 };
+                return (
+                  <>
+                    {visibleItems.map((o) => {
+                      const i = SOUND_TEXTURES.indexOf(o);
+                      return (
+                        <Chip key={o} label={o} selected={state.texture === o}
+                          favorite={favSetFor("texture").has(o)}
+                          locked={optionLockSetFor("texture").has(o)}
+                          tierLocked={isOptionLocked(i)}
+                          onLockedClick={() => setSalesModalFeature("moreOptions")}
+                          casinoOutline={casinoOutlines.get(`texture:${o}`)}
+                          onClick={() => set("texture", state.texture === o ? "" : o)}
+                          onDoubleClick={() => toggleFavorite("texture", o)} />
+                      );
+                    })}
+                    {renderCustomTail("texture", (e) => ({
+                      isSelected: state.texture === e,
+                      onClick: () => set("texture", state.texture === e ? "" : e),
+                    }))}
+                    {useCollapse && renderCollapseControls("texture", hiddenCount)}
+                  </>
+                );
+              })()}
             </div>
           </Section>
 
@@ -8295,20 +8730,34 @@ function EnginePage({ onNavigate }) {
             toggle={state.toggles.mix} onToggleChange={v => setToggle("mix", v)}
             extra={renderLockBtn("mix")}>
             <div style={{ display: "flex", flexWrap: "wrap", gap: T.s1 }}>
-              {MIX_CHARS.map((o, i) => (
-                <Chip key={o} label={o} selected={state.mix === o}
-                  favorite={favSetFor("mix").has(o)}
-                  locked={optionLockSetFor("mix").has(o)}
-                  tierLocked={isOptionLocked(i)}
-                  onLockedClick={() => setSalesModalFeature("moreOptions")}
-                  casinoOutline={casinoOutlines.get(`mix:${o}`)}
-                  onClick={() => set("mix", state.mix === o ? "" : o)}
-                  onDoubleClick={() => toggleFavorite("mix", o)} />
-              ))}
-              {renderCustomTail("mix", (e) => ({
-                isSelected: state.mix === e,
-                onClick: () => set("mix", state.mix === e ? "" : e),
-              }))}
+              {(() => {
+                const useCollapse = !effectiveLimits.restrictSubgenres;
+                const { visibleItems, hiddenCount } = useCollapse
+                  ? getCollapsibleSlice("mix", MIX_CHARS)
+                  : { visibleItems: MIX_CHARS, hiddenCount: 0 };
+                return (
+                  <>
+                    {visibleItems.map((o) => {
+                      const i = MIX_CHARS.indexOf(o);
+                      return (
+                        <Chip key={o} label={o} selected={state.mix === o}
+                          favorite={favSetFor("mix").has(o)}
+                          locked={optionLockSetFor("mix").has(o)}
+                          tierLocked={isOptionLocked(i)}
+                          onLockedClick={() => setSalesModalFeature("moreOptions")}
+                          casinoOutline={casinoOutlines.get(`mix:${o}`)}
+                          onClick={() => set("mix", state.mix === o ? "" : o)}
+                          onDoubleClick={() => toggleFavorite("mix", o)} />
+                      );
+                    })}
+                    {renderCustomTail("mix", (e) => ({
+                      isSelected: state.mix === e,
+                      onClick: () => set("mix", state.mix === e ? "" : e),
+                    }))}
+                    {useCollapse && renderCollapseControls("mix", hiddenCount)}
+                  </>
+                );
+              })()}
             </div>
           </Section>
         </div>
@@ -8352,6 +8801,187 @@ function EnginePage({ onNavigate }) {
               onNavigate={onNavigate}
               onLockedClick={() => setSalesModalFeature("joystick")}
             />
+            {/* ── SUGGEST COMPLEMENTS (global) ─────────────────────────
+                Button visible whenever ANY selection exists across any
+                section. Opens the suggestions panel below it — 3 picks
+                across the 3 currently-EMPTY of {mood, groove, lyricalVibe}.
+                Each suggestion has a 🎲 reroll button. Free feature. ──── */}
+            {hasAnySelection() && (
+              <button type="button"
+                onClick={handleSuggestClick}
+                title="Suggest complementary elements based on your current selections"
+                style={{
+                  padding: "10px 14px",
+                  background: suggestions ? `${V.neonGold}22` : "transparent",
+                  border: `1px solid ${suggestions ? V.neonGold : T.border}`,
+                  borderRadius: T.r_md,
+                  color: suggestions ? V.neonGold : T.textSec,
+                  fontSize: T.fs_xs, fontFamily: T.font_mono,
+                  fontWeight: 700, letterSpacing: "0.12em",
+                  cursor: "pointer",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  gap: 6, minHeight: 40,
+                  transition: `all ${T.dur_fast} ${T.ease}`,
+                  boxShadow: suggestions ? `0 0 10px ${V.neonGold}66` : "none",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.borderColor = V.neonGold;
+                  e.currentTarget.style.color = V.neonGold;
+                  e.currentTarget.style.boxShadow = `0 0 10px ${V.neonGold}66`;
+                }}
+                onMouseLeave={(e) => {
+                  if (suggestions) return;
+                  e.currentTarget.style.borderColor = T.border;
+                  e.currentTarget.style.color = T.textSec;
+                  e.currentTarget.style.boxShadow = "none";
+                }}>
+                ✨ SUGGEST COMPLEMENTS
+              </button>
+            )}
+            {suggestions && (
+              <div style={{
+                padding: T.s3,
+                background: `${V.neonGold}0A`,
+                border: `1px dashed ${V.neonGold}88`,
+                borderRadius: T.r_md,
+                display: "flex", flexDirection: "column", gap: T.s2,
+              }}>
+                {suggestions.noMappings ? (
+                  <div style={{
+                    fontSize: T.fs_sm, fontFamily: T.font_sans,
+                    color: T.textSec,
+                  }}>
+                    No complement data yet for your current picks. Try adding a common instrument, mood, or groove.
+                    <button type="button" onClick={dismissSuggestions}
+                      style={{
+                        marginLeft: T.s2,
+                        background: "transparent",
+                        border: "none", color: T.textMuted,
+                        fontSize: T.fs_xs, fontFamily: T.font_mono,
+                        fontWeight: 700, cursor: "pointer", padding: 0,
+                      }}>DISMISS</button>
+                  </div>
+                ) : (
+                  <>
+                    <div style={{
+                      display: "flex", alignItems: "center", justifyContent: "space-between",
+                      gap: T.s2, flexWrap: "wrap",
+                    }}>
+                      <div style={{
+                        fontSize: 9, fontFamily: T.font_mono, fontWeight: 700,
+                        color: V.neonGold, letterSpacing: "0.15em",
+                      }}>
+                        ✨ COMPLEMENTS
+                      </div>
+                      <div style={{ display: "flex", gap: T.s1 }}>
+                        <button type="button" onClick={acceptAllSuggestions}
+                          style={{
+                            padding: "3px 8px",
+                            background: V.neonGold,
+                            border: `1px solid ${V.neonGold}`,
+                            borderRadius: T.r_sm,
+                            color: "#000",
+                            fontSize: 10, fontFamily: T.font_mono,
+                            fontWeight: 700, letterSpacing: "0.1em",
+                            cursor: "pointer",
+                          }}>ACCEPT ALL</button>
+                        <button type="button" onClick={dismissSuggestions}
+                          style={{
+                            padding: "3px 8px",
+                            background: "transparent",
+                            border: `1px solid ${T.border}`,
+                            borderRadius: T.r_sm,
+                            color: T.textMuted,
+                            fontSize: 10, fontFamily: T.font_mono,
+                            fontWeight: 700, letterSpacing: "0.1em",
+                            cursor: "pointer",
+                          }}>DISMISS</button>
+                      </div>
+                    </div>
+                    <div style={{
+                      display: "flex", flexDirection: "column", gap: T.s1,
+                    }}>
+                      {suggestions.targets && suggestions.targets.map(id => {
+                        const value = suggestions.values ? suggestions.values[id] : null;
+                        const labelFor = { mood: "Mood", groove: "Groove", lyricalVibe: "Lyrical" };
+                        const display = value
+                          ? (id === "groove" ? (GROOVES.find(g => g.id === value)?.label || value) : value)
+                          : null;
+                        return (
+                          <div key={id} style={{
+                            display: "flex", flexDirection: "column", gap: 2,
+                            padding: T.s2,
+                            background: T.surface,
+                            border: `1px solid ${T.border}`,
+                            borderRadius: T.r_sm,
+                            opacity: value ? 1 : 0.4,
+                          }}>
+                            <div style={{
+                              display: "flex", alignItems: "center", justifyContent: "space-between",
+                              gap: T.s1,
+                            }}>
+                              <div style={{
+                                fontSize: 9, fontFamily: T.font_mono, fontWeight: 700,
+                                color: T.textMuted, letterSpacing: "0.15em",
+                              }}>{labelFor[id].toUpperCase()}</div>
+                              {value && (
+                                <button type="button"
+                                  onClick={() => rerollSuggestion(id)}
+                                  title="Reroll this suggestion"
+                                  style={{
+                                    padding: "2px 6px",
+                                    background: "transparent",
+                                    border: `1px solid ${T.border}`,
+                                    borderRadius: T.r_sm,
+                                    color: T.textMuted,
+                                    fontSize: 11, cursor: "pointer",
+                                    transition: `all ${T.dur_fast} ${T.ease}`,
+                                  }}
+                                  onMouseEnter={(e) => { e.currentTarget.style.borderColor = V.neonGold; e.currentTarget.style.color = V.neonGold; }}
+                                  onMouseLeave={(e) => { e.currentTarget.style.borderColor = T.border; e.currentTarget.style.color = T.textMuted; }}>
+                                  🎲
+                                </button>
+                              )}
+                            </div>
+                            {value ? (
+                              <button type="button"
+                                onClick={() => acceptSuggestion(id, value)}
+                                style={{
+                                  padding: "6px 10px",
+                                  background: `${V.neonGold}15`,
+                                  border: `1px solid ${V.neonGold}`,
+                                  borderRadius: T.r_sm,
+                                  color: T.text,
+                                  fontSize: T.fs_sm, fontFamily: T.font_sans,
+                                  fontWeight: 500, cursor: "pointer", textAlign: "left",
+                                  boxShadow: `0 0 6px ${V.neonGold}44`,
+                                  transition: `all ${T.dur_fast} ${T.ease}`,
+                                }}
+                                onMouseEnter={(e) => {
+                                  e.currentTarget.style.background = `${V.neonGold}30`;
+                                  e.currentTarget.style.boxShadow = `0 0 10px ${V.neonGold}88`;
+                                }}
+                                onMouseLeave={(e) => {
+                                  e.currentTarget.style.background = `${V.neonGold}15`;
+                                  e.currentTarget.style.boxShadow = `0 0 6px ${V.neonGold}44`;
+                                }}>
+                                {display}
+                              </button>
+                            ) : (
+                              <span style={{
+                                padding: "6px 10px",
+                                fontSize: T.fs_sm, fontFamily: T.font_sans,
+                                color: T.textMuted, fontStyle: "italic",
+                              }}>Accepted ✓</span>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
             {/* Transient toast — shows when user clicks HIT with 0 fuel */}
             {toast && (
               <div style={{
@@ -8726,6 +9356,240 @@ const GENRE_LINEAGE = {
   "Dance Music Revival": { parents: ["Electronic","Pop"], era: "2023–", description: "2010s mainstage EDM brought back — big drops, recession-pop energy. Fred again.. and John Summit era.", traits: ["festival energy","big-room lead","128 BPM","mainstream pop crossover"], artists: ["John Summit","Fred again..","Dom Dolla","Chris Lake","Calvin Harris (2024+ era)","Skrillex (2024+ return)","Swedish House Mafia","Tiësto (mainstage return)","David Guetta","MK","Fisher","Diplo","Peggy Gou","Eliza Rose","Sonny Fodera"] },
   "Phonk House":         { parents: ["Phonk","House"], era: "2023–", description: "Phonk cowbells over house tempo — Dom Dolla lineage.", traits: ["cowbell house hybrid","124 BPM","distorted vocals","festival-ready"], artists: ["Dom Dolla","Kettama","Interplanetary Criminal","Bumpy","Pawsa","Mall Grab","Folamour","Honey Dijon","Prospa","Hannah Laing","Hayden James","Sam Gellaitry","Cloonee","James Hype","Joshwa"] },
   "Rave / Hardcore Revival": { parents: ["Rave","Hardcore Techno"], era: "2022–", description: "Y2K rave nostalgia — hoover synths, happy hardcore kicks, breakbeats. Gen Z rediscovering 90s.", traits: ["hoover synths","breakbeats","175 BPM","Y2K aesthetic"], artists: ["Salute","Partiboi69","Skrillex (rave side)","Prospa","Two Shell","LSDXOXO","Bklava","Slick Shoota","Hamdi","Interplanetary Criminal","Bailey Ibbs","Kettama","Surusinghe","Hannah Laing","Anabel Englund"] },
+
+  // ── ROCK FAMILY (LINEAGE BACKFILL) ────────────────────────────────────
+  "Alternative Rock":    { parents: ["Rock","Punk"], era: "1985–", description: "Guitar-led rock outside the mainstream. College-radio DNA, big in the 90s, revived in the 2020s.", traits: ["distorted guitars","verse-chorus craft","introspective lyrics","radio-friendly hooks"], artists: ["Nirvana","Radiohead","Pearl Jam","Foo Fighters","Red Hot Chili Peppers","The Pixies","Weezer","Pavement","R.E.M.","Green Day","The Strokes","Arctic Monkeys","Queens of the Stone Age","Cage the Elephant","The Killers","Muse","Smashing Pumpkins","The Black Keys"] },
+  "Post-Rock":           { parents: ["Rock","Ambient"], era: "1991–", description: "Instrumental rock with cinematic builds — quiet-loud dynamics, crescendoing walls of guitar.", traits: ["instrumental","long crescendos","tremolo guitar","no vocals"], artists: ["Explosions in the Sky","Godspeed You! Black Emperor","Mogwai","Sigur Rós","Mono","Caspian","This Will Destroy You","Tortoise","Do Make Say Think","Slint","Silver Mt. Zion","65daysofstatic","If These Trees Could Talk","Russian Circles","Maybeshewill"] },
+  "Shoegaze":            { parents: ["Alternative Rock","Dream Pop"], era: "1988–", description: "Walls of processed guitar — vocals buried, pedalboard-driven wash.", traits: ["wall-of-guitar","buried vocals","reverb + delay","dreamy"], artists: ["My Bloody Valentine","Slowdive","Ride","Cocteau Twins","Lush","Chapterhouse","Swervedriver","Spiritualized","DIIV","Beach House (shoegaze-adjacent)","Nothing","Deafheaven (blackgaze)","Whirr","Nowhere","Drop Nineteens"] },
+  "Dream Pop":           { parents: ["Shoegaze","Alternative Rock"], era: "1983–", description: "Ethereal, reverbed pop — dreamy female vocals, washed guitars, cinematic.", traits: ["ethereal vocals","reverb wash","jangly or hazy guitars","melodic"], artists: ["Cocteau Twins","Beach House","Mazzy Star","Cigarettes After Sex","Mac DeMarco","Alvvays","DIIV","Wild Nothing","Real Estate","Widowspeak","Lower Dens","Still Corners","Japanese Breakfast","Soccer Mommy","Men I Trust"] },
+  "Emo Revival":         { parents: ["Emo","Math Rock"], era: "2008–", description: "Midwest emo and twinkly math-emo — 5th wave emo, confessional revival.", traits: ["twinkly guitars","math-rock noodles","confessional lyrics","odd meters"], artists: ["American Football","The World Is a Beautiful Place","Modern Baseball","The Hotelier","Tigers Jaw","Dogleg","Oso Oso","Camp Cope","Origami Angel","Mom Jeans.","Foxing","Pianos Become the Teeth","Glocca Morra","Snowing","Algernon Cadwallader"] },
+  "Emo":                 { parents: ["Punk Rock","Indie Rock"], era: "1984–", description: "Emotional hardcore lineage — 2nd wave confessional emo, pop-punk crossover, post-2020 revival.", traits: ["melodic hardcore","confessional lyrics","chorus-forward","emotional builds"], artists: ["My Chemical Romance","Jimmy Eat World","Dashboard Confessional","Taking Back Sunday","Brand New","Thursday","Paramore","Panic! at the Disco","Fall Out Boy","The Used","Sunny Day Real Estate","Jawbreaker","At the Drive-In","Texas Is the Reason","Hawthorne Heights"] },
+  "Post-Hardcore":       { parents: ["Hardcore Punk","Emo"], era: "1985–", description: "Aggressive, dynamic rock — screamed + sung vocals, complex song structures.", traits: ["scream/sing dynamics","quiet-loud shifts","technical guitar","emotional intensity"], artists: ["At the Drive-In","Fugazi","Refused","Thursday","Glassjaw","Thrice","The Mars Volta","Circa Survive","La Dispute","Touché Amoré","Every Time I Die","Hot Snakes","Million Dead","Drive Like Jehu","Rites of Spring"] },
+  "Math Rock":           { parents: ["Post-Hardcore","Progressive Rock"], era: "1988–", description: "Odd-meter, interlocking-guitar rock with tapping and polyrhythms.", traits: ["odd meters","interlocking guitars","polyrhythms","tapping"], artists: ["Don Caballero","Hella","Battles","Tera Melos","Tricot","Toe","Lite","Delta Sleep","TTNG","Covet","CHON","Invalids","Polyphia","Standards","Elephant Gym"] },
+  "Psychedelic Rock":    { parents: ["Rock","Folk"], era: "1965–", description: "Mind-expanding rock — swirling effects, jam structures, cosmic lyrics. 60s birth + 2010s revival.", traits: ["swirling effects","jam structures","cosmic themes","tape echoes"], artists: ["Tame Impala","King Gizzard & the Lizard Wizard","Ty Segall","Thee Oh Sees","The Black Angels","Temples","MGMT","The Brian Jonestown Massacre","Allah-Las","Unknown Mortal Orchestra","Pond","Khruangbin","Goat","Pink Floyd","The Doors"] },
+  "Stoner Rock":         { parents: ["Psychedelic Rock","Doom Metal"], era: "1990–", description: "Heavy, slow, fuzz-drenched rock — desert aesthetic, weed-adjacent, riff-forward.", traits: ["fuzzed bass + guitar","slow-mid tempo","riff-driven","desert vibe"], artists: ["Kyuss","Queens of the Stone Age","Sleep","Electric Wizard","Fu Manchu","Monster Magnet","Red Fang","Clutch","High on Fire","Orange Goblin","All Them Witches","Earthless","Uncle Acid & the Deadbeats","Dozer","Truckfighters"] },
+  "Grunge Revival":      { parents: ["Alternative Rock","Grunge"], era: "2015–", description: "90s Seattle sound reborn — sludgy guitars, angst, flannel aesthetic.", traits: ["sludgy guitars","angsty vocals","90s production","feedback"], artists: ["Yonaka","Dinosaur Pile-Up","Bleached","Bully","IDLES","Fontaines D.C.","Greta Van Fleet (rock-revival)","Wet Leg","Dehd","Wolf Alice","Baby Rose","Mannequin Pussy","Destroy Boys","Momma","Hotline TNT"] },
+  "Post-Punk":           { parents: ["Punk Rock","New Wave"], era: "1977–", description: "Angular, atmospheric punk — cold, artsy, literary. 80s birth and late-2010s revival.", traits: ["angular guitars","prominent bass","atmospheric","cold/artsy"], artists: ["Joy Division","Gang of Four","Wire","Interpol","The Cure","Siouxsie and the Banshees","Fontaines D.C.","Shame","IDLES","Dry Cleaning","Black Country, New Road","Parquet Courts","Protomartyr","Preoccupations","Squid"] },
+  "Garage Rock":         { parents: ["Rock","Punk"], era: "1963–", description: "Lo-fi, energetic rock — Nuggets-lineage + 2000s White Stripes revival.", traits: ["lo-fi","raw energy","simple chord progressions","reverb vocals"], artists: ["The White Stripes","The Strokes","The Black Keys","Ty Segall","Thee Oh Sees","Jay Reatard","King Khan & BBQ Show","The Hives","Sleater-Kinney","FIDLAR","Shannon & the Clams","Allah-Las","Wavves","Gun Club","Black Lips"] },
+  "Punk Rock":           { parents: ["Rock","Garage Rock"], era: "1974–", description: "Fast, short, aggressive rock. DIY ethic. Forever the anti-establishment template.", traits: ["fast tempo","short songs","distorted power chords","shouted vocals"], artists: ["Ramones","Sex Pistols","The Clash","Buzzcocks","Bad Religion","NOFX","Rancid","Green Day","Descendents","The Misfits","Minor Threat","Black Flag","Dead Kennedys","IDLES","Amyl and the Sniffers"] },
+  "Hardcore Punk":       { parents: ["Punk Rock"], era: "1979–", description: "Faster, heavier punk — the sound of 80s American basement shows, still thriving.", traits: ["very fast tempo","shouted vocals","breakdown sections","mosh-ready"], artists: ["Black Flag","Minor Threat","Dead Kennedys","Bad Brains","Circle Jerks","Fugazi","Refused","Converge","Ceremony","Turnstile","Knocked Loose","Trapped Under Ice","Power Trip","Code Orange","SPY"] },
+  "Progressive Rock":    { parents: ["Rock","Classical"], era: "1968–", description: "Ambitious, long-form rock — concept albums, virtuosic musicianship, complex structures.", traits: ["long compositions","concept albums","virtuosic solos","complex arrangements"], artists: ["Pink Floyd","Yes","King Crimson","Genesis","Rush","Jethro Tull","Emerson Lake & Palmer","Dream Theater","Tool","Porcupine Tree","Steven Wilson","Opeth","Haken","The Mars Volta","Gentle Giant"] },
+  "Gothic Rock":         { parents: ["Post-Punk"], era: "1979–", description: "Dark, atmospheric post-punk — black clothes, reverb, death-romantic themes.", traits: ["dark atmosphere","reverbed vocals","moody basslines","death-romantic themes"], artists: ["The Cure","Siouxsie and the Banshees","Bauhaus","Joy Division","The Sisters of Mercy","Fields of the Nephilim","The Mission","Cocteau Twins","Clan of Xymox","Christian Death","She Wants Revenge","Drab Majesty","She Past Away","Twin Tribes","Lebanon Hanover"] },
+  "Britpop":             { parents: ["Alternative Rock","Pop"], era: "1993–", description: "Mid-90s UK guitar pop celebrating English identity — melodic, hook-first, anti-grunge.", traits: ["melodic hooks","English character","jangly or swaggering guitars","pop songwriting"], artists: ["Oasis","Blur","Pulp","Suede","Elastica","The Verve","Radiohead (early)","Supergrass","Travis","The Bluetones","Sleeper","Kula Shaker","Cast","Ocean Colour Scene","Dodgy"] },
+
+  // ── POP FAMILY (LINEAGE BACKFILL) ─────────────────────────────────────
+  "Synth-Pop":           { parents: ["Pop","Electronic"], era: "1978–", description: "Synthesizer-driven pop. 80s birth, 2010s revival via The Weeknd/Dua Lipa.", traits: ["analog synths","drum machines","80s sensibility","melodic hooks"], artists: ["Depeche Mode","New Order","Pet Shop Boys","Kraftwerk","Tears for Fears","Duran Duran","The Weeknd","Dua Lipa","CHVRCHES","M83","Carly Rae Jepsen","Robyn","Years & Years","La Roux","HAIM"] },
+  "Dance-Pop":           { parents: ["Pop","Electronic"], era: "1982–", description: "Club-ready pop — big hooks, 4-on-the-floor energy, radio-crossover.", traits: ["4/4 dance beat","120-128 BPM","big hooks","festival-ready"], artists: ["Dua Lipa","Lady Gaga","Rihanna","Britney Spears","Madonna","Kylie Minogue","Troye Sivan","Sabrina Carpenter","Tate McRae","Bebe Rexha","David Guetta (pop side)","Calvin Harris (pop side)","Ava Max","Zara Larsson","Charli XCX"] },
+  "Art Pop":             { parents: ["Pop","Art Rock"], era: "1969–", description: "Pop with avant-garde sensibility — conceptual, experimental, pushing song form.", traits: ["experimental production","conceptual themes","genre-defying","auteur-led"], artists: ["Björk","Kate Bush","David Bowie","FKA twigs","Caroline Polachek","St. Vincent","Tori Amos","Scott Walker","Arca","Florence + the Machine","PJ Harvey","Kate Bush","Mitski","Fiona Apple","ANOHNI"] },
+  "Indie Pop":           { parents: ["Indie Rock","Pop"], era: "1986–", description: "DIY-spirit melodic pop — jangly guitars, twee aesthetic, bedroom-producer era.", traits: ["jangly guitars","sweet melodies","DIY production","twee sensibility"], artists: ["Alvvays","Vampire Weekend","Beach House","The xx","Belle and Sebastian","Japanese Breakfast","Snail Mail","Soccer Mommy","Clairo","boygenius","Phoebe Bridgers","Lucy Dacus","Julien Baker","Mitski","Big Thief"] },
+  "Chamber Pop":         { parents: ["Art Pop","Classical"], era: "1994–", description: "Pop with classical-inflected arrangements — strings, horns, baroque textures.", traits: ["string/horn arrangements","baroque textures","literate lyrics","orchestral pop"], artists: ["Sufjan Stevens","Belle and Sebastian","The Decemberists","Rufus Wainwright","Andrew Bird","Regina Spektor","Owen Pallett","Dirty Projectors","Fleet Foxes","Grizzly Bear","San Fermin","Arcade Fire","Father John Misty","St. Vincent (chamber side)","Beirut"] },
+  "Power Pop":           { parents: ["Pop","Rock"], era: "1972–", description: "Crunchy guitar-pop with Beatles-derived melodic sensibility — the sweet spot of rock + pop.", traits: ["crunchy guitars","big choruses","Beatles-esque harmonies","3-min hooks"], artists: ["Big Star","Cheap Trick","The Raspberries","Weezer","Fountains of Wayne","The Knack","Teenage Fanclub","Jellyfish","Matthew Sweet","OK Go","Jimmy Eat World","Sloan","Superchunk","Rooney","The Posies"] },
+  "Baroque Pop":         { parents: ["Pop","Classical"], era: "1966–", description: "60s pop with harpsichord, strings, and Rococo-era ornamentation. Lush and orchestral.", traits: ["harpsichord","strings","ornate arrangements","60s sensibility"], artists: ["The Beatles","The Beach Boys","Procol Harum","The Left Banke","Nick Drake","Sufjan Stevens","Fleet Foxes","Scott Walker","Andrew Bird","The Divine Comedy","Belle and Sebastian","Rufus Wainwright","Grizzly Bear","Dirty Projectors","Regina Spektor"] },
+  "Electropop":           { parents: ["Synth-Pop","Electronic"], era: "1979–", description: "Heavily-electronic pop — glossy synths, processed vocals, French Touch and 2010s bright-pop.", traits: ["glossy synths","processed vocals","programmed drums","French Touch influence"], artists: ["Robyn","La Roux","Charli XCX","Grimes","Chvrches","Years & Years","Carly Rae Jepsen","Ellie Goulding","Marina","Goldfrapp","Kylie Minogue","Daft Punk (pop side)","Justice (pop side)","Caroline Polachek","Tove Lo"] },
+  "Country-Pop":         { parents: ["Country","Pop"], era: "1975–", description: "Nashville-meets-radio crossover — Shania Twain template through Taylor Swift to Morgan Wallen.", traits: ["country instrumentation","pop song structure","crossover-friendly","radio polish"], artists: ["Taylor Swift (early)","Shania Twain","Faith Hill","Kacey Musgraves","Dan + Shay","Maren Morris","Kelsea Ballerini","Sam Hunt","Thomas Rhett","Dolly Parton","Lady A","Little Big Town","Keith Urban","Carrie Underwood","Jessie Murph"] },
+  "Latin Pop":           { parents: ["Pop","Latin"], era: "1985–", description: "Spanish-language pop balladry and crossover — from Enrique/Ricky to Shakira to Rosalía.", traits: ["Spanish vocals","pop song structure","balada or dance","crossover appeal"], artists: ["Shakira","Enrique Iglesias","Ricky Martin","Rosalía","Karol G","Becky G","Christina Aguilera (Spanish)","Camila Cabello","Jesse & Joy","Camilo","Sebastián Yatra","Manuel Turizo","Danna Paola","Emilia","Elena Rose"] },
+  "Adult Contemporary":  { parents: ["Pop","Soft Rock"], era: "1970–", description: "Smooth, mature pop — AC radio, Whitney-to-Adele-to-Sam Smith tradition.", traits: ["polished production","mature vocals","ballad-forward","AC radio-ready"], artists: ["Adele","Sam Smith","Ed Sheeran","John Legend","Bruno Mars","Michael Bublé","Josh Groban","Michael Bolton","Céline Dion","Mariah Carey (AC side)","Lewis Capaldi","James Arthur","Charlie Puth","Shawn Mendes","Tori Kelly"] },
+  "Recession Pop":       { parents: ["Dance-Pop","Electropop"], era: "2008–", description: "Late-2000s/early-2010s maximalist dance-pop — revived in 2023-26 as nostalgia.", traits: ["huge choruses","festival drops","2010s maximalism","escapist lyrics"], artists: ["Ke$ha","Katy Perry","Lady Gaga","Rihanna","LMFAO","Flo Rida","David Guetta (2010s pop)","Pitbull","Nicki Minaj","Taio Cruz","Far East Movement","Sabrina Carpenter (revival)","Tate McRae (revival)","Ava Max","Charli XCX (brat)"] },
+  "Indie Sleaze":        { parents: ["Indie Rock","Electroclash"], era: "2005–", description: "Mid-2000s downtown party scene — Cobrasnake photos, flash-harsh aesthetic, Strokes-era revival.", traits: ["electroclash energy","flash photography aesthetic","party indie","raw production"], artists: ["The Strokes (revival)","LCD Soundsystem","MGMT","Peaches","Peaches","Yeah Yeah Yeahs","Uffie","Justice","Bloc Party","Foster the People","Sky Ferreira","Mykki Blanco","Charli XCX","Nine Inch Nails","Trentemøller"] },
+  "Glitchcore Pop":      { parents: ["Hyperpop","IDM"], era: "2019–", description: "Glitched, high-BPM hyperpop — chipmunk vocals, chaos energy, internet-native.", traits: ["glitched audio","pitched-up vocals","150+ BPM","chaotic edits"], artists: ["100 gecs","A. G. Cook","SOPHIE","Dorian Electra","Charli XCX (glitch-adj)","Hannah Diamond","Alice Gas","Himera","Ecco2k","Bladee","Quinn","Slayyyter","Laura Les","Kim Petras","Namasenda"] },
+  "Pop Country Crossover": { parents: ["Country-Pop","Pop"], era: "2015–", description: "Full-pop productions with country branding — Walker Hayes, Kane Brown, Shaboozey era.", traits: ["pop production","country lyrics","crossover charts","trap-country adjacent"], artists: ["Morgan Wallen","Shaboozey","Jelly Roll","Bailey Zimmerman","Walker Hayes","Kane Brown","Post Malone (country era)","Beyoncé (Cowboy Carter)","Chris Stapleton","Zach Bryan","Lainey Wilson","HARDY","Nate Smith","Jessie Murph","Warren Zeiders"] },
+  "K-Pop 5th Gen":       { parents: ["K-Pop","Pop"], era: "2022–", description: "Post-BTS/BLACKPINK era of K-Pop — NewJeans, LE SSERAFIM, IVE, aespa dominance.", traits: ["multi-genre fusion","high concept visuals","40+ country charts","Gen Z aesthetic"], artists: ["NewJeans","LE SSERAFIM","IVE","aespa","ITZY","(G)I-DLE","RIIZE","ILLIT","BABYMONSTER","TWS","KATSEYE","ENHYPEN","TXT","Stray Kids","ATEEZ"] },
+  "Afropop Crossover":   { parents: ["Afropop","Pop"], era: "2020–", description: "Afrobeats/Afropop intentionally designed for global pop crossover — Tyla, Tems, Rema lineage.", traits: ["Afrobeats production","English vocals","pop song structure","Billboard-ready"], artists: ["Tyla","Tems","Rema","Ayra Starr","CKay","Fireboy DML","Omah Lay","Libianca","Wizkid (crossover)","Davido (crossover)","Burna Boy (pop side)","Adekunle Gold","Ruger","Asake","Black Sherif"] },
+
+  // ── LATIN FAMILY (LINEAGE BACKFILL) ───────────────────────────────────
+  "Corridos Tumbados":   { parents: ["Regional Mexican","Trap"], era: "2019–", description: "Mexican corrido + trap hybrid. Peso Pluma's breakthrough style; dominates US Latin charts 2023-26.", traits: ["acoustic sierreño guitars","trap drums","narco storytelling","100-110 BPM"], artists: ["Peso Pluma","Natanael Cano","Fuerza Regida","Junior H","Eslabon Armado","Grupo Frontera","Gabito Ballesteros","Óscar Maydon","Tito Double P","Xavi","Ivan Cornejo","Luis R Conriquez","Edgardo Nuñez","Chino Pacas","El Padrinito Toys"] },
+  "Dembow":              { parents: ["Reggae","Reggaeton"], era: "1990–", description: "Dominican bass-driven dance music — the foundational dembow riddim that birthed reggaeton.", traits: ["dembow riddim","fast tempo","shouted vocals","Dominican dialect"], artists: ["El Alfa","Chimbala","Rochy RD","Yailin La Más Viral","Tokischa","Kiko El Crazy","Bulova","La Manta","Mozart La Para","Lápiz Conciente","Secreto","Omega","Bad Bunny (dembow collabs)","Haraca Kiko","Yomel El Meloso"] },
+  "Regional Mexican":    { parents: ["Latin","Folk"], era: "1900–", description: "Umbrella for Mexican traditional musics — banda, norteño, mariachi, sierreño. Currently booming via corridos.", traits: ["tuba/accordion/trumpet","polka-derived rhythms","Mexican folk roots","traditional instrumentation"], artists: ["Christian Nodal","Peso Pluma","Fuerza Regida","Carin León","Banda MS","Grupo Firme","Junior H","Natanael Cano","Los Tigres del Norte","Vicente Fernández","Alejandro Fernández","Pepe Aguilar","Grupo Frontera","Ángela Aguilar","Eslabon Armado"] },
+  "Merengue":            { parents: ["Latin"], era: "1850–", description: "Dominican 2/4 dance music — accordion, tambora, güira. National dance of DR.", traits: ["2/4 rhythm","accordion + tambora","fast tempo","call-and-response vocals"], artists: ["Juan Luis Guerra","Elvis Crespo","Wilfrido Vargas","Fernando Villalona","Milly Quezada","Sergio Vargas","Johnny Ventura","Eddy Herrera","Pochi y Su Cocoband","Las Chicas del Can","Rikarena","Los Hermanos Rosario","Fernandito Villalona","Kinito Méndez","Tono Rosario"] },
+  "Bossa Nova":          { parents: ["Samba","Jazz"], era: "1958–", description: "Rio-born jazz-inflected samba — soft, sophisticated, the 'new beat'.", traits: ["nylon-string guitar","soft vocals","jazz harmony","samba groove halved"], artists: ["João Gilberto","Antônio Carlos Jobim","Stan Getz","Astrud Gilberto","Vinícius de Moraes","Sergio Mendes","Nara Leão","Os Cariocas","Marcos Valle","Elis Regina","Gilberto Gil","Milton Nascimento","Rosa Passos","Bebel Gilberto","Caetano Veloso"] },
+  "Samba":               { parents: ["Latin"], era: "1916–", description: "Brazilian rhythm — heart of Carnival. Surdo-driven 2/4 pulse with cuíca and tamborim.", traits: ["2/4 pulse","surdo + cuíca","Portuguese vocals","Carnival anthem form"], artists: ["Martinho da Vila","Paulinho da Viola","Cartola","Clara Nunes","Beth Carvalho","Zeca Pagodinho","Diogo Nogueira","Seu Jorge","Arlindo Cruz","Alcione","Jorge Aragão","Fundo de Quintal","Belo","Dudu Nobre","Maria Rita"] },
+  "Sertanejo":           { parents: ["Latin","Country"], era: "1920–", description: "Brazilian country music — the pop style of the interior. Universitário and feminejo currently dominant.", traits: ["acoustic guitars","accordion","duo harmony vocals","romantic themes"], artists: ["Marília Mendonça","Jorge & Mateus","Henrique & Juliano","Gusttavo Lima","Simone & Simaria","Zé Neto & Cristiano","Maiara & Maraisa","Michel Teló","Chitãozinho & Xororó","Luan Santana","Wesley Safadão","Ana Castela","Chico Veloso","Marcos & Belutti","Fernando & Sorocaba"] },
+  "Funk Carioca":        { parents: ["Miami Bass","Freestyle"], era: "1989–", description: "Rio's favela-born bass music — tamborzão, proibidão lyrics, massive 2024-26 global crossover.", traits: ["tamborzão beat","130-150 BPM","chanted vocals","Rio slang"], artists: ["Anitta","Ludmilla","Pedro Sampaio","MC Kevin o Chris","MC Pedrinho","Mc Danny","MC Ryan SP","MC Cabelinho","MC Hariel","MC Lipi","Papatinho","MC IG","MC Cyclope","Tati Quebra Barraco","MC Rebecca"] },
+  "Tango":               { parents: ["Latin"], era: "1880–", description: "Argentine dance music with bandoneón and string sextet — melancholic, dramatic, urban.", traits: ["bandoneón","2/4 habanera pulse","dramatic phrasing","urban lament"], artists: ["Astor Piazzolla","Carlos Gardel","Osvaldo Pugliese","Aníbal Troilo","Gotan Project","Bajofondo","Ángel D'Agostino","Juan D'Arienzo","Julio Iglesias (tango-pop)","Susana Rinaldi","Adriana Varela","Horacio Salgán","Francisco Canaro","Roberto Goyeneche","Raúl Garello"] },
+  "Bolero":              { parents: ["Latin"], era: "1883–", description: "Slow Latin ballad — Cuban origin, popularized across Mexico and the Caribbean. The romantic Latin song template.", traits: ["slow tempo","romantic lyrics","classical guitar + strings","velvety vocal phrasing"], artists: ["Luis Miguel","Los Panchos","Armando Manzanero","Olga Guillot","José Feliciano","Lucho Gatica","Pedro Vargas","Vicente Fernández (bolero side)","Natalia Lafourcade","Javier Solís","Buena Vista Social Club","Omara Portuondo","Ibrahim Ferrer","Chavela Vargas","Rocío Dúrcal"] },
+  "Neoperreo":           { parents: ["Reggaeton"], era: "2017–", description: "Gen Z queer-friendly reggaeton underground — Tokischa, Ms Nina, Tomasa del Real lineage.", traits: ["raw DIY production","queer-inclusive lyrics","fast perreo","underground aesthetic"], artists: ["Tomasa del Real","Isabella Lovestory","Tokischa","Ms Nina","La Goony Chonga","Villano Antillano","Young Miko","La Favi","BIA","La Delfi","Ana Macho","Kaydy Cain","Karma","Arca (perreo side)","Bad Gyal"] },
+  "Reggaeton Mexa":      { parents: ["Reggaeton"], era: "2020–", description: "Mexican reggaeton wave — Bellakath, El Malilla, Mexican perreo accent.", traits: ["Mexican Spanish","reggaeton beat","CDMX sound","urban fusion"], artists: ["Bellakath","El Malilla","Yeri Mua","Santa Fe Klan","C-Kan","Alemán","Gera MX","Snoop Dogg feat. Bellakath","Dani Flow","Uzielito Mix","Cornelio Vega Jr.","Marca Registrada","Mexican OT","Kid Yaps","Ximena Sariñana (reggaeton side)"] },
+  "Reggaeton Chileno":   { parents: ["Reggaeton"], era: "2022–", description: "Chilean street reggaeton — FloyyMenor, Cris Mj, Gata Only. Slower BPM, flow-forward.", traits: ["Chilean Spanish","slower BPM","moody production","street flow"], artists: ["FloyyMenor","Cris Mj","Marcianeke","Julianno Sosa","Pailita","Standly","El Jordan 23","Jere Klein","Gino Mella","Young Cister","Polimá Westcoast","Pablito Pesadilla","Don Lucho","Harry Nach","King Savagge"] },
+  "Electrocorridos":     { parents: ["Corridos Tumbados","Electronic"], era: "2023–", description: "Mexican corridos meet EDM/house — Fuerza Regida's dance-bélico side.", traits: ["corrido acoustic core","EDM drops","sierreño + synths","dance-bélico fusion"], artists: ["Fuerza Regida","Los Esquivel","Óscar Maydon","Luis R Conriquez","Yahir Saldívar","Alemán (electro side)","Tito Double P","Junior H (electro)","El Padrinito Toys","Chino Pacas","Netón Vega","Edgardo Nuñez","Carin León (dance)","Peso Pluma (electro collabs)","Natanael Cano (electro)"] },
+  "Cumbia Bélica":       { parents: ["Cumbia","Corridos Tumbados"], era: "2022–", description: "Narco-themed cumbia — SC-9, Yahir Saldívar lineage. Cumbia beat with corrido storytelling.", traits: ["cumbia pulse","narco storytelling","Mexican folk instruments","urban production"], artists: ["Yahir Saldívar","SC-9","Grupo Frontera (bélica side)","Los Alegres del Barranco","Los Tucanes de Tijuana","Calibre 50","El Komander","Julión Álvarez","Voz de Mando","Enigma Norteño","Gerardo Ortiz","Los Tigres del Norte","Javier Rosas","Larry Hernández","Grupo Legítimo"] },
+  "Latin Afrobeats":     { parents: ["Afrobeats","Reggaeton"], era: "2022–", description: "Spanish-language Afrobeats — Kapo, Elena Rose, Shakira's Soltera-era blending.", traits: ["Afrobeats production","Spanish vocals","reggaeton-adjacent","tropical crossover"], artists: ["Kapo","Shakira (Soltera-era)","Elena Rose","Farruko (Afro-era)","Piso 21","Manuel Turizo","Ovy On The Drums","Maluma","Feid","J Balvin","Rauw Alejandro","Bad Bunny","Ryan Castro","Alleh & Yorghaki","Hamilton"] },
+  "Jazz Colombiano":     { parents: ["Jazz","Latin"], era: "1980–", description: "Colombian jazz fusion — cumbia-jazz, Andean jazz, Bogotá scene.", traits: ["cumbia + jazz fusion","Andean folk integration","Colombian rhythms","modern Latin jazz"], artists: ["Antonio Arnedo","Edmar Castañeda","Justin Quinn","Jorge Arbeláez","Jacobo Vélez","Monsieur Periné","Curupira","Puerto Candelaria","Lucía Pulido","Teto Ocampo","Samuel Torres","La Mambanegra","Herencia de Timbiquí","Cimarrón","Grupo Bahía"] },
+  "Bolero House":        { parents: ["Bolero","House"], era: "2024–", description: "Bolero samples over house tempo — 2024-26 Latin electronic crossover.", traits: ["bolero samples","house 4/4","nostalgic Latin electronic","emotional drops"], artists: ["Bizarrap (bolero crossover)","Aleesha","Paloma Mami","Goyo","Sofia Reyes","Rauw Alejandro (house side)","Nicki Nicole","MYA","Tini","Emilia","Danny Ocean (electronic side)","Luis Alfonso","Mora (house)","Quevedo (electronic side)","Omar Montes"] },
+  "Guaracha / Aleteo":   { parents: ["Electronic","Latin"], era: "2014–", description: "Colombian tribal dance genre — zapateo kicks, aleteo (flapping) arms aesthetic.", traits: ["zapateo kick","fast tempo","tribal production","Colombian nightlife"], artists: ["Dj Kapital","Dj Yirvin","DJ Snake (guaracha collabs)","Kevin Florez","Juanfer Quintero","Mati Gómez","Roro","Farruko (Pepas era)","Cris Mj (guaracha)","ALISO","Pablito Pesadilla","Dayvi","Dj Towa","Dimelo Kim","Charly Black"] },
+  "Drum and Bass Latino":{ parents: ["Drum and Bass","Reggaeton"], era: "2023–", description: "Latin vocals over DnB breaks — UK drum-and-bass meets reggaeton, 2024-26 trend.", traits: ["170-180 BPM","Spanish vocals","jungle breaks","reggaeton hybrid"], artists: ["Sammy Virji (Latin collabs)","Kapo","Bizarrap","Skrillex (DnB Latino)","Nicki Nicole","Young Miko","Feid (DnB side)","Emilia","Tiago PZK","Dillom","Milo J","María Becerra (DnB collabs)","LIT Killah","Duki (DnB side)","Trueno"] },
+
+  // ── WORLD / GLOBAL FAMILY (LINEAGE BACKFILL) ──────────────────────────
+  "Afrofusion":          { parents: ["Afrobeats","Jazz"], era: "2010–", description: "Pan-African genre fusion — Burna Boy's self-coined style. Afrobeats root + reggae/dancehall/R&B/jazz overlays.", traits: ["genre-fluid","Afrobeats foundation","jazz/reggae textures","cosmopolitan"], artists: ["Burna Boy","Seun Kuti","Made Kuti","Femi Kuti","Mr Eazi","Sauti Sol","Siti Muharam","Somi","Fatoumata Diawara","Blick Bassy","Angelique Kidjo","Asa","Nneka","Rocky Dawuni","Amadou & Mariam"] },
+  "Soca":                { parents: ["Calypso"], era: "1973–", description: "Trinidadian carnival music — up-tempo Afro-Caribbean party music. Soul + calypso.", traits: ["fast tempo","carnival energy","brass stabs","call-and-response hooks"], artists: ["Machel Montano","Kes","Destra Garcia","Patrice Roberts","Skinny Fabulous","Bunji Garlin","Fay-Ann Lyons","Voice","Nailah Blackman","Swappi","Olatunji","Iwer George","Lyrikal","Farmer Nappy","Preedy"] },
+  "Mandopop":            { parents: ["Pop"], era: "1970–", description: "Mandarin-language pop — Taiwan-originated, now pan-Chinese. The C-pop mainstream.", traits: ["Mandarin vocals","pop ballad tradition","TV/drama synergy","polished production"], artists: ["Jay Chou","Jolin Tsai","Eason Chan","G.E.M.","Hebe Tien","JJ Lin","Hua Chenyu","Joker Xue","Kris Wu (pre-scandal)","Lay Zhang","Namewee","Li Ronghao","Mayday","Leslie Cheung","Faye Wong"] },
+  "Bollywood":           { parents: ["Pop","Indian Classical"], era: "1950–", description: "Hindi film music — the dominant Indian pop form. Item numbers, love songs, dance bangers.", traits: ["Hindi vocals","film soundtrack roots","dance beats","Bollywood production ensemble"], artists: ["A.R. Rahman","Arijit Singh","Shreya Ghoshal","Pritam","Vishal-Shekhar","Sachin-Jigar","Neha Kakkar","Badshah","King","Diljit Dosanjh","Neeti Mohan","Sonu Nigam","Armaan Malik","Jubin Nautiyal","Atif Aslam"] },
+  "Indian Classical Fusion": { parents: ["Indian Classical","Electronic"], era: "1990–", description: "Raga tradition fused with Western electronic, jazz, or rock — from Ravi Shankar to modern Indo-electronica.", traits: ["raga melodies","tabla grooves","modal improvisation","East-West fusion"], artists: ["Ravi Shankar","Anoushka Shankar","Zakir Hussain","Nitin Sawhney","Karsh Kale","Talvin Singh","Niladri Kumar","Rahul Sharma","Ustad Rashid Khan","Shahid Parvez","U. Srinivas","Shakti","Cheb i Sabbah","MIDIval PunditZ","Sarathy Korwar"] },
+  "Bhangra":             { parents: ["Punjabi Folk","Electronic"], era: "1980–", description: "Punjabi harvest dance music — updated with synths, drums, global club sound. UK-Punjabi diaspora staple.", traits: ["dhol drum","Punjabi vocals","fast tempo","club-ready bhangra beat"], artists: ["Panjabi MC","Bally Sagoo","Malkit Singh","Daler Mehndi","Diljit Dosanjh","AP Dhillon","Karan Aujla","Sidhu Moose Wala","Shubh","Imran Khan","Jazzy B","Steel Banglez","Jay Sean","Raftaar","Yo Yo Honey Singh"] },
+  "Arabic Electronic":   { parents: ["Electronic","Middle Eastern"], era: "2010–", description: "SWANA electronic — maqam scales, Arabic vocals, Beirut/Cairo/Amman club scenes.", traits: ["maqam-based melodies","Arabic vocals","club-ready production","SWANA diaspora"], artists: ["Acid Arab","Omar Souleyman","Deena Abdelwahed","Yara","Bu Kolthoum","Zuli","ABADIR","Narcy","Hello Psychaleppo","Jerusalem In My Heart","Nadah El Shazly","Rayess Bek","Synaptik","Tamer Abu Ghazaleh","Lebanon Hanover (SWANA side)"] },
+  "Turkish Psych":       { parents: ["Psychedelic Rock","Folk"], era: "1967–", description: "Anatolian rock — Turkish folk modes fused with psych-rock. Major 2020s global revival.", traits: ["Turkish folk modes","fuzz guitar","saz integration","rolling psych grooves"], artists: ["Altın Gün","BaBa ZuLa","Selda Bağcan","Erkin Koray","Cem Karaca","Barış Manço","Anadolu Ekspres","Derya Yıldırım & Grup Şimşek","Gaye Su Akyol","Mogollar","Şevval Sam","Gevende","Yüzyüzeyken Konuşuruz","Büyük Ev Ablukada","Lalalar"] },
+  "Qawwali":             { parents: ["Sufi Music"], era: "1200–", description: "Sufi devotional vocal tradition — Nusrat Fateh Ali Khan's global pinnacle. Trance-inducing group singing.", traits: ["group vocals","harmonium + tabla","ecstatic build","Urdu/Punjabi Sufi lyrics"], artists: ["Nusrat Fateh Ali Khan","Rahat Fateh Ali Khan","Aziz Mian","The Sabri Brothers","Abida Parveen","Fareed Ayaz & Abu Muhammad","Sanam Marvi","Amjad Sabri","Shazia Khushk","Atif Aslam (Sufi side)","Coke Studio Pakistan","Saieen Zahoor","Ustad Mubarak Ali Khan","Faiz Ali Faiz","Rizwan-Muazzam"] },
+  "Highlife":            { parents: ["West African","Jazz"], era: "1920–", description: "Ghanaian and Nigerian dance band tradition — guitar-led, horn-forward, the Afrobeat ancestor.", traits: ["guitar-led","horn sections","call-and-response","West African rhythms"], artists: ["E.T. Mensah","Osita Osadebe","Prince Nico Mbarga","Rex Lawson","Victor Olaiya","Amakye Dede","Daddy Lumba","Osibisa","Gyedu-Blay Ambolley","African Brothers","Kojo Antwi","Sir Victor Uwaifo","Nana Ampadu","Bunny Mack","Pat Thomas"] },
+  "Flamenco Fusion":     { parents: ["Flamenco","Jazz"], era: "1975–", description: "Flamenco crossed with jazz, electronic, or pop — Paco de Lucía lineage through Rosalía.", traits: ["flamenco guitar","palmas","cajón","modern production fusion"], artists: ["Paco de Lucía","Rosalía","Camarón de la Isla","Tomatito","Ketama","Vicente Amigo","Diego El Cigala","Niña Pastori","Estrella Morente","Chambao","La Shica","Pitingo","Manuel Agujetas","Buika","Mayte Martín"] },
+  "Fado":                { parents: ["Portuguese Folk"], era: "1820–", description: "Portuguese melancholy song form — Lisbon's urban blues. Saudade as central theme.", traits: ["Portuguese guitar","melancholy vocals","12-string accompaniment","saudade emotion"], artists: ["Amália Rodrigues","Mariza","Ana Moura","Carminho","Dulce Pontes","Cristina Branco","Camané","Gisela João","Katia Guerreiro","Lina_","Raquel Tavares","António Zambujo","Mísia","Carlos do Carmo","Deolinda"] },
+  "Balkan":              { parents: ["Folk"], era: "1900–", description: "Southeast European brass and Romani music — Bregović/Bregović-adjacent gypsy brass bands.", traits: ["brass bands","complex odd meters","Romani tradition","festive and mournful"], artists: ["Goran Bregović","Boban Marković","Fanfare Ciocărlia","Taraf de Haïdouks","Emir Kusturica & The No Smoking Orchestra","Kočani Orkestar","Beirut","Bijelo Dugme","DakhaBrakha","Shantel","Kiril Dzajkovski","Mahala Rai Banda","Gogol Bordello","Zdob și Zdub","Balkan Beat Box"] },
+  "Klezmer":             { parents: ["Folk","Jazz"], era: "1500–", description: "Ashkenazi Jewish instrumental tradition — clarinet-led celebration music with minor-key melancholy.", traits: ["clarinet + violin","freygish mode","celebration + lament","Yiddish roots"], artists: ["The Klezmatics","Klezmer Conservatory Band","Andy Statman","Giora Feidman","David Krakauer","Frank London","Dave Tarras","Naftule Brandwein","Alicia Svigals","Michael Winograd","Klezmer Conservatory","Brave Old World","Chicago Klezmer Ensemble","SoCalled","Socalled"] },
+
+  // ── JAZZ FAMILY (LINEAGE BACKFILL) ────────────────────────────────────
+  "Swing":               { parents: ["Jazz"], era: "1928–", description: "Big-band dance jazz — the 1930s-40s American pop sound. Driving shuffle, riff-based horn arrangements.", traits: ["shuffle feel","big-band horns","4-on-the-floor bass","dance-ready"], artists: ["Duke Ellington","Count Basie","Benny Goodman","Glenn Miller","Ella Fitzgerald","Frank Sinatra","Billie Holiday","Lionel Hampton","Artie Shaw","Louis Jordan","Cab Calloway","Fletcher Henderson","Chick Webb","Tommy Dorsey","Jimmie Lunceford"] },
+  "Bebop":               { parents: ["Swing"], era: "1944–", description: "Fast, complex, chord-change-focused jazz — the shift from dance music to art music. Bird and Diz.", traits: ["fast tempo","complex chord changes","virtuosic improvisation","small combo"], artists: ["Charlie Parker","Dizzy Gillespie","Thelonious Monk","Bud Powell","Max Roach","Kenny Clarke","Fats Navarro","J.J. Johnson","Dexter Gordon","Sonny Stitt","Al Haig","Tadd Dameron","Dodo Marmarosa","Oscar Pettiford","Miles Davis (early)"] },
+  "Cool Jazz":           { parents: ["Bebop"], era: "1949–", description: "Relaxed, understated counter-reaction to bebop — Miles Davis's Birth of the Cool, West Coast lineage.", traits: ["relaxed tempo","muted dynamics","understated phrasing","arranged ensembles"], artists: ["Miles Davis","Chet Baker","Gerry Mulligan","Lee Konitz","Lennie Tristano","Stan Getz","Paul Desmond","Dave Brubeck","Shorty Rogers","Gil Evans","Modern Jazz Quartet","Bill Evans","Jimmy Giuffre","Russ Freeman","Cal Tjader"] },
+  "Hard Bop":            { parents: ["Bebop","Blues"], era: "1953–", description: "Bluesier, gospel-inflected bebop — Art Blakey's Jazz Messengers. The Blue Note era.", traits: ["blues + gospel inflection","driving rhythm","hard-swinging","Blue Note sound"], artists: ["Art Blakey","Horace Silver","Clifford Brown","Sonny Rollins","Cannonball Adderley","Lee Morgan","Hank Mobley","Wayne Shorter","Jackie McLean","Kenny Dorham","Donald Byrd","Blue Mitchell","Freddie Hubbard","Wynton Kelly","Jimmy Smith"] },
+  "Modal Jazz":          { parents: ["Cool Jazz","Hard Bop"], era: "1958–", description: "Jazz based on modes/scales instead of chord changes — Miles's Kind of Blue changed everything.", traits: ["modal scales","extended harmonic stasis","spacious improvisation","meditative"], artists: ["Miles Davis","John Coltrane","Herbie Hancock","Bill Evans","Wayne Shorter","Tony Williams","Ron Carter","McCoy Tyner","Bobby Hutcherson","Charles Lloyd","Andrew Hill","Larry Young","Gábor Szabó","Joe Henderson","Woody Shaw"] },
+  "Free Jazz":           { parents: ["Modal Jazz"], era: "1959–", description: "Jazz freed from chord changes and song form — Ornette Coleman, Cecil Taylor, late Coltrane.", traits: ["no fixed harmony","collective improvisation","atonal territory","aggressive energy"], artists: ["Ornette Coleman","Cecil Taylor","John Coltrane (late)","Albert Ayler","Pharoah Sanders","Archie Shepp","Sun Ra","Anthony Braxton","Don Cherry","Peter Brötzmann","Art Ensemble of Chicago","Eric Dolphy","Sam Rivers","Charles Gayle","William Parker"] },
+  "Spiritual Jazz":      { parents: ["Modal Jazz","Free Jazz"], era: "1965–", description: "Cosmic, devotional jazz — Coltrane's A Love Supreme tradition. Modal meditation with spiritual intent.", traits: ["extended modal improvisation","spiritual themes","percussion-heavy","meditative or ecstatic"], artists: ["John Coltrane","Alice Coltrane","Pharoah Sanders","Sun Ra","Yusef Lateef","Leon Thomas","Lonnie Liston Smith","Doug Carn","Nat Birchall","Kamasi Washington","Shabaka Hutchings","The Comet Is Coming","Nubya Garcia","Carlos Niño","Ezra Collective"] },
+  "Jazz Fusion":         { parents: ["Jazz","Rock"], era: "1969–", description: "Jazz meets rock instrumentation and volume — electric piano, electric guitar, rock drums. Miles's Bitches Brew era.", traits: ["electric instruments","rock drums","virtuosic solos","extended compositions"], artists: ["Miles Davis","Weather Report","Herbie Hancock","Mahavishnu Orchestra","Chick Corea","Return to Forever","Pat Metheny","Jaco Pastorius","Wayne Shorter","Joe Zawinul","Stanley Clarke","Al Di Meola","Tony Williams Lifetime","John McLaughlin","Hiromi"] },
+  "Smooth Jazz":         { parents: ["Jazz Fusion","R&B / Soul"], era: "1975–", description: "Radio-friendly, polished jazz with R&B production. Wave 105 / quiet-storm adjacent.", traits: ["polished production","smooth grooves","saxophone-forward","crossover-friendly"], artists: ["Kenny G","Grover Washington Jr.","George Benson","Spyro Gyra","David Sanborn","Bob James","Chuck Mangione","Boney James","Norman Brown","Al Jarreau","Sade","Dave Koz","Kirk Whalum","Rick Braun","Acoustic Alchemy"] },
+  "Latin Jazz":          { parents: ["Jazz","Latin"], era: "1947–", description: "Jazz infused with Afro-Cuban and Brazilian rhythms — Dizzy + Chano Pozo, then Machito and beyond.", traits: ["Afro-Cuban rhythms","Latin percussion","jazz harmony","montuno patterns"], artists: ["Dizzy Gillespie","Tito Puente","Machito","Mongo Santamaría","Eddie Palmieri","Cal Tjader","Arturo Sandoval","Chucho Valdés","Poncho Sanchez","Gonzalo Rubalcaba","Michel Camilo","Paquito D'Rivera","Chick Corea (Latin side)","Stan Getz (bossa)","Airto Moreira"] },
+  "Vocal Jazz":          { parents: ["Jazz","Swing"], era: "1930–", description: "Jazz singing — from Ella and Billie to Diana Krall and Cecile McLorin Salvant.", traits: ["jazz phrasing","scat singing","standards repertoire","intimate delivery"], artists: ["Ella Fitzgerald","Billie Holiday","Sarah Vaughan","Nina Simone","Frank Sinatra","Anita O'Day","Betty Carter","Dinah Washington","Diana Krall","Cécile McLorin Salvant","Gregory Porter","Kurt Elling","Melody Gardot","Norah Jones","Stacey Kent"] },
+  "Noir Jazz":           { parents: ["Cool Jazz","Ambient"], era: "1990–", description: "Cinematic, moody jazz with noir film aesthetic — Bohren & der Club of Gore lineage.", traits: ["slow tempo","smoky atmosphere","minor-key","cinematic noir"], artists: ["Bohren & der Club of Gore","The Dale Cooper Quartet","Angelo Badalamenti","Kilo Kish","Colin Stetson","Ben Frost","Dirty Three","Tindersticks","Portishead (jazz side)","Morphine","Jóhann Jóhannsson","Ólafur Arnalds","Mulatu Astatke","Moondog","Tom Waits"] },
+  "Nu-Jazz":             { parents: ["Jazz","Electronic"], era: "1998–", description: "Jazz filtered through electronic production — Jazzanova, Koop, modern broken-beat jazz.", traits: ["programmed drums","jazz melodicism","electronic textures","broken-beat rhythms"], artists: ["Jazzanova","Koop","St Germain","Nightmares on Wax","Cinematic Orchestra","Bonobo","Flying Lotus","Thundercat","Mark de Clive-Lowe","Robert Glasper (electronic side)","Moderator","Quantic","4hero","United Future Organization","Herbert"] },
+  "Contemporary Jazz":   { parents: ["Jazz","Hip-Hop"], era: "2010–", description: "Modern jazz from the BadBadNotGood / Kamasi / Shabaka generation — hip-hop-aware, spiritual-jazz-inflected.", traits: ["hip-hop influence","spiritual-jazz lineage","modern production","cross-genre fluency"], artists: ["Kamasi Washington","Shabaka Hutchings","The Comet Is Coming","Sons of Kemet","Ezra Collective","Nubya Garcia","Robert Glasper","BadBadNotGood","Moses Boyd","Alfa Mist","Snarky Puppy","Christian Scott","Theon Cross","Yussef Dayes","Joe Armon-Jones"] },
+  "Jazz-Hop":            { parents: ["Jazz","Hip-Hop"], era: "1992–", description: "Hip-hop with jazz samples or live jazz instrumentation — A Tribe Called Quest roots, modern beat-scene continuation.", traits: ["jazz samples","boom-bap drums","laid-back pocket","improvisational spirit"], artists: ["A Tribe Called Quest","Digable Planets","Guru (Jazzmatazz)","The Roots","J Dilla","Nujabes","Madlib","Pete Rock","DJ Krush","Nicolay","Onra","FKJ","Tom Misch","Yussef Kamaal","Dabrye"] },
+
+  // ── COUNTRY / AMERICANA FAMILY (LINEAGE BACKFILL) ─────────────────────
+  "Contemporary Country":{ parents: ["Country","Pop"], era: "1990–", description: "Modern Nashville country — radio-ready, polished, pop-crossover. Morgan Wallen's center of gravity.", traits: ["polished production","pop song structure","country instrumentation","radio-friendly"], artists: ["Morgan Wallen","Luke Combs","Chris Stapleton","Kelsea Ballerini","Carrie Underwood","Miranda Lambert","Eric Church","Thomas Rhett","Blake Shelton","Keith Urban","Luke Bryan","Dan + Shay","Dierks Bentley","Jason Aldean","Sam Hunt"] },
+  "Americana":           { parents: ["Country","Folk"], era: "1990–", description: "Umbrella for roots-influenced American music — alt-country, folk, blues, bluegrass fusions. Non-Nashville country.", traits: ["acoustic instrumentation","roots-forward","literary lyrics","anti-mainstream"], artists: ["Jason Isbell","Zach Bryan","Sturgill Simpson","Tyler Childers","Kacey Musgraves","Lucinda Williams","Emmylou Harris","Gillian Welch","Brandi Carlile","Drive-By Truckers","Margo Price","John Prine","Wilco","Ryan Adams","Ray LaMontagne"] },
+  "Alt-Country":         { parents: ["Country","Alternative Rock"], era: "1990–", description: "No Depression lineage — punk/indie rock energy with country instrumentation. The gothic country wing.", traits: ["country + indie-rock fusion","gothic lyrics","DIY ethos","anti-Nashville"], artists: ["Uncle Tupelo","Wilco","Son Volt","The Jayhawks","Whiskeytown","Neko Case","Calexico","Lambchop","16 Horsepower","Woven Hand","Old 97's","Ryan Adams","Lucero","Drive-By Truckers","Giant Sand"] },
+  "Outlaw Country":      { parents: ["Country"], era: "1971–", description: "Waylon/Willie's Nashville rebellion — dirtier, rougher, anti-polish country. Still active via Sturgill, Colter Wall.", traits: ["grittier production","rebel narratives","country-rock hybrid","anti-establishment"], artists: ["Waylon Jennings","Willie Nelson","Johnny Cash","Kris Kristofferson","Merle Haggard","Jamey Johnson","Sturgill Simpson","Colter Wall","Tyler Childers","Cody Jinks","Whitey Morgan","Hank Williams III","Shooter Jennings","Dwight Yoakam","David Allan Coe"] },
+  "Neotraditional Country":{ parents: ["Country"], era: "1985–", description: "Honky-tonk revival — George Strait, Alan Jackson, Randy Travis era. Pure country tradition.", traits: ["traditional honky-tonk","pedal steel","fiddle","plain-spoken lyrics"], artists: ["George Strait","Alan Jackson","Randy Travis","Dwight Yoakam","Reba McEntire","Patty Loveless","Keith Whitley","Ricky Skaggs","Vince Gill","Mark Chesnutt","Tracy Lawrence","Clint Black","John Anderson","Chris Stapleton (trad side)","Cody Johnson"] },
+  "Red Dirt / Texas Country":{ parents: ["Country","Americana"], era: "1990–", description: "Oklahoma/Texas regional country — Turnpike Troubadours lineage. Independent-label focused.", traits: ["Texas/Oklahoma roots","independent-label focus","storytelling","rowdier live shows"], artists: ["Turnpike Troubadours","Cody Jinks","Cross Canadian Ragweed","Robert Earl Keen","Ryan Bingham","Randy Rogers Band","Wade Bowen","Reckless Kelly","Pat Green","Jason Boland","Shane Smith & the Saints","Flatland Cavalry","Cody Canada","Stoney LaRue","Parker McCollum"] },
+  "Country-Rock":        { parents: ["Country","Rock"], era: "1966–", description: "Country + rock fusion — Eagles-lineage, Southern rock, modern Zach Bryan era.", traits: ["electric guitar","country instrumentation","rock drums","crossover appeal"], artists: ["The Eagles","Creedence Clearwater Revival","Lynyrd Skynyrd","The Allman Brothers","Gram Parsons","Marshall Tucker Band","Little Feat","Poco","The Byrds (country period)","The Flying Burrito Brothers","Whiskey Myers","Blackberry Smoke","The Steel Woods","Jason Aldean (rock side)","Zac Brown Band"] },
+  "Country-Rap":         { parents: ["Country","Hip-Hop"], era: "2004–", description: "Country + rap hybrid — hick-hop lineage + Lil Nas X revival + Jelly Roll modern wave.", traits: ["rap over country beats","trap hi-hats + steel guitar","crossover formula","southern storytelling"], artists: ["Lil Nas X","Jelly Roll","Shaboozey","Breland","Beyoncé (Cowboy Carter)","Nelly (country collabs)","Colt Ford","Jawga Boyz","Upchurch","Moccasin Creek","Bubba Sparxxx","Cowboy Troy","Yelawolf","Bryan Martin","Ernest"] },
+  "Honky-Tonk":          { parents: ["Country"], era: "1940–", description: "Bar-band country — pedal steel, electric instruments, drinking/heartbreak songs.", traits: ["pedal steel","bar-band arrangement","drinking narratives","traditional country"], artists: ["Hank Williams","Lefty Frizzell","George Jones","Merle Haggard","Buck Owens","Willie Nelson","Dwight Yoakam","Jason Aldean (honky-tonk side)","Dale Watson","Wayne Hancock","Mike and the Moonpies","Charley Crockett","Colter Wall","Whitey Morgan","Nikki Lane"] },
+  "Bluegrass":           { parents: ["Country","Appalachian Folk"], era: "1945–", description: "High-speed acoustic string-band music — Bill Monroe invented it. Banjo, mandolin, fiddle.", traits: ["5-string banjo","mandolin","fiddle","high-lonesome vocals"], artists: ["Bill Monroe","Flatt & Scruggs","The Stanley Brothers","Ralph Stanley","Alison Krauss","Earl Scruggs","Del McCoury","Ricky Skaggs","The Seldom Scene","Tony Rice","Sam Bush","David Grisman","Billy Strings","Molly Tuttle","Sierra Ferrell"] },
+  "Progressive Bluegrass":{ parents: ["Bluegrass","Jam Band"], era: "1970–", description: "Jam-band-inflected bluegrass — Billy Strings modern wave, New Grass Revival roots.", traits: ["extended solos","rock/jazz chord progressions","jam-band energy","bluegrass instrumentation"], artists: ["Billy Strings","Molly Tuttle","Sierra Hull","Greensky Bluegrass","Yonder Mountain String Band","The Infamous Stringdusters","Trampled by Turtles","New Grass Revival","Béla Fleck","Old Crow Medicine Show","Leftover Salmon","Railroad Earth","The String Cheese Incident","Punch Brothers","Nickel Creek"] },
+  "Western Swing":       { parents: ["Country","Swing"], era: "1928–", description: "Texas fiddle-and-steel swing jazz — Bob Wills's invention. Country + big-band swing fusion.", traits: ["twin fiddles","pedal steel","swing rhythm","hot-jazz horns"], artists: ["Bob Wills","Asleep at the Wheel","Ray Benson","Milton Brown","Spade Cooley","Hank Thompson","Merle Haggard (Western Swing side)","Hot Club of Cowtown","Willie Nelson (swing collabs)","Brave Combo","The Hot Club of San Francisco","George Strait (swing side)","Marty Brown","Dale Watson","The Time Jumpers"] },
+  "Appalachian Folk":    { parents: ["Folk"], era: "1700–", description: "Old-time mountain music — fiddle + banjo, murder ballads, bluegrass ancestor.", traits: ["fiddle + clawhammer banjo","modal scales","ballad storytelling","mountain vocal style"], artists: ["The Carter Family","Doc Watson","Jean Ritchie","Ola Belle Reed","Ralph Stanley","Hazel Dickens","Bill Monroe (old-time side)","Dock Boggs","Roscoe Holcomb","Alison Krauss (Appalachian side)","Rhiannon Giddens","Our Native Daughters","Sierra Ferrell","Kaia Kater","Dom Flemons"] },
+
+  // ── METAL FAMILY (LINEAGE BACKFILL) ───────────────────────────────────
+  "Metalcore":           { parents: ["Hardcore Punk","Heavy Metal"], era: "1993–", description: "Hardcore punk + metal riffs + melodic choruses. 2000s radio metal and modern festival staple.", traits: ["breakdowns","clean/unclean vocal dynamics","melodic choruses","metal riffs"], artists: ["Killswitch Engage","August Burns Red","Parkway Drive","Bring Me the Horizon","As I Lay Dying","Architects","Lamb of God","Bullet for My Valentine","We Came as Romans","Asking Alexandria","Spiritbox","Bad Omens","Sleep Token","Trivium","Fit for a King"] },
+  "Deathcore":           { parents: ["Metalcore","Death Metal"], era: "2003–", description: "Metalcore + death metal extreme — breakdown-heavy, guttural vocals, slam sections.", traits: ["heavy breakdowns","guttural vocals","downtuned guitars","slam parts"], artists: ["Lorna Shore","Whitechapel","Suicide Silence","Chelsea Grin","Carnifex","Thy Art Is Murder","Fit For An Autopsy","Shadow of Intent","Signs of the Swarm","Bodysnatcher","Distant","Bloodbath","Humanity's Last Breath","Spite","I Declare War"] },
+  "Black Metal":         { parents: ["Heavy Metal","Punk Rock"], era: "1984–", description: "Dark, tremolo-picked extreme metal with shrieked vocals. Norwegian second wave to atmospheric modern.", traits: ["tremolo-picked guitars","shrieked vocals","blast beats","raw/lo-fi or atmospheric"], artists: ["Mayhem","Darkthrone","Emperor","Burzum","Immortal","Enslaved","Bathory","Gorgoroth","Wolves in the Throne Room","Panopticon","Darkthrone","Watain","Leviathan","Deafheaven (blackgaze)","Mgła"] },
+  "Blackgaze":           { parents: ["Black Metal","Shoegaze"], era: "2005–", description: "Black metal fused with shoegaze textures — atmospheric, melancholic, post-black.", traits: ["tremolo guitar wall","shoegaze atmosphere","shrieked vocals","melancholy"], artists: ["Deafheaven","Alcest","An Autumn for Crippled Children","Violet Cold","Lantlôs","Harakiri for the Sky","Møl","Agalloch","Amesoeurs","Ghost Bath","Liturgy","Heretoir","White Ward","Show Me a Dinosaur","Woe"] },
+  "Doom Metal":          { parents: ["Heavy Metal"], era: "1970–", description: "Slow, heavy, despairing metal. Sabbath's legacy — funeral slow variants, sludge hybrids.", traits: ["very slow tempo","heavy distortion","doom-laden riffs","despairing atmosphere"], artists: ["Black Sabbath","Candlemass","Electric Wizard","Saint Vitus","Pallbearer","Yob","Sleep","Bell Witch","Khemmis","Cough","Witchcraft","Pentagram","Reverend Bizarre","Type O Negative","Jex Thoth"] },
+  "Post-Metal":          { parents: ["Post-Rock","Doom Metal"], era: "1995–", description: "Metal with post-rock dynamics — cathartic peaks, ambient-to-crush structures.", traits: ["quiet-loud dynamics","ambient builds","cathartic peaks","extended compositions"], artists: ["Neurosis","ISIS","Cult of Luna","Russian Circles","Pelican","Rosetta","Mouth of the Architect","Amenra","Year of No Light","Pg.lost","Deafheaven (post side)","Caspian","Mono","Bossk","If These Trees Could Talk"] },
+  "Progressive Metal":   { parents: ["Progressive Rock","Heavy Metal"], era: "1988–", description: "Metal with prog-rock complexity — odd meters, concept albums, djent modern era.", traits: ["odd meters","complex arrangements","concept albums","technical musicianship"], artists: ["Dream Theater","Tool","Opeth","Meshuggah","Animals as Leaders","Periphery","TesseracT","Between the Buried and Me","Haken","Gojira","Mastodon","Protest the Hero","Leprous","Ne Obliviscaris","Sleep Token"] },
+  "Power Metal":         { parents: ["Heavy Metal"], era: "1983–", description: "Fast, melodic, fantasy-themed metal — Euro-power and speed-power. Operatic vocals.", traits: ["fast tempo","fantasy themes","melodic leads","operatic vocals"], artists: ["Helloween","Blind Guardian","Stratovarius","Rhapsody of Fire","HammerFall","Gamma Ray","Iron Savior","DragonForce","Sabaton","Edguy","Nightwish (power side)","Angra","Sonata Arctica","Primal Fear","Kamelot"] },
+  "Symphonic Metal":     { parents: ["Power Metal","Classical"], era: "1995–", description: "Metal with orchestral and choral arrangements — operatic vocals, cinematic scope.", traits: ["orchestral backing","operatic/female vocals","choral sections","cinematic scope"], artists: ["Nightwish","Within Temptation","Epica","Therion","Lacuna Coil","Delain","Xandria","Kamelot","After Forever","Leaves' Eyes","Stream of Passion","Tarja Turunen","Serenity","Visions of Atlantis","Amberian Dawn"] },
+  "Folk Metal":          { parents: ["Heavy Metal","Folk"], era: "1990–", description: "Metal with folk-tradition instruments and themes — pagan, Nordic, Celtic, Viking variants.", traits: ["folk instruments","pagan/Viking themes","metal riffs","epic storytelling"], artists: ["Ensiferum","Korpiklaani","Eluveitie","Wintersun","Týr","Finntroll","Turisas","Equilibrium","Moonsorrow","Skyclad","Wardruna (folk-adjacent)","Månegarm","Heidevolk","Varg","Trollfest"] },
+  "Industrial Metal":    { parents: ["Industrial Electronic","Heavy Metal"], era: "1989–", description: "Metal with industrial electronic textures — Nine Inch Nails to Rammstein to modern cyber-metal.", traits: ["electronic drums/samples","distorted synths","aggressive vocals","machine aesthetic"], artists: ["Nine Inch Nails","Ministry","Rammstein","Marilyn Manson","Rob Zombie","Static-X","Godflesh","Fear Factory","Front Line Assembly","KMFDM","Killing Joke","Nitzer Ebb","The Berzerker","Strapping Young Lad","3TEETH"] },
+  "Grindcore":           { parents: ["Hardcore Punk","Death Metal"], era: "1985–", description: "Extreme-short-song metal/punk hybrid — blast beats, sub-60-second songs, political rage.", traits: ["blast beats","very short songs","political lyrics","unhinged aggression"], artists: ["Napalm Death","Carcass","Terrorizer","Brutal Truth","Pig Destroyer","Nails","Rotten Sound","Cretin","Full of Hell","Fuck the Facts","Gridlink","Insect Warfare","Wormrot","ACxDC","Cattle Decapitation"] },
+  "Nu-Metal":            { parents: ["Heavy Metal","Hip-Hop"], era: "1994–", description: "Late-90s / early-2000s rap-metal hybrid — downtuned guitars, DJ scratches, baggy aesthetic. 2020s revival.", traits: ["downtuned 7-string guitars","rap/sung vocals","DJ scratches","hip-hop-influenced grooves"], artists: ["Korn","Limp Bizkit","Linkin Park","System of a Down","Slipknot","Deftones","Papa Roach","Coal Chamber","Mudvayne","Disturbed","P.O.D.","Staind","Kittie","Drowning Pool","(hed) p.e."] },
+
+  // ── HIP-HOP FAMILY (LINEAGE BACKFILL) ─────────────────────────────────
+  "Alternative Hip-Hop": { parents: ["Hip-Hop","Alternative Rock"], era: "1986–", description: "Hip-hop outside the mainstream — jazz-rap, college-rap, art-rap. De La Soul to Aesop Rock to MIKE.", traits: ["eclectic sampling","abstract lyrics","experimental production","anti-commercial"], artists: ["De La Soul","A Tribe Called Quest","The Roots","Mos Def","Talib Kweli","Aesop Rock","El-P","Open Mike Eagle","MIKE","Earl Sweatshirt","Milo","Billy Woods","Navy Blue","Pink Siifu","Mavi"] },
+  "Sexy Drill":          { parents: ["Drill","R&B / Soul"], era: "2022–", description: "NYC drill with R&B sample chops and flirty energy — Cash Cobain's invented lane.", traits: ["R&B sample flips","drill drums","flirty/risqué lyrics","bedroom aesthetic"], artists: ["Cash Cobain","Bay Swag","Chow Lee","Tata","Edot Babyy","Sdot Go","Destroy Lonely (sexy-drill collabs)","4B","MCVertt","Jay Hound","Chrisjayrich","Sdot_Dot","SCAR_LIP","FatherSha","BNYX"] },
+  "Jerk":                { parents: ["Hip-Hop","West Coast"], era: "2008–", description: "Bay Area / LA jerk — hyperactive melodic hip-hop with pitched synths. Xaviersobased era.", traits: ["hyperactive delivery","pitched synth leads","jerk-style dance beat","melodic hooks"], artists: ["Xaviersobased","KashPaint","The New Boyz","The Rej3ctz","Ralo Stylez","Cold Flamez","Audio Push","Tyga (jerk era)","Keemstar (meme-jerk)","Tokyo's Revenge","Lil'B (jerk-adjacent)","Wayne (jerk side)","Nate Sib","Dante","Taz Taylor"] },
+  "Sigilkore":           { parents: ["Hip-Hop","Hyperpop"], era: "2021–", description: "Occult-aesthetic SoundCloud rap — Luci4 lineage, bitcrushed sigils, vampiric imagery.", traits: ["bitcrushed sound","occult imagery","hexD-adjacent","vampiric aesthetic"], artists: ["Luci4","Jewelxxet","Angelus","Kankan (sigilkore side)","Autumn!","Summrs","Lone","1999WRITETHESKY","Ecco2k","Bladee (sigil-adj)","Thaiboy Digital","VELVETEARS","Rxkhim","AHNONI","Sugar Crash"] },
+  "Krushclub":           { parents: ["Jersey Club","Hyperpop"], era: "2021–", description: "Jersey Club + bitcrush — Odetari, 6arelyhuman, cartoonish video-game-rap aesthetic.", traits: ["bitcrushed production","Jersey club rhythms","video-game aesthetic","hyperactive energy"], artists: ["Odetari","6arelyhuman","Lumi Athena","Harrison","KSLV Noh","Cade Clair","Mary in the Junkyard","Sarcastic Sounds","Tokyo's Revenge","KSLV","Kenya Grace (club side)","GEE","Yameii Online","Stelvio","Lacy"] },
+  "Terror Plugg":        { parents: ["Plugg","Digicore"], era: "2022–", description: "Distorted extremo-plugg — Lazer Dim 700 chaos, meme-plugg, excruciating energy.", traits: ["heavily distorted 808s","chaotic vocal delivery","meme-plugg","extreme energy"], artists: ["Lazer Dim 700","Nettspend","ian-goin","Osamason","Yhapojj","5ar","Stich Duan","Baby Kia","Xaviersobased (terror side)","Summrs (terror side)","Izaya Tiji","tana","Lungsoverload","TCT Barzz","1999WRITETHESKY"] },
+  "Ambient Plugg":       { parents: ["Plugg","Ambient"], era: "2020–", description: "Beatless or minimal plugg — Izaya Tiji soundscapes, meditative ambient-rap.", traits: ["minimal or beatless","atmospheric pads","whispered vocals","meditative"], artists: ["Izaya Tiji","Babyxsosa","Shed Theory","Goyxrd","Kankan (ambient side)","Summrs (ambient side)","Ecco2k","Bladee (ambient)","Autumn!","Thaiboy Digital","LoveKankan","1999WRITETHESKY","Saturn","AHNONI","F1lthy"] },
+  "Dark Plugg":          { parents: ["Plugg","Trap"], era: "2019–", description: "DMV dark plugg — Surreal Gang, Glokk40Spaz, haunted Memphis-tinged plugg.", traits: ["haunted atmosphere","dark 808s","Memphis samples","gothic plugg"], artists: ["Surreal Gang","Glokk40Spaz","Smokingskul","F1lthy","Working on Dying","DGODJ","Metro","Almighty Suspect","Yhapojj","FGUWOP","Stan","Hurzluxury","DDOT","Kur","Black Kray"] },
+  "PluggnB":             { parents: ["Plugg","R&B / Soul"], era: "2019–", description: "Plugg production + R&B vocals — Summrs bedroom plugg, TikTok softboy era.", traits: ["melodic plugg","R&B vocals","intimate mood","bedroom plugg"], artists: ["Summrs","Autumn!","Kankan","Nick Mira","Izaya Tiji","JELEEL!","Destroy Lonely","Ken Carson (pluggnb side)","Yeat (pluggnb side)","sadboyprolific","Tana","Xaviersobased (pluggnb)","cade","Lone","Pop Smoke (pluggnb posthumous)"] },
+  "Digicore":            { parents: ["Hyperpop","Hip-Hop"], era: "2019–", description: "Glitched Discord-core emo-rap — pitched-up vocals, helix tears aesthetic, SoundCloud digital.", traits: ["pitched-up vocals","glitched edits","emo-rap adjacent","SoundCloud DIY"], artists: ["Glaive","ericdoa","Midwxst","Aldn","Saoirse Dream","D0llywood1","Brakence","Jane Remover","osquinn","Funeral","Quinn","Wicca Phase","Frankie Cash","Axadi","8485"] },
+  "HexD":                { parents: ["Hyperpop","Digicore"], era: "2021–", description: "Luci4-originated noise-rap — distortion overload, disorienting trap, experimental SoundCloud.", traits: ["extreme distortion","disorienting edits","noise-rap","experimental"], artists: ["Luci4","Jewelxxet","5ar","NEMZZZ","Stichling","1999WRITETHESKY","Ecco2k (hexD side)","Bladee (hexD)","Lone","TCT Barzz","Sugar Crash","Tokyo's Revenge","Angelus","skaiwater","CASISDEAD (hexD)"] },
+  "UK Rap":              { parents: ["Hip-Hop","Grime"], era: "2005–", description: "British hip-hop — road rap, Central Cee melodic, UK conscious rap. Distinct from drill, overlapping with afroswing.", traits: ["UK dialect","road-rap narratives","melodic hooks","fast flow"], artists: ["Central Cee","Dave","Stormzy","AJ Tracey","Skepta","J Hus","Wiley","Giggs","Loyle Carner","Little Simz","Headie One","Digga D","K-Trap","Potter Payper","Krept & Konan"] },
+  "Afroswing":           { parents: ["UK Rap","Afrobeats"], era: "2015–", description: "J Hus's invented lane — UK Afrobeats hybrid with London rap sensibility.", traits: ["Afrobeats drums","UK rap delivery","melodic hooks","London swagger"], artists: ["J Hus","NSG","Kojo Funds","Ramz","Yxng Bane","Hardy Caprio","Mostack","Not3s","Tion Wayne","B Young","Belly Squad","Geko","Yung Fume","Abra Cadabra","Pa Salieu"] },
+
+  // ── DISCO / DANCE FAMILY (LINEAGE BACKFILL) ───────────────────────────
+  "Classic Disco":       { parents: ["Funk","Soul"], era: "1973–", description: "Late-70s NYC/Philly disco — four-on-the-floor, string sections, Studio 54 era.", traits: ["4/4 kick","string sections","orchestral arrangements","mirror ball glamour"], artists: ["Donna Summer","Chic","Bee Gees","Gloria Gaynor","Sister Sledge","KC and the Sunshine Band","Earth, Wind & Fire (disco side)","Anita Ward","Diana Ross","Village People","ABBA","Giorgio Moroder","The Trammps","Thelma Houston","Chaka Khan (disco era)"] },
+  "Euro Disco":          { parents: ["Classic Disco","Synth-Pop"], era: "1977–", description: "European disco — Giorgio Moroder Munich sound, heavier synth use, ABBA crossover.", traits: ["synth-forward","Munich sound","European pop crossover","dance floor hooks"], artists: ["Giorgio Moroder","Donna Summer (Euro era)","Boney M.","ABBA (disco)","Silver Convention","Amanda Lear","Lipps Inc.","Ottawan","Dschinghis Khan","ABBA","Munich Machine","Eruption","Patrick Hernandez","Kano","Cerrone"] },
+  "Italo Disco":         { parents: ["Euro Disco","Synth-Pop"], era: "1979–", description: "Italian early-80s synth-disco — cheesy-glorious vocals, analog synth arpeggios, proto-house.", traits: ["analog synth arpeggios","Italian-accented English vocals","drum machines","cheesy-glorious melodies"], artists: ["Giorgio Moroder","Gazebo","Ryan Paris","Den Harrow","Baltimora","Sabrina","Raf","Alba","Spagna","Valerie Dore","Savage","P. Lion","Ken Laszlo","Miko Mission","Sally Shapiro (Italo revival)"] },
+  "Hi-NRG":              { parents: ["Classic Disco","Synth-Pop"], era: "1977–", description: "High-energy gay-disco/synth — Patrick Cowley, Bobby O, pre-house club music.", traits: ["fast 130+ BPM","gated reverb","gay-club anthems","pulsing synth bass"], artists: ["Patrick Cowley","Bobby Orlando","Sylvester","Divine","Dead or Alive","Pet Shop Boys (Hi-NRG side)","Hazell Dean","Evelyn Thomas","Miquel Brown","Earlene Bentley","Ian Levine","Eartha Kitt (Hi-NRG revival)","Jimmy Somerville","Bronski Beat","Sinitta"] },
+  "Nu-Disco":            { parents: ["Classic Disco","House"], era: "2002–", description: "Modern disco revival — filtered French Touch, Chromeo, Dua Lipa Future Nostalgia era.", traits: ["disco samples/guitar","modern production","house tempo","pop crossover"], artists: ["Dua Lipa","Chromeo","Jungle","Purple Disco Machine","Róisín Murphy","Disclosure (nu-disco side)","Metronomy","Todd Terje","Breakbot","Boogie Belgique","L'Imperatrice","Franc Moody","Poolside","The Juan MacLean","Tuxedo"] },
+  "Disco-House":         { parents: ["House","Classic Disco"], era: "1992–", description: "House built on disco samples — French Touch Daft Punk era, Dimitri From Paris lineage.", traits: ["disco samples","filtered loops","house 4/4","French Touch aesthetic"], artists: ["Daft Punk","Stardust","Modjo","Cassius","Dimitri From Paris","Bob Sinclar","Armand Van Helden","DJ Sneak","Kid Creme","Purple Disco Machine","Claptone","Folamour","Kaytranada","Kölsch","Kungs"] },
+  "Cosmic Disco":        { parents: ["Classic Disco","Krautrock"], era: "1979–", description: "Italian cosmic/balearic disco — slow-mid tempo, dreamy, DJ Daniele Baldelli tradition.", traits: ["slower tempo","spacey synth pads","Balearic vibe","eclectic edits"], artists: ["Daniele Baldelli","Beppe Loda","Lindstrøm","Todd Terje","Prins Thomas","Chicago (cosmic edits)","Mungolian Jetset","Idjut Boys","Moscoman","Daniele Baldelli","Joakim","Andrew Weatherall","Tim Sweeney","International Feel","Rub-N-Tug"] },
+  "Space Disco":         { parents: ["Classic Disco","Synth-Pop"], era: "1976–", description: "Late-70s cosmic/sci-fi themed disco — Space, Meco, Star Wars disco era.", traits: ["sci-fi themes","synth-heavy","spacey effects","disco tempo"], artists: ["Space","Meco","Rockets","Lipps Inc.","Giorgio Moroder (space side)","Dee D. Jackson","Sheila B. Devotion","Parliament (space side)","Earth, Wind & Fire (space)","Kraftwerk (disco side)","Cerrone","Droids","Jean-Michel Jarre","Afrika Bambaataa (planet rock)","Didier Marouani"] },
+  "Boogie Disco":        { parents: ["Classic Disco","Funk"], era: "1979–", description: "Post-disco early-80s synth-funk — electro-boogie transitional sound. Leroy Burgess era.", traits: ["synth bass","electro-funk crossover","early drum machines","breakdowns"], artists: ["Leroy Burgess","Kleeer","Change","Cameo","One Way","The Whispers","Shalamar","Dazz Band","Midnight Star","Evelyn 'Champagne' King","D Train","Patrice Rushen","Skyy","Slave","Mtume"] },
+  "Afro-Disco":          { parents: ["Classic Disco","Afrobeat"], era: "1976–", description: "Late-70s African disco — Manu Dibango tradition, modern revival via Mr Mahonks, Awesome Tapes.", traits: ["African percussion + disco","horn sections","political lyrics","Afro-diaspora groove"], artists: ["Manu Dibango","Fela Kuti (disco side)","Tony Allen","Osibisa","Amanaz","William Onyeabor","Sonny Okosun","Ebo Taylor","Pat Thomas","Orlando Julius","Christy Essien-Igbokwe","Gyedu-Blay Ambolley","Awesome Tapes From Africa compilations","Afro-Funk orchestras","Ojah"] },
+  "Balearic":            { parents: ["House","Ambient"], era: "1987–", description: "Ibiza-born eclectic genre-blend — sunrise sets, mellow to peak-time, Alfredo Fiorito tradition.", traits: ["eclectic selection","mellow-to-peak pacing","sunrise sets","Mediterranean vibe"], artists: ["DJ Harvey","Andrew Weatherall","Todd Terje","Prins Thomas","Lindstrøm","Alfredo","Jose Padilla","Café del Mar compilations","Balearic Beat","Fantastic Man","Idjut Boys","In Flagranti","Rahaan","Psychemagik","Bill Brewster"] },
+  "Disco-Punk":          { parents: ["Post-Punk","Classic Disco"], era: "1979–", description: "Post-punk + disco groove hybrid — ESG, Liquid Liquid, 2000s LCD Soundsystem revival.", traits: ["disco bass groove","post-punk guitars","angular rhythms","art-school sensibility"], artists: ["ESG","Liquid Liquid","LCD Soundsystem","!!! (Chk Chk Chk)","The Rapture","Happy Mondays","Primal Scream (disco-punk side)","Gang of Four","A Certain Ratio","Delta 5","The Pop Group","Talking Heads","Bush Tetras","Tom Tom Club","Radio 4"] },
+
+  // ── CLASSICAL / ORCHESTRAL FAMILY (LINEAGE BACKFILL) ──────────────────
+  "Baroque":             { parents: ["Classical"], era: "1600–1750", description: "Ornamental, counterpoint-heavy classical tradition — Bach, Handel, Vivaldi. Harpsichord and chamber ensembles.", traits: ["counterpoint","ornamentation","basso continuo","tonal harmony crystallizing"], artists: ["J.S. Bach","G.F. Handel","Antonio Vivaldi","Claudio Monteverdi","Henry Purcell","Arcangelo Corelli","Domenico Scarlatti","Georg Philipp Telemann","Jean-Philippe Rameau","Heinrich Schütz","Francesca Caccini","François Couperin","Dieterich Buxtehude","Alessandro Scarlatti","Jean-Baptiste Lully"] },
+  "Romantic":            { parents: ["Classical"], era: "1800–1910", description: "Emotional, programmatic 19th-century classical — large orchestras, virtuoso pianism, nationalist traditions.", traits: ["large orchestras","programmatic content","emotional intensity","chromaticism increasing"], artists: ["Ludwig van Beethoven","Frédéric Chopin","Franz Liszt","Richard Wagner","Johannes Brahms","Pyotr Ilyich Tchaikovsky","Gustav Mahler","Antonín Dvořák","Franz Schubert","Robert Schumann","Giuseppe Verdi","Hector Berlioz","Felix Mendelssohn","Clara Schumann","Richard Strauss"] },
+  "Symphonic":           { parents: ["Classical"], era: "1750–", description: "Full-orchestra composition — sonata form, multi-movement works. The core classical-concert tradition.", traits: ["full orchestra","sonata form","multi-movement works","thematic development"], artists: ["Ludwig van Beethoven","W.A. Mozart","Joseph Haydn","Gustav Mahler","Pyotr Ilyich Tchaikovsky","Dmitri Shostakovich","Jean Sibelius","Anton Bruckner","Johannes Brahms","Sergei Rachmaninoff","Aaron Copland","John Williams (concert side)","Esa-Pekka Salonen","Gustavo Dudamel","Andrew Norman"] },
+  "Opera":               { parents: ["Classical","Vocal"], era: "1600–", description: "Staged sung drama with orchestra — Italian, French, German, and Russian traditions.", traits: ["solo voice + orchestra","staged drama","aria structures","extreme vocal technique"], artists: ["Giuseppe Verdi","Giacomo Puccini","W.A. Mozart","Richard Wagner","Gioachino Rossini","Benjamin Britten","Gaetano Donizetti","Vincenzo Bellini","Modest Mussorgsky","Georges Bizet","Leoš Janáček","Maria Callas","Luciano Pavarotti","Renée Fleming","Anna Netrebko"] },
+  "Choral":              { parents: ["Classical","Sacred Music"], era: "800–", description: "Music for choir — sacred and secular. From Gregorian chant through modern Eric Whitacre.", traits: ["multi-voice harmony","often a cappella or with organ","sacred + secular repertoire","part-writing craft"], artists: ["Giovanni Pierluigi da Palestrina","Thomas Tallis","William Byrd","Eric Whitacre","Morten Lauridsen","Arvo Pärt","John Tavener","Ola Gjeilo","Hildegard von Bingen","Ēriks Ešenvalds","Gabriel Jackson","King's College Choir","Tallis Scholars","The Sixteen","VOCES8"] },
+  "Chamber Music":       { parents: ["Classical"], era: "1600–", description: "Small-ensemble classical — string quartets, piano trios, wind quintets. Intimate, conversational.", traits: ["small ensemble","conversational counterpoint","intimate scale","no conductor"], artists: ["Kronos Quartet","Emerson String Quartet","Takács Quartet","Borromeo Quartet","Danish String Quartet","Juilliard Quartet","Guarneri Quartet","Escher Quartet","Quatuor Ébène","Brooklyn Rider","JACK Quartet","Trio Mediæval","Silkroad Ensemble","Yo-Yo Ma (chamber side)","The Kanneh-Masons"] },
+  "Contemporary Classical":{ parents: ["Classical"], era: "1975–", description: "Living-composer classical music — spectralism, modernism, post-minimalism, 21st-century orchestral.", traits: ["living composers","diverse techniques","21st-century orchestral","experimental elements"], artists: ["Thomas Adès","John Adams","Caroline Shaw","Nico Muhly","Jennifer Higdon","Andrew Norman","Missy Mazzoli","Kaija Saariaho","George Benjamin","Tania León","Du Yun","David Lang","Steve Reich","Osvaldo Golijov","Anna Thorvaldsdottir"] },
+  "Minimalist Classical":{ parents: ["Classical"], era: "1964–", description: "Repetitive, phasing, process-based classical — Reich, Glass, Riley. Post-minimalism continues modern era.", traits: ["repetitive patterns","gradual change","pulse-based","process-oriented"], artists: ["Steve Reich","Philip Glass","Terry Riley","La Monte Young","John Adams","Meredith Monk","Michael Nyman","Louis Andriessen","Nils Frahm","Max Richter","Ólafur Arnalds","Hauschka","Simeon ten Holt","Michael Gordon","Julia Wolfe"] },
+  "Neoclassical":        { parents: ["Classical","Ambient"], era: "2005–", description: "Post-classical piano and strings — Einaudi, Nils Frahm, Ólafur Arnalds. Ambient-adjacent intimacy.", traits: ["solo piano or small strings","ambient textures","emotional directness","cinematic intimacy"], artists: ["Ludovico Einaudi","Max Richter","Ólafur Arnalds","Nils Frahm","Hauschka","Peter Broderick","Dustin O'Halloran","Hania Rani","Sophie Hutchings","A Winged Victory for the Sullen","Jóhann Jóhannsson","Hildur Guðnadóttir","Joep Beving","Kiasmos","Ryuichi Sakamoto (late)"] },
+  "Post-Classical":      { parents: ["Neoclassical","Electronic"], era: "2010–", description: "Neoclassical blended with electronic production — glitch, drone, ambient beats.", traits: ["piano + electronics","subtle beats or glitch","emotional minimalism","hybrid acoustic/digital"], artists: ["Max Richter","Ólafur Arnalds","Kiasmos","Nils Frahm","Ryuichi Sakamoto","Hania Rani","Carlos Cipa","Hauschka","A Winged Victory for the Sullen","Rival Consoles","Jonny Greenwood (solo)","Jon Hopkins","Floating Points (post-classical)","Penguin Cafe","Clark (post-classical)"] },
+  "Dark Classical":      { parents: ["Classical","Ambient"], era: "2000–", description: "Dark cinematic classical — horror scores, dark ambient orchestral, Jóhann Jóhannsson lineage.", traits: ["dark atmosphere","cinematic tension","dissonant strings","horror-adjacent"], artists: ["Jóhann Jóhannsson","Hildur Guðnadóttir","Mica Levi","Ben Frost","Jonny Greenwood (score side)","Krzysztof Penderecki","György Ligeti","Colin Stetson","Clint Mansell","Trent Reznor & Atticus Ross","Ólafur Arnalds (dark side)","Nick Cave & Warren Ellis","Bobby Krlic","Geoff Barrow & Ben Salisbury","Carter Burwell"] },
+
+  // ── FOLK / ACOUSTIC FAMILY (LINEAGE BACKFILL) ─────────────────────────
+  "Indie Folk":          { parents: ["Folk","Indie Rock"], era: "1998–", description: "Contemporary indie folk — Fleet Foxes/Bon Iver lineage, warm storytellers, bedroom-acoustic era.", traits: ["acoustic instruments","warm vocal harmonies","literate lyrics","indie sensibility"], artists: ["Bon Iver","Fleet Foxes","Sufjan Stevens","Phoebe Bridgers","Big Thief","The Lumineers","Iron & Wine","Mumford & Sons","boygenius","Lucy Dacus","Julien Baker","Weyes Blood","Father John Misty","Adrianne Lenker","Feist"] },
+  "Acoustic Singer-Songwriter":{ parents: ["Folk"], era: "1960–", description: "Solo-artist + acoustic guitar tradition — James Taylor to Ed Sheeran to Noah Kahan.", traits: ["solo voice + guitar","autobiographical lyrics","intimate delivery","song-craft focus"], artists: ["James Taylor","Joni Mitchell","Paul Simon","Jackson Browne","Ed Sheeran","Noah Kahan","Ben Howard","José González","Passenger","Damien Rice","City and Colour","Dermot Kennedy","Tracy Chapman","Suzanne Vega","Jewel"] },
+  "Chamber Folk":        { parents: ["Indie Folk","Classical"], era: "2000–", description: "Folk with classical-ensemble arrangements — strings, winds, ornate orchestration.", traits: ["folk songwriting","string/wind arrangements","orchestral folk","baroque influence"], artists: ["Sufjan Stevens","Fleet Foxes","The Decemberists","Regina Spektor","Andrew Bird","Beirut","Joanna Newsom","Bowerbirds","Villagers","Iron & Wine (chamber side)","Nickel Creek","Punch Brothers","Crooked Still","Ólöf Arnalds","San Fermin"] },
+  "Cinematic Folk":      { parents: ["Folk","Film Score"], era: "2005–", description: "Folk with wide-open cinematic arrangements — Sigur Rós-adjacent, score-like production.", traits: ["wide-open arrangements","cinematic production","soundtrack feel","atmospheric folk"], artists: ["Sigur Rós (folk side)","Iron & Wine","Ólafur Arnalds (folk side)","Damien Jurado","Sufjan Stevens (cinematic side)","Bon Iver (cinematic side)","The Antlers","Cigarettes After Sex","Fleet Foxes (cinematic side)","Patrick Watson","Agnes Obel","Asgeir","Fink","Lambchop","Midlake"] },
+  "Folk Revival":        { parents: ["Folk","Traditional"], era: "1958–", description: "60s American folk revival — Dylan, Baez, political folk, Greenwich Village scene.", traits: ["traditional songs","political lyrics","acoustic instrumentation","protest tradition"], artists: ["Bob Dylan","Joan Baez","Peter, Paul and Mary","Pete Seeger","Woody Guthrie","Joni Mitchell","Phil Ochs","Tom Paxton","Judy Collins","Odetta","Buffy Sainte-Marie","Dave Van Ronk","Ramblin' Jack Elliott","Rhiannon Giddens","Our Native Daughters"] },
+  "Dark Folk":           { parents: ["Folk","Neofolk"], era: "1980–", description: "Neofolk ritual — pagan acoustic, minor-key menace, ritualistic themes.", traits: ["minor keys","ritual themes","acoustic + drones","pagan aesthetic"], artists: ["Current 93","Death in June","Sol Invictus","Chelsea Wolfe","Wardruna","Heilung","Myrkur (folk side)","Boy Harsher","Nick Cave (dark folk side)","Nico","The Smashing Pumpkins (dark folk)","16 Horsepower","Woven Hand","Nico Muhly (dark side)","Ulver (folk era)"] },
+  "Anti-Folk":           { parents: ["Folk","Punk"], era: "1983–", description: "Lo-fi, anti-commercial folk — Beck roots, Moldy Peaches era, DIY attitude over polish.", traits: ["lo-fi production","anti-commercial stance","humor + absurdity","DIY ethos"], artists: ["The Moldy Peaches","Beck (anti-folk era)","Kimya Dawson","Adam Green","Jeffrey Lewis","Diane Cluck","Daniel Johnston","Regina Spektor (early)","Jonathan Richman","Ben Kweller","Conor Oberst (Bright Eyes early)","Karen Dalton","Lou Reed (folk side)","The Moldy Peaches","Moldy Peaches offshoots"] },
+  "Psych Folk":          { parents: ["Folk","Psychedelic Rock"], era: "1967–", description: "Psychedelic-rock-era folk — Incredible String Band, Donovan, modern Devendra Banhart.", traits: ["acoustic + psych elements","modal melodies","whimsical lyrics","echoed production"], artists: ["Donovan","The Incredible String Band","Vashti Bunyan","Devendra Banhart","Joanna Newsom","Espers","Akron/Family","Tinariwen (psych side)","Grizzly Bear (psych-folk side)","Fleet Foxes (psych side)","Vetiver","Linda Perhacs","Pentangle","Bert Jansch","Nick Drake"] },
+  "Celtic Folk":         { parents: ["Folk"], era: "1950–", description: "Irish, Scottish, and Welsh folk traditions — The Dubliners lineage to modern Altan.", traits: ["fiddle/tin whistle/harp","Gaelic or English vocals","jigs + reels","Celtic storytelling"], artists: ["The Chieftains","The Dubliners","Altan","Clannad","Planxty","The Bothy Band","Luka Bloom","Dervish","Lúnasa","Loreena McKennitt","Capercaillie","Solas","Cherish the Ladies","Flook","Runrig"] },
+  "Nordic Folk":         { parents: ["Folk"], era: "1980–", description: "Scandinavian folk revival — Norse traditions, Wardruna's ritual pagan, Scandinavian minor-key mood.", traits: ["Nordic instruments (nyckelharpa, tagelharpa)","Norse/Scandinavian vocals","minor-key modality","ritual/pagan themes"], artists: ["Wardruna","Heilung","Myrkur","Garmarna","Hedningarna","Frigg","Väsen","Sofia Jannok","Eivør","Mari Boine","Gjallarhorn","Asgeir","Värttinä","Angelit","Danheim"] },
+
+  // ── BLUES FAMILY (LINEAGE BACKFILL) ───────────────────────────────────
+  "Delta Blues":         { parents: ["Blues"], era: "1920–", description: "Mississippi Delta acoustic blues — Robert Johnson, Son House. The founding American blues tradition.", traits: ["solo acoustic guitar","slide technique","field-holler vocals","Delta lament"], artists: ["Robert Johnson","Son House","Charley Patton","Skip James","Mississippi John Hurt","Bukka White","Tommy Johnson","Blind Willie Johnson","Fred McDowell","R.L. Burnside","Junior Kimbrough","Blind Lemon Jefferson","Big Joe Williams","Mississippi Fred McDowell","Willie Brown"] },
+  "Chicago Blues":       { parents: ["Delta Blues"], era: "1948–", description: "Electrified post-war blues — Muddy Waters, Howlin' Wolf. Blues amplified for the city.", traits: ["electric guitar","harmonica","full band","urban intensity"], artists: ["Muddy Waters","Howlin' Wolf","Little Walter","Sonny Boy Williamson II","Willie Dixon","Buddy Guy","Junior Wells","Otis Rush","Elmore James","Magic Sam","Jimmy Reed","Koko Taylor","Otis Spann","Hound Dog Taylor","Luther Allison"] },
+  "Electric Blues":      { parents: ["Blues"], era: "1947–", description: "Amplified electric blues — Chicago, Texas, Memphis. Bridge from acoustic tradition to rock.", traits: ["electric guitar + amp","full band","extended guitar solos","urban/electrified"], artists: ["B.B. King","Albert King","Freddie King","Buddy Guy","Muddy Waters","T-Bone Walker","Albert Collins","Robert Cray","Stevie Ray Vaughan","Gary Clark Jr.","Joe Bonamassa","Derek Trucks","Susan Tedeschi","Eric Gales","Christone 'Kingfish' Ingram"] },
+  "Blues Rock":          { parents: ["Electric Blues","Rock"], era: "1964–", description: "British and American blues played with rock-band volume — Cream, Led Zeppelin, Black Keys.", traits: ["electric guitar solos","rock drums","blues progressions","amplified energy"], artists: ["Cream","Led Zeppelin","The Rolling Stones","Jimi Hendrix","The Black Keys","Jack White","Gary Clark Jr.","Joe Bonamassa","ZZ Top","Fleetwood Mac (early blues era)","John Mayer (blues side)","Eric Clapton","Derek and the Dominos","The Marcus King Band","Gov't Mule"] },
+  "Texas Blues":         { parents: ["Electric Blues"], era: "1960–", description: "Stevie Ray Vaughan-lineage — hot, fluid, rock-informed electric blues. Austin scene.", traits: ["fluid guitar technique","shuffle grooves","Austin-born attitude","rock-informed"], artists: ["Stevie Ray Vaughan","The Fabulous Thunderbirds","Jimmie Vaughan","Albert Collins","Freddie King","Johnny Winter","ZZ Top","T-Bone Walker","Gary Clark Jr.","Lightnin' Hopkins","Eric Johnson (blues side)","Double Trouble","Lonnie Mack","Kenny Wayne Shepherd","Omar Dykes"] },
+  "Hill Country Blues":  { parents: ["Delta Blues"], era: "1970–", description: "North Mississippi hypnotic blues — Fat Possum lineage, drone-heavy, groove-focused.", traits: ["drone-based","hypnotic repetition","groove-focused","raw production"], artists: ["R.L. Burnside","Junior Kimbrough","T-Model Ford","Cedric Burnside","CeDell Davis","Jessie Mae Hemphill","North Mississippi Allstars","Robert Belfour","Kenny Brown","Little Freddie King","Otha Turner","Hasil Adkins (Hill Country-adj)","Big Jack Johnson","Paul 'Wine' Jones","Asie Payton"] },
+  "Jump Blues":          { parents: ["Blues","Swing"], era: "1940–", description: "Up-tempo 1940s jump-blues — Louis Jordan tradition. Early R&B ancestor, horn-forward.", traits: ["horn sections","up-tempo shuffle","boogie-woogie piano","humorous vocals"], artists: ["Louis Jordan","Big Joe Turner","Wynonie Harris","Louis Prima","Amos Milburn","Roy Milton","Roy Brown","Charles Brown","Professor Longhair","Rosetta Tharpe","Big Jay McNeely","Helen Humes","Johnny Otis","Percy Mayfield","Tiny Bradshaw"] },
+  "Soul Blues":          { parents: ["Blues","Soul"], era: "1960–", description: "Blues-soul fusion — Bobby Bland, 60s soul-blues tradition. Horn sections, soul vocals.", traits: ["soul vocal phrasing","horn sections","slow-to-mid tempo","emotional intensity"], artists: ["Bobby 'Blue' Bland","Little Milton","Otis Clay","Otis Rush (soul-blues side)","Ruth Brown","Johnny Adams","Johnnie Taylor","Tyrone Davis","Denise LaSalle","Millie Jackson","Syl Johnson","Sir Charles Jones","Mel Waiters","Shirley Brown","Z.Z. Hill"] },
+  "Acoustic Blues":      { parents: ["Blues","Folk"], era: "1900–", description: "Solo or duo acoustic blues — country-blues, folk-blues, finger-picking tradition.", traits: ["solo acoustic guitar","fingerstyle","country-blues tradition","intimate setting"], artists: ["Mississippi John Hurt","Lightnin' Hopkins","Taj Mahal","Keb' Mo'","Eric Bibb","Guy Davis","Corey Harris","Alvin Youngblood Hart","Geoff Muldaur","Maria Muldaur","John Hammond","Otis Taylor","Dom Flemons","Rhiannon Giddens","Valerie June"] },
+
+  // ── GOSPEL / SPIRITUAL FAMILY (LINEAGE BACKFILL) ──────────────────────
+  "Traditional Gospel":  { parents: ["Gospel","Sacred Music"], era: "1920–", description: "Early African-American gospel — Thomas A. Dorsey's invention. The foundation of Black sacred music.", traits: ["hymn-based","call-and-response","solo + choir","sanctified delivery"], artists: ["Mahalia Jackson","Thomas A. Dorsey","Sister Rosetta Tharpe","Sam Cooke (gospel era)","The Soul Stirrers","Dixie Hummingbirds","The Caravans","Clara Ward Singers","Swan Silvertones","Mighty Clouds of Joy","James Cleveland","Shirley Caesar","Albertina Walker","The Pilgrim Travelers","Five Blind Boys of Mississippi"] },
+  "Black Gospel":        { parents: ["Traditional Gospel","R&B / Soul"], era: "1960–", description: "Modern African-American gospel — mass choirs, Kirk Franklin era, electrifying church music.", traits: ["mass choirs","urban production","R&B crossover","electric worship"], artists: ["Kirk Franklin","Yolanda Adams","Fred Hammond","CeCe Winans","BeBe Winans","Donnie McClurkin","Marvin Sapp","Tasha Cobbs Leonard","Tye Tribbett","Israel Houghton","Hezekiah Walker","Mary Mary","Kurt Carr","Ricky Dillard","Maverick City Music"] },
+  "Southern Gospel":     { parents: ["Traditional Gospel","Country"], era: "1910–", description: "White Southern gospel tradition — quartet singing, Stamps-Baxter hymnals, Bill Gaither era.", traits: ["vocal quartet harmonies","Southern hymn tradition","piano-led","country-influenced"], artists: ["The Blackwood Brothers","Statesmen Quartet","The Cathedrals","Gaither Vocal Band","Bill Gaither","Ernie Haase & Signature Sound","Gold City","The Hoppers","The Perrys","The Booth Brothers","Brian Free & Assurance","Triumphant Quartet","Kingdom Heirs","Greater Vision","The Nelons"] },
+  "Contemporary Christian":{ parents: ["Gospel","Pop"], era: "1970–", description: "Christian-themed pop/rock — CCM radio, Hillsong crossover, Lauren Daigle pop success.", traits: ["pop song structure","Christian lyrics","radio-ready production","crossover appeal"], artists: ["Lauren Daigle","Chris Tomlin","Hillsong United","Elevation Worship","Maverick City Music","for KING & COUNTRY","Casting Crowns","Lecrae","MercyMe","TobyMac","Bethel Music","Amy Grant","Michael W. Smith","NEEDTOBREATHE","Phil Wickham"] },
+  "Worship Music":       { parents: ["Contemporary Christian"], era: "1990–", description: "Congregational worship anthems — Hillsong, Bethel, Elevation lineage. Built for church services.", traits: ["congregational singing","repeated refrains","acoustic-to-anthemic builds","worship liturgy"], artists: ["Hillsong Worship","Hillsong United","Elevation Worship","Bethel Music","Jesus Culture","Chris Tomlin","Kari Jobe","Matt Redman","Cory Asbury","Sean Feucht","Planetshakers","Brandon Lake","Phil Wickham","Maverick City Music","Jeremy Riddle"] },
+  "Gospel Soul":         { parents: ["Traditional Gospel","Soul"], era: "1955–", description: "Gospel-trained soul — the bridge from church to secular. Aretha, Sam Cooke, Stax singers.", traits: ["gospel vocal technique","soul production","testimony lyrics (secular)","horn arrangements"], artists: ["Aretha Franklin","Sam Cooke","Ray Charles","Al Green","Solomon Burke","Otis Redding","Wilson Pickett","Curtis Mayfield","Mavis Staples","The Staple Singers","Candi Staton","Valerie June","Leon Bridges","Anderson .Paak (gospel side)","Brittany Howard"] },
+  "Gospel Trap":         { parents: ["Gospel","Trap"], era: "2013–", description: "Christian trap — Lecrae's lane, Reach Records era. Trap production + faith lyrics.", traits: ["trap drums","Christian lyrics","crossover rap","modern church aesthetic"], artists: ["Lecrae","NF","Andy Mineo","Trip Lee","KB","Tedashii","Social Club Misfits","1K Phew","Kirk Franklin (trap collabs)","Sho Baraka","Thi'sl","Bizzle","Hulvey","Wande","WHATUPRG"] },
+  "Sacred Choral":       { parents: ["Choral","Classical"], era: "900–", description: "Christian choral tradition — Gregorian chant, Renaissance polyphony, modern sacred choral.", traits: ["Latin or vernacular","polyphonic writing","liturgical function","voices a cappella or with organ"], artists: ["Giovanni Pierluigi da Palestrina","William Byrd","Thomas Tallis","Arvo Pärt","John Tavener","Eric Whitacre","Morten Lauridsen","Ola Gjeilo","Hildegard von Bingen","Tomás Luis de Victoria","Francisco Guerrero","Tallis Scholars","The Sixteen","VOCES8","The Gesualdo Six"] },
+  "Sufi Music":          { parents: ["Sacred Music"], era: "1200–", description: "Islamic devotional music — Sufi mystical tradition. Qawwali, Mevlevi, Sama'a gatherings.", traits: ["trance-inducing repetition","devotional lyrics","harmonium or ney","ecstatic build"], artists: ["Nusrat Fateh Ali Khan","Rahat Fateh Ali Khan","Abida Parveen","Mercan Dede","Sami Yusuf","Sabri Brothers","Aziz Mian","Sanam Marvi","Kayhan Kalhor","Shahram Nazeri","Alim Qasimov","Mercan Dede","Wajid Ali","Fareed Ayaz","Atif Aslam (Sufi side)"] },
+  "Devotional Indian":   { parents: ["Indian Classical","Sacred Music"], era: "1500–", description: "Hindu devotional music — bhajans, kirtans, Bhakti tradition. Trance-inducing group singing.", traits: ["bhajan/kirtan form","harmonium + tabla","Sanskrit/Hindi devotional","call-and-response"], artists: ["M.S. Subbulakshmi","Anup Jalota","Jagjit Singh (bhajan side)","Lata Mangeshkar (devotional)","Asha Bhosle (devotional)","Krishna Das","Jai Uttal","Deva Premal","Pandit Jasraj","Hariharan (devotional)","Anuradha Paudwal","Pankaj Udhas (devotional)","Shubha Mudgal","Kaushiki Chakraborty","Ustad Ghulam Ali"] },
+
+  // ── EXPERIMENTAL FAMILY (LINEAGE BACKFILL) ────────────────────────────
+  "Avant-Garde":         { parents: ["Experimental","Classical"], era: "1910–", description: "Boundary-pushing composition — Cage, Stockhausen, Xenakis. Anything breaking musical convention.", traits: ["chance procedures","extended techniques","anti-convention","academic tradition"], artists: ["John Cage","Karlheinz Stockhausen","Iannis Xenakis","Pierre Boulez","Luciano Berio","György Ligeti","Morton Feldman","Pauline Oliveros","Meredith Monk","Henry Cowell","La Monte Young","Alvin Lucier","Conlon Nancarrow","Luc Ferrari","Annea Lockwood"] },
+  "Noise":               { parents: ["Experimental","Industrial Electronic"], era: "1980–", description: "Non-musical sound as music — harsh-noise walls, Merzbow's legacy. Anti-melody tradition.", traits: ["harsh non-pitch content","extreme volume","distortion-as-texture","anti-melodic"], artists: ["Merzbow","Boris","Pharmakon","Prurient","Hanatarash","Throbbing Gristle","Whitehouse","Lightning Bolt","Wolf Eyes","The Haxan Cloak","Ben Frost","Mike Patton (noise side)","Pussy Galore","Aaron Dilloway","Cold Cave"] },
+  "Glitch":              { parents: ["IDM","Experimental"], era: "1994–", description: "Music made from digital errors — Oval, Alva Noto, Autechre's late style. Aesthetic of broken audio.", traits: ["digital artifacts as sound","click/pop aesthetic","granular synthesis","micro-editing"], artists: ["Oval","Alva Noto","Ryoji Ikeda","Pole","Autechre (glitch era)","Fennesz","Tim Hecker","Mouse on Mars (glitch side)","Matmos","Vladislav Delay","Pansonic","Curtis Roads","Kim Cascone","Mika Vainio","Opiate"] },
+  "Musique Concrète":    { parents: ["Experimental","Avant-Garde"], era: "1948–", description: "Recorded-sound-as-composition — Pierre Schaeffer's invention. Foundation of electronic music.", traits: ["recorded sound manipulation","tape editing","non-musical source sounds","academic electroacoustic"], artists: ["Pierre Schaeffer","Pierre Henry","Luc Ferrari","Bernard Parmegiani","Francois Bayle","Iannis Xenakis","Karlheinz Stockhausen","Delia Derbyshire","Daphne Oram","Tod Dockstader","Eliane Radigue","Beatriz Ferreyra","Denis Smalley","Jonty Harrison","Francis Dhomont"] },
+  "Sound Collage":       { parents: ["Musique Concrète","Hip-Hop"], era: "1960–", description: "Layered found-sound compositions — Negativland, The Avalanches, plunderphonics tradition.", traits: ["layered samples","plunderphonics","collage aesthetic","cultural-commentary sampling"], artists: ["The Avalanches","Negativland","John Oswald","People Like Us","DJ Shadow","Girl Talk","Steinski","Public Service Broadcasting","Ergo Phizmiz","Vicki Bennett","Matmos","Wobbly","Kid Koala","Cut Chemist","The Bran Flakes"] },
+  "Algorave":            { parents: ["Electronic","Experimental"], era: "2011–", description: "Algorithmic live-coded dance music — Alex McLean's invention. Code as instrument.", traits: ["live-coded performance","algorithmic composition","dance-floor oriented","projected code"], artists: ["Alex McLean","Renick Bell","Joana Chicau","Shelly Knotts","Alexandra Cárdenas","Kindohm","Heavy Lifting","Sam Aaron","Dan Hett","Benoît","Olivia Jack","CNDSD","Calum Gunn","Cloud Spoke","lvm"] },
+  "Ambient Pop":         { parents: ["Ambient","Pop"], era: "1991–", description: "Pop with ambient textures — Cocteau Twins bridge, modern dream-pop descendants.", traits: ["ambient production","pop vocal hooks","ethereal atmosphere","hazy textures"], artists: ["Cocteau Twins","Beach House","My Bloody Valentine","Slowdive","Grouper","Julianna Barwick","Broadcast","Cigarettes After Sex","Mazzy Star","Grimes (ambient pop side)","Caroline Polachek","FKA twigs","Weyes Blood","Hatchie","Men I Trust"] },
+
+  // ── SOUNDTRACK / SCORE FAMILY (LINEAGE BACKFILL) ──────────────────────
+  "Orchestral Score":    { parents: ["Classical","Film Score"], era: "1930–", description: "Traditional orchestral film scoring — John Williams tradition. Melodic themes, full orchestra.", traits: ["full orchestra","leitmotifs","melodic themes","cinematic emotion"], artists: ["John Williams","Hans Zimmer (orchestral)","James Horner","Howard Shore","Alan Silvestri","Jerry Goldsmith","Alexandre Desplat","Michael Giacchino","James Newton Howard","John Barry","Ennio Morricone","John Powell","Thomas Newman","Max Steiner","Bernard Herrmann"] },
+  "Film Score":          { parents: ["Orchestral Score","Ambient"], era: "1908–", description: "Music for film — from silent-era orchestra to modern hybrid electronic-orchestral.", traits: ["serves narrative","emotional pacing","genre-fluid","scene-matched moods"], artists: ["Hans Zimmer","John Williams","Ennio Morricone","Trent Reznor & Atticus Ross","Jonny Greenwood","Max Richter","Alexandre Desplat","Howard Shore","Jóhann Jóhannsson","Hildur Guðnadóttir","Mica Levi","Ludwig Göransson","Joe Hisaishi","Nick Cave & Warren Ellis","Jerskin Fendrix"] },
+  "Trailer Music":       { parents: ["Orchestral Score","Electronic"], era: "2000–", description: "Purpose-built trailer music — Two Steps From Hell era. Epic build-drops, hybrid production.", traits: ["epic build-drops","hybrid orchestral-electronic","modular structure","brutal emotional peaks"], artists: ["Two Steps From Hell","Audiomachine","Thomas Bergersen","Nick Phoenix","Hans Zimmer (trailer side)","Really Slow Motion","Future World Music","Position Music","Immediate Music","Brand X","Epic Score","X-Ray Dog","Rok Nardin","Ivan Torrent","Sub Pub Music"] },
+  "Game OST":            { parents: ["Film Score","Electronic"], era: "1980–", description: "Video game music — from chiptune to modern orchestral/electronic hybrids.", traits: ["loop-friendly composition","interactive/adaptive","chiptune heritage","contemporary orchestral-electronic"], artists: ["Nobuo Uematsu","Koji Kondo","Yasunori Mitsuda","Jeremy Soule","Martin O'Donnell","Austin Wintory","Gareth Coker","Christopher Larkin","Lena Raine","Disasterpeace","Toby Fox","Darren Korb","Grant Kirkhope","Yoko Shimomura","Masayoshi Soken"] },
+  "Anime OST":           { parents: ["Game OST","J-Pop"], era: "1980–", description: "Japanese animation soundtracks — Joe Hisaishi tradition, Yoko Kanno era, modern anime pop themes.", traits: ["orchestral + J-pop hybrid","emotional leitmotifs","opening/ending themes","anime-specific tropes"], artists: ["Joe Hisaishi","Yoko Kanno","Yuki Kajiura","Hiroyuki Sawano","Ryo Horikawa","Kenji Kawai","Toshihiko Sahashi","Shirō Sagisu","Kow Otani","Masashi Hamauzu","Kevin Penkin","Kohta Yamamoto","Taku Iwasaki","LiSA (anime side)","Eir Aoi"] },
+  "Horror Score":        { parents: ["Dark Classical","Film Score"], era: "1960–", description: "Horror/thriller scoring — atonal strings, synth drones, Penderecki-to-Goblin-to-Bernard-Herrmann lineage.", traits: ["atonal tension","drone + string clusters","synth horror","sudden dynamic stabs"], artists: ["Bernard Herrmann","John Carpenter","Goblin","Krzysztof Penderecki","Jerry Goldsmith","Ennio Morricone (horror side)","Fabio Frizzi","Mica Levi","Bobby Krlic (Midsommar)","Disasterpeace","Christopher Young","Mark Korven","Trent Reznor & Atticus Ross","Colin Stetson","The Haxan Cloak"] },
+  "Documentary Score":   { parents: ["Film Score","Ambient"], era: "1970–", description: "Documentary film scoring — non-narrative, mood-building, from David Attenborough's orchestral to Jonny Greenwood minimalism.", traits: ["non-narrative mood","observational pacing","ambient textures","subtle emotional cues"], artists: ["Philip Glass","Jonny Greenwood (docs side)","Ry Cooder","Max Richter (docs side)","Fred Frith","Bruno Coulais","Michael Giacchino (docs)","Terry Riley (docs side)","Daniel Pemberton","Anne Nikitin","Lesley Barber","Dustin O'Halloran (docs)","Hauschka (docs)","Jóhann Jóhannsson (docs side)","Kronos Quartet (docs)"] },
+  "Musical Theater":     { parents: ["Classical","Pop"], era: "1900–", description: "Broadway and musical theater — Sondheim tradition, modern Hamilton era.", traits: ["book-musical format","character songs","ensemble numbers","theatrical orchestration"], artists: ["Stephen Sondheim","Rodgers & Hammerstein","Lin-Manuel Miranda","Andrew Lloyd Webber","Jason Robert Brown","Jonathan Larson","Benj Pasek & Justin Paul","Lynn Ahrens & Stephen Flaherty","Jeanine Tesori","Tom Kitt","Kristen Anderson-Lopez & Robert Lopez","Adam Guettel","William Finn","Jeff Marx","Cy Coleman"] },
+
+  // ── R&B / SOUL FAMILY (LINEAGE BACKFILL) ──────────────────────────────
+  "Quiet Storm":         { parents: ["R&B / Soul","Jazz"], era: "1975–", description: "Smooth late-night R&B radio format — sensual slow jams, saxophone solos. Sade's quintessential sound.", traits: ["slow tempo","saxophone solos","velvet vocals","late-night seduction"], artists: ["Sade","Anita Baker","Luther Vandross","Smokey Robinson","Teddy Pendergrass","Barry White","Toni Braxton","Peabo Bryson","Freddie Jackson","Regina Belle","Roberta Flack","Will Downing","Maxwell","Jill Scott (quiet storm side)","Aaron Hall"] },
+  "Boogie":              { parents: ["Funk","Classic Disco"], era: "1979–", description: "Early-80s post-disco funk — synth bass, electro-boogie era, Leroy Burgess lineage.", traits: ["synth bass","electro-funk","early drum machines","breakdown sections"], artists: ["Leroy Burgess","Kleeer","Change","Cameo","Evelyn 'Champagne' King","The Whispers","Shalamar","Dazz Band","Midnight Star","D Train","Patrice Rushen","Skyy","Slave","Mtume","Dam-Funk"] },
+  "Motown Revival":      { parents: ["Motown","R&B / Soul"], era: "2000–", description: "Revival of 60s Detroit sound — Amy Winehouse, Sharon Jones tradition. Retro-soul aesthetic.", traits: ["60s rhythm section","call-and-response","horn stabs","classic pocket"], artists: ["Amy Winehouse","Sharon Jones & the Dap-Kings","Raphael Saadiq","Adele (Motown side)","Leon Bridges","Ben L'Oncle Soul","Aloe Blacc","Mayer Hawthorne","Charles Bradley","Lee Fields","St. Paul & The Broken Bones","Durand Jones & the Indications","The Black Keys (soul side)","Lake Street Dive","Nathaniel Rateliff & the Night Sweats"] },
+  "UK Soul":             { parents: ["R&B / Soul"], era: "1982–", description: "British soul — Sade, Soul II Soul, modern Sault lineage. Distinct from American soul traditions.", traits: ["British accent vocals","jazz-inflected","laid-back pocket","London sensibility"], artists: ["Sade","Soul II Soul","Simply Red","Paul Weller","Amy Winehouse","Joss Stone","Omar","Corinne Bailey Rae","Sault","Cleo Sol","Little Simz (soul side)","Michael Kiwanuka","Jamie Cullum (soul side)","Jorja Smith","Cleo Sol"] },
+  "Doo-Wop":             { parents: ["R&B / Soul","Vocal Jazz"], era: "1950–", description: "50s vocal-group harmony — street-corner a cappella, romantic ballad tradition.", traits: ["vocal group harmonies","romantic ballads","a cappella tradition","bass + falsetto interplay"], artists: ["The Platters","The Drifters","The Five Satins","Frankie Lymon & the Teenagers","The Flamingos","The Moonglows","Dion & the Belmonts","The Chantels","The Skyliners","The Del-Vikings","The Dubs","The Cleftones","The Marcels","Little Anthony and the Imperials","The Shirelles"] },
+
+  // ── AMBIENT / NEW AGE FAMILY (LINEAGE BACKFILL) ───────────────────────
+  "New Age":             { parents: ["Ambient"], era: "1973–", description: "Meditative, spiritual-leaning ambient — Enya, Yanni, Windham Hill era. Healing-music adjacent.", traits: ["meditative pacing","synth pads","gentle melodies","spiritual aesthetic"], artists: ["Enya","Yanni","Kitaro","Vangelis","Tangerine Dream (new age side)","George Winston","Andreas Vollenweider","Deuter","Constance Demby","Steven Halpern","Iasos","Suzanne Ciani","Laraaji","Ray Lynch","Mike Oldfield"] },
+  "Dark Ambient":        { parents: ["Ambient","Industrial Electronic"], era: "1983–", description: "Atmospheric dark music — Lustmord lineage, horror-adjacent drones, ritual darkness.", traits: ["drone-based","dark atmosphere","ritual aesthetic","horror-score adjacent"], artists: ["Lustmord","Cold Meat Industry artists","Coil","Atrium Carceri","Kammarheit","Svartsinn","Raison d'être","Robert Rich","Steve Roach (dark side)","Deathprod","Thomas Köner","Schloss Tegal","Northaunt","Alio Die","Desiderii Marginis"] },
+  "Drone":               { parents: ["Ambient","Minimalist Classical"], era: "1960–", description: "Sustained-tone music — La Monte Young's lineage, Sunn O))) heavy variant, modern maximal drone.", traits: ["sustained tones","minimal change","overtone exploration","extreme duration"], artists: ["La Monte Young","Sunn O)))","Earth","Tim Hecker","William Basinski","Stars of the Lid","Eliane Radigue","Phill Niblock","Pauline Oliveros","Nurse With Wound","Philip Jeck","Fennesz","Grouper","Yellow Swans","Barn Owl"] },
+  "Space Music":         { parents: ["Ambient","New Age"], era: "1969–", description: "Cosmic-themed ambient — Hearts of Space radio tradition. Vangelis, Tangerine Dream lineage.", traits: ["cosmic themes","spacious synth pads","slow evolution","meditative"], artists: ["Tangerine Dream","Klaus Schulze","Vangelis","Brian Eno (space side)","Steve Roach","Robert Rich","Alio Die","Mathias Grassow","Jonn Serrie","Constance Demby","Michael Stearns","Kevin Braheny","Thom Brennan","Patrick O'Hearn","Iasos"] },
+  "Tape Ambient":        { parents: ["Ambient","Experimental"], era: "1980–", description: "Tape-loop ambient — William Basinski's Disintegration Loops aesthetic. Analog decay as material.", traits: ["tape loops","analog decay","long-form evolution","nostalgic fragility"], artists: ["William Basinski","Gavin Bryars","Philip Jeck","The Caretaker","Leyland Kirby","Celer","A Winged Victory for the Sullen","Oneohtrix Point Never (tape side)","Ben Frost (tape side)","Rafael Anton Irisarri","Lawrence English","Loscil","Simon Scott","Robert Haigh","Machinefabriek"] },
 };
 
 // Helper: compute children for each node by reversing the parents map.
