@@ -7593,7 +7593,7 @@ function SpecificInstrumentsPicker({
               ‹
             </button>
             {/* SCROLLABLE TAB STRIP */}
-            <div style={{
+            <div data-no-swipe="true" style={{
               flex: 1, minWidth: 0,
               display: "flex", gap: T.s1, overflowX: "auto", overflowY: "hidden",
               scrollbarWidth: "thin",
@@ -11058,6 +11058,7 @@ function EnginePage({ onNavigate }) {
                 }}>60</span>
                 <input
                   type="range"
+                  data-no-swipe="true"
                   min="60"
                   max="200"
                   step="1"
@@ -17721,7 +17722,7 @@ function playButtonSound() {
   try {
     if (typeof window === "undefined" || typeof Audio === "undefined") return;
     if (!_buttonAudioPool) {
-      _buttonAudioPool = [new Audio("/button-sound.mp3"), new Audio("/button-sound.mp3"), new Audio("/button-sound.mp3")];
+      _buttonAudioPool = [new Audio("/BUTTON-SOUND.mp3"), new Audio("/BUTTON-SOUND.mp3"), new Audio("/BUTTON-SOUND.mp3")];
       _buttonAudioPool.forEach(a => { a.volume = 0.5; a.preload = "auto"; });
     }
     const a = _buttonAudioPool[_buttonAudioIdx];
@@ -17741,7 +17742,7 @@ function playFuelButtonSound() {
   try {
     if (typeof window === "undefined" || typeof Audio === "undefined") return;
     if (!_fuelBtnAudioPool) {
-      _fuelBtnAudioPool = [new Audio("/button-sound.mp3"), new Audio("/button-sound.mp3"), new Audio("/button-sound.mp3")];
+      _fuelBtnAudioPool = [new Audio("/BUTTON-SOUND.mp3"), new Audio("/BUTTON-SOUND.mp3"), new Audio("/BUTTON-SOUND.mp3")];
       _fuelBtnAudioPool.forEach(a => { a.volume = 0.55; a.preload = "auto"; });
     }
     const a = _fuelBtnAudioPool[_fuelBtnAudioIdx];
@@ -18032,6 +18033,7 @@ function Joystick({ onNavigate, onLockedClick }) {
       }}>
         <svg
           ref={svgRef}
+          data-no-swipe="true"
           viewBox={`0 0 ${VB_W} ${VB_H}`}
           width={displayWidth}
           style={{ display: "block", maxWidth: "100%", touchAction: "none" }}
@@ -19163,6 +19165,216 @@ function DailyBonusToast() {
   );
 }
 
+
+// ════════════════════════════════════════════════════════════════════════════
+// PAGE CAROUSEL — cinematic slide between pages via side arrow buttons
+// ════════════════════════════════════════════════════════════════════════════
+//
+// Architecture:
+// - Takes an ORDERED list of {id, render} pages
+// - A transform track (translateX of -index * 100%) holds the pages side-by-side
+// - Two floating arrow buttons (‹ ›) on the left/right edges advance the carousel
+// - Arrow buttons disable cleanly at first/last page
+// - Lazy mounts ONLY the current page plus its immediate neighbors (prev/next)
+//   to avoid the cost of keeping EnginePage running in 5 clones
+// - External page changes (nav tab click) animate via the same transform
+// - 900ms cubic-bezier(0.65, 0, 0.35, 1) — cinematic ease-in-out slide
+//
+// ════════════════════════════════════════════════════════════════════════════
+
+function PageCarousel({ pages, currentPage, onPageChange }) {
+  const trackRef = useRef(null);
+  const { layout } = useLayout();
+  const isMobile = layout === "mobile";
+  const currentIdx = Math.max(0, pages.findIndex(p => p.id === currentPage));
+  const prevIdxRef = useRef(currentIdx);
+
+  // ─── TRANSITION ──────────────────────────────────────────────────────
+  // When currentIdx changes, animate the track to its new target position.
+  // A useEffect handles this rather than inlining the transform, so external
+  // page changes (nav tab clicks, arrow clicks, or whatever triggers the
+  // parent's onPageChange) all take the same animated path.
+  useEffect(() => {
+    const track = trackRef.current;
+    if (!track) return;
+    track.style.transition = "transform 900ms cubic-bezier(0.65, 0, 0.35, 1)";
+    track.style.transform = `translateX(${-currentIdx * 100}%)`;
+    prevIdxRef.current = currentIdx;
+  }, [currentIdx]);
+
+  // Only render current ± 1 for perf. Adjacent pages are needed so the
+  // destination page is visible during the 900ms slide; everything else
+  // stays as an empty placeholder that preserves track layout.
+  const shouldMount = (idx) => Math.abs(idx - currentIdx) <= 1;
+
+  // ─── ARROW BUTTONS ────────────────────────────────────────────────────
+  const canPrev = currentIdx > 0;
+  const canNext = currentIdx < pages.length - 1;
+  const goPrev = () => {
+    if (!canPrev) return;
+    playSwitchSound();
+    onPageChange(pages[currentIdx - 1].id);
+  };
+  const goNext = () => {
+    if (!canNext) return;
+    playSwitchSound();
+    onPageChange(pages[currentIdx + 1].id);
+  };
+
+  const arrowBase = {
+    position: "fixed",
+    top: "50%",
+    transform: "translateY(-50%)",
+    zIndex: 50,
+    width: isMobile ? 44 : 52,
+    height: isMobile ? 72 : 96,
+    display: "grid",
+    placeItems: "center",
+    background: `linear-gradient(135deg, ${T.surface}ee 0%, ${T.elevated}dd 100%)`,
+    backdropFilter: "blur(10px) saturate(1.2)",
+    WebkitBackdropFilter: "blur(10px) saturate(1.2)",
+    border: `1px solid ${V.neonGold}66`,
+    color: V.neonGold,
+    cursor: "pointer",
+    fontFamily: T.font_mono,
+    fontSize: isMobile ? 32 : 40,
+    fontWeight: 300,
+    lineHeight: 1,
+    boxShadow: `
+      0 0 0 1px ${V.neonGold}22,
+      0 8px 32px rgba(0,0,0,0.5),
+      inset 0 1px 0 ${V.neonGold}33
+    `,
+    textShadow: `0 0 12px ${V.neonGold}99, 0 0 24px ${V.neonGold}44`,
+    transition: "all 240ms cubic-bezier(0.4, 0, 0.2, 1)",
+    userSelect: "none",
+    WebkitTapHighlightColor: "transparent",
+  };
+
+  const arrowDisabled = {
+    opacity: 0.25,
+    cursor: "default",
+    color: T.textMuted,
+    borderColor: T.border,
+    textShadow: "none",
+  };
+
+  return (
+    <>
+      <style>{`
+        .page-carousel-arrow:not(:disabled):hover {
+          background: linear-gradient(135deg, ${T.elevated}f0 0%, ${V.neonGold}22 100%) !important;
+          border-color: ${V.neonGold} !important;
+          box-shadow:
+            0 0 0 1px ${V.neonGold},
+            0 12px 40px rgba(0,0,0,0.6),
+            0 0 24px ${V.neonGold}44,
+            inset 0 1px 0 ${V.neonGold}88 !important;
+          transform: translateY(-50%) scale(1.05) !important;
+        }
+        .page-carousel-arrow:not(:disabled):active {
+          transform: translateY(-50%) scale(0.96) !important;
+        }
+      `}</style>
+      <div style={{
+        position: "relative",
+        width: "100%",
+        overflowX: "hidden",
+        overflowY: "visible",
+      }}>
+        <div
+          ref={trackRef}
+          style={{
+            display: "flex",
+            width: `${pages.length * 100}%`,
+            transform: `translateX(${-currentIdx * 100}%)`,
+            willChange: "transform",
+          }}
+        >
+          {pages.map((p, idx) => (
+            <div
+              key={p.id}
+              style={{
+                width: `${100 / pages.length}%`,
+                flex: `0 0 ${100 / pages.length}%`,
+                minHeight: idx === currentIdx ? undefined : "1px",
+              }}
+              aria-hidden={idx !== currentIdx}
+            >
+              {shouldMount(idx) ? p.render() : null}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* LEFT ARROW — fixed-position, vertically centered */}
+      <button
+        type="button"
+        className="page-carousel-arrow"
+        onClick={goPrev}
+        disabled={!canPrev}
+        aria-label="Previous page"
+        title={canPrev ? `Previous: ${pages[currentIdx - 1].id}` : "No previous page"}
+        style={{
+          ...arrowBase,
+          left: isMobile ? 6 : 14,
+          borderRadius: `${T.r_md}px ${T.r_lg}px ${T.r_lg}px ${T.r_md}px`,
+          paddingRight: 4,
+          ...(canPrev ? {} : arrowDisabled),
+        }}
+      >‹</button>
+
+      {/* RIGHT ARROW — fixed-position, vertically centered */}
+      <button
+        type="button"
+        className="page-carousel-arrow"
+        onClick={goNext}
+        disabled={!canNext}
+        aria-label="Next page"
+        title={canNext ? `Next: ${pages[currentIdx + 1].id}` : "No next page"}
+        style={{
+          ...arrowBase,
+          right: isMobile ? 6 : 14,
+          borderRadius: `${T.r_lg}px ${T.r_md}px ${T.r_md}px ${T.r_lg}px`,
+          paddingLeft: 4,
+          ...(canNext ? {} : arrowDisabled),
+        }}
+      >›</button>
+    </>
+  );
+}
+
+
+// ────────────────────────────────────────────────────────────────────────────
+// PageRouter — wires the current `page` state into either the carousel (for
+// the 5 main pages) or a direct render (for the trendsetter transition).
+// Tier-gated pages (secrets/Playbook) are excluded from the carousel when
+// the tier can't see them, so swipes don't land on an inaccessible page.
+// ────────────────────────────────────────────────────────────────────────────
+function PageRouter({ page, onNavigate }) {
+  const { features } = useTier();
+  // Main-carousel page order — matches Nav links visual order so swipe
+  // direction reads naturally (swipe left = next tab to the right).
+  // `secrets` only present when the tier can see the Playbook.
+  const carouselPages = [
+    { id: "engine",  render: () => <EnginePage onNavigate={onNavigate} /> },
+    { id: "history", render: () => <HistoryPage onNavigate={onNavigate} /> },
+    { id: "future",  render: () => <FuturePage /> },
+    { id: "shop",    render: () => <ShopPage /> },
+    ...(features.vipSecretsPage ? [{ id: "secrets", render: () => <PlaybookPage /> }] : []),
+  ];
+  // Trendsetter is a special transition destination, not a regular page —
+  // it lives outside the carousel and gets its own mount.
+  if (page === "trendsetter") {
+    return (
+      <div key="trendsetter" className="page-transition">
+        <TrendSetterPage />
+      </div>
+    );
+  }
+  return <PageCarousel pages={carouselPages} currentPage={page} onPageChange={onNavigate} />;
+}
+
 export default function HitEngine() {
   const [page, setPage] = useState("engine");
 
@@ -19258,14 +19470,7 @@ export default function HitEngine() {
               <div style={{ position: "relative", zIndex: 1 }}>
                 <Nav page={page} onNavigate={setPage} />
                 <ErrorBoundary>
-                  <div key={page} className="page-transition">
-                    {page === "engine"  && <EnginePage onNavigate={setPage} />}
-                    {page === "future"  && <FuturePage />}
-                    {page === "history" && <HistoryPage onNavigate={setPage} />}
-                    {page === "secrets" && <PlaybookPage />}
-                    {page === "shop"    && <ShopPage />}
-                    {page === "trendsetter" && <TrendSetterPage />}
-                  </div>
+                  <PageRouter page={page} onNavigate={setPage} />
                 </ErrorBoundary>
                 <DailyBonusToast />
               </div>
