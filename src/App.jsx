@@ -338,18 +338,29 @@ function FuelProvider({ children }) {
   const [activeFuel, setActiveFuel] = useState("free");
   const [lastReset, setLastReset] = useState(todayKey());
 
-  // Load persisted fuel state on mount
+  // Load persisted fuel state on mount + on tier change.
+  // Rule: tier change NEVER refills fuel. Only a day rollover refills.
+  // The stored `tier` field is informational only (audit trail) — it does
+  // NOT trigger a reset. Previously this effect called setFuels to the
+  // fresh daily allocation whenever parsed.tier !== current tier, which
+  // silently wiped consumed fuel every time the user changed tier (or
+  // toggled dev mode, which changes the active tier). That violated
+  // the "fuel is a possession, tier is a view" rule.
   useEffect(() => {
     if (typeof window === "undefined") return;
     try {
       const raw = localStorage.getItem("he-fuel-v1");
       if (!raw) return;
       const parsed = JSON.parse(raw);
-      if (parsed.date === todayKey() && parsed.tier === tier) {
+      if (parsed.date === todayKey()) {
+        // Same day → load whatever fuel state was persisted, regardless
+        // of what tier the user is currently viewing. Tier hopping
+        // (including dev-mode tier cycling) preserves consumed fuel.
         setFuels(parsed.fuels);
         setActiveFuel(parsed.activeFuel || "free");
       } else {
-        // New day or tier changed → reset to fresh allocation
+        // New day → reset to the CURRENT tier's daily allocation.
+        // The day rolled over, so the user gets a fresh daily grant.
         setFuels({ ...features.dailyFuel });
         setLastReset(todayKey());
       }
@@ -2153,6 +2164,347 @@ function getVibeBlendOverrides(blendVibeId, pack) {
   const sig = VIBE_SIGNATURE[blendVibeId];
   if (!sig) return {};
   return { mood: sig.mood, lyricalVibe: sig.lyricalVibe, energy: sig.energy };
+}
+
+// ════════════════════════════════════════════════════════════════════════
+// ARTIST VOCABULARY — producer-grade signature descriptors per artist
+// ════════════════════════════════════════════════════════════════════════
+// When a mimic pack is applied, the engine attaches these descriptor
+// phrases to the generated prompt as a "[sonic DNA: …]" block. The goal:
+// move Suno/Udio beyond generic pop competence and into a specific
+// artist's production fingerprint — mic technique, vocal articulation,
+// signature gear, arrangement tells, mix-bus color — without ever
+// naming the artist (Suno/Udio filter artist names; these production-
+// technique descriptors slip through and steer the model strongly).
+//
+// Keys correspond to MIMIC_PACKS artistId. Each entry is organized into
+// four fields so the engine can sample selectively if a prompt gets
+// too long:
+//   vocal     — mic technique, vocal articulation, delivery quirks
+//   production — signature gear, synth choices, drum tells, textures
+//   signature — hallmark arrangement moves + mix-bus color
+//   era       — decade + scene reference that bounds the sonic palette
+//
+// Pack-level overrides supported: if a pack's state.vocabulary is set,
+// that replaces the artist-level defaults for that pack only. Useful
+// for stylistic outlier packs (e.g. a "UK drill visit" pack for an
+// artist whose default is moody OVO R&B).
+//
+// All descriptors MUST be production-technique language — NEVER artist
+// names, song titles, or phrases that identify a real person. These
+// are sonic fingerprints, not biographical tags.
+//
+// 5 artists populated this release (Billie, Weeknd, Drake, Ben Zur,
+// Odeya). Remaining 15 will be populated in follow-up iterations —
+// defaults gracefully when no entry is found.
+// ════════════════════════════════════════════════════════════════════════
+
+const ARTIST_VOCABULARY = {
+  // ── BILLIE EILISH ──────────────────────────────────────────────
+  // Core: Finneas bedroom-pop production doctrine — intimacy over
+  // grandeur, silence as an instrument, vocal layering with up to
+  // 16 Vocal Texture tracks beautifully balanced L-to-R. No auto-
+  // tune fixing, natural glissando preserved. TLM 103 / AT2020
+  // close-mic + Logic Pro X + Keyscape Dark Indie upright pianos.
+  billie: {
+    vocal: [
+      "ASMR-close proximity mic technique",
+      "breathy sibilant-forward whisper delivery",
+      "natural glottal ornamentation preserved",
+      "unquantized unautotuned expressive pitch",
+      "4-layer harmony stacks widening at chorus",
+      "12 background Vocal Texture layers balanced L-to-R",
+      "crossfade to silence between every word",
+      "lead vocal gained +27 dB so quiet details pop",
+    ],
+    production: [
+      "Logic Pro X bedroom-studio arrangement",
+      "Keyscape Dark Indie upright piano",
+      "self-recorded Foley percussion elements",
+      "Trilian synth bass for rhythmic pivots",
+      "minimal instrumentation around voice-piano core",
+      "Pultec EQP-1A low-end lift on master",
+    ],
+    signature: [
+      "negative-space production — silence as an instrument",
+      "almost no high-frequency content or reverb wash",
+      "extreme dynamic contrast between whisper and belt",
+      "dark-themed imagery with cinematic Foley accents",
+      "sparse arrangement with one memorable texture anomaly",
+    ],
+    era: "late-2010s bedroom-pop minimalism crossing into 2020s alt-pop",
+  },
+
+  // ── THE WEEKND ─────────────────────────────────────────────────
+  // Core: Max Martin era synthwave + Michael Jackson-era falsetto
+  // acrobatics, Roland Juno-60 lead synths, TR-707 drum machine
+  // feel, Yamaha DX7 piercing leads, pulsating sub-bass. 171 BPM
+  // new-wave drum patterns. Illangelo / DaHeala / Metro Boomin
+  // producers. Cinematic keyboards, red-suit "After Hours" visual.
+  weeknd: {
+    vocal: [
+      "Michael Jackson-era falsetto acrobatics",
+      "F4 high chest-voice belt for emotional peaks",
+      "8-bar vocal runs with glottal breaks",
+      "layered doubled chorus with octave harmonies",
+      "call-and-response ad-libs in post-chorus",
+      "vocoder on bridge sections for texture",
+      "whispered-to-angelic dynamic swing",
+    ],
+    production: [
+      "Roland Juno-60 signature lead synth",
+      "TR-707 drum machine kick + snare",
+      "Yamaha DX7 piercing electric piano lead",
+      "pulsating analog sub-bass under chords",
+      "80s gated-reverb snare color",
+      "ultra-cinematic keyboard pads with caverns of echo",
+      "tambourine doubling hi-hat in bridge",
+      "atonal sine-wave transition risers",
+    ],
+    signature: [
+      "171 BPM new-wave drum tempo territory",
+      "familiar-80s + one fresh modern element per section",
+      "subtle transition variation — no two the same",
+      "red-suit After Hours cinematic nocturne aesthetic",
+      "sleek-cold-plush mix — lachrymose but shiny",
+      "drop-out into single element before final chorus",
+    ],
+    era: "2020s synthwave revival filtered through 1985 MJ-era pop",
+  },
+
+  // ── DRAKE ──────────────────────────────────────────────────────
+  // Core: Noah "40" Shebib OVO production — halftime feel, low-pass
+  // filter, reverse sounds, pitched-down snares/hats/vocals. Starts
+  // with synths not drums. Open-voicing Rhodes/piano with 7ths &
+  // 9ths. Atmospheric Diva pads. Decapitator saturation. Intimate
+  // vocal preset — warm tube-mic + high-end analog gear color.
+  drake: {
+    vocal: [
+      "intimate close-mic tube-warm vocal preset",
+      "low-end proximity bass with silky-air high-end",
+      "subtle analog-style saturation on lead",
+      "cinematic reverb tail with long decay",
+      "melodic-sung hook over spoken verse flow",
+      "pitched-down vocal chops as ear-candy fills",
+    ],
+    production: [
+      "halftime drum programming at 70-85 BPM",
+      "start-with-synth-not-drums arrangement approach",
+      "low-pass filter signature on high frequencies",
+      "reversed synth tails in transitions",
+      "pitched-down snares and hat samples",
+      "open-voicing Rhodes piano with 7ths and 9ths",
+      "atmospheric Diva-style pads under verses",
+      "Decapitator analog saturation on bass",
+      "muffled Ginuwine-sample style vocal flips",
+    ],
+    signature: [
+      "emotional-space over aggressive-energy arrangement",
+      "sparse verse pulling back to drums-bass-one-melody",
+      "hook builds with layered pads + counter-melodies",
+      "low-sample-rate trick instead of low-pass EQ",
+      "call-and-response between instrumental and vocal",
+      "sophisticated minor-key harmonic richness",
+    ],
+    era: "2010s Toronto-OVO moody-atmospheric R&B meets melodic rap",
+  },
+
+  // ── BEN ZUR (Pop Emuni) ────────────────────────────────────────
+  // Core: Tzfat Turkish-Egyptian heritage + Matan Dror / Ofir Cohen
+  // production. Acoustic-guitar fingerpick or piano-led bed.
+  // Emotional tenor delivered "from a place of truth." Mediterranean
+  // pluck textures with religious-pop arrangement. Gospel-build
+  // backing vocals on chorus. Rubato prayer-moment bridges.
+  "ben-zur": {
+    vocal: [
+      "emotional tenor from-a-place-of-truth delivery",
+      "between-heaven-and-earth vocal quality",
+      "gospel-style backing vocal builds on chorus",
+      "rubato prayer-moment delivery in bridge",
+      "unaffected Hebrew pronunciation with Turkish lilt",
+      "communal sing-along belt in final chorus",
+    ],
+    production: [
+      "acoustic guitar fingerpick bed",
+      "piano-led harmonic foundation",
+      "Mediterranean pluck textures — bouzouki or saz accents",
+      "modern pop-emuni production polish",
+      "sparse percussion until emotional peak",
+      "string pad swell under prayer bridge",
+    ],
+    signature: [
+      "faith-pop emotional arc — intimate verse to communal chorus",
+      "acoustic-piano texture foundation throughout",
+      "Mediterranean-pop meets contemporary Christian sensibility",
+      "Tzfat mystic ballad atmosphere",
+      "simcha celebration energy on uptempo sections",
+    ],
+    era: "2020s Israeli Pop Emuni — faith-pop Mediterranean fusion",
+  },
+
+  // ── ODEYA ──────────────────────────────────────────────────────
+  // Core: "Taylor Swift of Israel" / Eminem+Sarit Hadad fusion. Pop
+  // + Mediterranean + rap + faith, confessional sharp lyrics that
+  // mix madness/pills/drugs with Shabbat kiddush. Producers Guy+Yahel,
+  // Matan Dror, Moshe&Ofek, Bleu, Offir Malol. Ofer Nissim / Jordi /
+  // Triangle collaborators — sparkly modernized Mediterranean pop.
+  // Religious-secular duality expressed sonically.
+  odeya: {
+    vocal: [
+      "confessional singer-songwriter delivery",
+      "rap-sing hybrid flow with Mediterranean ornament",
+      "sharp consonant-forward Hebrew articulation",
+      "raw emotional belt in bridge sections",
+      "spoken-word interlude into melodic hook",
+      "layered harmony stacks in final chorus",
+    ],
+    production: [
+      "sparkly modernized Mediterranean electronic production",
+      "Ofer Nissim / Triangle-style glossy pop mix",
+      "programmed trap-adjacent drums with live Mid-East percussion",
+      "EDM-prayer hybrid synth pads",
+      "vocal chops pitched high for texture",
+      "contemporary sub-bass under traditional phrygian lead",
+    ],
+    signature: [
+      "religious-secular sonic duality — club beat under prayer lyric",
+      "Mediterranean-pop meets confessional pop-rap",
+      "Moroccan-heritage Bat Yam harmonic palette",
+      "sparkly modernized glaze over traditional tropes",
+      "half-hareidi / half-exposed stylistic contradiction",
+    ],
+    era: "2020s Israeli pop — Mizrahi electronica meets faith-pop confession",
+  },
+
+  // ── JUSTIN BIEBER ──────────────────────────────────────────────
+  // Core: Purpose-era trop-house (Skrillex / Diplo / Blood Pop) +
+  // Changes-era R&B chill + Justice-era gospel-pop. Signature: light
+  // breathy falsetto, honeyed head-voice transitions, melismatic
+  // R&B runs over minimalist production. Often builds from intimate
+  // verse into full choir-backed final chorus. Heavy use of marimba
+  // pluck, 808 sub, handclaps on 2&4, airy pads.
+  "justin-bieber": {
+    vocal: [
+      "breathy light falsetto with head-voice flips",
+      "honeyed whisper to confident belt dynamic swing",
+      "melismatic R&B vocal runs in hooks",
+      "layered doubled vocal stacks widening at chorus",
+      "conversational close-mic intimate verse delivery",
+      "gospel choir backing in final chorus builds",
+    ],
+    production: [
+      "marimba pluck lead signature hook instrument",
+      "tropical-house 808 sub with claps on 2&4",
+      "minimalist Rhodes electric piano for R&B packs",
+      "synth pluck + airy pad bed",
+      "Justin Tranter / Blood Pop pop-craft arrangement",
+      "Skrillex / Diplo / Poo Bear trop-house drop",
+    ],
+    signature: [
+      "intimate verse to euphoric chorus dynamic arc",
+      "modern polished radio mix with warm bottom-end",
+      "gospel-adjacent devotional lift in bridge sections",
+      "Purpose-era tropical-pop meets Changes-era alt-R&B",
+      "TikTok-friendly hook simplicity with R&B sophistication",
+    ],
+    era: "2010s-2020s pop — trop-house era crossing into modern R&B chill",
+  },
+
+  // ── ARIANA GRANDE ──────────────────────────────────────────────
+  // Core: 4-octave soprano with whistle register (Eb3-E7), Max Martin
+  // production polish, Mariah-Carey-lineage melismatic runs + Broadway
+  // breath support. Signature arrangement: piano chord stabs, finger
+  // snaps, 808 sub, pizzicato strings, gospel choir stacks. Emotional
+  // contrast: breathy whisper verse to climactic belt or whistle-
+  // register peak. Lyrical range: empowerment anthems, confessional
+  // ballads, trap-pop brag, EDM peak-time euphoria.
+  "ariana-grande": {
+    vocal: [
+      "breathy whisper verse to climactic whistle-register peak",
+      "Mariah-Carey-lineage melismatic vocal runs",
+      "Broadway-trained breath support with bel canto technique",
+      "seamless chest-to-head-voice transitions",
+      "light airy soprano agility with piercing sustained whistles",
+      "layered doubled chorus with head-voice harmonies",
+      "syncopated off-beat vocal rhythm placement",
+    ],
+    production: [
+      "Max Martin / Savan Kotecha / Ilya Salmanzadeh hit-craft polish",
+      "piano chord stabs + finger snaps rhythm foundation",
+      "pizzicato strings as melodic counterline",
+      "808 sub under minimalist trap-pop verses",
+      "gospel choir stacks for empowerment-anthem choruses",
+      "harpsichord / bell pluck for signature sparkle",
+      "Sound-of-Music / Broadway-musical melodic interpolation",
+    ],
+    signature: [
+      "4-octave dynamic arc — whisper verse, belt pre-chorus, whistle peak",
+      "hybrid trap-pop drums under R&B vocal virtuosity",
+      "confessional diary lyric over empowerment-anthem production",
+      "Broadway-musical theatrical sensibility in hook construction",
+      "feminine-power Dangerous-Woman-era sultry restraint",
+    ],
+    era: "2010s-2020s pop — Max Martin era with R&B virtuoso vocals",
+  },
+
+  // ── BURNA BOY ──────────────────────────────────────────────────
+  // Core: "Afro-fusion" — Afrobeats root + reggae/dancehall toasting
+  // + hip-hop swagger + R&B texture, sung in baritone mix of Yoruba /
+  // English / Pidgin. Descendant of Fela Kuti (grandfather managed
+  // Fela). Producer Telz "Funkula" signature. Instrumentation: talking
+  // drum, shekere shaker, Afro-bass groove, horn sections, log drum.
+  // Global-urban vibe: Nigerian roots with UK / Caribbean / US pop
+  // sensibilities. Cinematic when reflective, anthemic when defiant.
+  "burna-boy": {
+    vocal: [
+      "baritone melodic flow with Yoruba-English-Pidgin blend",
+      "ragga-influenced dancehall-toasting cadence",
+      "Fela-Kuti-lineage chant-call with political urgency",
+      "laid-back seductive close-mic delivery for intimate packs",
+      "celebratory call-response party hooks",
+      "smooth gratitude-toned baritone for reflective moments",
+    ],
+    production: [
+      "talking drum signature percussion",
+      "shekere shaker continuous rhythmic foundation",
+      "Afro-bass groove with melodic contour",
+      "Telz 'Funkula' Afro-Dancehall production style",
+      "log drum amapiano-adjacent low-end",
+      "bright horn section stabs and sax fills",
+      "cinematic string arrangements in reflective tracks",
+    ],
+    signature: [
+      "Afrofusion DNA — Afrobeats root + dancehall + hip-hop + R&B",
+      "Fela-Kuti-lineage rebel-soul political weight",
+      "warm-analog Nigerian production with global-pop polish",
+      "celebratory African-giant communal anthem sensibility",
+      "baritone magnetism over infectious cross-cultural grooves",
+    ],
+    era: "2010s-2020s Afrobeats — Lagos / London axis Afrofusion global era",
+  },
+};
+
+// Resolve the vocabulary descriptors to attach to a pack's prompt.
+// Pack-level override wins (state.vocabulary) over artist-level default.
+// Returns null if no vocabulary is defined — caller skips the block.
+function getArtistVocabulary(artistId, pack) {
+  if (pack && pack.vocabulary) return pack.vocabulary;
+  return ARTIST_VOCABULARY[artistId] || null;
+}
+
+// Flatten a vocabulary object into a single "[sonic DNA: …]" tag
+// string. Order: vocal → production → signature → era. Returns empty
+// string if the vocabulary is missing or malformed. The caller
+// appends this to the compressed prompt if non-empty.
+function formatArtistVocabulary(vocab) {
+  if (!vocab) return "";
+  const parts = [];
+  if (Array.isArray(vocab.vocal) && vocab.vocal.length) parts.push(...vocab.vocal);
+  if (Array.isArray(vocab.production) && vocab.production.length) parts.push(...vocab.production);
+  if (Array.isArray(vocab.signature) && vocab.signature.length) parts.push(...vocab.signature);
+  if (vocab.era) parts.push(vocab.era);
+  if (parts.length === 0) return "";
+  return `[sonic DNA: ${parts.join("; ")}]`;
 }
 
 const GENRE_INTUITION = {
@@ -6016,6 +6368,300 @@ const MIMIC_PACKS = [
         } },
     ],
   },
+  // ══════════════ JUSTIN BIEBER ══════════════════════════════════════
+  {
+    artistId: "justin-bieber",
+    artistName: "Justin Bieber",
+    region: "international",
+    packs: [
+      { id: "jbi-1", name: "Purpose era trop-house", emoji: "🌊", vibe: "romantic", state: {
+          slots: [{ genre: "Pop", sub: "Dance-Pop", micro: null }, { genre: "Electronic", sub: "House", micro: null }, null],
+          mood: "Smoldering", energy: "Steady groove throughout", groove: "straight",
+          vocalist: "Breathy whisper to confident belt", language: "en",
+          lyricalVibe: "Romantic devotion",
+          specificInstruments: ["Marimba pluck lead", "808 sub", "Claps on 2&4", "Airy synth pad"],
+          specificArticulations: {}, bpm: 102,
+          harmonic: "Minor-key introspection", texture: "Airy & weightless", mix: "Modern polished radio",
+        } },
+      { id: "jbi-2", name: "Changes R&B chill", emoji: "🌙", vibe: "moody", state: {
+          slots: [{ genre: "R&B / Soul", sub: "Alt R&B", micro: null }, { genre: "Pop", sub: "Indie Pop", micro: null }, null],
+          mood: "Smoldering", energy: "Intimate & bare throughout", groove: "half-time",
+          vocalist: "Breathy falsetto lead", language: "en",
+          lyricalVibe: "Confessional diary",
+          specificInstruments: ["Rhodes electric piano", "808 sub", "Muted hi-hat", "Warm bass"],
+          specificArticulations: {}, bpm: 82,
+          harmonic: "Minor-key introspection", texture: "Velvety & plush", mix: "Heavy reverb cathedral",
+        } },
+      { id: "jbi-3", name: "Peaches summer", emoji: "🍑", vibe: "playful", state: {
+          slots: [{ genre: "R&B / Soul", sub: "Contemporary R&B", micro: null }, { genre: "Pop", sub: "Indie Pop", micro: null }, null],
+          mood: "Euphoric", energy: "Steady groove throughout", groove: "straight",
+          vocalist: "Light head-voice falsetto", language: "en",
+          lyricalVibe: "Romantic devotion",
+          specificInstruments: ["Electric piano chord stabs", "Live drums", "Subtle bass groove", "Hand claps"],
+          specificArticulations: {}, bpm: 90,
+          harmonic: "Major-key lift", texture: "Velvety & plush", mix: "Modern polished radio",
+        } },
+      { id: "jbi-4", name: "Sorry dancehall hit", emoji: "🌴", vibe: "playful", state: {
+          slots: [{ genre: "Pop", sub: "Dance-Pop", micro: null }, { genre: "World / Global", sub: "Afrobeats", micro: null }, null],
+          mood: "Playful", energy: "Steady groove throughout", groove: "dembow",
+          vocalist: "Confident mid-register lead", language: "en",
+          lyricalVibe: "Heartbreak elegy",
+          specificInstruments: ["Dembow kick pattern", "Marimba pluck lead", "Rimshot percussion", "808 sub"],
+          specificArticulations: {}, bpm: 100,
+          harmonic: "Minor-key introspection", texture: "Bright & vivid", mix: "Modern polished radio",
+        } },
+      { id: "jbi-5", name: "Ghost ballad", emoji: "💔", vibe: "heartbreak", state: {
+          slots: [{ genre: "Pop", sub: "Synth-Pop", micro: null }, null, null],
+          mood: "Bittersweet", energy: "Slow burn to explosion", groove: "straight",
+          vocalist: "Tender verse to soaring belt", language: "en",
+          lyricalVibe: "Heartbreak elegy",
+          specificInstruments: ["Acoustic guitar fingerpick", "Piano", "Soft strings", "Layered vocal stacks"],
+          specificArticulations: {}, bpm: 80,
+          harmonic: "Major-key lift", texture: "Airy & weightless", mix: "Modern polished radio",
+        } },
+      { id: "jbi-6", name: "Stay with Kid Laroi", emoji: "⚡", vibe: "anthemic", state: {
+          slots: [{ genre: "Pop", sub: "Hyperpop", micro: null }, { genre: "Pop", sub: "Synth-Pop", micro: null }, null],
+          mood: "Desperate", energy: "Fever-pitch final third", groove: "straight",
+          vocalist: "Cracking emotional belt", language: "en",
+          lyricalVibe: "Heartbreak elegy",
+          specificInstruments: ["Synth pluck lead", "808 sub", "Trap-adjacent hi-hats", "Supersaw pad"],
+          specificArticulations: {}, bpm: 170,
+          harmonic: "Minor-key introspection", texture: "Bright & vivid", mix: "Modern polished radio",
+        } },
+      { id: "jbi-7", name: "Intentions groove", emoji: "💎", vibe: "confident", state: {
+          slots: [{ genre: "R&B / Soul", sub: "Contemporary R&B", micro: null }, { genre: "Pop", sub: "Dance-Pop", micro: null }, null],
+          mood: "Confident", energy: "Steady groove throughout", groove: "straight",
+          vocalist: "Smooth mid-register glide", language: "en",
+          lyricalVibe: "Romantic devotion",
+          specificInstruments: ["Muted electric guitar riff", "Live drums", "Synth bass", "Hand percussion"],
+          specificArticulations: {}, bpm: 90,
+          harmonic: "Major-key lift", texture: "Velvety & plush", mix: "Modern polished radio",
+        } },
+      { id: "jbi-8", name: "Holy gospel-pop", emoji: "🕊️", vibe: "reverent", state: {
+          slots: [{ genre: "Pop", sub: "Indie Pop", micro: null }, { genre: "Gospel / Spiritual", sub: "Contemporary Christian", micro: null }, null],
+          mood: "Reverent", energy: "Slow burn to explosion", groove: "straight",
+          vocalist: "Earnest lead with gospel choir", language: "en",
+          lyricalVibe: "Spiritual seeking",
+          specificInstruments: ["Piano", "Gospel choir stack", "Acoustic guitar", "Kick on the one"],
+          specificArticulations: {}, bpm: 76,
+          harmonic: "Major-key lift", texture: "Warm & analog", mix: "Modern polished radio",
+        } },
+      { id: "jbi-9", name: "What Do You Mean EDM", emoji: "🎉", vibe: "playful", state: {
+          slots: [{ genre: "Pop", sub: "Dance-Pop", micro: null }, { genre: "Electronic", sub: "House", micro: null }, null],
+          mood: "Euphoric", energy: "Euphoric continuous build", groove: "straight",
+          vocalist: "Breathy whisper hook", language: "en",
+          lyricalVibe: "Romantic devotion",
+          specificInstruments: ["Ticking clock percussion", "Tropical pluck lead", "808 sub", "Hand claps"],
+          specificArticulations: {}, bpm: 126,
+          harmonic: "Minor-key introspection", texture: "Airy & weightless", mix: "Modern polished radio",
+        } },
+      { id: "jbi-10", name: "Yummy TikTok bounce", emoji: "🍭", vibe: "playful", state: {
+          slots: [{ genre: "R&B / Soul", sub: "Contemporary R&B", micro: null }, { genre: "Pop", sub: "Indie Pop", micro: null }, null],
+          mood: "Playful", energy: "Steady groove throughout", groove: "half-time",
+          vocalist: "Light falsetto playful flow", language: "en",
+          lyricalVibe: "Braggadocio flex",
+          specificInstruments: ["Muted bass groove", "Finger snaps", "Rhodes electric piano", "Trap-adjacent hi-hats"],
+          specificArticulations: {}, bpm: 108,
+          harmonic: "Major-key lift", texture: "Velvety & plush", mix: "Modern polished radio",
+        } },
+    ],
+  },
+  // ══════════════ ARIANA GRANDE ════════════════════════════════════
+  {
+    artistId: "ariana-grande",
+    artistName: "Ariana Grande",
+    region: "international",
+    packs: [
+      { id: "arg-1", name: "Thank u Next anthem", emoji: "💅", vibe: "confident", state: {
+          slots: [{ genre: "Pop", sub: "Dance-Pop", micro: null }, { genre: "R&B / Soul", sub: "Contemporary R&B", micro: null }, null],
+          mood: "Confident", energy: "Steady groove throughout", groove: "straight",
+          vocalist: "Breathy verse to belt chorus", language: "en",
+          lyricalVibe: "Braggadocio flex",
+          specificInstruments: ["Piano chord stabs", "Finger snaps", "808 sub", "Live strings"],
+          specificArticulations: {}, bpm: 107,
+          harmonic: "Major-key lift", texture: "Crystalline & brittle", mix: "Modern polished radio",
+        } },
+      { id: "arg-2", name: "God Is A Woman power", emoji: "🔱", vibe: "anthemic", state: {
+          slots: [{ genre: "Pop", sub: "Dance-Pop", micro: null }, { genre: "R&B / Soul", sub: "Alt R&B", micro: null }, null],
+          mood: "Defiant", energy: "Fever-pitch final third", groove: "straight",
+          vocalist: "Sultry whisper to whistle register peak", language: "en",
+          lyricalVibe: "Empowerment anthem",
+          specificInstruments: ["Dark synth bass", "Gospel choir stack", "Trap-adjacent hi-hats", "Piano"],
+          specificArticulations: {}, bpm: 145,
+          harmonic: "Minor-key introspection", texture: "Crystalline & brittle", mix: "Modern polished radio",
+        } },
+      { id: "arg-3", name: "7 Rings trap-pop", emoji: "💍", vibe: "confident", state: {
+          slots: [{ genre: "Pop", sub: "Dance-Pop", micro: null }, { genre: "Hip-Hop", sub: "Trap", micro: null }, null],
+          mood: "Unbothered", energy: "Steady groove throughout", groove: "half-time",
+          vocalist: "Conversational rap-sing hybrid", language: "en",
+          lyricalVibe: "Braggadocio flex",
+          specificInstruments: ["Sound of Music interpolation", "808 sub", "Trap-adjacent hi-hats", "Bell pluck"],
+          specificArticulations: {}, bpm: 140,
+          harmonic: "Minor-key introspection", texture: "Crystalline & brittle", mix: "Modern polished radio",
+        } },
+      { id: "arg-4", name: "Dangerous Woman sultry", emoji: "🖤", vibe: "confident", state: {
+          slots: [{ genre: "Pop", sub: "Dance-Pop", micro: null }, { genre: "R&B / Soul", sub: "Contemporary R&B", micro: null }, null],
+          mood: "Smoldering", energy: "Slow burn to explosion", groove: "half-time",
+          vocalist: "Smoky low register to whistle peak", language: "en",
+          lyricalVibe: "Braggadocio flex",
+          specificInstruments: ["Electric guitar riff", "Live drums", "Piano", "Strings"],
+          specificArticulations: {}, bpm: 70,
+          harmonic: "Minor-key introspection", texture: "Velvety & plush", mix: "Modern polished radio",
+        } },
+      { id: "arg-5", name: "Into You EDM peak", emoji: "💥", vibe: "anthemic", state: {
+          slots: [{ genre: "Pop", sub: "Dance-Pop", micro: null }, { genre: "Electronic", sub: "House", micro: null }, null],
+          mood: "Euphoric", energy: "Euphoric continuous build", groove: "straight",
+          vocalist: "Bright belt chorus with runs", language: "en",
+          lyricalVibe: "Romantic devotion",
+          specificInstruments: ["Supersaw lead", "Four-on-the-floor kick", "808 sub", "Arpeggiated synth"],
+          specificArticulations: {}, bpm: 109,
+          harmonic: "Minor-key introspection", texture: "Crystalline & brittle", mix: "Modern polished radio",
+        } },
+      { id: "arg-6", name: "positions orchestral", emoji: "🎻", vibe: "romantic", state: {
+          slots: [{ genre: "Pop", sub: "Indie Pop", micro: null }, { genre: "R&B / Soul", sub: "Alt R&B", micro: null }, null],
+          mood: "Sensual", energy: "Steady groove throughout", groove: "half-time",
+          vocalist: "Light airy head-voice lead", language: "en",
+          lyricalVibe: "Romantic devotion",
+          specificInstruments: ["Pizzicato strings", "Harpsichord pluck", "808 sub", "Finger snaps"],
+          specificArticulations: {}, bpm: 144,
+          harmonic: "Minor-key introspection", texture: "Velvety & plush", mix: "Modern polished radio",
+        } },
+      { id: "arg-7", name: "No Tears Left pop-house", emoji: "✨", vibe: "anthemic", state: {
+          slots: [{ genre: "Pop", sub: "Dance-Pop", micro: null }, { genre: "Electronic", sub: "House", micro: null }, null],
+          mood: "Triumphant", energy: "Euphoric continuous build", groove: "straight",
+          vocalist: "Soaring belt with vocal runs", language: "en",
+          lyricalVibe: "Empowerment anthem",
+          specificInstruments: ["House piano stabs", "Four-on-the-floor kick", "Handclaps", "Synth lead"],
+          specificArticulations: {}, bpm: 122,
+          harmonic: "Major-key lift", texture: "Bright & vivid", mix: "Modern polished radio",
+        } },
+      { id: "arg-8", name: "Imagine whistle register", emoji: "🕊️", vibe: "romantic", state: {
+          slots: [{ genre: "Pop", sub: "Indie Pop", micro: null }, { genre: "R&B / Soul", sub: "Alt R&B", micro: null }, null],
+          mood: "Dreamy", energy: "Slow burn to explosion", groove: "straight",
+          vocalist: "Whisper verse to sustained whistle peak", language: "en",
+          lyricalVibe: "Romantic devotion",
+          specificInstruments: ["Rhodes electric piano", "808 sub", "Ambient synth wash", "Muted hi-hat"],
+          specificArticulations: {}, bpm: 116,
+          harmonic: "Minor-key introspection", texture: "Airy & weightless", mix: "Heavy reverb cathedral",
+        } },
+      { id: "arg-9", name: "34+35 cheeky pop", emoji: "💋", vibe: "playful", state: {
+          slots: [{ genre: "Pop", sub: "Dance-Pop", micro: null }, { genre: "R&B / Soul", sub: "Contemporary R&B", micro: null }, null],
+          mood: "Playful", energy: "Steady groove throughout", groove: "straight",
+          vocalist: "Conversational flirt with head-voice flips", language: "en",
+          lyricalVibe: "Braggadocio flex",
+          specificInstruments: ["Pizzicato strings", "808 sub", "Finger snaps", "Brass stabs"],
+          specificArticulations: {}, bpm: 110,
+          harmonic: "Major-key lift", texture: "Crystalline & brittle", mix: "Modern polished radio",
+        } },
+      { id: "arg-10", name: "we can't be friends synth", emoji: "🌸", vibe: "heartbreak", state: {
+          slots: [{ genre: "Pop", sub: "Synth-Pop", micro: null }, { genre: "Pop", sub: "Indie Pop", micro: null }, null],
+          mood: "Bittersweet", energy: "Steady groove throughout", groove: "straight",
+          vocalist: "Breathy verse to anguished belt", language: "en",
+          lyricalVibe: "Heartbreak elegy",
+          specificInstruments: ["Synth pluck lead", "80s drum machine", "Reverb pad", "Bass synth"],
+          specificArticulations: {}, bpm: 110,
+          harmonic: "Minor-key introspection", texture: "Crystalline & brittle", mix: "Modern polished radio",
+        } },
+    ],
+  },
+  // ══════════════ BURNA BOY ══════════════════════════════════════════
+  {
+    artistId: "burna-boy",
+    artistName: "Burna Boy",
+    region: "international",
+    packs: [
+      { id: "bur-1", name: "Ye Afrofusion signature", emoji: "🦁", vibe: "confident", state: {
+          slots: [{ genre: "World / Global", sub: "Afrobeats", micro: null }, { genre: "R&B / Soul", sub: "Contemporary R&B", micro: null }, null],
+          mood: "Confident", energy: "Steady groove throughout", groove: "afrobeats",
+          vocalist: "Baritone melodic flow with Pidgin English", language: "en",
+          lyricalVibe: "Braggadocio flex",
+          specificInstruments: ["Talking drum", "Shekere shaker", "Afro-bass groove", "Bright horn stab"],
+          specificArticulations: {}, bpm: 108,
+          harmonic: "Major-key lift", texture: "Warm & analog", mix: "Organic & airy",
+        } },
+      { id: "bur-2", name: "Last Last heartbreak", emoji: "💔", vibe: "heartbreak", state: {
+          slots: [{ genre: "World / Global", sub: "Afrobeats", micro: null }, null, null],
+          mood: "Bittersweet", energy: "Steady groove throughout", groove: "afrobeats",
+          vocalist: "Ragga-influenced melodic lament", language: "en",
+          lyricalVibe: "Heartbreak elegy",
+          specificInstruments: ["Toni Braxton sample", "Afro-bass groove", "Shekere shaker", "Bright marimba"],
+          specificArticulations: {}, bpm: 100,
+          harmonic: "Minor-key introspection", texture: "Warm & analog", mix: "Organic & airy",
+        } },
+      { id: "bur-3", name: "City Boys urban Afro", emoji: "🌆", vibe: "confident", state: {
+          slots: [{ genre: "World / Global", sub: "Afrobeats", micro: null }, { genre: "Hip-Hop", sub: "Melodic Rap", micro: null }, null],
+          mood: "Unbothered", energy: "Steady groove throughout", groove: "afrobeats",
+          vocalist: "Baritone Yoruba-English blend", language: "en",
+          lyricalVibe: "Braggadocio flex",
+          specificInstruments: ["Log drum bass", "Shekere shaker", "Trap-adjacent hi-hats", "Melodic synth"],
+          specificArticulations: {}, bpm: 112,
+          harmonic: "Minor-key introspection", texture: "Warm & analog", mix: "Modern polished radio",
+        } },
+      { id: "bur-4", name: "Anybody party banger", emoji: "🎉", vibe: "playful", state: {
+          slots: [{ genre: "World / Global", sub: "Afrobeats", micro: null }, null, null],
+          mood: "Euphoric", energy: "Steady groove throughout", groove: "afrobeats",
+          vocalist: "Celebratory call-response vocal", language: "en",
+          lyricalVibe: "Party celebration",
+          specificInstruments: ["Talking drum", "Afro-bass groove", "Log drum", "Sax fills"],
+          specificArticulations: {}, bpm: 115,
+          harmonic: "Major-key lift", texture: "Bright & vivid", mix: "Organic & airy",
+        } },
+      { id: "bur-5", name: "It's Plenty gratitude", emoji: "🙏", vibe: "reverent", state: {
+          slots: [{ genre: "World / Global", sub: "Afrobeats", micro: null }, { genre: "R&B / Soul", sub: "Contemporary R&B", micro: null }, null],
+          mood: "Reverent", energy: "Steady groove throughout", groove: "afrobeats",
+          vocalist: "Smooth gratitude-toned baritone", language: "en",
+          lyricalVibe: "Spiritual seeking",
+          specificInstruments: ["Shekere shaker", "Afro-bass groove", "Choir pad", "Bright marimba"],
+          specificArticulations: {}, bpm: 105,
+          harmonic: "Major-key lift", texture: "Warm & analog", mix: "Organic & airy",
+        } },
+      { id: "bur-6", name: "Kilometre romantic", emoji: "💞", vibe: "romantic", state: {
+          slots: [{ genre: "World / Global", sub: "Afrobeats", micro: null }, { genre: "R&B / Soul", sub: "Contemporary R&B", micro: null }, null],
+          mood: "Romantic", energy: "Slow burn to explosion", groove: "afrobeats",
+          vocalist: "Tender baritone declaration", language: "en",
+          lyricalVibe: "Romantic devotion",
+          specificInstruments: ["Cinematic strings", "Afro-bass groove", "Shekere shaker", "Electric piano"],
+          specificArticulations: {}, bpm: 102,
+          harmonic: "Minor-key introspection", texture: "Velvety & plush", mix: "Heavy reverb cathedral",
+        } },
+      { id: "bur-7", name: "Alone cinematic", emoji: "🌅", vibe: "moody", state: {
+          slots: [{ genre: "World / Global", sub: "Afrobeats", micro: null }, { genre: "R&B / Soul", sub: "Alt R&B", micro: null }, null],
+          mood: "Pensive", energy: "Intimate & bare throughout", groove: "afrobeats",
+          vocalist: "Introspective baritone with restraint", language: "en",
+          lyricalVibe: "Confessional diary",
+          specificInstruments: ["Cinematic strings", "Afro-bass groove", "Shekere shaker", "Choir pad"],
+          specificArticulations: {}, bpm: 92,
+          harmonic: "Minor-key introspection", texture: "Velvety & plush", mix: "Heavy reverb cathedral",
+        } },
+      { id: "bur-8", name: "On The Low street", emoji: "🌌", vibe: "moody", state: {
+          slots: [{ genre: "World / Global", sub: "Afrobeats", micro: null }, null, null],
+          mood: "Smoldering", energy: "Steady groove throughout", groove: "afrobeats",
+          vocalist: "Laid-back seductive baritone", language: "en",
+          lyricalVibe: "Romantic devotion",
+          specificInstruments: ["Afro-bass groove", "Shekere shaker", "Muted electric guitar", "Log drum"],
+          specificArticulations: {}, bpm: 104,
+          harmonic: "Minor-key introspection", texture: "Warm & analog", mix: "Organic & airy",
+        } },
+      { id: "bur-9", name: "Twice As Tall global", emoji: "🌍", vibe: "anthemic", state: {
+          slots: [{ genre: "World / Global", sub: "Afrobeats", micro: null }, { genre: "Hip-Hop", sub: "Melodic Rap", micro: null }, null],
+          mood: "Triumphant", energy: "Fever-pitch final third", groove: "afrobeats",
+          vocalist: "Powerful belt with Fela-style inflections", language: "en",
+          lyricalVibe: "Empowerment anthem",
+          specificInstruments: ["Horn section", "Talking drum", "Afro-bass groove", "Gospel choir stack"],
+          specificArticulations: {}, bpm: 110,
+          harmonic: "Major-key lift", texture: "Bright & vivid", mix: "Organic & airy",
+        } },
+      { id: "bur-10", name: "Soke Fela tribute", emoji: "🔥", vibe: "anthemic", state: {
+          slots: [{ genre: "World / Global", sub: "Afrobeats", micro: null }, { genre: "Jazz", sub: "Jazz Fusion", micro: null }, null],
+          mood: "Defiant", energy: "Fever-pitch final third", groove: "afrobeats",
+          vocalist: "Yoruba chant with political urgency", language: "en",
+          lyricalVibe: "Empowerment anthem",
+          specificInstruments: ["Saxophone solo", "Afro-bass groove", "Shekere shaker", "Talking drum"],
+          specificArticulations: {}, bpm: 120,
+          harmonic: "Minor-key introspection", texture: "Warm & analog", mix: "Organic & airy",
+        } },
+    ],
+  },
 ];
 
 function getModeById(id) { return MODES.find(m => m.id === id) || MODES[1]; }
@@ -6474,7 +7120,23 @@ function compressDetailedPrompt(state, lyricsOn, limit, mode) {
     // distinct block from the sonic prose above it.
     withStructure = packed ? `${packed}\n\n${tags}` : tags;
   }
-  const raw = withStructure.length > limit ? safeTruncate(withStructure, limit) : withStructure;
+  // ── ARTIST VOCABULARY INJECTION ──────────────────────────────────
+  // If the state carries an artistVocabulary object (set by
+  // applyMimicPack when a curated pack has a vocabulary entry in
+  // ARTIST_VOCABULARY), flatten it into a "[sonic DNA: …]" block and
+  // append as a third, distinct section. This tells the model which
+  // production-technique vocabulary to target without naming the
+  // artist. Placed AFTER structure so the model reads arrangement
+  // first, then sonic fingerprint — matches how a producer would
+  // brief a session.
+  let withVocabulary = withStructure;
+  if (state.artistVocabulary) {
+    const vocabTag = formatArtistVocabulary(state.artistVocabulary);
+    if (vocabTag) {
+      withVocabulary = withStructure ? `${withStructure}\n\n${vocabTag}` : vocabTag;
+    }
+  }
+  const raw = withVocabulary.length > limit ? safeTruncate(withVocabulary, limit) : withVocabulary;
   const finalText = sunoSanitize(raw, lyricsOn);
   return {
     text: finalText, length: finalText.length,
@@ -9110,12 +9772,14 @@ function Nav({ page, onNavigate }) {
   // When OFF, the gearshift is locked to the user's subscribed tier.
   // REMOVE BEFORE PUBLIC LAUNCH.
   const handleDevToggle = () => {
-    const wasOn = devModeActive;
+    // Dev mode is a VIEWER — it never mutates fuel state. Previously
+    // this path called refillForTier("admin") which obliterated the
+    // user's remaining daily fuel every time they toggled dev on/off.
+    // That broke the rule: only the admin (Bubble) credit tool should
+    // edit fuel, and tier switches preserve consumed fuel exactly.
+    // Shop subscription purchases are the only other automatic refill
+    // path (legitimate — user paid for new credits).
     toggleDevMode();
-    if (!wasOn) {
-      // Turning ON → grant admin access + refill
-      refillForTier("admin");
-    }
   };
 
   // Tier gearshift — DIRECT SELECT (only callable when dev mode is ON).
@@ -9124,6 +9788,8 @@ function Nav({ page, onNavigate }) {
   // user then experiences that tier exactly as a real subscriber of
   // that tier would — strictly locked to its features. Dev button
   // flips to OFF automatically (setDevTier sets devModeActive = false).
+  // Fuel is NOT refilled on tier commit — consumed fuel stays consumed.
+  // Only the admin (Bubble) credit-grant tool can edit fuel amounts.
   const handleTierSelect = (nextTier) => {
     if (!devModeActive) return;
     if (!["free", "pro", "vip", "admin"].includes(nextTier)) return;
@@ -9131,7 +9797,6 @@ function Nav({ page, onNavigate }) {
     // to this tier and exit dev mode" action. Only skip if we're
     // already in that tier AND dev mode is already off (no-op).
     setDevTier(nextTier);
-    refillForTier(nextTier);
   };
   const links = [
     { id: "engine",  label: "Engine" },
@@ -9139,6 +9804,10 @@ function Nav({ page, onNavigate }) {
     { id: "future",  label: "Future of Sound" },
     { id: "shop",    label: "Shop ★" },
     ...(features.vipSecretsPage ? [{ id: "secrets", label: "The Playbook" }] : []),
+    // Admin-only backdoor. Rendered last so it reads as a secret menu
+    // item that appears only for Bubble. Uses electric-green hacker
+    // theming in the nav to distinguish it from the main-user nav.
+    ...(tier === "admin" ? [{ id: "bubble", label: "◢ BUBBLE TOOLS" }] : []),
   ];
 
   return (
@@ -9166,21 +9835,48 @@ function Nav({ page, onNavigate }) {
           justifyContent: "flex-start",
           marginLeft: `-${T.s3}px`,
         }}>
-          {links.map(l => (
-            <button key={l.id} type="button" onClick={() => { playSwitchSound(); onNavigate(l.id); }}
-              style={{
-                background: page === l.id ? T.elevated : "transparent",
-                border: "none",
-                color: page === l.id ? T.text : T.textSec,
-                padding: `${T.s2}px ${T.s3}px`, cursor: "pointer",
-                fontSize: T.fs_md, fontFamily: T.font_sans, fontWeight: 500,
-                borderRadius: T.r_md,
-                transition: `all ${T.dur_fast} ${T.ease}`,
-              }}
-              onMouseEnter={e => { if (page !== l.id) e.currentTarget.style.color = T.text; }}
-              onMouseLeave={e => { if (page !== l.id) e.currentTarget.style.color = T.textSec; }}
-            >{l.label}</button>
-          ))}
+          {links.map(l => {
+            // Special case: the admin-only BUBBLE TOOLS link gets
+            // terminal-green hacker styling so it reads as a distinct
+            // backdoor into the admin space. All other links keep the
+            // standard nav aesthetic.
+            const isBubble = l.id === "bubble";
+            return (
+              <button key={l.id} type="button" onClick={() => { playSwitchSound(); onNavigate(l.id); }}
+                style={{
+                  background: page === l.id
+                    ? (isBubble ? "rgba(0, 255, 65, 0.08)" : T.elevated)
+                    : "transparent",
+                  border: isBubble
+                    ? `1px solid ${page === l.id ? "#00FF41" : "rgba(0, 255, 65, 0.22)"}`
+                    : "none",
+                  color: page === l.id
+                    ? (isBubble ? "#00FF41" : T.text)
+                    : (isBubble ? "rgba(0, 255, 65, 0.72)" : T.textSec),
+                  padding: `${T.s2}px ${T.s3}px`, cursor: "pointer",
+                  fontSize: T.fs_md,
+                  fontFamily: isBubble ? T.font_mono : T.font_sans,
+                  fontWeight: isBubble ? 700 : 500,
+                  letterSpacing: isBubble ? "0.12em" : "normal",
+                  borderRadius: T.r_md,
+                  textShadow: isBubble && page === l.id ? "0 0 8px rgba(0, 255, 65, 0.4)" : "none",
+                  transition: `all ${T.dur_fast} ${T.ease}`,
+                }}
+                onMouseEnter={e => {
+                  if (page !== l.id) {
+                    e.currentTarget.style.color = isBubble ? "#00FF41" : T.text;
+                    if (isBubble) e.currentTarget.style.borderColor = "rgba(0, 255, 65, 0.55)";
+                  }
+                }}
+                onMouseLeave={e => {
+                  if (page !== l.id) {
+                    e.currentTarget.style.color = isBubble ? "rgba(0, 255, 65, 0.72)" : T.textSec;
+                    if (isBubble) e.currentTarget.style.borderColor = "rgba(0, 255, 65, 0.22)";
+                  }
+                }}
+              >{l.label}</button>
+            );
+          })}
         </div>
       ) : (
         <div style={{ flex: 1 }} />
@@ -11421,29 +12117,57 @@ function SpecificInstrumentsPicker({
 // POP-HIT METER — probability of current selection becoming a modern pop hit
 // ════════════════════════════════════════════════════════════════════════════
 
-function PopHitMeter({ score, verdict, notes, showDebug, state, lyricsOn, onExtraPoppy, canExtraPoppy, extraPoppyCost, extraPoppyLocked }) {
-  const color = score >= 70 ? T.success : score >= 40 ? T.warning : T.danger;
+function PopHitMeter({ score, verdict, notes, showDebug, state, lyricsOn, scoreLocked }) {
+  const color = scoreLocked ? T.textMuted : (score >= 70 ? T.success : score >= 40 ? T.warning : T.danger);
+  // When the score is locked (Free tier), we still render the whole
+  // component but swap the color to a muted gray and mask the actual
+  // percentage with a placeholder "—". The verdict label becomes an
+  // upsell cue. Extra Poppy stays visible below (its own gating).
   return (
     <div style={{
       background: T.surface, border: `1px solid ${T.border}`,
       borderRadius: T.r_lg, padding: T.s5,
       boxShadow: "0 1px 0 rgba(255,255,255,0.03)",
+      position: "relative",
     }}>
+      {scoreLocked && (
+        // Top-right upgrade chip — non-blocking cue that the score is
+        // a paid feature. Clicking would ideally open the sales modal
+        // but we keep it as a passive label for now to avoid threading
+        // more props through the component.
+        <span style={{
+          position: "absolute", top: 10, right: 12,
+          fontSize: 8, fontFamily: T.font_mono, fontWeight: 800,
+          letterSpacing: "0.18em",
+          color: T.accent,
+          padding: "3px 7px",
+          background: `${T.accent}14`,
+          border: `1px solid ${T.accent}44`,
+          borderRadius: 3,
+        }}>
+          PRO+
+        </span>
+      )}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: T.s3, gap: T.s3 }}>
         <div>
           <div style={{ fontSize: T.fs_base, color: T.text, fontWeight: 600, fontFamily: T.font_sans, marginBottom: 2 }}>
             Pop profile match
           </div>
           <span style={{ fontSize: T.fs_sm, color: T.textTer, fontFamily: T.font_sans }}>
-            how closely this config matches mainstream pop conventions
+            {scoreLocked
+              ? "upgrade to Pro to see how your config matches mainstream pop"
+              : "how closely this config matches mainstream pop conventions"}
           </span>
         </div>
         <div style={{ textAlign: "right", flexShrink: 0 }}>
           <div style={{
             fontSize: 36, fontWeight: 700, letterSpacing: "-0.03em",
             fontFamily: T.font_sans, color, lineHeight: 1,
+            opacity: scoreLocked ? 0.4 : 1,
+            filter: scoreLocked ? "blur(3px)" : "none",
+            transition: `opacity ${T.dur_fast} ${T.ease}`,
           }}>
-            {score}
+            {scoreLocked ? "—" : score}
             <span style={{ fontSize: 14, color: T.textTer, marginLeft: 2, fontWeight: 500 }}>%</span>
           </div>
         </div>
@@ -11452,6 +12176,7 @@ function PopHitMeter({ score, verdict, notes, showDebug, state, lyricsOn, onExtr
         height: 6, background: T.bg, border: `1px solid ${T.border}`,
         borderRadius: 3, overflow: "hidden", marginBottom: T.s3,
         position: "relative",
+        opacity: scoreLocked ? 0.3 : 1,
       }}>
         {/* 100% baseline — faint striped background showing the full possible range */}
         <div style={{
@@ -11459,10 +12184,10 @@ function PopHitMeter({ score, verdict, notes, showDebug, state, lyricsOn, onExtr
           backgroundImage: `repeating-linear-gradient(90deg, ${T.border} 0 4px, transparent 4px 8px)`,
           opacity: 0.5,
         }} />
-        {/* Actual score fill */}
+        {/* Actual score fill — hidden when locked */}
         <div style={{
           position: "relative", zIndex: 1,
-          height: "100%", width: `${score}%`,
+          height: "100%", width: scoreLocked ? "0%" : `${score}%`,
           background: color,
           boxShadow: `0 0 8px ${color}66`,
           transition: `width ${T.dur_slow} ${T.ease}, background ${T.dur_slow} ${T.ease}`,
@@ -11470,11 +12195,13 @@ function PopHitMeter({ score, verdict, notes, showDebug, state, lyricsOn, onExtr
       </div>
       <div style={{
         fontSize: T.fs_sm, color,
-        fontFamily: T.font_sans, fontWeight: 500, marginBottom: notes?.length ? T.s3 : 0,
+        fontFamily: T.font_sans, fontWeight: 500, marginBottom: notes?.length && !scoreLocked ? T.s3 : 0,
+        fontStyle: scoreLocked ? "italic" : "normal",
+        opacity: scoreLocked ? 0.7 : 1,
       }}>
-        {verdict}
+        {scoreLocked ? "Score hidden on Free tier" : verdict}
       </div>
-      {notes && notes.length > 0 && (
+      {notes && notes.length > 0 && !scoreLocked && (
         <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
           {notes.map((n, i) => (
             <div key={i} style={{
@@ -11501,63 +12228,6 @@ function PopHitMeter({ score, verdict, notes, showDebug, state, lyricsOn, onExtr
       }}>
         Heuristic score based on genre / BPM / vocal / mood rules. Not a prediction of actual chart performance.
       </div>
-
-      {/* ── EXTRA POPPY (VIP/Bubble) ────────────────────────────────
-          One-press pop-maximizer. Pulls an optimal config from the
-          curated high-score pool (top-streaming genres, chart-friendly
-          moods, sweet-spot BPM, major-key, clean mix). Costs 20 Pro
-          credits per press. Locked for Free/Pro users with upsell. */}
-      {onExtraPoppy && (
-        <button
-          type="button"
-          onClick={onExtraPoppy}
-          disabled={extraPoppyLocked && !canExtraPoppy}
-          title={extraPoppyLocked
-            ? "VIP exclusive — upgrade to unlock"
-            : canExtraPoppy
-                ? `Pop-maximize this config — costs ${extraPoppyCost} Pro credits`
-                : `Needs ${extraPoppyCost} Pro credits`}
-          style={{
-            marginTop: T.s3,
-            width: "100%",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            gap: 10,
-            padding: "10px 14px",
-            background: extraPoppyLocked
-              ? `linear-gradient(180deg, ${T.elevated} 0%, ${T.surface} 100%)`
-              : canExtraPoppy
-                  ? `linear-gradient(180deg, #FFD70022 0%, #FFB10015 50%, #FFA50018 100%)`
-                  : T.elevated,
-            border: `1px ${extraPoppyLocked ? "dashed" : "solid"} ${
-              extraPoppyLocked ? T.border :
-              canExtraPoppy ? "#FFD70099" : `${V.neonGold}33`
-            }`,
-            borderRadius: T.r_md,
-            color: extraPoppyLocked
-              ? T.textMuted
-              : canExtraPoppy ? "#FFD700" : T.textTer,
-            fontFamily: T.font_mono, fontSize: 11, fontWeight: 800,
-            letterSpacing: "0.16em",
-            cursor: (extraPoppyLocked || !canExtraPoppy) ? "not-allowed" : "pointer",
-            boxShadow: canExtraPoppy
-              ? `inset 0 1px 0 #FFF2, 0 0 14px #FFD70022`
-              : "none",
-            transition: `all ${T.dur_fast} ${T.ease}`,
-          }}
-        >
-          <span style={{ fontSize: 14, lineHeight: 1 }}>✦</span>
-          <span>EXTRA POPPY</span>
-          <span style={{
-            fontSize: 9, letterSpacing: "0.12em",
-            color: extraPoppyLocked
-              ? T.textMuted
-              : canExtraPoppy ? "#FFE48A" : T.textTer,
-            fontWeight: 700,
-          }}>
-            {extraPoppyLocked ? "· VIP" : `· ${extraPoppyCost} PRO`}
-          </span>
-        </button>
-      )}
 
       {/* ADMIN DEBUG — raw scoring math exposed */}
       {showDebug && state && (
@@ -12005,6 +12675,12 @@ const ENGINE_DEF = {
   // appended to the detailed prompt as producer-grade arrangement
   // markers. Empty by default; populated by recipes / mimic packs.
   structure: [],
+  // artistVocabulary: producer-grade signature descriptors (mic technique,
+  // vocal articulation, gear, arrangement tells) set by applyMimicPack
+  // from ARTIST_VOCABULARY. compressDetailedPrompt appends these as a
+  // "[sonic DNA: …]" block. null = no vocab injected (correct default
+  // for normal user rolls — only mimic packs set this).
+  artistVocabulary: null,
   favorites: [],
   // sectionLocks: if a section key is locked, its current value is preserved by randomize
   sectionLocks: {
@@ -14034,6 +14710,11 @@ function EnginePage({ onNavigate }) {
       showToast(`Out of ${fuelName} today. Come back tomorrow or upgrade your tier.`, "warn");
       return;
     }
+    // Fuel was consumed → roll is committing. Fire the HIT sound.
+    // Placed after the fuel check so we don't play audio on rejected
+    // clicks (empty fuel). Fires before setIsRolling so the sound is
+    // instantaneous with the user's press, not delayed by the roll.
+    playHitSound();
     setIsRolling(true);
 
     // Build the full pool of chip identifiers that could receive outlines
@@ -14126,12 +14807,13 @@ function EnginePage({ onNavigate }) {
     autoCopyPendingRef.current = true;
   };
 
-  // ── EXTRA POPPY — VIP/Bubble pop-maximizer ────────────────────────
-  // Costs 20 Pro credits per press. Applies a guaranteed-high-score
-  // config drawn from the POP_HIT_SCORE top-scoring pools, so the
-  // resulting match lands in the 85-100% range. Doesn't just boost the
-  // visible number — actually changes the config so the downstream
-  // prompt is genuinely pop-optimized.
+  // ── EXTRA POPPY — admin-only pop-maximizer ────────────────────────
+  // As of the new tier rule: Extra Poppy is EXCLUSIVELY admin-tier.
+  // Free/Pro/VIP don't see it anywhere in the app. The button only
+  // exists on BubbleToolsPage (admin surface). The applyMaxPoppy logic
+  // stays callable from anywhere admin-gated. Cost remains 20 Pro
+  // credits per press (though admin has infinite fuel so it's free in
+  // practice — the cost line is kept for future if we re-open it).
   //
   // Scoring math target (per calcPopHitScore):
   //   genre TOP × slot           → +10
@@ -14144,19 +14826,21 @@ function EnginePage({ onNavigate }) {
   //   = ~+44 over the 50 baseline = 94%
   const EXTRA_POPPY_COST = 20;
   const canAffordExtraPoppy = (fuels.pro ?? 0) >= EXTRA_POPPY_COST || !Number.isFinite(fuels.pro);
-  const extraPoppyLocked = !(tier === "vip" || tier === "admin");
+  const extraPoppyLocked = tier !== "admin";
   const applyMaxPoppy = () => {
-    // Gate 1: tier check
+    // Admin-only gate: non-admin should never reach this handler
+    // because the button only exists on BubbleToolsPage. Defensive
+    // check in case someone wires it elsewhere accidentally.
     if (extraPoppyLocked) {
-      setSalesModalFeature("extraPoppy");
+      showToast("Extra Poppy is an admin-only tool", "warn");
       return;
     }
-    // Gate 2: credit check
+    // Credit check — admin has infinite so this is a no-op in practice
     if (!canAffordExtraPoppy) {
       showToast(`Needs ${EXTRA_POPPY_COST} Pro credits — you have ${fuels.pro}`, "warn");
       return;
     }
-    // Charge 20 Pro credits (unless infinite, in which case no-op cost)
+    // Charge 20 Pro credits (unless infinite)
     if (Number.isFinite(fuels.pro)) {
       setFuel("pro", Math.max(0, fuels.pro - EXTRA_POPPY_COST));
     }
@@ -14629,6 +15313,16 @@ function EnginePage({ onNavigate }) {
     const primarySlot = pack.state?.slots?.[0];
     const derivedStructure = pack.state?.structure
       || (primarySlot ? getStructureForGenre(primarySlot.sub) : []);
+    // ── ARTIST VOCABULARY ────────────────────────────────────────────
+    // Resolve the production-technique descriptors for this artist
+    // (or pack-level override if present). Gets threaded into state
+    // as state.artistVocabulary, where compressDetailedPrompt picks
+    // it up and appends a "[sonic DNA: …]" block to the generated
+    // prompt. Suno/Udio use these descriptors to target the artist's
+    // exact production fingerprint without needing the name.
+    // Returns null for artists not yet populated — the engine then
+    // skips the block gracefully.
+    const artistVocabulary = getArtistVocabulary(artist.artistId, pack);
     // ── MIXED-VIBE BLEND ────────────────────────────────────────────
     // When mimicBlendVibe is set (Bubble only), we nudge the mood +
     // lyricalVibe fields toward that secondary vibe's signature. The
@@ -14646,6 +15340,7 @@ function EnginePage({ onNavigate }) {
       ...pack.state,
       ...blendOverrides,
       structure: derivedStructure,
+      artistVocabulary, // null if not populated — skipped downstream
       slotLocks: [false, false, false],
       sectionLocks: { ...ENGINE_DEF.sectionLocks },
       optionLocks: [],
@@ -14661,6 +15356,52 @@ function EnginePage({ onNavigate }) {
     // Track vibe use for the session-level "most used" badge
     trackVibeUse(pack.vibe);
   };
+
+  // ── PENDING MIMIC HAND-OFF ─────────────────────────────────────────
+  // When the BubbleToolsPage applies a pack, it writes the selection
+  // to sessionStorage and navigates to this page. We check for that
+  // pending entry on mount, resolve it to {artist, pack, blendVibe},
+  // apply via applyMimicPack, and clear the pending entry so it
+  // doesn't replay on subsequent visits. If the entry is missing or
+  // malformed we silently skip — not a critical path.
+  useEffect(() => {
+    let pending = null;
+    try {
+      const raw = sessionStorage.getItem("he-pending-mimic");
+      if (!raw) return;
+      pending = JSON.parse(raw);
+      sessionStorage.removeItem("he-pending-mimic");
+    } catch { return; }
+    if (!pending || !pending.artistId || !pending.packId) return;
+    const artist = MIMIC_PACKS.find(a => a.artistId === pending.artistId);
+    if (!artist) return;
+    const pack = artist.packs.find(p => p.id === pending.packId);
+    if (!pack) return;
+    // Apply the blend vibe if one was set before clicking the pack
+    if (pending.blendVibe) setMimicBlendVibe(pending.blendVibe);
+    // Fire the apply — same handler as direct click
+    applyMimicPack(artist, pack);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // ── PENDING MAX-POPPY HAND-OFF ─────────────────────────────────────
+  // BubbleToolsPage fires Extra Poppy by writing this flag and
+  // navigating here. Engine picks it up on mount and calls
+  // applyMaxPoppy on the current state. Fires AFTER mimic hand-off
+  // would fire, so if both are queued (shouldn't happen, but) the
+  // mimic pack applies first, then Extra Poppy overrides it — matches
+  // the click-order behavior.
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem("he-pending-max-poppy");
+      if (!raw) return;
+      sessionStorage.removeItem("he-pending-max-poppy");
+      // Small delay to ensure any pending mimic-pack state commit
+      // finishes before Extra Poppy re-derives from state.
+      setTimeout(() => { applyMaxPoppy(); }, 120);
+    } catch {}
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Currently-selected artist in the Bubble Tools mimic UI. Admin-only.
   const [mimicArtistId, setMimicArtistId] = useState(MIMIC_PACKS[0].artistId);
@@ -15267,634 +16008,68 @@ function EnginePage({ onNavigate }) {
                 </button>
               </div>
 
-              {/* ── SECTION 2: ARTIST MIMIC PACKS ── */}
+              {/* ── SECTION 2 MOVED ────────────────────────────────
+                  Artist mimic packs (the 23-artist roster browser) now
+                  lives on the dedicated BubbleToolsPage. This leaves a
+                  small handoff card here so Bubble can jump to it in
+                  one click from the Engine page. */}
               <div style={{
                 marginTop: T.s5, paddingTop: T.s4,
                 borderTop: `1px solid ${T.border}`,
               }}>
-                <div style={{
-                  fontSize: 10, color: T.textTer,
-                  fontFamily: T.font_mono, fontWeight: 800,
-                  letterSpacing: "0.2em",
-                  marginBottom: T.s3,
-                  display: "flex", alignItems: "center", gap: T.s2,
-                }}>
-                  <span>② ARTIST MIMIC PACKS</span>
-                  <span style={{ flex: 1, height: 1, background: T.border }} />
-                  <span style={{
-                    color: "#C084FC", fontSize: 9,
-                    padding: "2px 6px",
-                    background: "#A855F720",
-                    border: `1px solid #A855F744`,
-                    borderRadius: 3,
-                    letterSpacing: "0.1em",
-                  }}>
-                    {MIMIC_PACKS.length} × 10
-                  </span>
-                </div>
-
-                {/* ── VIEW MODE + SHUFFLE + USAGE + BLEND ROW ────────
-                    Top-of-section control strip. Left: BY ARTIST /
-                    BY VIBE view toggle. Middle: Shuffle Vibe button.
-                    Right: most-used vibe badge (appears only after
-                    first click). Blend-vibe dropdown appears on its
-                    own line below when BY VIBE mode is active. */}
-                <div style={{
-                  display: "flex", alignItems: "center",
-                  gap: T.s2, flexWrap: "wrap",
-                  marginBottom: T.s3,
-                }}>
-                  {/* View mode toggle — segmented pill */}
-                  <div style={{
-                    display: "inline-flex",
-                    background: "#00000044",
-                    border: `1px solid ${T.border}`,
-                    borderRadius: T.r_sm,
-                    padding: 2,
-                  }}>
-                    {[
-                      { id: "artist", label: "By Artist" },
-                      { id: "vibe",   label: "By Vibe"   },
-                    ].map(m => {
-                      const active = mimicViewMode === m.id;
-                      return (
-                        <button key={m.id} type="button"
-                          onClick={() => { playSwitchSound(); setMimicViewMode(m.id); }}
-                          style={{
-                            padding: "5px 12px",
-                            background: active
-                              ? "linear-gradient(180deg, #A855F733 0%, #A855F71A 100%)"
-                              : "transparent",
-                            border: `1px solid ${active ? "#A855F7" : "transparent"}`,
-                            borderRadius: T.r_sm - 1,
-                            color: active ? "#E9D5FF" : T.textSec,
-                            fontFamily: T.font_mono, fontSize: 10, fontWeight: 700,
-                            letterSpacing: "0.1em",
-                            cursor: "pointer",
-                            transition: `all ${T.dur_fast} ${T.ease}`,
-                            textShadow: active ? "0 0 6px #A855F788" : "none",
-                          }}
-                        >
-                          {m.label}
-                        </button>
-                      );
-                    })}
-                  </div>
-
-                  {/* Shuffle vibe — rolls a random vibe + applies random pack */}
-                  <button type="button"
-                    onClick={shuffleVibe}
-                    title="Shuffle: pick a random vibe and apply a random pack from it"
-                    style={{
-                      display: "inline-flex", alignItems: "center", gap: 5,
-                      padding: "6px 12px",
-                      background: "linear-gradient(180deg, rgba(236,72,153,0.18) 0%, rgba(168,85,247,0.14) 100%)",
-                      border: `1px solid #EC489988`,
-                      borderRadius: T.r_sm,
-                      color: "#F9A8D4",
-                      fontFamily: T.font_mono, fontSize: 10, fontWeight: 700,
-                      letterSpacing: "0.1em",
-                      cursor: "pointer",
-                      transition: `all ${T.dur_fast} ${T.ease}`,
-                    }}
-                    onMouseEnter={e => {
-                      e.currentTarget.style.borderColor = "#EC4899";
-                      e.currentTarget.style.boxShadow = "0 0 12px #EC489966";
-                    }}
-                    onMouseLeave={e => {
-                      e.currentTarget.style.borderColor = "#EC489988";
-                      e.currentTarget.style.boxShadow = "none";
-                    }}
-                  >
-                    🎲 Shuffle Vibe
-                  </button>
-
-                  <span style={{ flex: 1 }} />
-
-                  {/* Usage tracker — shows most-used vibe this session */}
-                  {mostUsedVibe && (() => {
-                    const meta = VIBE_META.find(v => v.id === mostUsedVibe);
-                    if (!meta) return null;
-                    const total = vibeUsageCounts[mostUsedVibe] || 0;
-                    return (
-                      <span
-                        title={`You've applied ${meta.label} packs ${total} time${total === 1 ? "" : "s"} this session`}
-                        style={{
-                          display: "inline-flex", alignItems: "center", gap: 5,
-                          padding: "4px 9px",
-                          background: `${meta.color}14`,
-                          border: `1px dashed ${meta.color}66`,
-                          borderRadius: T.r_sm,
-                          color: meta.color,
-                          fontFamily: T.font_mono, fontSize: 9, fontWeight: 700,
-                          letterSpacing: "0.08em",
-                        }}
-                      >
-                        <span style={{ fontSize: 11 }}>{meta.icon}</span>
-                        <span style={{ opacity: 0.7 }}>MOST USED ·</span>
-                        <span>{meta.label.toUpperCase()}</span>
-                        <span style={{
-                          fontSize: 8,
-                          padding: "1px 4px",
-                          background: `${meta.color}22`,
-                          borderRadius: 2,
-                        }}>{total}×</span>
-                      </span>
-                    );
-                  })()}
-                </div>
-
-                {/* Blend-vibe dropdown — shown in both modes. Lets Bubble
-                    layer a secondary vibe onto any pack. "None" means
-                    apply packs as-is. Pure Bubble-Tools feature. */}
-                <div style={{
-                  display: "flex", alignItems: "center",
-                  gap: T.s2,
-                  marginBottom: T.s3,
-                  padding: `${T.s2}px ${T.s3}px`,
-                  background: "rgba(168, 85, 247, 0.04)",
-                  border: `1px dashed #A855F744`,
-                  borderRadius: T.r_sm,
-                }}>
-                  <span style={{
-                    fontFamily: T.font_mono, fontSize: 9, fontWeight: 700,
-                    color: "#A855F7",
-                    letterSpacing: "0.1em",
-                  }}>BLEND ×</span>
-                  <select
-                    value={mimicBlendVibe || ""}
-                    onChange={e => setMimicBlendVibe(e.target.value || null)}
-                    style={{
-                      padding: "4px 8px",
-                      background: "#00000066",
-                      border: `1px solid ${mimicBlendVibe ? "#A855F7" : T.border}`,
-                      borderRadius: T.r_sm,
-                      color: T.text,
-                      fontFamily: T.font_mono, fontSize: isMobile ? 16 : 10, fontWeight: 700,
-                      letterSpacing: "0.08em",
-                      cursor: "pointer",
-                      outline: "none",
-                    }}
-                  >
-                    <option value="">— None (pure pack) —</option>
-                    {VIBE_META.map(v => (
-                      <option key={v.id} value={v.id}>
-                        {v.icon} {v.label} blend
-                      </option>
-                    ))}
-                  </select>
-                  {mimicBlendVibe && (
+                <button type="button"
+                  onClick={() => { playSwitchSound(); onNavigate && onNavigate("bubble"); }}
+                  style={{
+                    width: "100%",
+                    display: "flex", alignItems: "center", justifyContent: "space-between",
+                    gap: T.s3,
+                    padding: `${T.s4}px ${T.s4}px`,
+                    background: "linear-gradient(135deg, rgba(0, 255, 65, 0.06) 0%, rgba(0, 0, 0, 0.3) 100%)",
+                    border: `1px solid rgba(0, 255, 65, 0.28)`,
+                    borderRadius: T.r_md,
+                    color: "#00FF41",
+                    fontFamily: T.font_mono,
+                    cursor: "pointer",
+                    textAlign: "left",
+                    transition: `all ${T.dur_fast} ${T.ease}`,
+                  }}
+                  onMouseEnter={e => {
+                    e.currentTarget.style.borderColor = "#00FF41";
+                    e.currentTarget.style.boxShadow = "0 0 16px rgba(0, 255, 65, 0.2)";
+                  }}
+                  onMouseLeave={e => {
+                    e.currentTarget.style.borderColor = "rgba(0, 255, 65, 0.28)";
+                    e.currentTarget.style.boxShadow = "none";
+                  }}
+                >
+                  <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
                     <span style={{
-                      fontFamily: T.font_sans, fontSize: 10,
-                      color: T.textSec, fontStyle: "italic",
-                      flex: 1,
+                      fontSize: 9, letterSpacing: "0.3em", fontWeight: 700,
+                      color: "rgba(0, 255, 65, 0.5)",
+                    }}>◢ SECTION 2 · MOVED</span>
+                    <span style={{
+                      fontSize: 14, fontWeight: 700, letterSpacing: "0.1em",
+                      color: "#00FF41",
+                      textShadow: "0 0 8px rgba(0, 255, 65, 0.3)",
                     }}>
-                      Pack's sonics stay; mood + energy shift toward {mimicBlendVibe}
+                      Artist Mimic Packs → BUBBLE TOOLS
                     </span>
-                  )}
-                </div>
-
-                {/* ══ BY-VIBE VIEW (cross-roster) ══════════════════
-                    Shows a horizontal pill row of all 7 vibes with
-                    global counts, plus a grid of all packs in the
-                    active vibe with [Artist] attribution. */}
-                {mimicViewMode === "vibe" && (
-                  <>
-                    {/* Vibe selector pills — global counts across roster */}
-                    <div style={{
-                      display: "flex", flexWrap: "wrap", gap: 4,
-                      marginBottom: T.s3,
-                      padding: `${T.s2}px 0`,
+                    <span style={{
+                      fontSize: 11, color: "rgba(0, 255, 65, 0.45)",
+                      fontFamily: T.font_sans,
                     }}>
-                      {VIBE_META.map(v => {
-                        const count = (packsByVibe[v.id] || []).length;
-                        const active = crossVibeActive === v.id;
-                        return (
-                          <button key={v.id} type="button"
-                            onClick={() => { playSwitchSound(); setCrossVibeActive(v.id); }}
-                            title={`${v.label} — ${v.tagline}`}
-                            style={{
-                              display: "inline-flex", alignItems: "center", gap: 5,
-                              padding: "6px 11px",
-                              background: active ? `${v.color}1F` : "transparent",
-                              border: `1px solid ${active ? v.color : T.border}`,
-                              borderRadius: T.r_sm,
-                              color: active ? v.color : T.textSec,
-                              fontFamily: T.font_mono, fontSize: 10, fontWeight: 700,
-                              letterSpacing: "0.08em",
-                              cursor: "pointer",
-                              transition: `all ${T.dur_fast} ${T.ease}`,
-                              boxShadow: active ? `0 0 10px ${v.color}44` : "none",
-                            }}
-                            onMouseEnter={e => { if (!active) { e.currentTarget.style.borderColor = `${v.color}88`; e.currentTarget.style.color = T.text; } }}
-                            onMouseLeave={e => { if (!active) { e.currentTarget.style.borderColor = T.border; e.currentTarget.style.color = T.textSec; } }}
-                          >
-                            <span>{v.icon}</span>
-                            <span>{v.label}</span>
-                            <span style={{
-                              fontSize: 8, color: active ? v.color : T.textTer,
-                              padding: "1px 4px",
-                              background: active ? `${v.color}22` : "#00000033",
-                              borderRadius: 2,
-                            }}>{count}</span>
-                          </button>
-                        );
-                      })}
-                    </div>
-
-                    {/* Pack grid — attributed across roster */}
-                    <div style={{
-                      display: "grid",
-                      gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(5, 1fr)",
-                      gap: T.s2,
-                    }}>
-                      {(packsByVibe[crossVibeActive] || []).length === 0 ? (
-                        <div style={{
-                          gridColumn: "1 / -1",
-                          textAlign: "center",
-                          padding: `${T.s5}px ${T.s3}px`,
-                          color: T.textMuted, fontFamily: T.font_mono, fontSize: T.fs_sm,
-                          border: `1px dashed ${T.border}`,
-                          borderRadius: T.r_md,
-                        }}>
-                          No packs tagged {crossVibeActive}.
-                        </div>
-                      ) : (packsByVibe[crossVibeActive] || []).map(({ artist, pack }) => {
-                        const vm = VIBE_META.find(v => v.id === pack.vibe);
-                        const glow = vm?.color || "#A855F7";
-                        return (
-                          <button key={`${artist.artistId}-${pack.id}`} type="button"
-                            onClick={() => applyMimicPack(artist, pack)}
-                            title={`${artist.artistName} · ${pack.name}${pack.vibe ? ` · ${pack.vibe}` : ""}`}
-                            style={{
-                              display: "flex", flexDirection: "column",
-                              alignItems: "flex-start", justifyContent: "space-between",
-                              gap: 6,
-                              padding: isMobile ? T.s3 : T.s3,
-                              minHeight: isMobile ? 76 : 92,
-                              background: `linear-gradient(180deg, ${glow}0F 0%, ${T.surface} 100%)`,
-                              border: `1px solid ${T.border}`,
-                              borderRadius: T.r_md,
-                              color: T.text,
-                              fontFamily: T.font_sans,
-                              fontSize: T.fs_sm,
-                              cursor: "pointer",
-                              textAlign: "left",
-                              transition: `border-color ${T.dur_fast} ${T.ease}, transform ${T.dur_fast} ${T.ease}`,
-                            }}
-                            onMouseEnter={e => {
-                              e.currentTarget.style.borderColor = glow;
-                              e.currentTarget.style.transform = "translateY(-1px)";
-                            }}
-                            onMouseLeave={e => {
-                              e.currentTarget.style.borderColor = T.border;
-                              e.currentTarget.style.transform = "translateY(0)";
-                            }}
-                          >
-                            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                              <span style={{ fontSize: 20, lineHeight: 1 }}>{pack.emoji}</span>
-                            </div>
-                            <div style={{
-                              fontSize: 11, fontWeight: 700, color: T.text,
-                              lineHeight: 1.2,
-                            }}>
-                              {pack.name}
-                            </div>
-                            <div style={{
-                              fontSize: 9, color: T.textTer,
-                              fontFamily: T.font_mono, fontWeight: 700,
-                              letterSpacing: "0.08em",
-                              display: "flex", alignItems: "center", gap: 4,
-                            }}>
-                              <span>{artist.artistName}</span>
-                              <span style={{
-                                fontSize: 7,
-                                padding: "1px 3px",
-                                background: artist.region === "israeli" ? "#3E8CFF22" : "#9CA3AF22",
-                                color: artist.region === "israeli" ? "#7FB2FF" : "#9CA3AF",
-                                borderRadius: 2,
-                                lineHeight: 1,
-                              }}>{artist.region === "israeli" ? "IL" : "INT"}</span>
-                            </div>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </>
-                )}
-
-                {/* ══ BY-ARTIST VIEW (original) ══════════════════ */}
-                {mimicViewMode === "artist" && (<>
-
-                {/* ── FILTER BAR — region chip + text search ─────────────
-                    Makes the 20-artist roster navigable: filter by
-                    region (all / international / israeli) + search by
-                    name. Empty results state handled below. */}
-                <div style={{
-                  display: "flex", alignItems: "center",
-                  gap: T.s3, flexWrap: "wrap",
-                  marginBottom: T.s3,
-                  padding: `${T.s2}px 0`,
-                }}>
-                  <div style={{ display: "inline-flex", gap: 4 }}>
-                    {[
-                      { id: "all",           label: "All",   count: MIMIC_PACKS.length },
-                      { id: "international", label: "INT",   count: MIMIC_PACKS.filter(a => a.region === "international").length },
-                      { id: "israeli",       label: "IL",    count: MIMIC_PACKS.filter(a => a.region === "israeli").length },
-                    ].map(f => {
-                      const active = mimicRegionFilter === f.id;
-                      return (
-                        <button key={f.id} type="button"
-                          onClick={() => { playSwitchSound(); setMimicRegionFilter(f.id); }}
-                          style={{
-                            display: "inline-flex", alignItems: "center", gap: 5,
-                            padding: "5px 10px",
-                            background: active ? "#A855F718" : "transparent",
-                            border: `1px solid ${active ? "#A855F788" : T.border}`,
-                            borderRadius: T.r_sm,
-                            color: active ? "#C084FC" : T.textSec,
-                            fontFamily: T.font_mono, fontSize: 10, fontWeight: 700,
-                            letterSpacing: "0.08em",
-                            cursor: "pointer",
-                            transition: `all ${T.dur_fast} ${T.ease}`,
-                          }}
-                          onMouseEnter={e => { if (!active) { e.currentTarget.style.borderColor = "#A855F766"; e.currentTarget.style.color = T.text; } }}
-                          onMouseLeave={e => { if (!active) { e.currentTarget.style.borderColor = T.border; e.currentTarget.style.color = T.textSec; } }}
-                        >
-                          {f.label}
-                          <span style={{
-                            fontSize: 8, color: active ? "#C084FC" : T.textTer,
-                            padding: "1px 4px",
-                            background: active ? "#A855F722" : "#00000033",
-                            borderRadius: 2,
-                          }}>{f.count}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                  <div style={{
-                    flex: 1, minWidth: 180, maxWidth: 320,
-                    position: "relative",
-                  }}>
-                    <input type="text"
-                      value={mimicSearch}
-                      onChange={e => setMimicSearch(e.target.value)}
-                      placeholder="Search artists..."
-                      style={{
-                        width: "100%",
-                        padding: "6px 28px 6px 10px",
-                        background: "#00000044",
-                        border: `1px solid ${mimicSearch ? "#A855F766" : T.border}`,
-                        borderRadius: T.r_sm,
-                        color: T.text,
-                        fontFamily: T.font_sans,
-                        fontSize: isMobile ? 16 : T.fs_sm,  // 16px on mobile = no iOS zoom
-                        outline: "none",
-                        transition: `border-color ${T.dur_fast} ${T.ease}`,
-                      }}
-                      onFocus={e => { e.currentTarget.style.borderColor = "#A855F7"; }}
-                      onBlur={e => { e.currentTarget.style.borderColor = mimicSearch ? "#A855F766" : T.border; }}
-                    />
-                    {mimicSearch && (
-                      <button type="button"
-                        onClick={() => { setMimicSearch(""); }}
-                        aria-label="Clear search"
-                        style={{
-                          position: "absolute", right: 6, top: "50%",
-                          transform: "translateY(-50%)",
-                          width: 20, height: 20,
-                          display: "grid", placeItems: "center",
-                          background: "transparent", border: "none",
-                          color: T.textTer,
-                          cursor: "pointer", fontSize: 14, lineHeight: 1,
-                          padding: 0,
-                        }}
-                      >×</button>
-                    )}
+                      {MIMIC_PACKS.length} artists · {MIMIC_PACKS.length * 10} curated packs · vibe browser · shuffle · blend
+                    </span>
                   </div>
                   <span style={{
-                    fontSize: 10, color: T.textMuted,
-                    fontFamily: T.font_mono, letterSpacing: "0.08em",
-                    whiteSpace: "nowrap",
-                  }}>
-                    {filteredMimicArtists.length} shown
-                  </span>
-                </div>
-
-                {/* Artist selector — horizontal pill row, scrollable on
-                    narrow screens. Active pill glows purple. Region
-                    labels (INT/IL) are shown as small suffix chips. */}
-                <div style={{
-                  display: "flex", flexWrap: "wrap", gap: T.s2,
-                  marginBottom: T.s4,
-                }}>
-                  {filteredMimicArtists.length === 0 ? (
-                    <div style={{
-                      flex: 1, textAlign: "center",
-                      padding: `${T.s5}px ${T.s3}px`,
-                      color: T.textMuted, fontFamily: T.font_mono, fontSize: T.fs_sm,
-                      border: `1px dashed ${T.border}`,
-                      borderRadius: T.r_md,
-                    }}>
-                      No artists match your filter.
-                    </div>
-                  ) : filteredMimicArtists.map(artist => {
-                    const active = artist.artistId === mimicArtistId;
-                    const isIL = artist.region === "israeli";
-                    return (
-                      <button key={artist.artistId} type="button"
-                        onClick={() => { playSwitchSound(); setMimicArtistId(artist.artistId); }}
-                        style={{
-                          display: "inline-flex", alignItems: "center", gap: 6,
-                          padding: isMobile ? "8px 12px" : "6px 12px",
-                          minHeight: isMobile ? 38 : "auto",
-                          background: active
-                            ? `linear-gradient(180deg, rgba(168, 85, 247, 0.22) 0%, rgba(168, 85, 247, 0.1) 100%)`
-                            : "transparent",
-                          border: `1px solid ${active ? "#A855F7" : T.border}`,
-                          borderRadius: 999,
-                          color: active ? "#E9D5FF" : T.textSec,
-                          fontFamily: T.font_sans,
-                          fontSize: T.fs_sm, fontWeight: active ? 700 : 500,
-                          letterSpacing: "0.01em",
-                          cursor: "pointer",
-                          boxShadow: active
-                            ? `0 0 12px rgba(168, 85, 247, 0.35), inset 0 1px 0 rgba(233, 213, 255, 0.18)`
-                            : "none",
-                          transition: `all ${T.dur_fast} ${T.ease}`,
-                        }}
-                        onMouseEnter={e => {
-                          if (!active) {
-                            e.currentTarget.style.borderColor = "#A855F788";
-                            e.currentTarget.style.color = T.text;
-                          }
-                        }}
-                        onMouseLeave={e => {
-                          if (!active) {
-                            e.currentTarget.style.borderColor = T.border;
-                            e.currentTarget.style.color = T.textSec;
-                          }
-                        }}
-                      >
-                        {artist.artistName}
-                        <span style={{
-                          fontSize: 8, fontFamily: T.font_mono, fontWeight: 700,
-                          letterSpacing: "0.1em",
-                          padding: "2px 5px",
-                          background: isIL ? "#3E8CFF22" : "#9CA3AF22",
-                          color: isIL ? "#7FB2FF" : "#9CA3AF",
-                          borderRadius: 3,
-                          lineHeight: 1,
-                        }}>{isIL ? "IL" : "INT"}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-
-                {/* ── VIBE FILTER — emotional-bucket refinement for the
-                    selected artist's packs. 8 pills: All + 7 vibes.
-                    Count shown per pill reflects ONLY the current
-                    artist's packs matching that vibe (not global). ── */}
-                <div style={{
-                  display: "flex", flexWrap: "wrap", gap: 4,
-                  marginBottom: T.s3,
-                  padding: `${T.s2}px 0`,
-                }}>
-                  {(() => {
-                    const allCount = activeMimicArtist.packs.length;
-                    const active = mimicVibeFilter === "all";
-                    return (
-                      <button type="button"
-                        onClick={() => { playSwitchSound(); setMimicVibeFilter("all"); }}
-                        title="Show all packs"
-                        style={{
-                          display: "inline-flex", alignItems: "center", gap: 5,
-                          padding: "5px 10px",
-                          background: active ? "#A855F718" : "transparent",
-                          border: `1px solid ${active ? "#A855F788" : T.border}`,
-                          borderRadius: T.r_sm,
-                          color: active ? "#C084FC" : T.textSec,
-                          fontFamily: T.font_mono, fontSize: 10, fontWeight: 700,
-                          letterSpacing: "0.08em",
-                          cursor: "pointer",
-                          transition: `all ${T.dur_fast} ${T.ease}`,
-                        }}
-                        onMouseEnter={e => { if (!active) { e.currentTarget.style.borderColor = "#A855F766"; e.currentTarget.style.color = T.text; } }}
-                        onMouseLeave={e => { if (!active) { e.currentTarget.style.borderColor = T.border; e.currentTarget.style.color = T.textSec; } }}
-                      >
-                        All
-                        <span style={{
-                          fontSize: 8, color: active ? "#C084FC" : T.textTer,
-                          padding: "1px 4px",
-                          background: active ? "#A855F722" : "#00000033",
-                          borderRadius: 2,
-                        }}>{allCount}</span>
-                      </button>
-                    );
-                  })()}
-                  {VIBE_META.map(v => {
-                    const count = activeMimicArtist.packs.filter(p => p.vibe === v.id).length;
-                    if (count === 0) return null; // hide vibes with no matches for this artist
-                    const active = mimicVibeFilter === v.id;
-                    return (
-                      <button key={v.id} type="button"
-                        onClick={() => { playSwitchSound(); setMimicVibeFilter(v.id); }}
-                        title={`${v.label} — ${v.tagline}`}
-                        style={{
-                          display: "inline-flex", alignItems: "center", gap: 5,
-                          padding: "5px 10px",
-                          background: active ? `${v.color}18` : "transparent",
-                          border: `1px solid ${active ? `${v.color}AA` : T.border}`,
-                          borderRadius: T.r_sm,
-                          color: active ? v.color : T.textSec,
-                          fontFamily: T.font_mono, fontSize: 10, fontWeight: 700,
-                          letterSpacing: "0.08em",
-                          cursor: "pointer",
-                          transition: `all ${T.dur_fast} ${T.ease}`,
-                        }}
-                        onMouseEnter={e => { if (!active) { e.currentTarget.style.borderColor = `${v.color}66`; e.currentTarget.style.color = T.text; } }}
-                        onMouseLeave={e => { if (!active) { e.currentTarget.style.borderColor = T.border; e.currentTarget.style.color = T.textSec; } }}
-                      >
-                        <span>{v.icon}</span>
-                        <span>{v.label}</span>
-                        <span style={{
-                          fontSize: 8, color: active ? v.color : T.textTer,
-                          padding: "1px 4px",
-                          background: active ? `${v.color}22` : "#00000033",
-                          borderRadius: 2,
-                        }}>{count}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-
-                {/* Prompt cards for the selected artist, filtered by vibe */}
-                <div style={{
-                  display: "grid",
-                  gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(5, 1fr)",
-                  gap: T.s2,
-                }}>
-                  {filteredPacks.length === 0 ? (
-                    <div style={{
-                      gridColumn: "1 / -1",
-                      textAlign: "center",
-                      padding: `${T.s5}px ${T.s3}px`,
-                      color: T.textMuted, fontFamily: T.font_mono, fontSize: T.fs_sm,
-                      border: `1px dashed ${T.border}`,
-                      borderRadius: T.r_md,
-                    }}>
-                      No {mimicVibeFilter !== "all" ? `"${mimicVibeFilter}"` : ""} packs for {activeMimicArtist.artistName}.
-                    </div>
-                  ) : filteredPacks.map(pack => (
-                    <button key={pack.id} type="button"
-                      onClick={() => applyMimicPack(activeMimicArtist, pack)}
-                      title={`${activeMimicArtist.artistName} · ${pack.name}${pack.vibe ? ` · ${pack.vibe}` : ""}`}
-                      style={{
-                        display: "flex", flexDirection: "column",
-                        alignItems: "flex-start", justifyContent: "space-between",
-                        gap: 6,
-                        padding: isMobile ? T.s3 : T.s3,
-                        minHeight: isMobile ? 72 : 84,
-                        background: `linear-gradient(180deg, rgba(168, 85, 247, 0.04) 0%, ${T.surface} 100%)`,
-                        border: `1px solid ${T.border}`,
-                        borderRadius: T.r_md,
-                        color: T.text,
-                        fontFamily: T.font_sans,
-                        cursor: "pointer",
-                        textAlign: "left",
-                        transition: `all ${T.dur_fast} ${T.ease}`,
-                      }}
-                      onMouseEnter={e => {
-                        e.currentTarget.style.borderColor = "#A855F788";
-                        e.currentTarget.style.background = `linear-gradient(180deg, rgba(168, 85, 247, 0.12) 0%, rgba(168, 85, 247, 0.04) 100%)`;
-                        e.currentTarget.style.transform = "translateY(-1px)";
-                        e.currentTarget.style.boxShadow = `0 0 16px rgba(168, 85, 247, 0.22)`;
-                      }}
-                      onMouseLeave={e => {
-                        e.currentTarget.style.borderColor = T.border;
-                        e.currentTarget.style.background = `linear-gradient(180deg, rgba(168, 85, 247, 0.04) 0%, ${T.surface} 100%)`;
-                        e.currentTarget.style.transform = "translateY(0)";
-                        e.currentTarget.style.boxShadow = "none";
-                      }}
-                    >
-                      <span style={{
-                        fontSize: 20, lineHeight: 1,
-                      }}>{pack.emoji}</span>
-                      <span style={{
-                        fontSize: T.fs_sm, fontWeight: 600,
-                        color: T.text, lineHeight: 1.25,
-                      }}>{pack.name}</span>
-                      <span style={{
-                        fontSize: 9, fontFamily: T.font_mono,
-                        color: T.textMuted, letterSpacing: "0.08em",
-                      }}>
-                        {pack.state.bpm ? `${pack.state.bpm} BPM` : ""}
-                        {pack.state.slots && pack.state.slots[0]?.sub ? ` · ${pack.state.slots[0].sub}` : ""}
-                      </span>
-                    </button>
-                  ))}
-                </div>
-                </>)}
+                    fontSize: 18, fontWeight: 800,
+                    color: "#00FF41",
+                    padding: "6px 12px",
+                    background: "rgba(0, 255, 65, 0.08)",
+                    border: "1px solid rgba(0, 255, 65, 0.4)",
+                    borderRadius: 4,
+                  }}>→</span>
+                </button>
               </div>
 
               {/* Small footer note — version tag so we know when the
@@ -16991,48 +17166,55 @@ function EnginePage({ onNavigate }) {
                 {FUEL_TYPES[activeFuel].label.toUpperCase()} EMPTY · REFILLS TOMORROW
               </div>
             )}
-            {/* ── CLEAR ALL — red danger-state reset.
-                Sits separated from the above by extra top margin so it
-                reads as a distinct destructive action, not part of the
-                status group above. Dashed border matches the rest of the
-                reset/danger UI grammar in the app. ───────────────────── */}
+            {/* ── CLEAR ALL — destructive reset with mobile-optimized design.
+                Desktop: compact dashed outline with subtle restraint.
+                Mobile: solid outlined button with proper iOS tap target,
+                confident visual weight, and clearer danger color so it
+                doesn't look like a faded/broken element on phones. ───── */}
             <button
               type="button"
               onClick={() => { playSwitchSound(); clearAll(); }}
               title="Clear all selections — start fresh"
               style={{
                 alignSelf: "stretch",
-                marginTop: T.s3,
-                padding: isMobile ? "10px 14px" : "9px 14px",
-                minHeight: isMobile ? 44 : "auto",
-                background: "transparent",
-                border: `1px dashed ${T.danger}55`,
-                borderRadius: T.r_md,
+                marginTop: isMobile ? T.s4 : T.s3,
+                padding: isMobile ? "13px 16px" : "9px 14px",
+                minHeight: isMobile ? 48 : "auto",
+                background: isMobile ? `${T.danger}0D` : "transparent",
+                border: isMobile
+                  ? `1px solid ${T.danger}55`
+                  : `1px dashed ${T.danger}55`,
+                borderRadius: isMobile ? T.r_md : T.r_md,
                 color: T.danger,
-                fontFamily: T.font_mono, fontSize: T.fs_xs, fontWeight: 700,
-                letterSpacing: "0.22em",
+                fontFamily: T.font_mono,
+                fontSize: isMobile ? 12 : T.fs_xs,
+                fontWeight: 700,
+                letterSpacing: isMobile ? "0.18em" : "0.22em",
                 cursor: "pointer",
-                display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8,
+                display: "inline-flex",
+                alignItems: "center", justifyContent: "center",
+                gap: isMobile ? 10 : 8,
                 transition: `all ${T.dur_fast} ${T.ease}`,
-                opacity: 0.75,
+                opacity: isMobile ? 1 : 0.75,
+                WebkitTapHighlightColor: "transparent",
               }}
               onMouseEnter={e => {
-                e.currentTarget.style.background = `${T.danger}10`;
+                e.currentTarget.style.background = `${T.danger}18`;
                 e.currentTarget.style.borderStyle = "solid";
                 e.currentTarget.style.borderColor = T.danger;
                 e.currentTarget.style.opacity = "1";
                 e.currentTarget.style.boxShadow = `0 0 0 3px ${T.danger}18`;
               }}
               onMouseLeave={e => {
-                e.currentTarget.style.background = "transparent";
-                e.currentTarget.style.borderStyle = "dashed";
+                e.currentTarget.style.background = isMobile ? `${T.danger}0D` : "transparent";
+                e.currentTarget.style.borderStyle = isMobile ? "solid" : "dashed";
                 e.currentTarget.style.borderColor = `${T.danger}55`;
-                e.currentTarget.style.opacity = "0.75";
+                e.currentTarget.style.opacity = isMobile ? "1" : "0.75";
                 e.currentTarget.style.boxShadow = "none";
               }}
             >
-              <span style={{ fontSize: 12 }}>⟲</span>
-              CLEAR ALL
+              <span style={{ fontSize: isMobile ? 14 : 12 }}>⟲</span>
+              {isMobile ? "CLEAR" : "CLEAR ALL"}
             </button>
           </div>
 
@@ -17042,16 +17224,14 @@ function EnginePage({ onNavigate }) {
 
           {hasMinimum ? (
             <div style={{ display: "flex", flexDirection: "column", gap: T.s4 }}>
-              {features.popHitMeter ? (
-                <PopHitMeter score={popHitScore.score} verdict={popHitScore.verdict} notes={popHitScore.notes}
-                  showDebug={features.adminDebug} state={state} lyricsOn={lyricsOn}
-                  onExtraPoppy={applyMaxPoppy}
-                  canExtraPoppy={canAffordExtraPoppy}
-                  extraPoppyCost={EXTRA_POPPY_COST}
-                  extraPoppyLocked={extraPoppyLocked} />
-              ) : (
-                <TierLock feature="Pop-hit match meter" requiredTier="pro" />
-              )}
+              {/* PopHitMeter is always mounted — Free sees a grayed score
+                  with a PRO+ upsell chip so they know the feature exists.
+                  Extra Poppy was removed from this component entirely —
+                  it's now an admin-only tool living on BubbleToolsPage.
+                  No tier except Bubble sees the Poppy button anywhere. */}
+              <PopHitMeter score={popHitScore.score} verdict={popHitScore.verdict} notes={popHitScore.notes}
+                showDebug={features.adminDebug} state={state} lyricsOn={lyricsOn}
+                scoreLocked={!features.popHitMeter} />
 
               <div ref={shortPromptRef} style={{ scrollMarginTop: 72 }}>
                 <OutputBlock title="Short prompt" subtitle="Comma-separated tags. For style fields."
@@ -23420,6 +23600,31 @@ function playButtonSound() {
   } catch {}
 }
 
+// Hit-button sound — fires once when the user presses HIT and fuel is
+// available to start a roll. Uses the same pool pattern as the other
+// sound helpers so rapid successive HITs don't cut off. The asset lives
+// at /hit-button-sound.mp3 in the public folder.
+let _hitAudioPool = null;
+let _hitAudioIdx = 0;
+function playHitSound() {
+  try {
+    if (typeof window === "undefined" || typeof Audio === "undefined") return;
+    if (!_hitAudioPool) {
+      _hitAudioPool = [
+        new Audio("/hit-button-sound.mp3"),
+        new Audio("/hit-button-sound.mp3"),
+        new Audio("/hit-button-sound.mp3"),
+      ];
+      _hitAudioPool.forEach(a => { a.volume = 0.6; a.preload = "auto"; });
+    }
+    const a = _hitAudioPool[_hitAudioIdx];
+    _hitAudioIdx = (_hitAudioIdx + 1) % _hitAudioPool.length;
+    a.currentTime = 0;
+    const p = a.play();
+    if (p && typeof p.catch === "function") p.catch(() => {});
+  } catch {}
+}
+
 // Fuel-button sound — short, punchy click used on fuel tank tiles in the
 // FUEL SELECT gearshift. Distinct from BUTTON-SOUND and SWITCH-SOUND so
 // fuel changes have their own sonic identity.
@@ -24031,6 +24236,942 @@ function Joystick({ onNavigate, onLockedClick }) {
 // ════════════════════════════════════════════════════════════════════════════
 // SHOP PAGE — demo shop for purchasing tier upgrades with fake credits
 // ════════════════════════════════════════════════════════════════════════════
+
+// ════════════════════════════════════════════════════════════════════════════
+// BUBBLE TOOLS PAGE — admin-only dedicated surface for internal tools
+// ════════════════════════════════════════════════════════════════════════════
+// Hacker-backdoor aesthetic: black background, electric-green accents,
+// terminal mono type, subtle scan-line overlay. This is Bubble's dev
+// vault — all admin-only internal tools live here instead of cluttering
+// the Engine page. Accessed via the ◢ BUBBLE TOOLS nav link that only
+// renders when tier === "admin".
+//
+// V1 content: Artist Mimic Pack browser (moved from Engine page).
+// Future sections will be added: Era Picker, Future Prompts generator,
+// Artist DNA editor, Credit-grant tool, Debug console.
+//
+// Pack application flow: clicking a pack writes the selection to
+// sessionStorage and navigates to /engine, which has a mount-effect
+// that reads the pending pack and calls applyMimicPack. This preserves
+// all existing apply logic without needing to lift engine state.
+// ════════════════════════════════════════════════════════════════════════════
+
+function BubbleToolsPage({ onNavigate }) {
+  const { tier } = useTier();
+  const { layout } = useLayout();
+  const isMobile = layout === "mobile";
+
+  // Mimic pack state — local to this page. Mirrors what used to live
+  // inside EnginePage. Applying a pack navigates to Engine.
+  const [mimicArtistId, setMimicArtistId] = useState(MIMIC_PACKS[0].artistId);
+  const [mimicRegionFilter, setMimicRegionFilter] = useState("all");
+  const [mimicSearch, setMimicSearch] = useState("");
+  const [mimicVibeFilter, setMimicVibeFilter] = useState("all");
+  const [mimicViewMode, setMimicViewMode] = useState("artist");
+  const [crossVibeActive, setCrossVibeActive] = useState("anthemic");
+  const [vibeUsageCounts, setVibeUsageCounts] = useState({});
+  const [mimicBlendVibe, setMimicBlendVibe] = useState(null);
+
+  const filteredMimicArtists = MIMIC_PACKS.filter(a => {
+    if (mimicRegionFilter !== "all" && a.region !== mimicRegionFilter) return false;
+    if (mimicSearch.trim()) {
+      const q = mimicSearch.trim().toLowerCase();
+      if (!a.artistName.toLowerCase().includes(q)) return false;
+    }
+    return true;
+  });
+  const activeMimicArtist = MIMIC_PACKS.find(a => a.artistId === mimicArtistId) || MIMIC_PACKS[0];
+  useEffect(() => { setMimicVibeFilter("all"); }, [mimicArtistId]);
+  const filteredPacks = activeMimicArtist.packs.filter(p => {
+    if (mimicVibeFilter === "all") return true;
+    return p.vibe === mimicVibeFilter;
+  });
+
+  const allPacksFlat = useMemo(() => {
+    const out = [];
+    MIMIC_PACKS.forEach(artist => { artist.packs.forEach(pack => { out.push({ artist, pack }); }); });
+    return out;
+  }, []);
+  const packsByVibe = useMemo(() => {
+    const map = {};
+    VIBE_META.forEach(v => { map[v.id] = []; });
+    allPacksFlat.forEach(({ artist, pack }) => {
+      const v = pack.vibe || "moody";
+      if (!map[v]) map[v] = [];
+      map[v].push({ artist, pack });
+    });
+    return map;
+  }, [allPacksFlat]);
+  const mostUsedVibe = useMemo(() => {
+    const entries = Object.entries(vibeUsageCounts);
+    if (entries.length === 0) return null;
+    entries.sort((a, b) => b[1] - a[1]);
+    return entries[0][0];
+  }, [vibeUsageCounts]);
+  const trackVibeUse = (vibeId) => {
+    if (!vibeId) return;
+    setVibeUsageCounts(prev => ({ ...prev, [vibeId]: (prev[vibeId] || 0) + 1 }));
+  };
+
+  // Pack application handler — writes {artistId, packId, blendVibe}
+  // to sessionStorage and navigates to Engine. Engine reads the pending
+  // entry on mount and fires applyMimicPack with the matching pack.
+  // Using sessionStorage (not a context or URL param) keeps the
+  // BubbleTools page self-contained and avoids touching engine state
+  // plumbing that's already working cleanly.
+  const applyAndGo = (artist, pack) => {
+    playSwitchSound();
+    try {
+      sessionStorage.setItem("he-pending-mimic", JSON.stringify({
+        artistId: artist.artistId,
+        packId: pack.id,
+        blendVibe: mimicBlendVibe,
+        ts: Date.now(),
+      }));
+    } catch {}
+    trackVibeUse(pack.vibe);
+    // Navigate to engine — pack applies on mount
+    if (onNavigate) onNavigate("engine");
+  };
+
+  const shuffleVibe = () => {
+    const weightedVibes = [];
+    VIBE_META.forEach(v => {
+      const count = (packsByVibe[v.id] || []).length;
+      for (let i = 0; i < count; i++) weightedVibes.push(v.id);
+    });
+    if (weightedVibes.length === 0) return;
+    const rolledVibe = weightedVibes[Math.floor(Math.random() * weightedVibes.length)];
+    const bucket = packsByVibe[rolledVibe] || [];
+    if (bucket.length === 0) return;
+    const pick = bucket[Math.floor(Math.random() * bucket.length)];
+    setCrossVibeActive(rolledVibe);
+    setMimicViewMode("vibe");
+    applyAndGo(pick.artist, pick.pack);
+  };
+
+  // Access guard — if somehow a non-admin lands here (URL tinkering),
+  // show a minimal 403 rather than the admin console. Shouldn't happen
+  // in normal flow because the nav link is admin-gated.
+  if (tier !== "admin") {
+    return (
+      <div style={{
+        minHeight: "80vh",
+        display: "flex", alignItems: "center", justifyContent: "center",
+        padding: T.s6,
+      }}>
+        <div style={{
+          maxWidth: 440, textAlign: "center",
+          padding: T.s6,
+          background: "#0A0A0A",
+          border: `1px solid rgba(0, 255, 65, 0.22)`,
+          borderRadius: T.r_lg,
+          fontFamily: T.font_mono,
+          color: "rgba(0, 255, 65, 0.72)",
+        }}>
+          <div style={{ fontSize: 36, marginBottom: T.s3 }}>◢</div>
+          <div style={{ fontSize: 14, fontWeight: 700, letterSpacing: "0.2em", marginBottom: T.s2 }}>
+            ACCESS DENIED
+          </div>
+          <div style={{ fontSize: 12, color: "rgba(0, 255, 65, 0.5)", lineHeight: 1.6 }}>
+            This surface is restricted to admin accounts.
+            <br />Return to{" "}
+            <button type="button" onClick={() => onNavigate && onNavigate("engine")}
+              style={{
+                background: "transparent", border: "none",
+                color: "#00FF41", cursor: "pointer",
+                textDecoration: "underline", fontFamily: "inherit",
+                padding: 0,
+              }}
+            >engine</button>.
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const GREEN = "#00FF41";
+  const GREEN_DIM = "rgba(0, 255, 65, 0.45)";
+  const GREEN_FAINT = "rgba(0, 255, 65, 0.12)";
+  const GREEN_BG = "rgba(0, 255, 65, 0.04)";
+
+  return (
+    <div style={{
+      minHeight: "100vh",
+      background: "#050505",
+      color: GREEN,
+      fontFamily: T.font_mono,
+      position: "relative",
+      overflow: "hidden",
+    }}>
+      {/* ── SCAN-LINE OVERLAY — subtle CRT feel ─────────────────────
+          Fine horizontal lines tiled across the page. Low contrast so
+          it doesn't fight the content but adds a terminal-display
+          texture to the backdrop. */}
+      <div aria-hidden="true" style={{
+        position: "fixed", inset: 0, zIndex: 0,
+        backgroundImage: "repeating-linear-gradient(0deg, rgba(0,255,65,0.03) 0px, rgba(0,255,65,0.03) 1px, transparent 1px, transparent 3px)",
+        pointerEvents: "none",
+      }} />
+      {/* ── AMBIENT GREEN GLOW — subtle vignette from the bottom ──── */}
+      <div aria-hidden="true" style={{
+        position: "fixed", bottom: "-40%", left: "50%",
+        width: "90%", height: "80%",
+        transform: "translateX(-50%)",
+        background: "radial-gradient(ellipse at center, rgba(0, 255, 65, 0.05) 0%, transparent 60%)",
+        pointerEvents: "none", zIndex: 0,
+      }} />
+
+      <div style={{
+        position: "relative", zIndex: 1,
+        maxWidth: 1400, margin: "0 auto",
+        padding: isMobile ? T.s4 : `${T.s7}px ${T.s8}px`,
+      }}>
+        {/* ── HEADER — terminal-prompt branding ─────────────────────
+            Simulates a CLI session: prompt char + command + cursor.
+            Makes Bubble feel like she's operating inside a dev shell
+            rather than a consumer app. */}
+        <div style={{
+          marginBottom: isMobile ? T.s5 : T.s7,
+          paddingBottom: T.s4,
+          borderBottom: `1px solid rgba(0, 255, 65, 0.18)`,
+        }}>
+          <div style={{
+            fontSize: 11,
+            color: GREEN_DIM,
+            letterSpacing: "0.2em",
+            marginBottom: T.s2,
+          }}>
+            bubble@hit-engine:~$ <span style={{ color: GREEN }}>./tools --admin --unlock</span>
+          </div>
+          <div style={{
+            fontSize: isMobile ? 28 : 42,
+            fontWeight: 800,
+            letterSpacing: "0.08em",
+            color: GREEN,
+            textShadow: `0 0 20px ${GREEN_DIM}, 0 0 40px rgba(0, 255, 65, 0.18)`,
+            lineHeight: 1.1,
+            marginBottom: T.s3,
+          }}>
+            ◢ BUBBLE TOOLS
+          </div>
+          <div style={{
+            fontSize: 12,
+            color: GREEN_DIM,
+            letterSpacing: "0.08em",
+            fontFamily: T.font_mono,
+            lineHeight: 1.6,
+          }}>
+            admin backdoor · {MIMIC_PACKS.length} artists indexed · {allPacksFlat.length} curated packs · recipe engine online
+          </div>
+          <div style={{
+            marginTop: T.s3,
+            fontSize: 10,
+            color: "rgba(0, 255, 65, 0.35)",
+            letterSpacing: "0.1em",
+          }}>
+            [ session authenticated · dev-tier ]
+          </div>
+        </div>
+
+        {/* ── SECTION — EXTRA POPPY ─────────────────────────────────
+            Admin-exclusive pop-maximizer. Golden treasure chest
+            opened-state since admin always has permission + infinite
+            fuel. Clicking it writes a pending flag to sessionStorage
+            and navigates to Engine, where a mount effect reads the
+            flag and fires applyMaxPoppy with the current state. */}
+        <div style={{
+          display: "flex", alignItems: "center", gap: T.s2,
+          marginBottom: T.s3,
+        }}>
+          <span style={{
+            fontSize: 10, fontWeight: 700, letterSpacing: "0.3em",
+            color: GREEN,
+            padding: "4px 8px",
+            background: GREEN_BG,
+            border: `1px solid ${GREEN_FAINT}`,
+            borderRadius: 3,
+          }}>
+            § EXTRA_POPPY
+          </span>
+          <span style={{ flex: 1, height: 1, background: GREEN_FAINT }} />
+          <span style={{
+            color: GREEN_DIM, fontSize: 10,
+            padding: "2px 6px",
+            background: GREEN_BG,
+            border: `1px dashed ${GREEN_FAINT}`,
+            borderRadius: 3,
+            letterSpacing: "0.1em",
+          }}>
+            ADMIN ONLY
+          </span>
+        </div>
+        <button
+          type="button"
+          onClick={() => {
+            playSwitchSound();
+            try {
+              sessionStorage.setItem("he-pending-max-poppy", JSON.stringify({ ts: Date.now() }));
+            } catch {}
+            if (onNavigate) onNavigate("engine");
+          }}
+          title="Open the chest — maximize the current config for pop appeal"
+          style={{
+            width: "100%",
+            position: "relative",
+            marginBottom: T.s7,
+            display: "flex", alignItems: "center", justifyContent: "center",
+            gap: 12,
+            padding: "20px 20px",
+            // Opened-chest styling — full-saturation gold since admin
+            // has unconditional access. No locked variant here because
+            // this page literally doesn't render for non-admin.
+            background: `linear-gradient(180deg,
+              rgba(255, 215, 0, 0.28) 0%,
+              rgba(255, 200, 60, 0.20) 50%,
+              rgba(255, 165, 0, 0.24) 100%)`,
+            border: "1.5px solid #FFD700",
+            borderRadius: T.r_lg,
+            color: "#FFD700",
+            fontFamily: T.font_mono, fontSize: 13, fontWeight: 800,
+            letterSpacing: "0.18em",
+            cursor: "pointer",
+            boxShadow: "inset 0 1px 0 rgba(255,255,255,0.2), 0 0 20px rgba(255,215,0,0.35), 0 3px 10px rgba(255,165,0,0.2)",
+            overflow: "hidden",
+            transition: `all ${T.dur_fast} ${T.ease}`,
+          }}
+          onMouseEnter={e => {
+            e.currentTarget.style.boxShadow = "inset 0 1px 0 rgba(255,255,255,0.3), 0 0 30px rgba(255,215,0,0.55), 0 4px 14px rgba(255,165,0,0.3)";
+            e.currentTarget.style.transform = "translateY(-2px)";
+          }}
+          onMouseLeave={e => {
+            e.currentTarget.style.boxShadow = "inset 0 1px 0 rgba(255,255,255,0.2), 0 0 20px rgba(255,215,0,0.35), 0 3px 10px rgba(255,165,0,0.2)";
+            e.currentTarget.style.transform = "translateY(0)";
+          }}
+        >
+          {/* Ambient shimmer sweep */}
+          <span
+            aria-hidden="true"
+            style={{
+              position: "absolute", top: 0, left: "-40%", width: "40%", height: "100%",
+              background: `linear-gradient(105deg,
+                transparent 0%,
+                rgba(255,255,255,0.18) 40%,
+                rgba(255,255,255,0.32) 50%,
+                rgba(255,255,255,0.18) 60%,
+                transparent 100%)`,
+              animation: "chestShimmer 3.5s ease-in-out infinite",
+              pointerEvents: "none",
+            }}
+          />
+          <span style={{
+            fontSize: 24, lineHeight: 1,
+            textShadow: "0 0 10px rgba(255,215,0,0.7)",
+          }}>💎</span>
+          <span style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 2 }}>
+            <span>EXTRA POPPY</span>
+            <span style={{
+              fontSize: 9, letterSpacing: "0.2em",
+              color: "#FFE48A", fontWeight: 700,
+              opacity: 0.8,
+            }}>
+              &gt; pop-maximize current config
+            </span>
+          </span>
+          <span style={{ flex: 1 }} />
+          <span style={{
+            fontSize: 10, letterSpacing: "0.12em",
+            color: "#FFE48A", fontWeight: 700,
+            padding: "4px 10px",
+            background: "rgba(255,228,138,0.15)",
+            border: "1px solid rgba(255,215,0,0.4)",
+            borderRadius: 3,
+          }}>
+            OPENED
+          </span>
+        </button>
+
+        {/* ── SECTION HEADER — MIMIC PACK BROWSER ─────────────────── */}
+        <div style={{
+          display: "flex", alignItems: "center", gap: T.s2,
+          marginBottom: T.s4,
+        }}>
+          <span style={{
+            fontSize: 10, fontWeight: 700, letterSpacing: "0.3em",
+            color: GREEN,
+            padding: "4px 8px",
+            background: GREEN_BG,
+            border: `1px solid ${GREEN_FAINT}`,
+            borderRadius: 3,
+          }}>
+            § ARTIST_MIMIC_BROWSER
+          </span>
+          <span style={{ flex: 1, height: 1, background: GREEN_FAINT }} />
+          <span style={{
+            color: GREEN_DIM, fontSize: 10,
+            padding: "2px 6px",
+            background: GREEN_BG,
+            border: `1px dashed ${GREEN_FAINT}`,
+            borderRadius: 3,
+            letterSpacing: "0.1em",
+          }}>
+            {MIMIC_PACKS.length} × 10
+          </span>
+        </div>
+
+        {/* ── VIEW MODE + SHUFFLE + USAGE + BLEND ROW ───────────────── */}
+        <div style={{
+          display: "flex", alignItems: "center",
+          gap: T.s2, flexWrap: "wrap",
+          marginBottom: T.s3,
+        }}>
+          <div style={{
+            display: "inline-flex",
+            background: "#000000",
+            border: `1px solid ${GREEN_FAINT}`,
+            borderRadius: T.r_sm,
+            padding: 2,
+          }}>
+            {[
+              { id: "artist", label: "By Artist" },
+              { id: "vibe",   label: "By Vibe"   },
+            ].map(m => {
+              const active = mimicViewMode === m.id;
+              return (
+                <button key={m.id} type="button"
+                  onClick={() => { playSwitchSound(); setMimicViewMode(m.id); }}
+                  style={{
+                    padding: "6px 14px",
+                    background: active ? "rgba(0, 255, 65, 0.12)" : "transparent",
+                    border: `1px solid ${active ? GREEN : "transparent"}`,
+                    borderRadius: T.r_sm - 1,
+                    color: active ? GREEN : GREEN_DIM,
+                    fontFamily: T.font_mono, fontSize: 10, fontWeight: 700,
+                    letterSpacing: "0.12em",
+                    cursor: "pointer",
+                    transition: `all ${T.dur_fast} ${T.ease}`,
+                    textShadow: active ? `0 0 6px ${GREEN_DIM}` : "none",
+                  }}
+                >{m.label}</button>
+              );
+            })}
+          </div>
+          <button type="button"
+            onClick={shuffleVibe}
+            title="Shuffle: roll random vibe + random pack"
+            style={{
+              display: "inline-flex", alignItems: "center", gap: 6,
+              padding: "7px 14px",
+              background: "rgba(0, 255, 65, 0.06)",
+              border: `1px solid ${GREEN_DIM}`,
+              borderRadius: T.r_sm,
+              color: GREEN,
+              fontFamily: T.font_mono, fontSize: 10, fontWeight: 700,
+              letterSpacing: "0.12em",
+              cursor: "pointer",
+              transition: `all ${T.dur_fast} ${T.ease}`,
+            }}
+            onMouseEnter={e => {
+              e.currentTarget.style.borderColor = GREEN;
+              e.currentTarget.style.boxShadow = `0 0 12px rgba(0, 255, 65, 0.25)`;
+            }}
+            onMouseLeave={e => {
+              e.currentTarget.style.borderColor = GREEN_DIM;
+              e.currentTarget.style.boxShadow = "none";
+            }}
+          >
+            ◆ SHUFFLE_VIBE
+          </button>
+          <span style={{ flex: 1 }} />
+          {mostUsedVibe && (() => {
+            const meta = VIBE_META.find(v => v.id === mostUsedVibe);
+            if (!meta) return null;
+            const total = vibeUsageCounts[mostUsedVibe] || 0;
+            return (
+              <span
+                title={`Most-used vibe this session: ${meta.label} (${total}×)`}
+                style={{
+                  display: "inline-flex", alignItems: "center", gap: 5,
+                  padding: "4px 9px",
+                  background: GREEN_BG,
+                  border: `1px dashed ${GREEN_DIM}`,
+                  borderRadius: T.r_sm,
+                  color: GREEN,
+                  fontFamily: T.font_mono, fontSize: 9, fontWeight: 700,
+                  letterSpacing: "0.1em",
+                }}
+              >
+                <span>{meta.icon}</span>
+                <span style={{ opacity: 0.7 }}>MOST_USED ·</span>
+                <span>{meta.label.toUpperCase()}</span>
+                <span style={{
+                  fontSize: 8,
+                  padding: "1px 4px",
+                  background: "rgba(0, 255, 65, 0.12)",
+                  borderRadius: 2,
+                }}>{total}×</span>
+              </span>
+            );
+          })()}
+        </div>
+
+        {/* ── BLEND ROW ───────────────────────────────────────────── */}
+        <div style={{
+          display: "flex", alignItems: "center",
+          gap: T.s2, flexWrap: "wrap",
+          marginBottom: T.s4,
+          padding: `${T.s2}px ${T.s3}px`,
+          background: GREEN_BG,
+          border: `1px dashed ${GREEN_FAINT}`,
+          borderRadius: T.r_sm,
+        }}>
+          <span style={{
+            fontFamily: T.font_mono, fontSize: 9, fontWeight: 700,
+            color: GREEN, letterSpacing: "0.12em",
+          }}>&gt; BLEND ×</span>
+          <select
+            value={mimicBlendVibe || ""}
+            onChange={e => setMimicBlendVibe(e.target.value || null)}
+            style={{
+              padding: "5px 10px",
+              background: "#000000",
+              border: `1px solid ${mimicBlendVibe ? GREEN : GREEN_FAINT}`,
+              borderRadius: T.r_sm,
+              color: GREEN,
+              fontFamily: T.font_mono, fontSize: isMobile ? 16 : 10, fontWeight: 700,
+              letterSpacing: "0.08em",
+              cursor: "pointer",
+              outline: "none",
+            }}
+          >
+            <option value="" style={{ background: "#000", color: GREEN }}>— none (pure pack) —</option>
+            {VIBE_META.map(v => (
+              <option key={v.id} value={v.id} style={{ background: "#000", color: GREEN }}>
+                {v.icon} {v.label} blend
+              </option>
+            ))}
+          </select>
+          {mimicBlendVibe && (
+            <span style={{
+              fontFamily: T.font_mono, fontSize: 10,
+              color: GREEN_DIM, flex: 1,
+            }}>
+              // sonics preserved, mood/energy → {mimicBlendVibe}
+            </span>
+          )}
+        </div>
+
+        {/* ── BY VIBE VIEW ────────────────────────────────────────── */}
+        {mimicViewMode === "vibe" && (
+          <>
+            <div style={{
+              display: "flex", flexWrap: "wrap", gap: 4,
+              marginBottom: T.s4,
+            }}>
+              {VIBE_META.map(v => {
+                const count = (packsByVibe[v.id] || []).length;
+                const active = crossVibeActive === v.id;
+                return (
+                  <button key={v.id} type="button"
+                    onClick={() => { playSwitchSound(); setCrossVibeActive(v.id); }}
+                    title={v.tagline}
+                    style={{
+                      display: "inline-flex", alignItems: "center", gap: 5,
+                      padding: "6px 11px",
+                      background: active ? `${v.color}1A` : "transparent",
+                      border: `1px solid ${active ? v.color : GREEN_FAINT}`,
+                      borderRadius: T.r_sm,
+                      color: active ? v.color : GREEN_DIM,
+                      fontFamily: T.font_mono, fontSize: 10, fontWeight: 700,
+                      letterSpacing: "0.08em",
+                      cursor: "pointer",
+                      transition: `all ${T.dur_fast} ${T.ease}`,
+                      boxShadow: active ? `0 0 10px ${v.color}44` : "none",
+                    }}
+                  >
+                    <span>{v.icon}</span>
+                    <span>{v.label}</span>
+                    <span style={{
+                      fontSize: 8, color: active ? v.color : "rgba(0, 255, 65, 0.35)",
+                      padding: "1px 4px",
+                      background: active ? `${v.color}22` : "rgba(0, 255, 65, 0.06)",
+                      borderRadius: 2,
+                    }}>{count}</span>
+                  </button>
+                );
+              })}
+            </div>
+            <div style={{
+              display: "grid",
+              gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(5, 1fr)",
+              gap: T.s2,
+            }}>
+              {(packsByVibe[crossVibeActive] || []).map(({ artist, pack }) => {
+                const vm = VIBE_META.find(v => v.id === pack.vibe);
+                const glow = vm?.color || GREEN;
+                return (
+                  <button key={`${artist.artistId}-${pack.id}`} type="button"
+                    onClick={() => applyAndGo(artist, pack)}
+                    title={`${artist.artistName} · ${pack.name} · ${pack.vibe}`}
+                    style={{
+                      display: "flex", flexDirection: "column",
+                      alignItems: "flex-start", justifyContent: "space-between",
+                      gap: 6,
+                      padding: T.s3,
+                      minHeight: isMobile ? 80 : 96,
+                      background: `linear-gradient(180deg, ${glow}0F 0%, #000000 100%)`,
+                      border: `1px solid ${GREEN_FAINT}`,
+                      borderRadius: T.r_md,
+                      color: GREEN,
+                      fontFamily: T.font_mono,
+                      cursor: "pointer",
+                      textAlign: "left",
+                      transition: `all ${T.dur_fast} ${T.ease}`,
+                    }}
+                    onMouseEnter={e => {
+                      e.currentTarget.style.borderColor = glow;
+                      e.currentTarget.style.transform = "translateY(-1px)";
+                      e.currentTarget.style.boxShadow = `0 0 14px ${glow}33`;
+                    }}
+                    onMouseLeave={e => {
+                      e.currentTarget.style.borderColor = GREEN_FAINT;
+                      e.currentTarget.style.transform = "translateY(0)";
+                      e.currentTarget.style.boxShadow = "none";
+                    }}
+                  >
+                    <span style={{ fontSize: 20, lineHeight: 1 }}>{pack.emoji}</span>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: GREEN, lineHeight: 1.2 }}>
+                      {pack.name}
+                    </div>
+                    <div style={{
+                      fontSize: 9, color: GREEN_DIM,
+                      fontWeight: 700, letterSpacing: "0.08em",
+                      display: "flex", alignItems: "center", gap: 4,
+                    }}>
+                      <span>{artist.artistName}</span>
+                      <span style={{
+                        fontSize: 7,
+                        padding: "1px 3px",
+                        background: artist.region === "israeli" ? "rgba(0, 255, 65, 0.12)" : "rgba(0, 255, 65, 0.06)",
+                        color: artist.region === "israeli" ? GREEN : GREEN_DIM,
+                        borderRadius: 2,
+                      }}>{artist.region === "israeli" ? "IL" : "INT"}</span>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </>
+        )}
+
+        {/* ── BY ARTIST VIEW ──────────────────────────────────────── */}
+        {mimicViewMode === "artist" && (
+          <>
+            {/* Region filter + search */}
+            <div style={{
+              display: "flex", alignItems: "center",
+              gap: T.s3, flexWrap: "wrap",
+              marginBottom: T.s4,
+            }}>
+              <div style={{ display: "inline-flex", gap: 4 }}>
+                {[
+                  { id: "all", label: "ALL" },
+                  { id: "international", label: "INT" },
+                  { id: "israeli", label: "IL" },
+                ].map(f => {
+                  const count = f.id === "all"
+                    ? MIMIC_PACKS.length
+                    : MIMIC_PACKS.filter(a => a.region === f.id).length;
+                  const active = mimicRegionFilter === f.id;
+                  return (
+                    <button key={f.id} type="button"
+                      onClick={() => { playSwitchSound(); setMimicRegionFilter(f.id); }}
+                      style={{
+                        padding: "5px 11px",
+                        background: active ? GREEN_BG : "transparent",
+                        border: `1px solid ${active ? GREEN : GREEN_FAINT}`,
+                        borderRadius: T.r_sm,
+                        color: active ? GREEN : GREEN_DIM,
+                        fontFamily: T.font_mono, fontSize: 10, fontWeight: 700,
+                        letterSpacing: "0.12em",
+                        cursor: "pointer",
+                        transition: `all ${T.dur_fast} ${T.ease}`,
+                      }}
+                    >
+                      {f.label}
+                      <span style={{
+                        marginLeft: 5, fontSize: 8,
+                        padding: "1px 4px",
+                        background: "rgba(0, 255, 65, 0.08)",
+                        borderRadius: 2,
+                      }}>{count}</span>
+                    </button>
+                  );
+                })}
+              </div>
+              <div style={{ position: "relative", flex: 1, minWidth: 160 }}>
+                <input type="text" value={mimicSearch}
+                  onChange={e => setMimicSearch(e.target.value)}
+                  placeholder="/ search artist"
+                  style={{
+                    width: "100%",
+                    padding: isMobile ? "9px 30px 9px 12px" : "7px 30px 7px 12px",
+                    background: "#000000",
+                    border: `1px solid ${mimicSearch ? GREEN : GREEN_FAINT}`,
+                    borderRadius: T.r_sm,
+                    color: GREEN,
+                    fontFamily: T.font_mono, fontSize: isMobile ? 16 : 11,
+                    outline: "none",
+                  }}
+                />
+                {mimicSearch && (
+                  <button type="button"
+                    onClick={() => setMimicSearch("")}
+                    style={{
+                      position: "absolute", right: 6, top: "50%",
+                      transform: "translateY(-50%)",
+                      width: 22, height: 22,
+                      background: "transparent", border: "none",
+                      color: GREEN_DIM, cursor: "pointer",
+                      fontSize: 14, lineHeight: 1,
+                    }}
+                  >×</button>
+                )}
+              </div>
+              <span style={{
+                fontFamily: T.font_mono, fontSize: 10,
+                color: GREEN_DIM, letterSpacing: "0.08em",
+              }}>
+                {filteredMimicArtists.length} shown
+              </span>
+            </div>
+
+            {/* Artist pill row */}
+            {filteredMimicArtists.length === 0 ? (
+              <div style={{
+                textAlign: "center",
+                padding: `${T.s5}px ${T.s3}px`,
+                color: GREEN_DIM, fontFamily: T.font_mono, fontSize: 11,
+                border: `1px dashed ${GREEN_FAINT}`,
+                borderRadius: T.r_md,
+                marginBottom: T.s4,
+              }}>
+                &gt; no artists match the current filter
+              </div>
+            ) : (
+              <div style={{
+                display: "flex", flexWrap: "wrap", gap: 6,
+                marginBottom: T.s4,
+              }}>
+                {filteredMimicArtists.map(artist => {
+                  const isActive = mimicArtistId === artist.artistId;
+                  const isIL = artist.region === "israeli";
+                  return (
+                    <button key={artist.artistId} type="button"
+                      onClick={() => { playSwitchSound(); setMimicArtistId(artist.artistId); }}
+                      style={{
+                        padding: "7px 12px",
+                        background: isActive ? "rgba(0, 255, 65, 0.12)" : "transparent",
+                        border: `1px solid ${isActive ? GREEN : GREEN_FAINT}`,
+                        borderRadius: T.r_sm,
+                        color: isActive ? GREEN : GREEN_DIM,
+                        fontFamily: T.font_mono, fontSize: 11, fontWeight: 700,
+                        letterSpacing: "0.06em",
+                        cursor: "pointer",
+                        display: "inline-flex", alignItems: "center", gap: 6,
+                        transition: `all ${T.dur_fast} ${T.ease}`,
+                        textShadow: isActive ? `0 0 6px ${GREEN_DIM}` : "none",
+                      }}
+                      onMouseEnter={e => {
+                        if (!isActive) {
+                          e.currentTarget.style.borderColor = GREEN_DIM;
+                          e.currentTarget.style.color = GREEN;
+                        }
+                      }}
+                      onMouseLeave={e => {
+                        if (!isActive) {
+                          e.currentTarget.style.borderColor = GREEN_FAINT;
+                          e.currentTarget.style.color = GREEN_DIM;
+                        }
+                      }}
+                    >
+                      {artist.artistName}
+                      <span style={{
+                        fontSize: 8, fontWeight: 700,
+                        letterSpacing: "0.1em",
+                        padding: "2px 5px",
+                        background: isIL ? "rgba(0, 255, 65, 0.1)" : "rgba(120, 120, 120, 0.12)",
+                        color: isIL ? GREEN : "rgba(180, 180, 180, 0.7)",
+                        borderRadius: 3, lineHeight: 1,
+                      }}>{isIL ? "IL" : "INT"}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Vibe filter */}
+            <div style={{
+              display: "flex", flexWrap: "wrap", gap: 4,
+              marginBottom: T.s3,
+            }}>
+              <button type="button"
+                onClick={() => { playSwitchSound(); setMimicVibeFilter("all"); }}
+                style={{
+                  display: "inline-flex", alignItems: "center", gap: 5,
+                  padding: "5px 10px",
+                  background: mimicVibeFilter === "all" ? GREEN_BG : "transparent",
+                  border: `1px solid ${mimicVibeFilter === "all" ? GREEN : GREEN_FAINT}`,
+                  borderRadius: T.r_sm,
+                  color: mimicVibeFilter === "all" ? GREEN : GREEN_DIM,
+                  fontFamily: T.font_mono, fontSize: 10, fontWeight: 700,
+                  letterSpacing: "0.08em", cursor: "pointer",
+                  transition: `all ${T.dur_fast} ${T.ease}`,
+                }}
+              >
+                All
+                <span style={{
+                  fontSize: 8, padding: "1px 4px",
+                  background: "rgba(0, 255, 65, 0.1)", borderRadius: 2,
+                }}>{activeMimicArtist.packs.length}</span>
+              </button>
+              {VIBE_META.map(v => {
+                const count = activeMimicArtist.packs.filter(p => p.vibe === v.id).length;
+                if (count === 0) return null;
+                const active = mimicVibeFilter === v.id;
+                return (
+                  <button key={v.id} type="button"
+                    onClick={() => { playSwitchSound(); setMimicVibeFilter(v.id); }}
+                    title={v.tagline}
+                    style={{
+                      display: "inline-flex", alignItems: "center", gap: 5,
+                      padding: "5px 10px",
+                      background: active ? `${v.color}1A` : "transparent",
+                      border: `1px solid ${active ? v.color : GREEN_FAINT}`,
+                      borderRadius: T.r_sm,
+                      color: active ? v.color : GREEN_DIM,
+                      fontFamily: T.font_mono, fontSize: 10, fontWeight: 700,
+                      letterSpacing: "0.08em", cursor: "pointer",
+                      transition: `all ${T.dur_fast} ${T.ease}`,
+                    }}
+                  >
+                    <span>{v.icon}</span>
+                    <span>{v.label}</span>
+                    <span style={{
+                      fontSize: 8, padding: "1px 4px",
+                      background: active ? `${v.color}22` : "rgba(0, 255, 65, 0.08)",
+                      borderRadius: 2,
+                    }}>{count}</span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Pack grid */}
+            <div style={{
+              display: "grid",
+              gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(5, 1fr)",
+              gap: T.s2,
+            }}>
+              {filteredPacks.length === 0 ? (
+                <div style={{
+                  gridColumn: "1 / -1", textAlign: "center",
+                  padding: `${T.s5}px ${T.s3}px`,
+                  color: GREEN_DIM, fontFamily: T.font_mono, fontSize: 11,
+                  border: `1px dashed ${GREEN_FAINT}`,
+                  borderRadius: T.r_md,
+                }}>
+                  &gt; no packs for {activeMimicArtist.artistName} in {mimicVibeFilter}
+                </div>
+              ) : filteredPacks.map(pack => (
+                <button key={pack.id} type="button"
+                  onClick={() => applyAndGo(activeMimicArtist, pack)}
+                  title={`${activeMimicArtist.artistName} · ${pack.name} · ${pack.vibe || ""}`}
+                  style={{
+                    display: "flex", flexDirection: "column",
+                    alignItems: "flex-start", justifyContent: "space-between",
+                    gap: 6,
+                    padding: T.s3,
+                    minHeight: isMobile ? 76 : 92,
+                    background: "linear-gradient(180deg, rgba(0, 255, 65, 0.04) 0%, #000000 100%)",
+                    border: `1px solid ${GREEN_FAINT}`,
+                    borderRadius: T.r_md,
+                    color: GREEN,
+                    fontFamily: T.font_mono,
+                    cursor: "pointer",
+                    textAlign: "left",
+                    transition: `all ${T.dur_fast} ${T.ease}`,
+                  }}
+                  onMouseEnter={e => {
+                    e.currentTarget.style.borderColor = GREEN;
+                    e.currentTarget.style.transform = "translateY(-1px)";
+                    e.currentTarget.style.boxShadow = `0 0 14px rgba(0, 255, 65, 0.2)`;
+                  }}
+                  onMouseLeave={e => {
+                    e.currentTarget.style.borderColor = GREEN_FAINT;
+                    e.currentTarget.style.transform = "translateY(0)";
+                    e.currentTarget.style.boxShadow = "none";
+                  }}
+                >
+                  <span style={{ fontSize: 20, lineHeight: 1 }}>{pack.emoji}</span>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: GREEN, lineHeight: 1.25 }}>
+                    {pack.name}
+                  </span>
+                  <span style={{
+                    fontSize: 9, color: GREEN_DIM, letterSpacing: "0.08em",
+                  }}>
+                    {pack.state.bpm ? `${pack.state.bpm} BPM` : ""}
+                    {pack.state.slots && pack.state.slots[0]?.sub ? ` · ${pack.state.slots[0].sub}` : ""}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </>
+        )}
+
+        {/* ── FOOTER — exit prompt ───────────────────────────────── */}
+        <div style={{
+          marginTop: T.s8,
+          paddingTop: T.s4,
+          borderTop: `1px solid ${GREEN_FAINT}`,
+          display: "flex", alignItems: "center", justifyContent: "space-between",
+          flexWrap: "wrap", gap: T.s3,
+        }}>
+          <div style={{
+            fontSize: 10, color: "rgba(0, 255, 65, 0.3)",
+            letterSpacing: "0.12em",
+          }}>
+            [ end of module · more tools coming: era_picker, future_prompts, dna_editor, credit_grant ]
+          </div>
+          <button type="button"
+            onClick={() => onNavigate && onNavigate("engine")}
+            style={{
+              padding: "6px 14px",
+              background: "transparent",
+              border: `1px solid ${GREEN_FAINT}`,
+              borderRadius: T.r_sm,
+              color: GREEN_DIM,
+              fontFamily: T.font_mono, fontSize: 10, fontWeight: 700,
+              letterSpacing: "0.12em",
+              cursor: "pointer",
+              transition: `all ${T.dur_fast} ${T.ease}`,
+            }}
+            onMouseEnter={e => {
+              e.currentTarget.style.borderColor = GREEN;
+              e.currentTarget.style.color = GREEN;
+            }}
+            onMouseLeave={e => {
+              e.currentTarget.style.borderColor = GREEN_FAINT;
+              e.currentTarget.style.color = GREEN_DIM;
+            }}
+          >
+            &lt; RETURN_TO_ENGINE
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function ShopPage() {
   const { tier, ownedTiers, purchaseTier } = useTier();
@@ -24954,6 +26095,16 @@ export default function HitEngine() {
           0%, 100% { opacity: 0.35; transform: scale(1); }
           50%      { opacity: 0.85; transform: scale(1.25); }
         }
+        /* ── Extra Poppy treasure chest shimmer — diagonal gold sweep
+             that crosses the face of the unlocked button every 3.5s.
+             Only applied when the chest is OPENED (VIP+ with affordable
+             credits). Locked chest is still, like sealed treasure. */
+        @keyframes chestShimmer {
+          0%   { left: -40%; opacity: 0; }
+          25%  { opacity: 1; }
+          75%  { opacity: 1; }
+          100% { left: 140%; opacity: 0; }
+        }
       `}</style>
       {/* Theme CSS variables — dark default, [data-theme="light"] override */}
       <style>{generateThemeCSS()}</style>
@@ -25007,6 +26158,7 @@ export default function HitEngine() {
                     {page === "history" && <HistoryPage onNavigate={setPage} />}
                     {page === "secrets" && <PlaybookPage />}
                     {page === "shop"    && <ShopPage />}
+                    {page === "bubble"  && <BubbleToolsPage onNavigate={setPage} />}
                     {page === "trendsetter" && <TrendSetterPage />}
                   </div>
                 </ErrorBoundary>
