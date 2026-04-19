@@ -2171,92 +2171,226 @@ const TOP_5 = {
 // ────────────────────────────────────────────────────────────────────────────
 const SUGGESTION_MAP = {
   // ── KEYS ──────────────────────────────────────────────────────────────
-  "Grand piano":               { mood: ["Melancholic","Tender","Nostalgic"], groove: ["rubato","straight"], lyricalVibe: ["Confessional diary","Heartbreak elegy","Letter to self"] },
-  "Rhodes electric piano":     { mood: ["Sensual","Nostalgic","Dreamlike"], groove: ["swing","half-time"], lyricalVibe: ["Romantic devotion","Nostalgic storytelling","Confessional diary"] },
-  "Hammond B3 organ":          { mood: ["Triumphant","Spiritual","Ecstatic"], groove: ["shuffle","syncopated"], lyricalVibe: ["Spiritual seeking","Party celebration","Political protest"] },
-  "Wurlitzer":                 { mood: ["Nostalgic","Tender","Bittersweet"], groove: ["swing","shuffle"], lyricalVibe: ["Confessional diary","Nostalgic storytelling","Heartbreak elegy"] },
-  "Harpsichord":               { mood: ["Haunted","Dreamlike","Bittersweet"], groove: ["straight","rubato"], lyricalVibe: ["Mythic / allegorical","Abstract poetry","Cinematic scene-setting"] },
+  "Grand piano":               { mood: ["Melancholic","Tender","Nostalgic"], groove: ["rubato","straight"], lyricalVibe: ["Confessional diary","Heartbreak elegy","Letter to self"], texture: ["Organic & breathing","Airy & weightless","Crystalline & brittle"], vocalist: ["Smooth tenor","Breathy female lead","Whisper to full belt"], energy: ["Intimate & bare throughout","Slow burn to explosion","Starts huge then strips back"], harmonic: ["Minor-key introspection","Classical voice-leading","Jazz extensions"], mix: ["Intimate close-mic","Heavy reverb cathedral","Wide cinematic"] },
+  "Rhodes electric piano":     { mood: ["Sensual","Nostalgic","Dreamlike"], groove: ["swing","half-time"], lyricalVibe: ["Romantic devotion","Nostalgic storytelling","Confessional diary"], texture: ["Smooth & liquid","Organic & breathing","Airy & weightless"], vocalist: ["Smooth tenor","Breathy female lead","Falsetto-led"], energy: ["Steady groove throughout","Intimate & bare throughout","Sparse to wall of sound"], harmonic: ["Jazz extensions","Major-key lift","Minor-key introspection"], mix: ["Lo-fi tape warmth","Vintage analog","Intimate close-mic"] },
+  "Hammond B3 organ":          { mood: ["Triumphant","Spiritual","Ecstatic"], groove: ["shuffle","syncopated"], lyricalVibe: ["Spiritual seeking","Party celebration","Political protest"], texture: ["Thick & saturated","Organic & breathing","Metallic & reflective"], vocalist: ["Gospel ensemble","Raw male baritone","Melismatic soprano"], energy: ["Euphoric continuous build","Driving & relentless","Starts huge then strips back"], harmonic: ["Bluesy dominant","Major-key lift","Jazz extensions"], mix: ["Vintage analog","Lo-fi tape warmth","Wide cinematic"] },
+  "Wurlitzer":                 { mood: ["Nostalgic","Tender","Bittersweet"], groove: ["swing","shuffle"], lyricalVibe: ["Confessional diary","Nostalgic storytelling","Heartbreak elegy"], texture: ["Distressed & decayed","Organic & breathing","Smooth & liquid"], vocalist: ["Smooth tenor","Breathy female lead","Raw male baritone"], energy: ["Steady groove throughout","Intimate & bare throughout","Slow burn to explosion"], harmonic: ["Jazz extensions","Bluesy dominant","Minor-key introspection"], mix: ["Lo-fi tape warmth","Vintage analog","Intimate close-mic"] },
+  "Harpsichord":               { mood: ["Haunted","Dreamlike","Bittersweet"], groove: ["straight","rubato"], lyricalVibe: ["Mythic / allegorical","Abstract poetry","Cinematic scene-setting"], texture: ["Crystalline & brittle","Metallic & reflective","Airy & weightless"], vocalist: ["Melismatic soprano","Layered harmonies no lead","Androgynous voice"], energy: ["Sparse to wall of sound","Intimate & bare throughout","Tension without full release"], harmonic: ["Classical voice-leading","Modal ambiguity","Minor-key introspection"], mix: ["Heavy reverb cathedral","Wide cinematic","Vintage analog"] },
 
   // ── SYNTHS ────────────────────────────────────────────────────────────
-  "Moog sub bass":             { mood: ["Dark & brooding","Electric","Furious"], groove: ["motorik","straight"], lyricalVibe: ["Braggadocio flex","Hedonistic escapism","Defiant anthem"] },
-  "Juno-60 pads":              { mood: ["Dreamlike","Nostalgic","Serene"], groove: ["half-time","straight"], lyricalVibe: ["Nostalgic storytelling","Abstract poetry","Surreal dreamscape"] },
-  "Prophet-5 lead":             { mood: ["Euphoric","Dreamlike","Electric"], groove: ["motorik","straight"], lyricalVibe: ["Surreal dreamscape","Abstract poetry","Hedonistic escapism"] },
-  "FM DX7":                    { mood: ["Nostalgic","Dreamlike","Bittersweet"], groove: ["straight","shuffle"], lyricalVibe: ["Nostalgic storytelling","Letter to self","Romantic devotion"] },
-  "TB-303 bass":               { mood: ["Ecstatic","Electric","Euphoric"], groove: ["motorik","syncopated"], lyricalVibe: ["Hedonistic escapism","Party celebration","Abstract poetry"] },
+  "Moog sub bass":             { mood: ["Dark & brooding","Electric","Furious"], groove: ["motorik","straight"], lyricalVibe: ["Braggadocio flex","Hedonistic escapism","Defiant anthem"], texture: ["Thick & saturated","Metallic & reflective","Digital & precise"], vocalist: ["Raw male baritone","Auto-tuned melodic delivery","Screamed verse / melodic chorus"], energy: ["Driving & relentless","Slow burn to explosion","Steady groove throughout"], harmonic: ["Minor-key introspection","Dissonant tension","Drone-based static harmony"], mix: ["Punchy & compressed","Raw & uncompressed","Futuristic digital"] },
+  "Juno-60 pads":              { mood: ["Dreamlike","Nostalgic","Serene"], groove: ["half-time","straight"], lyricalVibe: ["Nostalgic storytelling","Abstract poetry","Surreal dreamscape"], texture: ["Airy & weightless","Smooth & liquid","Crystalline & brittle"], vocalist: ["Breathy female lead","Androgynous voice","Layered harmonies no lead"], energy: ["Sparse to wall of sound","Steady groove throughout","Intimate & bare throughout"], harmonic: ["Major-key lift","Modal ambiguity","Classical voice-leading"], mix: ["Heavy reverb cathedral","Vintage analog","Lo-fi tape warmth"] },
+  "Prophet-5 lead":            { mood: ["Euphoric","Dreamlike","Electric"], groove: ["motorik","straight"], lyricalVibe: ["Surreal dreamscape","Abstract poetry","Hedonistic escapism"], texture: ["Airy & weightless","Digital & precise","Smooth & liquid"], vocalist: ["Falsetto-led","Auto-tuned melodic delivery","Androgynous voice"], energy: ["Euphoric continuous build","Driving & relentless","Steady groove throughout"], harmonic: ["Major-key lift","Modal ambiguity","Jazz extensions"], mix: ["Ultra clean & polished","Vintage analog","Wide cinematic"] },
+  "FM DX7":                    { mood: ["Nostalgic","Dreamlike","Bittersweet"], groove: ["straight","shuffle"], lyricalVibe: ["Nostalgic storytelling","Letter to self","Romantic devotion"], texture: ["Crystalline & brittle","Digital & precise","Smooth & liquid"], vocalist: ["Smooth tenor","Breathy female lead","Falsetto-led"], energy: ["Steady groove throughout","Intimate & bare throughout","Starts huge then strips back"], harmonic: ["Jazz extensions","Major-key lift","Minor-key introspection"], mix: ["Vintage analog","Lo-fi tape warmth","Ultra clean & polished"] },
+  "TB-303 bass":               { mood: ["Ecstatic","Electric","Euphoric"], groove: ["motorik","syncopated"], lyricalVibe: ["Hedonistic escapism","Party celebration","Abstract poetry"], texture: ["Metallic & reflective","Digital & precise","Thick & saturated"], vocalist: ["Androgynous voice","Auto-tuned melodic delivery","Spoken word over melody"], energy: ["Driving & relentless","Euphoric continuous build","Steady groove throughout"], harmonic: ["Drone-based static harmony","Minor-key introspection","Dissonant tension"], mix: ["Punchy & compressed","Futuristic digital","Raw & uncompressed"] },
 
   // ── STRINGS ───────────────────────────────────────────────────────────
-  "Violin solo":               { mood: ["Melancholic","Haunted","Tender"], groove: ["rubato","straight"], lyricalVibe: ["Heartbreak elegy","Mythic / allegorical","Cinematic scene-setting"] },
-  "Cello":                     { mood: ["Melancholic","Haunted","Tender"], groove: ["rubato","half-time"], lyricalVibe: ["Heartbreak elegy","Existential questioning","Letter to self"] },
-  "Full string section":       { mood: ["Triumphant","Euphoric","Haunted"], groove: ["rubato","straight"], lyricalVibe: ["Cinematic scene-setting","Mythic / allegorical","Romantic devotion"] },
-  "Double bass":               { mood: ["Sensual","Nostalgic","Serene"], groove: ["swing","shuffle"], lyricalVibe: ["Confessional diary","Nostalgic storytelling","Letter to self"] },
+  "Violin solo":               { mood: ["Melancholic","Haunted","Tender"], groove: ["rubato","straight"], lyricalVibe: ["Heartbreak elegy","Mythic / allegorical","Cinematic scene-setting"], texture: ["Organic & breathing","Crystalline & brittle","Airy & weightless"], vocalist: ["Melismatic soprano","Breathy female lead","Layered harmonies no lead"], energy: ["Slow burn to explosion","Intimate & bare throughout","Sparse to wall of sound"], harmonic: ["Minor-key introspection","Classical voice-leading","Modal ambiguity"], mix: ["Heavy reverb cathedral","Wide cinematic","Intimate close-mic"] },
+  "Cello":                     { mood: ["Melancholic","Haunted","Tender"], groove: ["rubato","half-time"], lyricalVibe: ["Heartbreak elegy","Existential questioning","Letter to self"], texture: ["Organic & breathing","Distressed & decayed","Smooth & liquid"], vocalist: ["Raw male baritone","Smooth tenor","Whisper to full belt"], energy: ["Intimate & bare throughout","Slow burn to explosion","Starts huge then strips back"], harmonic: ["Minor-key introspection","Classical voice-leading","Drone-based static harmony"], mix: ["Heavy reverb cathedral","Intimate close-mic","Wide cinematic"] },
+  "Full string section":       { mood: ["Triumphant","Euphoric","Haunted"], groove: ["rubato","straight"], lyricalVibe: ["Cinematic scene-setting","Mythic / allegorical","Romantic devotion"], texture: ["Thick & saturated","Airy & weightless","Organic & breathing"], vocalist: ["Melismatic soprano","Gospel ensemble","Layered harmonies no lead"], energy: ["Starts huge then strips back","Euphoric continuous build","Sparse to wall of sound"], harmonic: ["Classical voice-leading","Major-key lift","Minor-key introspection"], mix: ["Wide cinematic","Heavy reverb cathedral","Ultra clean & polished"] },
+  "Double bass":               { mood: ["Sensual","Nostalgic","Serene"], groove: ["swing","shuffle"], lyricalVibe: ["Confessional diary","Nostalgic storytelling","Letter to self"], texture: ["Organic & breathing","Smooth & liquid","Distressed & decayed"], vocalist: ["Smooth tenor","Raw male baritone","Spoken word over melody"], energy: ["Steady groove throughout","Intimate & bare throughout","Sparse to wall of sound"], harmonic: ["Jazz extensions","Bluesy dominant","Minor-key introspection"], mix: ["Lo-fi tape warmth","Intimate close-mic","Vintage analog"] },
 
   // ── GUITARS ───────────────────────────────────────────────────────────
-  "Fender Strat clean":        { mood: ["Unbothered","Nostalgic","Tender"], groove: ["swing","straight"], lyricalVibe: ["Confessional diary","Nostalgic storytelling","Coming-of-age narrative"] },
-  "Les Paul distortion":       { mood: ["Defiant","Furious","Electric"], groove: ["straight","syncopated"], lyricalVibe: ["Defiant anthem","Braggadocio flex","Political protest"] },
-  "Nylon classical":           { mood: ["Sensual","Melancholic","Tender"], groove: ["rubato","swing"], lyricalVibe: ["Romantic devotion","Ode to a place","Heartbreak elegy"] },
-  "Acoustic steel-string":     { mood: ["Nostalgic","Tender","Bittersweet"], groove: ["straight","swing"], lyricalVibe: ["Confessional diary","Letter to self","Coming-of-age narrative"] },
-  "12-string guitar":          { mood: ["Nostalgic","Dreamlike","Serene"], groove: ["straight","rubato"], lyricalVibe: ["Nostalgic storytelling","Ode to a place","Coming-of-age narrative"] },
-  "Pedal steel":               { mood: ["Melancholic","Lonely","Nostalgic"], groove: ["rubato","half-time"], lyricalVibe: ["Heartbreak elegy","Ode to a place","Letter to self"] },
-  "Resonator slide":           { mood: ["Desperate","Haunted","Lonely"], groove: ["shuffle","swing"], lyricalVibe: ["Confessional diary","Heartbreak elegy","Mythic / allegorical"] },
-  "Jazz guitar hollowbody":    { mood: ["Sensual","Tender","Unbothered"], groove: ["swing","shuffle"], lyricalVibe: ["Romantic devotion","Nostalgic storytelling","Confessional diary"] },
+  "Fender Strat clean":        { mood: ["Unbothered","Nostalgic","Tender"], groove: ["swing","straight"], lyricalVibe: ["Confessional diary","Nostalgic storytelling","Coming-of-age narrative"], texture: ["Smooth & liquid","Organic & breathing","Crystalline & brittle"], vocalist: ["Smooth tenor","Breathy female lead","Spoken word over melody"], energy: ["Steady groove throughout","Intimate & bare throughout","Starts huge then strips back"], harmonic: ["Major-key lift","Jazz extensions","Bluesy dominant"], mix: ["Lo-fi tape warmth","Vintage analog","Ultra clean & polished"] },
+  "Les Paul distortion":       { mood: ["Defiant","Furious","Electric"], groove: ["straight","syncopated"], lyricalVibe: ["Defiant anthem","Braggadocio flex","Political protest"], texture: ["Thick & saturated","Distressed & decayed","Metallic & reflective"], vocalist: ["Raw male baritone","Screamed verse / melodic chorus","Whisper to full belt"], energy: ["Driving & relentless","Slow burn to explosion","Starts huge then strips back"], harmonic: ["Minor-key introspection","Bluesy dominant","Dissonant tension"], mix: ["Raw & uncompressed","Punchy & compressed","Wide cinematic"] },
+  "Nylon classical":           { mood: ["Sensual","Melancholic","Tender"], groove: ["rubato","swing"], lyricalVibe: ["Romantic devotion","Ode to a place","Heartbreak elegy"], texture: ["Organic & breathing","Smooth & liquid","Airy & weightless"], vocalist: ["Smooth tenor","Breathy female lead","Melismatic soprano"], energy: ["Intimate & bare throughout","Slow burn to explosion","Steady groove throughout"], harmonic: ["Minor-key introspection","Classical voice-leading","Jazz extensions"], mix: ["Intimate close-mic","Lo-fi tape warmth","Heavy reverb cathedral"] },
+  "Acoustic steel-string":     { mood: ["Nostalgic","Tender","Bittersweet"], groove: ["straight","swing"], lyricalVibe: ["Confessional diary","Letter to self","Coming-of-age narrative"], texture: ["Organic & breathing","Distressed & decayed","Crystalline & brittle"], vocalist: ["Smooth tenor","Breathy female lead","Raw male baritone"], energy: ["Intimate & bare throughout","Steady groove throughout","Slow burn to explosion"], harmonic: ["Major-key lift","Minor-key introspection","Bluesy dominant"], mix: ["Lo-fi tape warmth","Intimate close-mic","Vintage analog"] },
+  "12-string guitar":          { mood: ["Nostalgic","Dreamlike","Serene"], groove: ["straight","rubato"], lyricalVibe: ["Nostalgic storytelling","Ode to a place","Coming-of-age narrative"], texture: ["Crystalline & brittle","Airy & weightless","Organic & breathing"], vocalist: ["Smooth tenor","Layered harmonies no lead","Breathy female lead"], energy: ["Steady groove throughout","Sparse to wall of sound","Intimate & bare throughout"], harmonic: ["Major-key lift","Jazz extensions","Modal ambiguity"], mix: ["Lo-fi tape warmth","Vintage analog","Heavy reverb cathedral"] },
+  "Pedal steel":               { mood: ["Melancholic","Lonely","Nostalgic"], groove: ["rubato","half-time"], lyricalVibe: ["Heartbreak elegy","Ode to a place","Letter to self"], texture: ["Smooth & liquid","Organic & breathing","Airy & weightless"], vocalist: ["Smooth tenor","Whisper to full belt","Breathy female lead"], energy: ["Intimate & bare throughout","Slow burn to explosion","Sparse to wall of sound"], harmonic: ["Minor-key introspection","Bluesy dominant","Major-key lift"], mix: ["Lo-fi tape warmth","Heavy reverb cathedral","Intimate close-mic"] },
+  "Resonator slide":           { mood: ["Desperate","Haunted","Lonely"], groove: ["shuffle","swing"], lyricalVibe: ["Confessional diary","Heartbreak elegy","Mythic / allegorical"], texture: ["Distressed & decayed","Metallic & reflective","Thick & saturated"], vocalist: ["Raw male baritone","Smooth tenor","Whisper to full belt"], energy: ["Slow burn to explosion","Intimate & bare throughout","Steady groove throughout"], harmonic: ["Bluesy dominant","Minor-key introspection","Drone-based static harmony"], mix: ["Raw & uncompressed","Lo-fi tape warmth","Dry & direct"] },
+  "Jazz guitar hollowbody":    { mood: ["Sensual","Tender","Unbothered"], groove: ["swing","shuffle"], lyricalVibe: ["Romantic devotion","Nostalgic storytelling","Confessional diary"], texture: ["Smooth & liquid","Organic & breathing","Crystalline & brittle"], vocalist: ["Smooth tenor","Breathy female lead","Spoken word over melody"], energy: ["Steady groove throughout","Intimate & bare throughout","Starts huge then strips back"], harmonic: ["Jazz extensions","Bluesy dominant","Major-key lift"], mix: ["Lo-fi tape warmth","Vintage analog","Intimate close-mic"] },
 
   // ── BASS ──────────────────────────────────────────────────────────────
-  "808 sub bass":              { mood: ["Dark & brooding","Electric","Defiant"], groove: ["half-time","syncopated"], lyricalVibe: ["Braggadocio flex","Hedonistic escapism","Stream-of-consciousness"] },
-  "Upright acoustic bass":     { mood: ["Sensual","Serene","Unbothered"], groove: ["swing","shuffle"], lyricalVibe: ["Nostalgic storytelling","Romantic devotion","Confessional diary"] },
-  "Synth bass":                { mood: ["Electric","Ecstatic","Euphoric"], groove: ["motorik","straight"], lyricalVibe: ["Hedonistic escapism","Party celebration","Braggadocio flex"] },
+  "808 sub bass":              { mood: ["Dark & brooding","Electric","Defiant"], groove: ["half-time","syncopated"], lyricalVibe: ["Braggadocio flex","Hedonistic escapism","Stream-of-consciousness"], texture: ["Thick & saturated","Distressed & decayed","Metallic & reflective"], vocalist: ["Auto-tuned melodic delivery","Raw male baritone","Falsetto-led"], energy: ["Steady groove throughout","Driving & relentless","Slow burn to explosion"], harmonic: ["Minor-key introspection","Dissonant tension","Bluesy dominant"], mix: ["Punchy & compressed","Lo-fi tape warmth","Futuristic digital"] },
+  "Upright acoustic bass":     { mood: ["Sensual","Serene","Unbothered"], groove: ["swing","shuffle"], lyricalVibe: ["Nostalgic storytelling","Romantic devotion","Confessional diary"], texture: ["Organic & breathing","Smooth & liquid","Distressed & decayed"], vocalist: ["Smooth tenor","Raw male baritone","Spoken word over melody"], energy: ["Steady groove throughout","Intimate & bare throughout","Sparse to wall of sound"], harmonic: ["Jazz extensions","Bluesy dominant","Major-key lift"], mix: ["Lo-fi tape warmth","Vintage analog","Intimate close-mic"] },
+  "Synth bass":                { mood: ["Electric","Ecstatic","Euphoric"], groove: ["motorik","straight"], lyricalVibe: ["Hedonistic escapism","Party celebration","Braggadocio flex"], texture: ["Metallic & reflective","Digital & precise","Smooth & liquid"], vocalist: ["Auto-tuned melodic delivery","Falsetto-led","Androgynous voice"], energy: ["Driving & relentless","Euphoric continuous build","Steady groove throughout"], harmonic: ["Major-key lift","Minor-key introspection","Drone-based static harmony"], mix: ["Ultra clean & polished","Futuristic digital","Punchy & compressed"] },
 
   // ── DRUMS ─────────────────────────────────────────────────────────────
-  "Acoustic kit close-mic":    { mood: ["Defiant","Triumphant","Electric"], groove: ["straight","syncopated"], lyricalVibe: ["Coming-of-age narrative","Defiant anthem","Confessional diary"] },
-  "TR-808":                    { mood: ["Dark & brooding","Defiant","Electric"], groove: ["half-time","syncopated"], lyricalVibe: ["Braggadocio flex","Hedonistic escapism","Stream-of-consciousness"] },
-  "TR-909":                    { mood: ["Euphoric","Ecstatic","Electric"], groove: ["motorik","straight"], lyricalVibe: ["Hedonistic escapism","Party celebration","Abstract poetry"] },
-  "MPC-style drums":           { mood: ["Unbothered","Nostalgic","Sensual"], groove: ["swing","syncopated"], lyricalVibe: ["Confessional diary","Nostalgic storytelling","Stream-of-consciousness"] },
-  "Breakbeat chops":           { mood: ["Electric","Defiant","Ecstatic"], groove: ["broken","syncopated"], lyricalVibe: ["Stream-of-consciousness","Political protest","Hedonistic escapism"] },
-  "Brushes on snare":          { mood: ["Sensual","Tender","Unbothered"], groove: ["swing","rubato"], lyricalVibe: ["Romantic devotion","Nostalgic storytelling","Confessional diary"] },
-  "Gated reverb kit":          { mood: ["Triumphant","Nostalgic","Euphoric"], groove: ["straight","syncopated"], lyricalVibe: ["Defiant anthem","Nostalgic storytelling","Coming-of-age narrative"] },
+  "Acoustic kit close-mic":    { mood: ["Defiant","Triumphant","Electric"], groove: ["straight","syncopated"], lyricalVibe: ["Coming-of-age narrative","Defiant anthem","Confessional diary"], texture: ["Thick & saturated","Organic & breathing","Distressed & decayed"], vocalist: ["Raw male baritone","Smooth tenor","Whisper to full belt"], energy: ["Driving & relentless","Steady groove throughout","Starts huge then strips back"], harmonic: ["Major-key lift","Minor-key introspection","Bluesy dominant"], mix: ["Punchy & compressed","Raw & uncompressed","Wide cinematic"] },
+  "TR-808":                    { mood: ["Dark & brooding","Defiant","Electric"], groove: ["half-time","syncopated"], lyricalVibe: ["Braggadocio flex","Hedonistic escapism","Stream-of-consciousness"], texture: ["Thick & saturated","Metallic & reflective","Distressed & decayed"], vocalist: ["Auto-tuned melodic delivery","Raw male baritone","Falsetto-led"], energy: ["Steady groove throughout","Driving & relentless","Slow burn to explosion"], harmonic: ["Minor-key introspection","Dissonant tension","Bluesy dominant"], mix: ["Punchy & compressed","Lo-fi tape warmth","Futuristic digital"] },
+  "TR-909":                    { mood: ["Euphoric","Ecstatic","Electric"], groove: ["motorik","straight"], lyricalVibe: ["Hedonistic escapism","Party celebration","Abstract poetry"], texture: ["Metallic & reflective","Digital & precise","Thick & saturated"], vocalist: ["Auto-tuned melodic delivery","Androgynous voice","Falsetto-led"], energy: ["Driving & relentless","Euphoric continuous build","Steady groove throughout"], harmonic: ["Major-key lift","Drone-based static harmony","Minor-key introspection"], mix: ["Ultra clean & polished","Futuristic digital","Punchy & compressed"] },
+  "MPC-style drums":           { mood: ["Unbothered","Nostalgic","Sensual"], groove: ["swing","syncopated"], lyricalVibe: ["Confessional diary","Nostalgic storytelling","Stream-of-consciousness"], texture: ["Distressed & decayed","Organic & breathing","Smooth & liquid"], vocalist: ["Smooth tenor","Spoken word over melody","Raw male baritone"], energy: ["Steady groove throughout","Intimate & bare throughout","Slow burn to explosion"], harmonic: ["Jazz extensions","Bluesy dominant","Minor-key introspection"], mix: ["Lo-fi tape warmth","Vintage analog","Dry & direct"] },
+  "Breakbeat chops":           { mood: ["Electric","Defiant","Ecstatic"], groove: ["broken","syncopated"], lyricalVibe: ["Stream-of-consciousness","Political protest","Hedonistic escapism"], texture: ["Distressed & decayed","Thick & saturated","Metallic & reflective"], vocalist: ["Spoken word over melody","Auto-tuned melodic delivery","Raw male baritone"], energy: ["Driving & relentless","Tension without full release","Steady groove throughout"], harmonic: ["Minor-key introspection","Bluesy dominant","Dissonant tension"], mix: ["Raw & uncompressed","Lo-fi tape warmth","Punchy & compressed"] },
+  "Brushes on snare":          { mood: ["Sensual","Tender","Unbothered"], groove: ["swing","rubato"], lyricalVibe: ["Romantic devotion","Nostalgic storytelling","Confessional diary"], texture: ["Smooth & liquid","Organic & breathing","Airy & weightless"], vocalist: ["Smooth tenor","Breathy female lead","Spoken word over melody"], energy: ["Intimate & bare throughout","Steady groove throughout","Sparse to wall of sound"], harmonic: ["Jazz extensions","Bluesy dominant","Major-key lift"], mix: ["Lo-fi tape warmth","Intimate close-mic","Vintage analog"] },
+  "Gated reverb kit":          { mood: ["Triumphant","Nostalgic","Euphoric"], groove: ["straight","syncopated"], lyricalVibe: ["Defiant anthem","Nostalgic storytelling","Coming-of-age narrative"], texture: ["Metallic & reflective","Thick & saturated","Crystalline & brittle"], vocalist: ["Whisper to full belt","Raw male baritone","Falsetto-led"], energy: ["Driving & relentless","Starts huge then strips back","Euphoric continuous build"], harmonic: ["Major-key lift","Minor-key introspection","Classical voice-leading"], mix: ["Wide cinematic","Heavy reverb cathedral","Punchy & compressed"] },
 
   // ── PERCUSSION ────────────────────────────────────────────────────────
-  "Congas":                    { mood: ["Sensual","Ecstatic","Euphoric"], groove: ["syncopated","shuffle"], lyricalVibe: ["Romantic devotion","Party celebration","Ode to a place"] },
-  "Djembe":                    { mood: ["Spiritual","Ecstatic","Triumphant"], groove: ["polyrhythm","syncopated"], lyricalVibe: ["Spiritual seeking","Mythic / allegorical","Ode to a place"] },
-  "Bongos":                    { mood: ["Sensual","Unbothered","Ecstatic"], groove: ["syncopated","swing"], lyricalVibe: ["Romantic devotion","Party celebration","Hedonistic escapism"] },
-  "Darbuka":                   { mood: ["Sensual","Haunted","Ecstatic"], groove: ["syncopated","polyrhythm"], lyricalVibe: ["Mythic / allegorical","Ode to a place","Spiritual seeking"] },
-  "Taiko drums":               { mood: ["Triumphant","Furious","Spiritual"], groove: ["straight","polyrhythm"], lyricalVibe: ["Mythic / allegorical","Cinematic scene-setting","Defiant anthem"] },
-  "Tambourine":                { mood: ["Ecstatic","Triumphant","Spiritual"], groove: ["straight","shuffle"], lyricalVibe: ["Spiritual seeking","Party celebration","Coming-of-age narrative"] },
+  "Congas":                    { mood: ["Sensual","Ecstatic","Euphoric"], groove: ["syncopated","shuffle"], lyricalVibe: ["Romantic devotion","Party celebration","Ode to a place"], texture: ["Organic & breathing","Thick & saturated","Smooth & liquid"], vocalist: ["Smooth tenor","Gospel ensemble","Spoken word over melody"], energy: ["Steady groove throughout","Euphoric continuous build","Driving & relentless"], harmonic: ["Jazz extensions","Major-key lift","Bluesy dominant"], mix: ["Punchy & compressed","Vintage analog","Wide cinematic"] },
+  "Djembe":                    { mood: ["Spiritual","Ecstatic","Triumphant"], groove: ["polyrhythm","syncopated"], lyricalVibe: ["Spiritual seeking","Mythic / allegorical","Ode to a place"], texture: ["Organic & breathing","Thick & saturated","Crystalline & brittle"], vocalist: ["Gospel ensemble","Melismatic soprano","Layered harmonies no lead"], energy: ["Euphoric continuous build","Driving & relentless","Sparse to wall of sound"], harmonic: ["Modal ambiguity","Drone-based static harmony","Major-key lift"], mix: ["Wide cinematic","Vintage analog","Lo-fi tape warmth"] },
+  "Bongos":                    { mood: ["Sensual","Unbothered","Ecstatic"], groove: ["syncopated","swing"], lyricalVibe: ["Romantic devotion","Party celebration","Hedonistic escapism"], texture: ["Organic & breathing","Crystalline & brittle","Smooth & liquid"], vocalist: ["Smooth tenor","Spoken word over melody","Breathy female lead"], energy: ["Steady groove throughout","Intimate & bare throughout","Euphoric continuous build"], harmonic: ["Jazz extensions","Major-key lift","Bluesy dominant"], mix: ["Lo-fi tape warmth","Vintage analog","Intimate close-mic"] },
+  "Darbuka":                   { mood: ["Sensual","Haunted","Ecstatic"], groove: ["syncopated","polyrhythm"], lyricalVibe: ["Mythic / allegorical","Ode to a place","Spiritual seeking"], texture: ["Organic & breathing","Metallic & reflective","Crystalline & brittle"], vocalist: ["Melismatic soprano","Layered harmonies no lead","Spoken word over melody"], energy: ["Driving & relentless","Slow burn to explosion","Euphoric continuous build"], harmonic: ["Modal ambiguity","Microtonal","Drone-based static harmony"], mix: ["Wide cinematic","Heavy reverb cathedral","Vintage analog"] },
+  "Taiko drums":               { mood: ["Triumphant","Furious","Spiritual"], groove: ["straight","polyrhythm"], lyricalVibe: ["Mythic / allegorical","Cinematic scene-setting","Defiant anthem"], texture: ["Thick & saturated","Organic & breathing","Metallic & reflective"], vocalist: ["Gospel ensemble","Layered harmonies no lead","Whisper to full belt"], energy: ["Starts huge then strips back","Driving & relentless","Slow burn to explosion"], harmonic: ["Drone-based static harmony","Minor-key introspection","Major-key lift"], mix: ["Wide cinematic","Heavy reverb cathedral","Punchy & compressed"] },
+  "Tambourine":                { mood: ["Ecstatic","Triumphant","Spiritual"], groove: ["straight","shuffle"], lyricalVibe: ["Spiritual seeking","Party celebration","Coming-of-age narrative"], texture: ["Crystalline & brittle","Metallic & reflective","Organic & breathing"], vocalist: ["Gospel ensemble","Breathy female lead","Melismatic soprano"], energy: ["Euphoric continuous build","Steady groove throughout","Driving & relentless"], harmonic: ["Major-key lift","Jazz extensions","Bluesy dominant"], mix: ["Wide cinematic","Vintage analog","Punchy & compressed"] },
 
   // ── BRASS ─────────────────────────────────────────────────────────────
-  "Trumpet solo":              { mood: ["Triumphant","Sensual","Melancholic"], groove: ["swing","rubato"], lyricalVibe: ["Cinematic scene-setting","Romantic devotion","Nostalgic storytelling"] },
-  "Muted trumpet":             { mood: ["Sensual","Melancholic","Haunted"], groove: ["swing","rubato"], lyricalVibe: ["Romantic devotion","Letter to self","Heartbreak elegy"] },
-  "Saxophone tenor":           { mood: ["Sensual","Melancholic","Electric"], groove: ["swing","shuffle"], lyricalVibe: ["Romantic devotion","Confessional diary","Hedonistic escapism"] },
-  "Saxophone alto":            { mood: ["Sensual","Bittersweet","Tender"], groove: ["swing","rubato"], lyricalVibe: ["Romantic devotion","Letter to self","Stream-of-consciousness"] },
-  "Full brass section":        { mood: ["Triumphant","Ecstatic","Defiant"], groove: ["syncopated","straight"], lyricalVibe: ["Party celebration","Defiant anthem","Cinematic scene-setting"] },
+  "Trumpet solo":              { mood: ["Triumphant","Sensual","Melancholic"], groove: ["swing","rubato"], lyricalVibe: ["Cinematic scene-setting","Romantic devotion","Nostalgic storytelling"], texture: ["Thick & saturated","Crystalline & brittle","Metallic & reflective"], vocalist: ["Smooth tenor","Melismatic soprano","Raw male baritone"], energy: ["Starts huge then strips back","Steady groove throughout","Euphoric continuous build"], harmonic: ["Jazz extensions","Major-key lift","Bluesy dominant"], mix: ["Wide cinematic","Lo-fi tape warmth","Vintage analog"] },
+  "Muted trumpet":             { mood: ["Sensual","Melancholic","Haunted"], groove: ["swing","rubato"], lyricalVibe: ["Romantic devotion","Letter to self","Heartbreak elegy"], texture: ["Distressed & decayed","Smooth & liquid","Organic & breathing"], vocalist: ["Smooth tenor","Breathy female lead","Spoken word over melody"], energy: ["Intimate & bare throughout","Steady groove throughout","Slow burn to explosion"], harmonic: ["Jazz extensions","Bluesy dominant","Minor-key introspection"], mix: ["Lo-fi tape warmth","Intimate close-mic","Vintage analog"] },
+  "Saxophone tenor":           { mood: ["Sensual","Melancholic","Electric"], groove: ["swing","shuffle"], lyricalVibe: ["Romantic devotion","Confessional diary","Hedonistic escapism"], texture: ["Thick & saturated","Organic & breathing","Smooth & liquid"], vocalist: ["Raw male baritone","Smooth tenor","Gospel ensemble"], energy: ["Steady groove throughout","Slow burn to explosion","Driving & relentless"], harmonic: ["Jazz extensions","Bluesy dominant","Minor-key introspection"], mix: ["Lo-fi tape warmth","Vintage analog","Punchy & compressed"] },
+  "Saxophone alto":            { mood: ["Sensual","Bittersweet","Tender"], groove: ["swing","rubato"], lyricalVibe: ["Romantic devotion","Letter to self","Stream-of-consciousness"], texture: ["Smooth & liquid","Organic & breathing","Airy & weightless"], vocalist: ["Breathy female lead","Smooth tenor","Melismatic soprano"], energy: ["Intimate & bare throughout","Steady groove throughout","Slow burn to explosion"], harmonic: ["Jazz extensions","Major-key lift","Bluesy dominant"], mix: ["Lo-fi tape warmth","Intimate close-mic","Vintage analog"] },
+  "Full brass section":        { mood: ["Triumphant","Ecstatic","Defiant"], groove: ["syncopated","straight"], lyricalVibe: ["Party celebration","Defiant anthem","Cinematic scene-setting"], texture: ["Thick & saturated","Metallic & reflective","Organic & breathing"], vocalist: ["Gospel ensemble","Raw male baritone","Melismatic soprano"], energy: ["Euphoric continuous build","Starts huge then strips back","Driving & relentless"], harmonic: ["Major-key lift","Jazz extensions","Bluesy dominant"], mix: ["Wide cinematic","Punchy & compressed","Heavy reverb cathedral"] },
 
   // ── WOODWINDS ─────────────────────────────────────────────────────────
-  "Flute":                     { mood: ["Serene","Dreamlike","Tender"], groove: ["rubato","straight"], lyricalVibe: ["Ode to a place","Surreal dreamscape","Mythic / allegorical"] },
-  "Clarinet":                  { mood: ["Melancholic","Haunted","Bittersweet"], groove: ["swing","rubato"], lyricalVibe: ["Nostalgic storytelling","Mythic / allegorical","Heartbreak elegy"] },
-  "Duduk":                     { mood: ["Melancholic","Haunted","Lonely"], groove: ["rubato","half-time"], lyricalVibe: ["Heartbreak elegy","Ode to a place","Mythic / allegorical"] },
-  "Tin whistle":               { mood: ["Nostalgic","Tender","Spiritual"], groove: ["shuffle","rubato"], lyricalVibe: ["Ode to a place","Mythic / allegorical","Coming-of-age narrative"] },
+  "Flute":                     { mood: ["Serene","Dreamlike","Tender"], groove: ["rubato","straight"], lyricalVibe: ["Ode to a place","Surreal dreamscape","Mythic / allegorical"], texture: ["Airy & weightless","Crystalline & brittle","Smooth & liquid"], vocalist: ["Breathy female lead","Melismatic soprano","Layered harmonies no lead"], energy: ["Sparse to wall of sound","Intimate & bare throughout","Euphoric continuous build"], harmonic: ["Major-key lift","Modal ambiguity","Classical voice-leading"], mix: ["Heavy reverb cathedral","Wide cinematic","Lo-fi tape warmth"] },
+  "Clarinet":                  { mood: ["Melancholic","Haunted","Bittersweet"], groove: ["swing","rubato"], lyricalVibe: ["Nostalgic storytelling","Mythic / allegorical","Heartbreak elegy"], texture: ["Smooth & liquid","Organic & breathing","Airy & weightless"], vocalist: ["Smooth tenor","Breathy female lead","Spoken word over melody"], energy: ["Intimate & bare throughout","Steady groove throughout","Slow burn to explosion"], harmonic: ["Minor-key introspection","Jazz extensions","Classical voice-leading"], mix: ["Lo-fi tape warmth","Vintage analog","Intimate close-mic"] },
+  "Duduk":                     { mood: ["Melancholic","Haunted","Lonely"], groove: ["rubato","half-time"], lyricalVibe: ["Heartbreak elegy","Ode to a place","Mythic / allegorical"], texture: ["Organic & breathing","Airy & weightless","Distressed & decayed"], vocalist: ["Whisper to full belt","Raw male baritone","Layered harmonies no lead"], energy: ["Intimate & bare throughout","Slow burn to explosion","Sparse to wall of sound"], harmonic: ["Minor-key introspection","Modal ambiguity","Microtonal"], mix: ["Heavy reverb cathedral","Intimate close-mic","Wide cinematic"] },
+  "Tin whistle":               { mood: ["Nostalgic","Tender","Spiritual"], groove: ["shuffle","rubato"], lyricalVibe: ["Ode to a place","Mythic / allegorical","Coming-of-age narrative"], texture: ["Crystalline & brittle","Airy & weightless","Organic & breathing"], vocalist: ["Smooth tenor","Breathy female lead","Layered harmonies no lead"], energy: ["Steady groove throughout","Intimate & bare throughout","Starts huge then strips back"], harmonic: ["Modal ambiguity","Major-key lift","Drone-based static harmony"], mix: ["Lo-fi tape warmth","Heavy reverb cathedral","Vintage analog"] },
 
   // ── WORLD ─────────────────────────────────────────────────────────────
-  "Sitar":                     { mood: ["Spiritual","Dreamlike","Haunted"], groove: ["rubato","polyrhythm"], lyricalVibe: ["Spiritual seeking","Mythic / allegorical","Surreal dreamscape"] },
-  "Oud":                       { mood: ["Sensual","Melancholic","Spiritual"], groove: ["rubato","syncopated"], lyricalVibe: ["Ode to a place","Romantic devotion","Mythic / allegorical"] },
-  "Erhu":                      { mood: ["Melancholic","Haunted","Lonely"], groove: ["rubato","half-time"], lyricalVibe: ["Heartbreak elegy","Mythic / allegorical","Letter to self"] },
-  "Shakuhachi":                { mood: ["Spiritual","Serene","Haunted"], groove: ["rubato","half-time"], lyricalVibe: ["Spiritual seeking","Existential questioning","Ode to a place"] },
-  "Koto":                      { mood: ["Serene","Dreamlike","Spiritual"], groove: ["rubato","straight"], lyricalVibe: ["Ode to a place","Mythic / allegorical","Surreal dreamscape"] },
-  "Kora":                      { mood: ["Spiritual","Serene","Nostalgic"], groove: ["polyrhythm","syncopated"], lyricalVibe: ["Spiritual seeking","Ode to a place","Mythic / allegorical"] },
-  "Tabla":                     { mood: ["Spiritual","Ecstatic","Sensual"], groove: ["polyrhythm","syncopated"], lyricalVibe: ["Spiritual seeking","Ode to a place","Mythic / allegorical"] },
-  "Kalimba":                   { mood: ["Serene","Dreamlike","Tender"], groove: ["straight","polyrhythm"], lyricalVibe: ["Coming-of-age narrative","Ode to a place","Nostalgic storytelling"] },
-  "Hang drum":                 { mood: ["Serene","Spiritual","Dreamlike"], groove: ["rubato","half-time"], lyricalVibe: ["Spiritual seeking","Existential questioning","Surreal dreamscape"] },
+  "Sitar":                     { mood: ["Spiritual","Dreamlike","Haunted"], groove: ["rubato","polyrhythm"], lyricalVibe: ["Spiritual seeking","Mythic / allegorical","Surreal dreamscape"], texture: ["Crystalline & brittle","Granular & particulate","Metallic & reflective"], vocalist: ["Melismatic soprano","Layered harmonies no lead","Androgynous voice"], energy: ["Slow burn to explosion","Sparse to wall of sound","Euphoric continuous build"], harmonic: ["Drone-based static harmony","Modal ambiguity","Microtonal"], mix: ["Heavy reverb cathedral","Wide cinematic","Vintage analog"] },
+  "Oud":                       { mood: ["Sensual","Melancholic","Spiritual"], groove: ["rubato","syncopated"], lyricalVibe: ["Ode to a place","Romantic devotion","Mythic / allegorical"], texture: ["Organic & breathing","Smooth & liquid","Crystalline & brittle"], vocalist: ["Melismatic soprano","Smooth tenor","Layered harmonies no lead"], energy: ["Intimate & bare throughout","Slow burn to explosion","Steady groove throughout"], harmonic: ["Modal ambiguity","Microtonal","Minor-key introspection"], mix: ["Intimate close-mic","Heavy reverb cathedral","Vintage analog"] },
+  "Erhu":                      { mood: ["Melancholic","Haunted","Lonely"], groove: ["rubato","half-time"], lyricalVibe: ["Heartbreak elegy","Mythic / allegorical","Letter to self"], texture: ["Airy & weightless","Crystalline & brittle","Organic & breathing"], vocalist: ["Melismatic soprano","Breathy female lead","Layered harmonies no lead"], energy: ["Intimate & bare throughout","Slow burn to explosion","Tension without full release"], harmonic: ["Minor-key introspection","Modal ambiguity","Microtonal"], mix: ["Heavy reverb cathedral","Intimate close-mic","Wide cinematic"] },
+  "Shakuhachi":                { mood: ["Spiritual","Serene","Haunted"], groove: ["rubato","half-time"], lyricalVibe: ["Spiritual seeking","Existential questioning","Ode to a place"], texture: ["Airy & weightless","Organic & breathing","Granular & particulate"], vocalist: ["Layered harmonies no lead","Breathy female lead","Whisper to full belt"], energy: ["Sparse to wall of sound","Intimate & bare throughout","Tension without full release"], harmonic: ["Drone-based static harmony","Modal ambiguity","Microtonal"], mix: ["Heavy reverb cathedral","Intimate close-mic","Wide cinematic"] },
+  "Koto":                      { mood: ["Serene","Dreamlike","Spiritual"], groove: ["rubato","straight"], lyricalVibe: ["Ode to a place","Mythic / allegorical","Surreal dreamscape"], texture: ["Crystalline & brittle","Airy & weightless","Organic & breathing"], vocalist: ["Melismatic soprano","Breathy female lead","Layered harmonies no lead"], energy: ["Sparse to wall of sound","Intimate & bare throughout","Steady groove throughout"], harmonic: ["Modal ambiguity","Classical voice-leading","Drone-based static harmony"], mix: ["Heavy reverb cathedral","Lo-fi tape warmth","Vintage analog"] },
+  "Kora":                      { mood: ["Spiritual","Serene","Nostalgic"], groove: ["polyrhythm","syncopated"], lyricalVibe: ["Spiritual seeking","Ode to a place","Mythic / allegorical"], texture: ["Organic & breathing","Crystalline & brittle","Airy & weightless"], vocalist: ["Gospel ensemble","Smooth tenor","Layered harmonies no lead"], energy: ["Steady groove throughout","Euphoric continuous build","Sparse to wall of sound"], harmonic: ["Modal ambiguity","Major-key lift","Drone-based static harmony"], mix: ["Wide cinematic","Lo-fi tape warmth","Vintage analog"] },
+  "Tabla":                     { mood: ["Spiritual","Ecstatic","Sensual"], groove: ["polyrhythm","syncopated"], lyricalVibe: ["Spiritual seeking","Ode to a place","Mythic / allegorical"], texture: ["Organic & breathing","Crystalline & brittle","Smooth & liquid"], vocalist: ["Melismatic soprano","Layered harmonies no lead","Spoken word over melody"], energy: ["Driving & relentless","Euphoric continuous build","Steady groove throughout"], harmonic: ["Drone-based static harmony","Modal ambiguity","Microtonal"], mix: ["Wide cinematic","Vintage analog","Heavy reverb cathedral"] },
+  "Kalimba":                   { mood: ["Serene","Dreamlike","Tender"], groove: ["straight","polyrhythm"], lyricalVibe: ["Coming-of-age narrative","Ode to a place","Nostalgic storytelling"], texture: ["Crystalline & brittle","Airy & weightless","Organic & breathing"], vocalist: ["Breathy female lead","Smooth tenor","Layered harmonies no lead"], energy: ["Intimate & bare throughout","Steady groove throughout","Sparse to wall of sound"], harmonic: ["Major-key lift","Modal ambiguity","Classical voice-leading"], mix: ["Lo-fi tape warmth","Intimate close-mic","Vintage analog"] },
+  "Hang drum":                 { mood: ["Serene","Spiritual","Dreamlike"], groove: ["rubato","half-time"], lyricalVibe: ["Spiritual seeking","Existential questioning","Surreal dreamscape"], texture: ["Crystalline & brittle","Airy & weightless","Metallic & reflective"], vocalist: ["Layered harmonies no lead","Breathy female lead","Melismatic soprano"], energy: ["Sparse to wall of sound","Intimate & bare throughout","Slow burn to explosion"], harmonic: ["Drone-based static harmony","Modal ambiguity","Major-key lift"], mix: ["Heavy reverb cathedral","Wide cinematic","Intimate close-mic"] },
 
   // ── MALLET ────────────────────────────────────────────────────────────
-  "Marimba":                   { mood: ["Serene","Ecstatic","Unbothered"], groove: ["polyrhythm","syncopated"], lyricalVibe: ["Ode to a place","Coming-of-age narrative","Party celebration"] },
-  "Vibraphone":                { mood: ["Sensual","Dreamlike","Serene"], groove: ["swing","rubato"], lyricalVibe: ["Romantic devotion","Surreal dreamscape","Stream-of-consciousness"] },
-  "Glockenspiel":              { mood: ["Dreamlike","Tender","Nostalgic"], groove: ["rubato","straight"], lyricalVibe: ["Coming-of-age narrative","Surreal dreamscape","Nostalgic storytelling"] },
-  "Steel pan":                 { mood: ["Ecstatic","Unbothered","Euphoric"], groove: ["syncopated","swing"], lyricalVibe: ["Party celebration","Ode to a place","Hedonistic escapism"] },
+  "Marimba":                   { mood: ["Serene","Ecstatic","Unbothered"], groove: ["polyrhythm","syncopated"], lyricalVibe: ["Ode to a place","Coming-of-age narrative","Party celebration"], texture: ["Organic & breathing","Crystalline & brittle","Smooth & liquid"], vocalist: ["Smooth tenor","Breathy female lead","Gospel ensemble"], energy: ["Steady groove throughout","Euphoric continuous build","Driving & relentless"], harmonic: ["Major-key lift","Modal ambiguity","Jazz extensions"], mix: ["Wide cinematic","Lo-fi tape warmth","Vintage analog"] },
+  "Vibraphone":                { mood: ["Sensual","Dreamlike","Serene"], groove: ["swing","rubato"], lyricalVibe: ["Romantic devotion","Surreal dreamscape","Stream-of-consciousness"], texture: ["Smooth & liquid","Crystalline & brittle","Airy & weightless"], vocalist: ["Smooth tenor","Breathy female lead","Spoken word over melody"], energy: ["Intimate & bare throughout","Steady groove throughout","Sparse to wall of sound"], harmonic: ["Jazz extensions","Modal ambiguity","Major-key lift"], mix: ["Lo-fi tape warmth","Heavy reverb cathedral","Vintage analog"] },
+  "Glockenspiel":              { mood: ["Dreamlike","Tender","Nostalgic"], groove: ["rubato","straight"], lyricalVibe: ["Coming-of-age narrative","Surreal dreamscape","Nostalgic storytelling"], texture: ["Crystalline & brittle","Metallic & reflective","Airy & weightless"], vocalist: ["Breathy female lead","Layered harmonies no lead","Melismatic soprano"], energy: ["Intimate & bare throughout","Sparse to wall of sound","Starts huge then strips back"], harmonic: ["Major-key lift","Classical voice-leading","Modal ambiguity"], mix: ["Wide cinematic","Heavy reverb cathedral","Lo-fi tape warmth"] },
+  "Steel pan":                 { mood: ["Ecstatic","Unbothered","Euphoric"], groove: ["syncopated","swing"], lyricalVibe: ["Party celebration","Ode to a place","Hedonistic escapism"], texture: ["Metallic & reflective","Crystalline & brittle","Organic & breathing"], vocalist: ["Smooth tenor","Gospel ensemble","Spoken word over melody"], energy: ["Steady groove throughout","Euphoric continuous build","Driving & relentless"], harmonic: ["Major-key lift","Jazz extensions","Bluesy dominant"], mix: ["Wide cinematic","Vintage analog","Punchy & compressed"] },
 
   // ── VOICE / CHOIR ─────────────────────────────────────────────────────
-  "Gospel choir":              { mood: ["Triumphant","Spiritual","Ecstatic"], groove: ["shuffle","syncopated"], lyricalVibe: ["Spiritual seeking","Political protest","Coming-of-age narrative"] },
-  "Gregorian chant":           { mood: ["Spiritual","Haunted","Serene"], groove: ["rubato","straight"], lyricalVibe: ["Spiritual seeking","Mythic / allegorical","Existential questioning"] },
-  "Throat singing":            { mood: ["Spiritual","Haunted","Furious"], groove: ["rubato","polyrhythm"], lyricalVibe: ["Spiritual seeking","Mythic / allegorical","Ode to a place"] },
-  "Bulgarian women's choir":   { mood: ["Spiritual","Haunted","Ecstatic"], groove: ["rubato","polyrhythm"], lyricalVibe: ["Mythic / allegorical","Ode to a place","Spiritual seeking"] },
+  "Gospel choir":              { mood: ["Triumphant","Spiritual","Ecstatic"], groove: ["shuffle","syncopated"], lyricalVibe: ["Spiritual seeking","Political protest","Coming-of-age narrative"], texture: ["Thick & saturated","Organic & breathing","Airy & weightless"], vocalist: ["Gospel ensemble","Melismatic soprano","Whisper to full belt"], energy: ["Euphoric continuous build","Starts huge then strips back","Driving & relentless"], harmonic: ["Major-key lift","Bluesy dominant","Jazz extensions"], mix: ["Wide cinematic","Heavy reverb cathedral","Punchy & compressed"] },
+  "Gregorian chant":           { mood: ["Spiritual","Haunted","Serene"], groove: ["rubato","straight"], lyricalVibe: ["Spiritual seeking","Mythic / allegorical","Existential questioning"], texture: ["Airy & weightless","Organic & breathing","Crystalline & brittle"], vocalist: ["Layered harmonies no lead","Melismatic soprano","Androgynous voice"], energy: ["Sparse to wall of sound","Intimate & bare throughout","Slow burn to explosion"], harmonic: ["Drone-based static harmony","Modal ambiguity","Classical voice-leading"], mix: ["Heavy reverb cathedral","Wide cinematic","Vintage analog"] },
+  "Throat singing":            { mood: ["Spiritual","Haunted","Furious"], groove: ["rubato","polyrhythm"], lyricalVibe: ["Spiritual seeking","Mythic / allegorical","Ode to a place"], texture: ["Organic & breathing","Granular & particulate","Thick & saturated"], vocalist: ["Androgynous voice","Raw male baritone","Layered harmonies no lead"], energy: ["Slow burn to explosion","Sparse to wall of sound","Tension without full release"], harmonic: ["Drone-based static harmony","Microtonal","Modal ambiguity"], mix: ["Heavy reverb cathedral","Raw & uncompressed","Wide cinematic"] },
+  "Bulgarian women's choir":   { mood: ["Spiritual","Haunted","Ecstatic"], groove: ["rubato","polyrhythm"], lyricalVibe: ["Mythic / allegorical","Ode to a place","Spiritual seeking"], texture: ["Crystalline & brittle","Airy & weightless","Organic & breathing"], vocalist: ["Layered harmonies no lead","Melismatic soprano","Breathy female lead"], energy: ["Sparse to wall of sound","Euphoric continuous build","Slow burn to explosion"], harmonic: ["Modal ambiguity","Dissonant tension","Microtonal"], mix: ["Heavy reverb cathedral","Wide cinematic","Vintage analog"] },
+};
+
+// ────────────────────────────────────────────────────────────────────────────
+// REVERSE COMPLEMENT MAPS — When the user picks a mood/groove/lyrical as
+// their starting element, these curated maps contribute directly to the
+// suggestion pools. They layer on top of the reverse-scan of SUGGESTION_MAP
+// so picks don't rely solely on which instruments happen to pair with them.
+// Each entry maps a section value to suggestions for the OTHER two sections.
+// ────────────────────────────────────────────────────────────────────────────
+const MOOD_COMPLEMENTS = {
+  "Dark & brooding":     { groove: ["half-time","syncopated","broken"], lyricalVibe: ["Existential questioning","Heartbreak elegy","Stream-of-consciousness"], texture: ["Thick & saturated","Distressed & decayed","Metallic & reflective"], vocalist: ["Raw male baritone","Whisper to full belt","Androgynous voice"], energy: ["Slow burn to explosion","Tension without full release","Driving & relentless"], harmonic: ["Minor-key introspection","Dissonant tension","Drone-based static harmony"], mix: ["Heavy reverb cathedral","Raw & uncompressed","Vintage analog"] },
+  "Euphoric":            { groove: ["motorik","straight","syncopated"], lyricalVibe: ["Party celebration","Hedonistic escapism","Romantic devotion"], texture: ["Smooth & liquid","Airy & weightless","Digital & precise"], vocalist: ["Breathy female lead","Falsetto-led","Gospel ensemble"], energy: ["Euphoric continuous build","Driving & relentless","Steady groove throughout"], harmonic: ["Major-key lift","Jazz extensions","Classical voice-leading"], mix: ["Ultra clean & polished","Wide cinematic","Punchy & compressed"] },
+  "Nostalgic":           { groove: ["swing","shuffle","rubato"], lyricalVibe: ["Nostalgic storytelling","Coming-of-age narrative","Ode to a place"], texture: ["Distressed & decayed","Organic & breathing","Smooth & liquid"], vocalist: ["Smooth tenor","Breathy female lead","Spoken word over melody"], energy: ["Steady groove throughout","Intimate & bare throughout","Slow burn to explosion"], harmonic: ["Minor-key introspection","Jazz extensions","Classical voice-leading"], mix: ["Lo-fi tape warmth","Vintage analog","Intimate close-mic"] },
+  "Defiant":             { groove: ["straight","syncopated","broken"], lyricalVibe: ["Defiant anthem","Political protest","Braggadocio flex"], texture: ["Thick & saturated","Metallic & reflective","Distressed & decayed"], vocalist: ["Raw male baritone","Screamed verse / melodic chorus","Auto-tuned melodic delivery"], energy: ["Driving & relentless","Slow burn to explosion","Starts huge then strips back"], harmonic: ["Minor-key introspection","Dissonant tension","Bluesy dominant"], mix: ["Raw & uncompressed","Punchy & compressed","Dry & direct"] },
+  "Tender":              { groove: ["rubato","swing","half-time"], lyricalVibe: ["Romantic devotion","Letter to self","Confessional diary"], texture: ["Smooth & liquid","Organic & breathing","Airy & weightless"], vocalist: ["Breathy female lead","Smooth tenor","Falsetto-led"], energy: ["Intimate & bare throughout","Steady groove throughout","Sparse to wall of sound"], harmonic: ["Major-key lift","Classical voice-leading","Jazz extensions"], mix: ["Intimate close-mic","Lo-fi tape warmth","Vintage analog"] },
+  "Desperate":           { groove: ["broken","rubato","half-time"], lyricalVibe: ["Confessional diary","Heartbreak elegy","Existential questioning"], texture: ["Distressed & decayed","Thick & saturated","Organic & breathing"], vocalist: ["Raw male baritone","Whisper to full belt","Screamed verse / melodic chorus"], energy: ["Slow burn to explosion","Tension without full release","Starts huge then strips back"], harmonic: ["Minor-key introspection","Dissonant tension","Bluesy dominant"], mix: ["Raw & uncompressed","Heavy reverb cathedral","Intimate close-mic"] },
+  "Triumphant":          { groove: ["straight","motorik","syncopated"], lyricalVibe: ["Defiant anthem","Coming-of-age narrative","Political protest"], texture: ["Thick & saturated","Metallic & reflective","Crystalline & brittle"], vocalist: ["Whisper to full belt","Gospel ensemble","Melismatic soprano"], energy: ["Euphoric continuous build","Starts huge then strips back","Driving & relentless"], harmonic: ["Major-key lift","Classical voice-leading","Jazz extensions"], mix: ["Wide cinematic","Heavy reverb cathedral","Punchy & compressed"] },
+  "Sensual":             { groove: ["swing","syncopated","shuffle"], lyricalVibe: ["Romantic devotion","Hedonistic escapism","Confessional diary"], texture: ["Smooth & liquid","Organic & breathing","Thick & saturated"], vocalist: ["Breathy female lead","Falsetto-led","Smooth tenor"], energy: ["Steady groove throughout","Intimate & bare throughout","Sparse to wall of sound"], harmonic: ["Jazz extensions","Bluesy dominant","Major-key lift"], mix: ["Lo-fi tape warmth","Intimate close-mic","Vintage analog"] },
+  "Melancholic":         { groove: ["rubato","half-time","swing"], lyricalVibe: ["Heartbreak elegy","Letter to self","Existential questioning"], texture: ["Distressed & decayed","Airy & weightless","Crystalline & brittle"], vocalist: ["Smooth tenor","Breathy female lead","Raw male baritone"], energy: ["Intimate & bare throughout","Slow burn to explosion","Tension without full release"], harmonic: ["Minor-key introspection","Classical voice-leading","Jazz extensions"], mix: ["Intimate close-mic","Lo-fi tape warmth","Heavy reverb cathedral"] },
+  "Spiritual":           { groove: ["rubato","polyrhythm","straight"], lyricalVibe: ["Spiritual seeking","Mythic / allegorical","Existential questioning"], texture: ["Airy & weightless","Crystalline & brittle","Organic & breathing"], vocalist: ["Gospel ensemble","Melismatic soprano","Layered harmonies no lead"], energy: ["Euphoric continuous build","Sparse to wall of sound","Slow burn to explosion"], harmonic: ["Drone-based static harmony","Modal ambiguity","Major-key lift"], mix: ["Heavy reverb cathedral","Wide cinematic","Lo-fi tape warmth"] },
+  "Bittersweet":         { groove: ["swing","rubato","half-time"], lyricalVibe: ["Nostalgic storytelling","Letter to self","Coming-of-age narrative"], texture: ["Organic & breathing","Distressed & decayed","Smooth & liquid"], vocalist: ["Smooth tenor","Breathy female lead","Melismatic soprano"], energy: ["Intimate & bare throughout","Steady groove throughout","Starts huge then strips back"], harmonic: ["Jazz extensions","Minor-key introspection","Major-key lift"], mix: ["Lo-fi tape warmth","Vintage analog","Intimate close-mic"] },
+  "Unbothered":          { groove: ["swing","shuffle","syncopated"], lyricalVibe: ["Hedonistic escapism","Braggadocio flex","Stream-of-consciousness"], texture: ["Smooth & liquid","Organic & breathing","Digital & precise"], vocalist: ["Spoken word over melody","Auto-tuned melodic delivery","Smooth tenor"], energy: ["Steady groove throughout","Intimate & bare throughout","Sparse to wall of sound"], harmonic: ["Jazz extensions","Bluesy dominant","Modal ambiguity"], mix: ["Lo-fi tape warmth","Dry & direct","Vintage analog"] },
+  "Haunted":             { groove: ["rubato","half-time","broken"], lyricalVibe: ["Mythic / allegorical","Surreal dreamscape","Existential questioning"], texture: ["Crystalline & brittle","Metallic & reflective","Distressed & decayed"], vocalist: ["Layered harmonies no lead","Androgynous voice","Whisper to full belt"], energy: ["Tension without full release","Sparse to wall of sound","Slow burn to explosion"], harmonic: ["Dissonant tension","Modal ambiguity","Drone-based static harmony"], mix: ["Heavy reverb cathedral","Wide cinematic","Vintage analog"] },
+  "Ecstatic":            { groove: ["motorik","polyrhythm","syncopated"], lyricalVibe: ["Spiritual seeking","Party celebration","Hedonistic escapism"], texture: ["Thick & saturated","Airy & weightless","Metallic & reflective"], vocalist: ["Gospel ensemble","Melismatic soprano","Whisper to full belt"], energy: ["Euphoric continuous build","Driving & relentless","Starts huge then strips back"], harmonic: ["Major-key lift","Modal ambiguity","Jazz extensions"], mix: ["Punchy & compressed","Wide cinematic","Ultra clean & polished"] },
+  "Anxious":             { groove: ["broken","experimental","syncopated"], lyricalVibe: ["Stream-of-consciousness","Existential questioning","Confessional diary"], texture: ["Granular & particulate","Metallic & reflective","Distressed & decayed"], vocalist: ["Whisper to full belt","Androgynous voice","Spoken word over melody"], energy: ["Tension without full release","Slow burn to explosion","Driving & relentless"], harmonic: ["Dissonant tension","Microtonal","Minor-key introspection"], mix: ["Raw & uncompressed","Dry & direct","Intimate close-mic"] },
+  "Serene":              { groove: ["rubato","straight","half-time"], lyricalVibe: ["Ode to a place","Surreal dreamscape","Letter to self"], texture: ["Airy & weightless","Smooth & liquid","Organic & breathing"], vocalist: ["Breathy female lead","Layered harmonies no lead","Falsetto-led"], energy: ["Intimate & bare throughout","Sparse to wall of sound","Steady groove throughout"], harmonic: ["Major-key lift","Modal ambiguity","Drone-based static harmony"], mix: ["Heavy reverb cathedral","Intimate close-mic","Lo-fi tape warmth"] },
+  "Electric":            { groove: ["motorik","straight","syncopated"], lyricalVibe: ["Hedonistic escapism","Braggadocio flex","Party celebration"], texture: ["Metallic & reflective","Digital & precise","Thick & saturated"], vocalist: ["Auto-tuned melodic delivery","Falsetto-led","Raw male baritone"], energy: ["Driving & relentless","Euphoric continuous build","Steady groove throughout"], harmonic: ["Major-key lift","Dissonant tension","Jazz extensions"], mix: ["Punchy & compressed","Futuristic digital","Ultra clean & polished"] },
+  "Lonely":              { groove: ["rubato","half-time","swing"], lyricalVibe: ["Letter to self","Heartbreak elegy","Confessional diary"], texture: ["Airy & weightless","Distressed & decayed","Organic & breathing"], vocalist: ["Smooth tenor","Breathy female lead","Whisper to full belt"], energy: ["Intimate & bare throughout","Sparse to wall of sound","Tension without full release"], harmonic: ["Minor-key introspection","Classical voice-leading","Modal ambiguity"], mix: ["Intimate close-mic","Heavy reverb cathedral","Lo-fi tape warmth"] },
+  "Dreamlike":           { groove: ["rubato","half-time","experimental"], lyricalVibe: ["Surreal dreamscape","Abstract poetry","Mythic / allegorical"], texture: ["Airy & weightless","Granular & particulate","Crystalline & brittle"], vocalist: ["Breathy female lead","Layered harmonies no lead","Androgynous voice"], energy: ["Sparse to wall of sound","Intimate & bare throughout","Slow burn to explosion"], harmonic: ["Modal ambiguity","Drone-based static harmony","Microtonal"], mix: ["Heavy reverb cathedral","Vintage analog","Futuristic digital"] },
+  "Furious":             { groove: ["straight","broken","syncopated"], lyricalVibe: ["Defiant anthem","Political protest","Stream-of-consciousness"], texture: ["Thick & saturated","Metallic & reflective","Distressed & decayed"], vocalist: ["Screamed verse / melodic chorus","Raw male baritone","Whisper to full belt"], energy: ["Driving & relentless","Slow burn to explosion","Tension without full release"], harmonic: ["Dissonant tension","Minor-key introspection","Bluesy dominant"], mix: ["Raw & uncompressed","Punchy & compressed","Dry & direct"] },
+};
+
+const GROOVE_COMPLEMENTS = {
+  "straight":     { mood: ["Defiant","Triumphant","Electric"],    lyricalVibe: ["Defiant anthem","Coming-of-age narrative","Hedonistic escapism"], texture: ["Thick & saturated","Digital & precise","Metallic & reflective"], vocalist: ["Raw male baritone","Auto-tuned melodic delivery","Whisper to full belt"], energy: ["Driving & relentless","Steady groove throughout","Euphoric continuous build"], harmonic: ["Major-key lift","Minor-key introspection","Dissonant tension"], mix: ["Punchy & compressed","Ultra clean & polished","Raw & uncompressed"] },
+  "swing":        { mood: ["Sensual","Nostalgic","Tender"],       lyricalVibe: ["Romantic devotion","Nostalgic storytelling","Confessional diary"], texture: ["Smooth & liquid","Organic & breathing","Distressed & decayed"], vocalist: ["Smooth tenor","Breathy female lead","Spoken word over melody"], energy: ["Steady groove throughout","Intimate & bare throughout","Slow burn to explosion"], harmonic: ["Jazz extensions","Bluesy dominant","Major-key lift"], mix: ["Lo-fi tape warmth","Vintage analog","Intimate close-mic"] },
+  "half-time":    { mood: ["Dark & brooding","Dreamlike","Sensual"], lyricalVibe: ["Braggadocio flex","Hedonistic escapism","Stream-of-consciousness"], texture: ["Thick & saturated","Airy & weightless","Smooth & liquid"], vocalist: ["Auto-tuned melodic delivery","Raw male baritone","Falsetto-led"], energy: ["Steady groove throughout","Tension without full release","Intimate & bare throughout"], harmonic: ["Minor-key introspection","Jazz extensions","Modal ambiguity"], mix: ["Punchy & compressed","Lo-fi tape warmth","Heavy reverb cathedral"] },
+  "broken":       { mood: ["Anxious","Furious","Desperate"],      lyricalVibe: ["Stream-of-consciousness","Political protest","Defiant anthem"], texture: ["Granular & particulate","Distressed & decayed","Metallic & reflective"], vocalist: ["Whisper to full belt","Screamed verse / melodic chorus","Androgynous voice"], energy: ["Tension without full release","Slow burn to explosion","Driving & relentless"], harmonic: ["Dissonant tension","Microtonal","Minor-key introspection"], mix: ["Raw & uncompressed","Dry & direct","Futuristic digital"] },
+  "experimental": { mood: ["Dreamlike","Anxious","Haunted"],      lyricalVibe: ["Surreal dreamscape","Abstract poetry","Stream-of-consciousness"], texture: ["Granular & particulate","Crystalline & brittle","Metallic & reflective"], vocalist: ["Layered harmonies no lead","Androgynous voice","Spoken word over melody"], energy: ["Sparse to wall of sound","Tension without full release","Intimate & bare throughout"], harmonic: ["Modal ambiguity","Microtonal","Dissonant tension"], mix: ["Futuristic digital","Heavy reverb cathedral","Dry & direct"] },
+  "shuffle":      { mood: ["Unbothered","Nostalgic","Spiritual"], lyricalVibe: ["Party celebration","Nostalgic storytelling","Spiritual seeking"], texture: ["Organic & breathing","Distressed & decayed","Smooth & liquid"], vocalist: ["Gospel ensemble","Smooth tenor","Spoken word over melody"], energy: ["Steady groove throughout","Euphoric continuous build","Starts huge then strips back"], harmonic: ["Bluesy dominant","Jazz extensions","Major-key lift"], mix: ["Lo-fi tape warmth","Vintage analog","Punchy & compressed"] },
+  "polyrhythm":   { mood: ["Ecstatic","Spiritual","Dreamlike"],   lyricalVibe: ["Spiritual seeking","Mythic / allegorical","Ode to a place"], texture: ["Organic & breathing","Airy & weightless","Granular & particulate"], vocalist: ["Gospel ensemble","Layered harmonies no lead","Melismatic soprano"], energy: ["Driving & relentless","Euphoric continuous build","Sparse to wall of sound"], harmonic: ["Modal ambiguity","Drone-based static harmony","Microtonal"], mix: ["Heavy reverb cathedral","Wide cinematic","Lo-fi tape warmth"] },
+  "motorik":      { mood: ["Electric","Euphoric","Ecstatic"],     lyricalVibe: ["Hedonistic escapism","Party celebration","Abstract poetry"], texture: ["Metallic & reflective","Digital & precise","Thick & saturated"], vocalist: ["Auto-tuned melodic delivery","Androgynous voice","Falsetto-led"], energy: ["Driving & relentless","Euphoric continuous build","Steady groove throughout"], harmonic: ["Drone-based static harmony","Major-key lift","Dissonant tension"], mix: ["Ultra clean & polished","Futuristic digital","Punchy & compressed"] },
+  "syncopated":   { mood: ["Sensual","Ecstatic","Defiant"],       lyricalVibe: ["Party celebration","Romantic devotion","Braggadocio flex"], texture: ["Thick & saturated","Smooth & liquid","Metallic & reflective"], vocalist: ["Smooth tenor","Auto-tuned melodic delivery","Gospel ensemble"], energy: ["Driving & relentless","Steady groove throughout","Euphoric continuous build"], harmonic: ["Jazz extensions","Bluesy dominant","Major-key lift"], mix: ["Punchy & compressed","Vintage analog","Ultra clean & polished"] },
+  "rubato":       { mood: ["Melancholic","Tender","Haunted"],     lyricalVibe: ["Heartbreak elegy","Letter to self","Mythic / allegorical"], texture: ["Airy & weightless","Crystalline & brittle","Organic & breathing"], vocalist: ["Breathy female lead","Smooth tenor","Layered harmonies no lead"], energy: ["Intimate & bare throughout","Sparse to wall of sound","Slow burn to explosion"], harmonic: ["Classical voice-leading","Minor-key introspection","Modal ambiguity"], mix: ["Heavy reverb cathedral","Intimate close-mic","Wide cinematic"] },
+};
+
+const LYRICAL_COMPLEMENTS = {
+  "Confessional diary":         { mood: ["Melancholic","Tender","Lonely"],    groove: ["rubato","swing","half-time"], texture: ["Organic & breathing","Distressed & decayed","Smooth & liquid"], vocalist: ["Breathy female lead","Smooth tenor","Whisper to full belt"], energy: ["Intimate & bare throughout","Slow burn to explosion","Tension without full release"], harmonic: ["Minor-key introspection","Jazz extensions","Classical voice-leading"], mix: ["Intimate close-mic","Lo-fi tape warmth","Dry & direct"] },
+  "Nostalgic storytelling":     { mood: ["Nostalgic","Bittersweet","Tender"], groove: ["swing","shuffle","rubato"], texture: ["Distressed & decayed","Organic & breathing","Smooth & liquid"], vocalist: ["Smooth tenor","Spoken word over melody","Breathy female lead"], energy: ["Steady groove throughout","Intimate & bare throughout","Starts huge then strips back"], harmonic: ["Major-key lift","Jazz extensions","Minor-key introspection"], mix: ["Lo-fi tape warmth","Vintage analog","Intimate close-mic"] },
+  "Defiant anthem":             { mood: ["Defiant","Triumphant","Furious"],   groove: ["straight","syncopated","motorik"], texture: ["Thick & saturated","Metallic & reflective","Distressed & decayed"], vocalist: ["Raw male baritone","Screamed verse / melodic chorus","Whisper to full belt"], energy: ["Driving & relentless","Euphoric continuous build","Slow burn to explosion"], harmonic: ["Major-key lift","Minor-key introspection","Dissonant tension"], mix: ["Punchy & compressed","Raw & uncompressed","Wide cinematic"] },
+  "Abstract poetry":            { mood: ["Dreamlike","Anxious","Haunted"],    groove: ["experimental","rubato","broken"], texture: ["Granular & particulate","Crystalline & brittle","Airy & weightless"], vocalist: ["Androgynous voice","Layered harmonies no lead","Spoken word over melody"], energy: ["Sparse to wall of sound","Tension without full release","Intimate & bare throughout"], harmonic: ["Modal ambiguity","Microtonal","Dissonant tension"], mix: ["Futuristic digital","Heavy reverb cathedral","Vintage analog"] },
+  "Braggadocio flex":           { mood: ["Electric","Defiant","Unbothered"],  groove: ["half-time","syncopated","motorik"], texture: ["Thick & saturated","Metallic & reflective","Digital & precise"], vocalist: ["Auto-tuned melodic delivery","Raw male baritone","Falsetto-led"], energy: ["Steady groove throughout","Driving & relentless","Starts huge then strips back"], harmonic: ["Minor-key introspection","Bluesy dominant","Jazz extensions"], mix: ["Punchy & compressed","Ultra clean & polished","Futuristic digital"] },
+  "Heartbreak elegy":           { mood: ["Melancholic","Desperate","Lonely"], groove: ["rubato","half-time","swing"], texture: ["Distressed & decayed","Airy & weightless","Organic & breathing"], vocalist: ["Smooth tenor","Breathy female lead","Whisper to full belt"], energy: ["Intimate & bare throughout","Slow burn to explosion","Tension without full release"], harmonic: ["Minor-key introspection","Bluesy dominant","Classical voice-leading"], mix: ["Intimate close-mic","Lo-fi tape warmth","Heavy reverb cathedral"] },
+  "Political protest":          { mood: ["Furious","Defiant","Spiritual"],    groove: ["straight","broken","syncopated"], texture: ["Thick & saturated","Distressed & decayed","Metallic & reflective"], vocalist: ["Raw male baritone","Screamed verse / melodic chorus","Gospel ensemble"], energy: ["Driving & relentless","Slow burn to explosion","Starts huge then strips back"], harmonic: ["Minor-key introspection","Dissonant tension","Bluesy dominant"], mix: ["Raw & uncompressed","Dry & direct","Punchy & compressed"] },
+  "Surreal dreamscape":         { mood: ["Dreamlike","Haunted","Serene"],     groove: ["experimental","rubato","half-time"], texture: ["Granular & particulate","Airy & weightless","Crystalline & brittle"], vocalist: ["Breathy female lead","Layered harmonies no lead","Androgynous voice"], energy: ["Sparse to wall of sound","Tension without full release","Intimate & bare throughout"], harmonic: ["Modal ambiguity","Drone-based static harmony","Microtonal"], mix: ["Heavy reverb cathedral","Futuristic digital","Vintage analog"] },
+  "Romantic devotion":          { mood: ["Sensual","Tender","Euphoric"],      groove: ["swing","rubato","syncopated"], texture: ["Smooth & liquid","Organic & breathing","Airy & weightless"], vocalist: ["Breathy female lead","Smooth tenor","Falsetto-led"], energy: ["Steady groove throughout","Intimate & bare throughout","Euphoric continuous build"], harmonic: ["Major-key lift","Jazz extensions","Classical voice-leading"], mix: ["Lo-fi tape warmth","Intimate close-mic","Vintage analog"] },
+  "Existential questioning":    { mood: ["Haunted","Anxious","Spiritual"],    groove: ["rubato","half-time","experimental"], texture: ["Airy & weightless","Crystalline & brittle","Granular & particulate"], vocalist: ["Whisper to full belt","Androgynous voice","Spoken word over melody"], energy: ["Tension without full release","Slow burn to explosion","Sparse to wall of sound"], harmonic: ["Dissonant tension","Modal ambiguity","Microtonal"], mix: ["Heavy reverb cathedral","Intimate close-mic","Raw & uncompressed"] },
+  "Party celebration":          { mood: ["Ecstatic","Euphoric","Unbothered"], groove: ["syncopated","motorik","straight"], texture: ["Thick & saturated","Smooth & liquid","Metallic & reflective"], vocalist: ["Gospel ensemble","Auto-tuned melodic delivery","Falsetto-led"], energy: ["Euphoric continuous build","Driving & relentless","Steady groove throughout"], harmonic: ["Major-key lift","Jazz extensions","Bluesy dominant"], mix: ["Punchy & compressed","Ultra clean & polished","Wide cinematic"] },
+  "Spiritual seeking":          { mood: ["Spiritual","Ecstatic","Serene"],    groove: ["polyrhythm","rubato","shuffle"], texture: ["Airy & weightless","Organic & breathing","Crystalline & brittle"], vocalist: ["Gospel ensemble","Melismatic soprano","Layered harmonies no lead"], energy: ["Euphoric continuous build","Sparse to wall of sound","Slow burn to explosion"], harmonic: ["Modal ambiguity","Drone-based static harmony","Major-key lift"], mix: ["Heavy reverb cathedral","Wide cinematic","Vintage analog"] },
+  "Coming-of-age narrative":    { mood: ["Nostalgic","Bittersweet","Tender"], groove: ["straight","swing","shuffle"], texture: ["Organic & breathing","Smooth & liquid","Distressed & decayed"], vocalist: ["Smooth tenor","Breathy female lead","Whisper to full belt"], energy: ["Starts huge then strips back","Steady groove throughout","Slow burn to explosion"], harmonic: ["Major-key lift","Minor-key introspection","Jazz extensions"], mix: ["Lo-fi tape warmth","Vintage analog","Wide cinematic"] },
+  "Cinematic scene-setting":    { mood: ["Haunted","Triumphant","Dreamlike"], groove: ["rubato","straight","half-time"], texture: ["Airy & weightless","Crystalline & brittle","Thick & saturated"], vocalist: ["Layered harmonies no lead","Melismatic soprano","Whisper to full belt"], energy: ["Sparse to wall of sound","Starts huge then strips back","Slow burn to explosion"], harmonic: ["Classical voice-leading","Modal ambiguity","Major-key lift"], mix: ["Wide cinematic","Heavy reverb cathedral","Ultra clean & polished"] },
+  "Stream-of-consciousness":    { mood: ["Anxious","Unbothered","Dreamlike"], groove: ["broken","experimental","syncopated"], texture: ["Granular & particulate","Metallic & reflective","Smooth & liquid"], vocalist: ["Spoken word over melody","Androgynous voice","Auto-tuned melodic delivery"], energy: ["Tension without full release","Steady groove throughout","Intimate & bare throughout"], harmonic: ["Modal ambiguity","Dissonant tension","Jazz extensions"], mix: ["Dry & direct","Lo-fi tape warmth","Futuristic digital"] },
+  "Mythic / allegorical":       { mood: ["Spiritual","Haunted","Triumphant"], groove: ["rubato","polyrhythm","straight"], texture: ["Crystalline & brittle","Airy & weightless","Metallic & reflective"], vocalist: ["Melismatic soprano","Layered harmonies no lead","Androgynous voice"], energy: ["Sparse to wall of sound","Slow burn to explosion","Starts huge then strips back"], harmonic: ["Modal ambiguity","Drone-based static harmony","Microtonal"], mix: ["Heavy reverb cathedral","Wide cinematic","Vintage analog"] },
+  "Hedonistic escapism":        { mood: ["Electric","Unbothered","Ecstatic"], groove: ["motorik","syncopated","half-time"], texture: ["Thick & saturated","Smooth & liquid","Digital & precise"], vocalist: ["Auto-tuned melodic delivery","Falsetto-led","Spoken word over melody"], energy: ["Driving & relentless","Steady groove throughout","Euphoric continuous build"], harmonic: ["Jazz extensions","Bluesy dominant","Major-key lift"], mix: ["Futuristic digital","Punchy & compressed","Vintage analog"] },
+  "Social commentary":          { mood: ["Defiant","Anxious","Furious"],      groove: ["straight","broken","syncopated"], texture: ["Distressed & decayed","Organic & breathing","Digital & precise"], vocalist: ["Spoken word over melody","Raw male baritone","Screamed verse / melodic chorus"], energy: ["Driving & relentless","Slow burn to explosion","Tension without full release"], harmonic: ["Minor-key introspection","Bluesy dominant","Dissonant tension"], mix: ["Dry & direct","Raw & uncompressed","Lo-fi tape warmth"] },
+  "Letter to self":             { mood: ["Lonely","Tender","Bittersweet"],    groove: ["rubato","half-time","swing"], texture: ["Organic & breathing","Airy & weightless","Smooth & liquid"], vocalist: ["Smooth tenor","Breathy female lead","Whisper to full belt"], energy: ["Intimate & bare throughout","Sparse to wall of sound","Slow burn to explosion"], harmonic: ["Minor-key introspection","Classical voice-leading","Jazz extensions"], mix: ["Intimate close-mic","Lo-fi tape warmth","Heavy reverb cathedral"] },
+  "Ode to a place":             { mood: ["Nostalgic","Serene","Spiritual"],   groove: ["swing","rubato","polyrhythm"], texture: ["Organic & breathing","Airy & weightless","Distressed & decayed"], vocalist: ["Smooth tenor","Layered harmonies no lead","Spoken word over melody"], energy: ["Steady groove throughout","Sparse to wall of sound","Starts huge then strips back"], harmonic: ["Major-key lift","Modal ambiguity","Jazz extensions"], mix: ["Wide cinematic","Lo-fi tape warmth","Vintage analog"] },
+};
+
+// ENERGY_COMPLEMENTS: maps energy arc → {mood, groove, lyricalVibe}
+const ENERGY_COMPLEMENTS = {
+  "Slow burn to explosion":        { mood: ["Desperate","Anxious","Furious"],      groove: ["half-time","broken","straight"], lyricalVibe: ["Existential questioning","Stream-of-consciousness","Defiant anthem"], texture: ["Granular & particulate","Distressed & decayed","Thick & saturated"], vocalist: ["Whisper to full belt","Raw male baritone","Breathy female lead"], harmonic: ["Minor-key introspection","Dissonant tension","Drone-based static harmony"], mix: ["Heavy reverb cathedral","Raw & uncompressed","Intimate close-mic"] },
+  "Steady groove throughout":      { mood: ["Unbothered","Sensual","Nostalgic"],   groove: ["swing","shuffle","syncopated"],  lyricalVibe: ["Nostalgic storytelling","Romantic devotion","Hedonistic escapism"], texture: ["Smooth & liquid","Organic & breathing","Thick & saturated"], vocalist: ["Smooth tenor","Spoken word over melody","Auto-tuned melodic delivery"], harmonic: ["Jazz extensions","Bluesy dominant","Major-key lift"], mix: ["Lo-fi tape warmth","Punchy & compressed","Vintage analog"] },
+  "Intimate & bare throughout":    { mood: ["Tender","Lonely","Melancholic"],      groove: ["rubato","half-time","swing"],    lyricalVibe: ["Confessional diary","Letter to self","Heartbreak elegy"], texture: ["Organic & breathing","Airy & weightless","Distressed & decayed"], vocalist: ["Breathy female lead","Smooth tenor","Whisper to full belt"], harmonic: ["Minor-key introspection","Classical voice-leading","Major-key lift"], mix: ["Intimate close-mic","Lo-fi tape warmth","Dry & direct"] },
+  "Euphoric continuous build":     { mood: ["Euphoric","Ecstatic","Triumphant"],   groove: ["motorik","straight","syncopated"], lyricalVibe: ["Spiritual seeking","Party celebration","Romantic devotion"], texture: ["Airy & weightless","Smooth & liquid","Thick & saturated"], vocalist: ["Gospel ensemble","Melismatic soprano","Falsetto-led"], harmonic: ["Major-key lift","Jazz extensions","Drone-based static harmony"], mix: ["Wide cinematic","Ultra clean & polished","Heavy reverb cathedral"] },
+  "Sparse to wall of sound":       { mood: ["Dreamlike","Haunted","Triumphant"],   groove: ["rubato","half-time","experimental"], lyricalVibe: ["Cinematic scene-setting","Surreal dreamscape","Mythic / allegorical"], texture: ["Airy & weightless","Crystalline & brittle","Granular & particulate"], vocalist: ["Layered harmonies no lead","Androgynous voice","Melismatic soprano"], harmonic: ["Modal ambiguity","Classical voice-leading","Drone-based static harmony"], mix: ["Wide cinematic","Heavy reverb cathedral","Futuristic digital"] },
+  "Driving & relentless":          { mood: ["Defiant","Furious","Electric"],       groove: ["motorik","straight","syncopated"],  lyricalVibe: ["Defiant anthem","Political protest","Braggadocio flex"], texture: ["Thick & saturated","Metallic & reflective","Digital & precise"], vocalist: ["Raw male baritone","Screamed verse / melodic chorus","Auto-tuned melodic delivery"], harmonic: ["Minor-key introspection","Dissonant tension","Major-key lift"], mix: ["Punchy & compressed","Raw & uncompressed","Futuristic digital"] },
+  "Starts huge then strips back":  { mood: ["Triumphant","Melancholic","Bittersweet"], groove: ["straight","half-time","rubato"], lyricalVibe: ["Cinematic scene-setting","Letter to self","Coming-of-age narrative"], texture: ["Thick & saturated","Organic & breathing","Distressed & decayed"], vocalist: ["Whisper to full belt","Smooth tenor","Breathy female lead"], harmonic: ["Major-key lift","Minor-key introspection","Classical voice-leading"], mix: ["Wide cinematic","Lo-fi tape warmth","Intimate close-mic"] },
+  "Tension without full release":  { mood: ["Anxious","Haunted","Desperate"],      groove: ["broken","experimental","half-time"], lyricalVibe: ["Existential questioning","Stream-of-consciousness","Surreal dreamscape"], texture: ["Granular & particulate","Crystalline & brittle","Metallic & reflective"], vocalist: ["Whisper to full belt","Androgynous voice","Spoken word over melody"], harmonic: ["Dissonant tension","Microtonal","Drone-based static harmony"], mix: ["Heavy reverb cathedral","Dry & direct","Raw & uncompressed"] },
+};
+
+// VOCALIST_COMPLEMENTS: maps vocal type → {mood, groove, lyricalVibe}
+const VOCALIST_COMPLEMENTS = {
+  "Breathy female lead":              { mood: ["Sensual","Tender","Dreamlike"],      groove: ["swing","rubato","half-time"],    lyricalVibe: ["Romantic devotion","Confessional diary","Stream-of-consciousness"], texture: ["Smooth & liquid","Airy & weightless","Organic & breathing"], energy: ["Intimate & bare throughout","Steady groove throughout","Sparse to wall of sound"], harmonic: ["Jazz extensions","Major-key lift","Minor-key introspection"], mix: ["Intimate close-mic","Lo-fi tape warmth","Vintage analog"] },
+  "Raw male baritone":                { mood: ["Defiant","Melancholic","Desperate"], groove: ["straight","swing","rubato"],     lyricalVibe: ["Confessional diary","Heartbreak elegy","Defiant anthem"], texture: ["Thick & saturated","Distressed & decayed","Organic & breathing"], energy: ["Slow burn to explosion","Driving & relentless","Intimate & bare throughout"], harmonic: ["Minor-key introspection","Bluesy dominant","Classical voice-leading"], mix: ["Raw & uncompressed","Intimate close-mic","Dry & direct"] },
+  "Androgynous voice":                { mood: ["Dreamlike","Unbothered","Sensual"],  groove: ["half-time","syncopated","rubato"], lyricalVibe: ["Abstract poetry","Stream-of-consciousness","Surreal dreamscape"], texture: ["Airy & weightless","Granular & particulate","Crystalline & brittle"], energy: ["Steady groove throughout","Intimate & bare throughout","Tension without full release"], harmonic: ["Modal ambiguity","Jazz extensions","Dissonant tension"], mix: ["Futuristic digital","Heavy reverb cathedral","Dry & direct"] },
+  "Melismatic soprano":               { mood: ["Spiritual","Ecstatic","Tender"],     groove: ["rubato","shuffle","straight"],   lyricalVibe: ["Spiritual seeking","Romantic devotion","Mythic / allegorical"], texture: ["Crystalline & brittle","Airy & weightless","Smooth & liquid"], energy: ["Euphoric continuous build","Sparse to wall of sound","Starts huge then strips back"], harmonic: ["Major-key lift","Classical voice-leading","Modal ambiguity"], mix: ["Heavy reverb cathedral","Wide cinematic","Ultra clean & polished"] },
+  "Smooth tenor":                     { mood: ["Sensual","Nostalgic","Tender"],      groove: ["swing","shuffle","rubato"],      lyricalVibe: ["Romantic devotion","Nostalgic storytelling","Letter to self"], texture: ["Smooth & liquid","Organic & breathing","Distressed & decayed"], energy: ["Steady groove throughout","Intimate & bare throughout","Starts huge then strips back"], harmonic: ["Jazz extensions","Major-key lift","Bluesy dominant"], mix: ["Lo-fi tape warmth","Intimate close-mic","Vintage analog"] },
+  "Gospel ensemble":                  { mood: ["Triumphant","Spiritual","Ecstatic"], groove: ["shuffle","syncopated","straight"], lyricalVibe: ["Spiritual seeking","Political protest","Coming-of-age narrative"], texture: ["Thick & saturated","Organic & breathing","Airy & weightless"], energy: ["Euphoric continuous build","Starts huge then strips back","Driving & relentless"], harmonic: ["Major-key lift","Bluesy dominant","Jazz extensions"], mix: ["Wide cinematic","Heavy reverb cathedral","Punchy & compressed"] },
+  "Screamed verse / melodic chorus":  { mood: ["Furious","Defiant","Desperate"],     groove: ["straight","broken","syncopated"], lyricalVibe: ["Defiant anthem","Political protest","Stream-of-consciousness"], texture: ["Thick & saturated","Distressed & decayed","Metallic & reflective"], energy: ["Driving & relentless","Slow burn to explosion","Tension without full release"], harmonic: ["Minor-key introspection","Dissonant tension","Bluesy dominant"], mix: ["Raw & uncompressed","Punchy & compressed","Dry & direct"] },
+  "Whisper to full belt":             { mood: ["Desperate","Triumphant","Anxious"],  groove: ["rubato","half-time","straight"], lyricalVibe: ["Confessional diary","Heartbreak elegy","Cinematic scene-setting"], texture: ["Organic & breathing","Airy & weightless","Thick & saturated"], energy: ["Slow burn to explosion","Starts huge then strips back","Tension without full release"], harmonic: ["Minor-key introspection","Classical voice-leading","Dissonant tension"], mix: ["Intimate close-mic","Wide cinematic","Heavy reverb cathedral"] },
+  "Spoken word over melody":          { mood: ["Unbothered","Haunted","Dreamlike"],  groove: ["half-time","syncopated","rubato"], lyricalVibe: ["Abstract poetry","Stream-of-consciousness","Social commentary"], texture: ["Distressed & decayed","Organic & breathing","Granular & particulate"], energy: ["Steady groove throughout","Intimate & bare throughout","Tension without full release"], harmonic: ["Modal ambiguity","Jazz extensions","Bluesy dominant"], mix: ["Lo-fi tape warmth","Dry & direct","Intimate close-mic"] },
+  "Layered harmonies no lead":        { mood: ["Serene","Dreamlike","Spiritual"],    groove: ["rubato","straight","shuffle"],   lyricalVibe: ["Mythic / allegorical","Surreal dreamscape","Spiritual seeking"], texture: ["Airy & weightless","Crystalline & brittle","Smooth & liquid"], energy: ["Sparse to wall of sound","Intimate & bare throughout","Euphoric continuous build"], harmonic: ["Classical voice-leading","Modal ambiguity","Drone-based static harmony"], mix: ["Heavy reverb cathedral","Wide cinematic","Vintage analog"] },
+  "Auto-tuned melodic delivery":      { mood: ["Electric","Unbothered","Nostalgic"], groove: ["half-time","syncopated","motorik"], lyricalVibe: ["Braggadocio flex","Hedonistic escapism","Stream-of-consciousness"], texture: ["Metallic & reflective","Digital & precise","Smooth & liquid"], energy: ["Steady groove throughout","Driving & relentless","Euphoric continuous build"], harmonic: ["Minor-key introspection","Major-key lift","Bluesy dominant"], mix: ["Futuristic digital","Punchy & compressed","Ultra clean & polished"] },
+  "Falsetto-led":                     { mood: ["Sensual","Tender","Dreamlike"],      groove: ["half-time","swing","syncopated"], lyricalVibe: ["Romantic devotion","Letter to self","Confessional diary"], texture: ["Smooth & liquid","Airy & weightless","Organic & breathing"], energy: ["Steady groove throughout","Intimate & bare throughout","Euphoric continuous build"], harmonic: ["Major-key lift","Jazz extensions","Minor-key introspection"], mix: ["Lo-fi tape warmth","Intimate close-mic","Punchy & compressed"] },
+};
+
+// HARMONIC_COMPLEMENTS: maps harmonic style → {mood, groove, lyricalVibe}
+const HARMONIC_COMPLEMENTS = {
+  "Minor-key introspection":   { mood: ["Melancholic","Lonely","Haunted"],       groove: ["rubato","half-time","swing"],   lyricalVibe: ["Heartbreak elegy","Letter to self","Existential questioning"], texture: ["Organic & breathing","Distressed & decayed","Airy & weightless"], vocalist: ["Smooth tenor","Breathy female lead","Whisper to full belt"], energy: ["Intimate & bare throughout","Slow burn to explosion","Tension without full release"], mix: ["Intimate close-mic","Lo-fi tape warmth","Heavy reverb cathedral"] },
+  "Major-key lift":            { mood: ["Euphoric","Triumphant","Tender"],       groove: ["straight","motorik","shuffle"], lyricalVibe: ["Romantic devotion","Coming-of-age narrative","Party celebration"], texture: ["Smooth & liquid","Airy & weightless","Thick & saturated"], vocalist: ["Gospel ensemble","Smooth tenor","Falsetto-led"], energy: ["Euphoric continuous build","Steady groove throughout","Driving & relentless"], mix: ["Wide cinematic","Ultra clean & polished","Punchy & compressed"] },
+  "Modal ambiguity":           { mood: ["Dreamlike","Haunted","Spiritual"],      groove: ["rubato","experimental","half-time"], lyricalVibe: ["Surreal dreamscape","Mythic / allegorical","Abstract poetry"], texture: ["Airy & weightless","Crystalline & brittle","Granular & particulate"], vocalist: ["Layered harmonies no lead","Androgynous voice","Melismatic soprano"], energy: ["Sparse to wall of sound","Tension without full release","Slow burn to explosion"], mix: ["Heavy reverb cathedral","Futuristic digital","Vintage analog"] },
+  "Dissonant tension":         { mood: ["Anxious","Furious","Haunted"],          groove: ["broken","experimental","syncopated"], lyricalVibe: ["Stream-of-consciousness","Existential questioning","Political protest"], texture: ["Metallic & reflective","Distressed & decayed","Granular & particulate"], vocalist: ["Whisper to full belt","Screamed verse / melodic chorus","Androgynous voice"], energy: ["Tension without full release","Driving & relentless","Slow burn to explosion"], mix: ["Raw & uncompressed","Dry & direct","Punchy & compressed"] },
+  "Jazz extensions":           { mood: ["Sensual","Bittersweet","Unbothered"],   groove: ["swing","shuffle","rubato"],     lyricalVibe: ["Romantic devotion","Nostalgic storytelling","Stream-of-consciousness"], texture: ["Smooth & liquid","Organic & breathing","Airy & weightless"], vocalist: ["Smooth tenor","Breathy female lead","Spoken word over melody"], energy: ["Steady groove throughout","Intimate & bare throughout","Starts huge then strips back"], mix: ["Lo-fi tape warmth","Vintage analog","Intimate close-mic"] },
+  "Drone-based static harmony":{ mood: ["Spiritual","Haunted","Dreamlike"],      groove: ["rubato","polyrhythm","experimental"], lyricalVibe: ["Spiritual seeking","Mythic / allegorical","Surreal dreamscape"], texture: ["Airy & weightless","Crystalline & brittle","Organic & breathing"], vocalist: ["Layered harmonies no lead","Melismatic soprano","Androgynous voice"], energy: ["Sparse to wall of sound","Tension without full release","Euphoric continuous build"], mix: ["Heavy reverb cathedral","Wide cinematic","Vintage analog"] },
+  "Classical voice-leading":   { mood: ["Tender","Triumphant","Melancholic"],    groove: ["rubato","straight","swing"],    lyricalVibe: ["Romantic devotion","Mythic / allegorical","Cinematic scene-setting"], texture: ["Smooth & liquid","Organic & breathing","Crystalline & brittle"], vocalist: ["Melismatic soprano","Smooth tenor","Breathy female lead"], energy: ["Starts huge then strips back","Intimate & bare throughout","Euphoric continuous build"], mix: ["Wide cinematic","Heavy reverb cathedral","Ultra clean & polished"] },
+  "Bluesy dominant":           { mood: ["Desperate","Sensual","Nostalgic"],      groove: ["shuffle","swing","syncopated"], lyricalVibe: ["Heartbreak elegy","Confessional diary","Nostalgic storytelling"], texture: ["Distressed & decayed","Organic & breathing","Thick & saturated"], vocalist: ["Raw male baritone","Smooth tenor","Gospel ensemble"], energy: ["Slow burn to explosion","Steady groove throughout","Intimate & bare throughout"], mix: ["Lo-fi tape warmth","Vintage analog","Raw & uncompressed"] },
+  "Microtonal":                { mood: ["Haunted","Spiritual","Dreamlike"],      groove: ["rubato","experimental","polyrhythm"], lyricalVibe: ["Mythic / allegorical","Abstract poetry","Surreal dreamscape"], texture: ["Crystalline & brittle","Granular & particulate","Metallic & reflective"], vocalist: ["Androgynous voice","Whisper to full belt","Layered harmonies no lead"], energy: ["Sparse to wall of sound","Tension without full release","Slow burn to explosion"], mix: ["Futuristic digital","Heavy reverb cathedral","Dry & direct"] },
+};
+
+// TEXTURE_COMPLEMENTS: maps sound texture → {mood, groove, lyricalVibe}
+const TEXTURE_COMPLEMENTS = {
+  "Granular & particulate":    { mood: ["Dreamlike","Anxious","Haunted"],        groove: ["experimental","rubato","broken"],     lyricalVibe: ["Abstract poetry","Surreal dreamscape","Stream-of-consciousness"], vocalist: ["Androgynous voice","Whisper to full belt","Layered harmonies no lead"], energy: ["Sparse to wall of sound","Tension without full release","Intimate & bare throughout"], harmonic: ["Modal ambiguity","Microtonal","Dissonant tension"], mix: ["Futuristic digital","Heavy reverb cathedral","Dry & direct"] },
+  "Smooth & liquid":           { mood: ["Sensual","Serene","Tender"],            groove: ["swing","half-time","rubato"],         lyricalVibe: ["Romantic devotion","Letter to self","Nostalgic storytelling"], vocalist: ["Breathy female lead","Smooth tenor","Falsetto-led"], energy: ["Steady groove throughout","Intimate & bare throughout","Euphoric continuous build"], harmonic: ["Jazz extensions","Major-key lift","Classical voice-leading"], mix: ["Lo-fi tape warmth","Vintage analog","Intimate close-mic"] },
+  "Crystalline & brittle":     { mood: ["Haunted","Dreamlike","Bittersweet"],    groove: ["rubato","straight","experimental"],   lyricalVibe: ["Mythic / allegorical","Surreal dreamscape","Existential questioning"], vocalist: ["Melismatic soprano","Layered harmonies no lead","Breathy female lead"], energy: ["Sparse to wall of sound","Intimate & bare throughout","Tension without full release"], harmonic: ["Modal ambiguity","Classical voice-leading","Microtonal"], mix: ["Heavy reverb cathedral","Ultra clean & polished","Wide cinematic"] },
+  "Thick & saturated":         { mood: ["Dark & brooding","Electric","Defiant"], groove: ["half-time","motorik","straight"],     lyricalVibe: ["Braggadocio flex","Hedonistic escapism","Defiant anthem"], vocalist: ["Raw male baritone","Auto-tuned melodic delivery","Screamed verse / melodic chorus"], energy: ["Driving & relentless","Steady groove throughout","Slow burn to explosion"], harmonic: ["Minor-key introspection","Dissonant tension","Major-key lift"], mix: ["Punchy & compressed","Raw & uncompressed","Futuristic digital"] },
+  "Airy & weightless":         { mood: ["Dreamlike","Serene","Spiritual"],       groove: ["rubato","half-time","straight"],      lyricalVibe: ["Surreal dreamscape","Spiritual seeking","Ode to a place"], vocalist: ["Breathy female lead","Layered harmonies no lead","Melismatic soprano"], energy: ["Sparse to wall of sound","Intimate & bare throughout","Euphoric continuous build"], harmonic: ["Modal ambiguity","Drone-based static harmony","Major-key lift"], mix: ["Heavy reverb cathedral","Wide cinematic","Vintage analog"] },
+  "Metallic & reflective":     { mood: ["Electric","Haunted","Anxious"],         groove: ["motorik","broken","syncopated"],      lyricalVibe: ["Stream-of-consciousness","Abstract poetry","Braggadocio flex"], vocalist: ["Auto-tuned melodic delivery","Androgynous voice","Screamed verse / melodic chorus"], energy: ["Driving & relentless","Tension without full release","Euphoric continuous build"], harmonic: ["Dissonant tension","Drone-based static harmony","Microtonal"], mix: ["Futuristic digital","Raw & uncompressed","Punchy & compressed"] },
+  "Organic & breathing":       { mood: ["Tender","Nostalgic","Serene"],          groove: ["swing","rubato","shuffle"],           lyricalVibe: ["Confessional diary","Ode to a place","Nostalgic storytelling"], vocalist: ["Breathy female lead","Smooth tenor","Spoken word over melody"], energy: ["Intimate & bare throughout","Steady groove throughout","Sparse to wall of sound"], harmonic: ["Major-key lift","Minor-key introspection","Jazz extensions"], mix: ["Lo-fi tape warmth","Intimate close-mic","Vintage analog"] },
+  "Digital & precise":         { mood: ["Electric","Unbothered","Anxious"],      groove: ["motorik","straight","syncopated"],    lyricalVibe: ["Abstract poetry","Hedonistic escapism","Social commentary"], vocalist: ["Auto-tuned melodic delivery","Androgynous voice","Spoken word over melody"], energy: ["Steady groove throughout","Driving & relentless","Euphoric continuous build"], harmonic: ["Minor-key introspection","Dissonant tension","Major-key lift"], mix: ["Ultra clean & polished","Futuristic digital","Punchy & compressed"] },
+  "Distressed & decayed":      { mood: ["Nostalgic","Melancholic","Haunted"],    groove: ["swing","rubato","half-time"],         lyricalVibe: ["Nostalgic storytelling","Letter to self","Heartbreak elegy"], vocalist: ["Smooth tenor","Raw male baritone","Spoken word over melody"], energy: ["Intimate & bare throughout","Slow burn to explosion","Steady groove throughout"], harmonic: ["Minor-key introspection","Bluesy dominant","Jazz extensions"], mix: ["Lo-fi tape warmth","Vintage analog","Raw & uncompressed"] },
+};
+
+// MIX_COMPLEMENTS: maps mix character → {mood, groove, lyricalVibe}
+const MIX_COMPLEMENTS = {
+  "Intimate close-mic":        { mood: ["Tender","Lonely","Melancholic"],        groove: ["rubato","half-time","swing"],   lyricalVibe: ["Confessional diary","Letter to self","Heartbreak elegy"], texture: ["Organic & breathing","Distressed & decayed","Airy & weightless"], vocalist: ["Breathy female lead","Smooth tenor","Whisper to full belt"], energy: ["Intimate & bare throughout","Slow burn to explosion","Sparse to wall of sound"], harmonic: ["Minor-key introspection","Jazz extensions","Classical voice-leading"] },
+  "Wide cinematic":            { mood: ["Triumphant","Haunted","Dreamlike"],     groove: ["rubato","straight","half-time"], lyricalVibe: ["Cinematic scene-setting","Mythic / allegorical","Ode to a place"], texture: ["Airy & weightless","Thick & saturated","Crystalline & brittle"], vocalist: ["Melismatic soprano","Gospel ensemble","Whisper to full belt"], energy: ["Starts huge then strips back","Sparse to wall of sound","Euphoric continuous build"], harmonic: ["Classical voice-leading","Major-key lift","Modal ambiguity"] },
+  "Lo-fi tape warmth":         { mood: ["Nostalgic","Bittersweet","Sensual"],    groove: ["swing","shuffle","half-time"],   lyricalVibe: ["Nostalgic storytelling","Confessional diary","Romantic devotion"], texture: ["Distressed & decayed","Organic & breathing","Smooth & liquid"], vocalist: ["Smooth tenor","Breathy female lead","Spoken word over melody"], energy: ["Steady groove throughout","Intimate & bare throughout","Slow burn to explosion"], harmonic: ["Jazz extensions","Bluesy dominant","Major-key lift"] },
+  "Ultra clean & polished":    { mood: ["Electric","Euphoric","Triumphant"],     groove: ["motorik","straight","syncopated"], lyricalVibe: ["Party celebration","Romantic devotion","Braggadocio flex"], texture: ["Smooth & liquid","Digital & precise","Airy & weightless"], vocalist: ["Auto-tuned melodic delivery","Smooth tenor","Falsetto-led"], energy: ["Euphoric continuous build","Driving & relentless","Steady groove throughout"], harmonic: ["Major-key lift","Jazz extensions","Dissonant tension"] },
+  "Raw & uncompressed":        { mood: ["Defiant","Furious","Desperate"],        groove: ["straight","broken","syncopated"], lyricalVibe: ["Defiant anthem","Political protest","Stream-of-consciousness"], texture: ["Distressed & decayed","Thick & saturated","Metallic & reflective"], vocalist: ["Raw male baritone","Screamed verse / melodic chorus","Whisper to full belt"], energy: ["Driving & relentless","Slow burn to explosion","Tension without full release"], harmonic: ["Minor-key introspection","Dissonant tension","Bluesy dominant"] },
+  "Heavy reverb cathedral":    { mood: ["Spiritual","Haunted","Dreamlike"],      groove: ["rubato","half-time","straight"], lyricalVibe: ["Spiritual seeking","Mythic / allegorical","Existential questioning"], texture: ["Airy & weightless","Crystalline & brittle","Organic & breathing"], vocalist: ["Melismatic soprano","Layered harmonies no lead","Whisper to full belt"], energy: ["Sparse to wall of sound","Euphoric continuous build","Slow burn to explosion"], harmonic: ["Drone-based static harmony","Classical voice-leading","Modal ambiguity"] },
+  "Punchy & compressed":       { mood: ["Defiant","Electric","Ecstatic"],        groove: ["straight","motorik","syncopated"], lyricalVibe: ["Defiant anthem","Party celebration","Braggadocio flex"], texture: ["Thick & saturated","Digital & precise","Metallic & reflective"], vocalist: ["Raw male baritone","Auto-tuned melodic delivery","Gospel ensemble"], energy: ["Driving & relentless","Euphoric continuous build","Steady groove throughout"], harmonic: ["Major-key lift","Minor-key introspection","Dissonant tension"] },
+  "Vintage analog":            { mood: ["Nostalgic","Sensual","Unbothered"],     groove: ["swing","shuffle","syncopated"],  lyricalVibe: ["Nostalgic storytelling","Romantic devotion","Hedonistic escapism"], texture: ["Organic & breathing","Distressed & decayed","Smooth & liquid"], vocalist: ["Smooth tenor","Breathy female lead","Spoken word over melody"], energy: ["Steady groove throughout","Intimate & bare throughout","Starts huge then strips back"], harmonic: ["Jazz extensions","Bluesy dominant","Major-key lift"] },
+  "Futuristic digital":        { mood: ["Electric","Dreamlike","Ecstatic"],      groove: ["motorik","straight","experimental"], lyricalVibe: ["Abstract poetry","Surreal dreamscape","Hedonistic escapism"], texture: ["Digital & precise","Metallic & reflective","Granular & particulate"], vocalist: ["Auto-tuned melodic delivery","Androgynous voice","Falsetto-led"], energy: ["Driving & relentless","Tension without full release","Euphoric continuous build"], harmonic: ["Modal ambiguity","Dissonant tension","Microtonal"] },
+  "Dry & direct":              { mood: ["Unbothered","Defiant","Tender"],        groove: ["straight","swing","half-time"],  lyricalVibe: ["Confessional diary","Social commentary","Braggadocio flex"], texture: ["Organic & breathing","Distressed & decayed","Digital & precise"], vocalist: ["Spoken word over melody","Raw male baritone","Smooth tenor"], energy: ["Intimate & bare throughout","Steady groove throughout","Driving & relentless"], harmonic: ["Minor-key introspection","Bluesy dominant","Jazz extensions"] },
 };
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -7335,59 +7469,76 @@ function EnginePage({ onNavigate }) {
   };
 
   // ── SMART SUGGESTIONS ───────────────────────────────────────────────
-  // ── SMART SUGGESTIONS ───────────────────────────────────────────────
-  // Global trigger: any selection in any section makes the button visible.
-  // Pools from SUGGESTION_MAP (instrument → {mood, groove, lyricalVibe}) for
-  // every selected instrument. Heuristic echo-fallbacks layer on top of that
-  // pool when the user has already picked mood/groove/lyrical themselves —
-  // we include their current selection's neighbors via SUGGESTION_MAP reverse
-  // scan, so non-instrument picks still drive suggestions.
-  // Output: picks 1 suggestion for each of the 3 currently-EMPTY target
-  // sections. Target sections chosen dynamically from the priority order
-  // [mood, groove, lyricalVibe] — skipping any already filled.
-  // Each suggestion chip has a 🎲 button to reroll just itself.
-  const [suggestions, setSuggestions] = useState(null); // null | { targets:[ids], values:{id:val} }
+  // Section-local trigger: each chip section gets its own ✨ button that
+  // appears when the user has made a selection in that section. Clicking
+  // opens a small panel INSIDE that section showing suggestions for 2-3
+  // other sections, driven by MOOD/GROOVE/LYRICAL_COMPLEMENTS and the
+  // SUGGESTION_MAP for instrument picks. Each suggestion has a 🎲 reroll.
+  // State: { sourceId, targets, values } — only one panel open at a time.
+  const [suggestions, setSuggestions] = useState(null);
 
-  // Build pools based on ALL current state, not just instruments.
-  // Instrument selections are the primary pool source (direct SUGGESTION_MAP
-  // lookup). Mood/groove/lyrical picks contribute via reverse scan: for each
-  // user-selected value, find all instruments whose SUGGESTION_MAP entry
-  // contains that value, then pull that instrument's OTHER-section options
-  // into the pool. This lets any element drive suggestions.
+  // Build pools for ALL 8 target sections: mood, groove, lyricalVibe, energy,
+  // vocalist, harmonic, texture, mix. Every complement-map entry can carry
+  // fields for any of these sections — the builder walks all fields found in
+  // each contributing entry and pushes into the matching pool. This lets data
+  // fill in incrementally without requiring code changes.
+  //
+  // Contribution layers:
+  //   (1) SUGGESTION_MAP[instrument] for every selected instrument
+  //   (2) Direct complement maps keyed by the user's current picks:
+  //       MOOD_/GROOVE_/LYRICAL_/ENERGY_/VOCALIST_/HARMONIC_/TEXTURE_/MIX_COMPLEMENTS
+  //   (3) Indirect reverse: for every section the user filled, scan
+  //       SUGGESTION_MAP for instruments that pair with that value and
+  //       borrow all their OTHER-section options into the pools
+  const POOL_FIELDS = ["mood","groove","lyricalVibe","energy","vocalist","harmonic","texture","mix"];
   const buildSuggestionPools = () => {
-    const moodPool = [];
-    const groovePool = [];
-    const lyricalPool = [];
+    const pools = {};
+    POOL_FIELDS.forEach(f => { pools[f] = []; });
 
-    // 1) Direct contributions from selected instruments
-    const insts = state.specificInstruments || [];
-    insts.forEach(inst => {
-      const entry = SUGGESTION_MAP[inst];
+    // Generic helper: merge all fields from an entry into the pools,
+    // skipping a source field (so we don't push a section's own value
+    // into its own pool — that would suggest something the user just picked).
+    const mergeEntry = (entry, skipField) => {
       if (!entry) return;
-      if (entry.mood) moodPool.push(...entry.mood);
-      if (entry.groove) groovePool.push(...entry.groove);
-      if (entry.lyricalVibe) lyricalPool.push(...entry.lyricalVibe);
-    });
+      POOL_FIELDS.forEach(f => {
+        if (f === skipField) return;
+        if (entry[f] && Array.isArray(entry[f])) pools[f].push(...entry[f]);
+      });
+    };
 
-    // 2) Reverse contributions: for each mood/groove/lyrical already chosen
-    // by the user, scan SUGGESTION_MAP for instruments that pair with that
-    // choice, then borrow their OTHER-section options into the pools.
+    // 1) Instrument contributions — SUGGESTION_MAP
+    const insts = state.specificInstruments || [];
+    insts.forEach(inst => mergeEntry(SUGGESTION_MAP[inst], null));
+
+    // 2) Direct complement maps — each keyed by a different state field.
+    // skipField here tells mergeEntry NOT to push that map's source section
+    // back into its own pool.
+    mergeEntry(MOOD_COMPLEMENTS[state.mood], "mood");
+    if (state.groove && state.groove !== "default") {
+      mergeEntry(GROOVE_COMPLEMENTS[state.groove], "groove");
+    }
+    mergeEntry(LYRICAL_COMPLEMENTS[state.lyricalVibe], "lyricalVibe");
+    mergeEntry(ENERGY_COMPLEMENTS[state.energy], "energy");
+    mergeEntry(VOCALIST_COMPLEMENTS[state.vocalist], "vocalist");
+    mergeEntry(HARMONIC_COMPLEMENTS[state.harmonic], "harmonic");
+    mergeEntry(TEXTURE_COMPLEMENTS[state.texture], "texture");
+    mergeEntry(MIX_COMPLEMENTS[state.mix], "mix");
+
+    // 3) Indirect reverse: scan SUGGESTION_MAP entries whose fields contain
+    // the user's chosen values. When a match is found, borrow ALL of that
+    // instrument's OTHER-field options into the pools.
     const scanReverse = (userValue, field) => {
       if (!userValue) return;
+      if (field === "groove" && userValue === "default") return;
       Object.values(SUGGESTION_MAP).forEach(entry => {
         if (!entry[field]) return;
         if (!entry[field].includes(userValue)) return;
-        // This instrument pairs with the user's pick. Add its other sections.
-        if (field !== "mood" && entry.mood) moodPool.push(...entry.mood);
-        if (field !== "groove" && entry.groove) groovePool.push(...entry.groove);
-        if (field !== "lyricalVibe" && entry.lyricalVibe) lyricalPool.push(...entry.lyricalVibe);
+        mergeEntry(entry, field);
       });
     };
-    scanReverse(state.mood, "mood");
-    scanReverse(state.groove, "groove");
-    scanReverse(state.lyricalVibe, "lyricalVibe");
+    POOL_FIELDS.forEach(f => scanReverse(state[f], f));
 
-    return { mood: moodPool, groove: groovePool, lyricalVibe: lyricalPool };
+    return pools;
   };
 
   const pickRandom = (arr, exclude) => {
@@ -7397,47 +7548,48 @@ function EnginePage({ onNavigate }) {
     return pool[Math.floor(Math.random() * pool.length)];
   };
 
-  // Determine which sections to target. Default priority: mood, groove,
-  // lyricalVibe — skip any that already has a user selection (so we don't
-  // suggest things they've already decided). If all 3 are filled, fall back
-  // to all 3 (user explicitly asked, so re-suggest).
-  const pickTargetSections = () => {
-    const candidates = ["mood", "groove", "lyricalVibe"];
-    const empty = candidates.filter(id => !state[id] || (id === "groove" && state.groove === "default"));
-    return empty.length > 0 ? empty : candidates;
+  // Returns whether a section currently has a user pick (accounts for the
+  // special groove "default" sentinel value). Used to determine target
+  // eligibility and which sections should be skipped.
+  const sectionIsFilled = (id) => {
+    if (id === "groove") return state.groove && state.groove !== "default";
+    return !!state[id];
   };
 
-  // Returns true when anything in state is selected — drives button visibility.
-  const hasAnySelection = () => {
-    if ((state.specificInstruments || []).length > 0) return true;
-    if (state.mood) return true;
-    if (state.groove && state.groove !== "default") return true;
-    if (state.lyricalVibe) return true;
-    if (state.vocalist) return true;
-    if (state.energy) return true;
-    if (state.harmonic) return true;
-    if (state.texture) return true;
-    if (state.mix) return true;
-    if ((state.slots || []).some(s => s && s.genre)) return true;
-    if (state.bpm > 0) return true;
-    return false;
+  // Determine which sections to target. Exclude the source section (no
+  // point suggesting back to itself) AND any section already filled (don't
+  // overwrite user's picks). If nothing remains, fall back to empty array —
+  // compute will return noMappings for that.
+  // When source is specificInstruments, DO include the primary sections
+  // even if they're filled (instruments are the most versatile source and
+  // user expects full complementary picture).
+  const pickTargetSections = (sourceId) => {
+    const candidates = POOL_FIELDS.filter(id => id !== sourceId);
+    // Only keep sections that are empty (so we don't overwrite user picks)
+    return candidates.filter(id => !sectionIsFilled(id));
   };
 
-  const computeSuggestions = () => {
+  const computeSuggestions = (sourceId) => {
     const pools = buildSuggestionPools();
-    const targets = pickTargetSections();
-    // Empty pool check
-    const anyNonEmpty = targets.some(id => pools[id] && pools[id].length > 0);
-    if (!anyNonEmpty) return { noMappings: true };
+    // Filter targets to only those with non-empty pools — a section with
+    // zero curated data shouldn't appear as an empty card in the panel.
+    const rawTargets = pickTargetSections(sourceId);
+    const targets = rawTargets.filter(id => pools[id] && pools[id].length > 0);
+    if (targets.length === 0) return { sourceId, noMappings: true };
     const values = {};
     targets.forEach(id => {
       values[id] = pickRandom(pools[id]);
     });
-    return { targets, values };
+    return { sourceId, targets, values };
   };
 
-  const handleSuggestClick = () => {
-    const result = computeSuggestions();
+  const handleSuggestClick = (sourceId) => {
+    // Toggle: clicking button from same section closes panel
+    if (suggestions && suggestions.sourceId === sourceId) {
+      setSuggestions(null);
+      return;
+    }
+    const result = computeSuggestions(sourceId);
     setSuggestions(result);
   };
 
@@ -7784,6 +7936,204 @@ function EnginePage({ onNavigate }) {
         onMouseLeave={(e) => { e.currentTarget.style.borderColor = T.border; e.currentTarget.style.color = color; }}>
         {label}
       </button>
+    );
+  };
+
+  // ─────────────────────────────────────────────────────────────────────
+  // SECTION-LOCAL SUGGEST — Renders a ✨ button inside the chip row of
+  // a section, right alongside the chips. Only shown when that section
+  // has a selected value (so the button sits near the chip the user just
+  // picked). Clicking toggles the suggestions panel open for that section.
+  //
+  //   hasSelection(id): compute whether this section has a committed pick
+  //   (simple state[id] truthy check, with groove "default" treated empty).
+  // ─────────────────────────────────────────────────────────────────────
+  const sectionHasSelection = (sectionId) => {
+    if (sectionId === "groove") return state.groove && state.groove !== "default";
+    if (sectionId === "specificInstruments") return (state.specificInstruments || []).length > 0;
+    return !!state[sectionId];
+  };
+
+  const renderSectionSuggestButton = (sectionId) => {
+    if (!sectionHasSelection(sectionId)) return null;
+    const isOpen = suggestions && suggestions.sourceId === sectionId;
+    return (
+      <button
+        type="button"
+        onClick={() => handleSuggestClick(sectionId)}
+        title="Suggest complementary elements based on this selection"
+        style={{
+          padding: "4px 10px",
+          background: isOpen ? `${V.neonGold}22` : "transparent",
+          border: `1px dashed ${isOpen ? V.neonGold : V.neonGold + "88"}`,
+          borderRadius: T.r_md,
+          color: isOpen ? V.neonGold : V.neonGold,
+          fontSize: T.fs_sm, fontFamily: T.font_mono,
+          fontWeight: 700, letterSpacing: "0.08em",
+          cursor: "pointer", height: 24,
+          display: "inline-flex", alignItems: "center", gap: 4,
+          transition: `all ${T.dur_fast} ${T.ease}`,
+          boxShadow: isOpen ? `0 0 8px ${V.neonGold}66` : "none",
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.background = `${V.neonGold}22`;
+          e.currentTarget.style.borderColor = V.neonGold;
+          e.currentTarget.style.boxShadow = `0 0 8px ${V.neonGold}66`;
+        }}
+        onMouseLeave={(e) => {
+          if (isOpen) return;
+          e.currentTarget.style.background = "transparent";
+          e.currentTarget.style.borderColor = V.neonGold + "88";
+          e.currentTarget.style.boxShadow = "none";
+        }}>
+        ✨ SUGGEST
+      </button>
+    );
+  };
+
+  const renderSectionSuggestPanel = (sectionId) => {
+    if (!suggestions || suggestions.sourceId !== sectionId) return null;
+    if (suggestions.noMappings) {
+      return (
+        <div style={{
+          marginTop: T.s2,
+          padding: `${T.s2}px ${T.s3}px`,
+          background: `${V.neonGold}0A`,
+          border: `1px dashed ${V.neonGold}88`,
+          borderRadius: T.r_md,
+          fontSize: T.fs_sm, fontFamily: T.font_sans,
+          color: T.textSec,
+          display: "flex", alignItems: "center", justifyContent: "space-between",
+          gap: T.s2,
+        }}>
+          <span>No complement data yet for this pick.</span>
+          <button type="button" onClick={dismissSuggestions}
+            style={{
+              background: "transparent", border: "none", color: T.textMuted,
+              fontSize: T.fs_xs, fontFamily: T.font_mono, fontWeight: 700,
+              cursor: "pointer", padding: 0, letterSpacing: "0.1em",
+            }}>DISMISS</button>
+        </div>
+      );
+    }
+    return (
+      <div style={{
+        marginTop: T.s2,
+        padding: T.s3,
+        background: `${V.neonGold}0A`,
+        border: `1px dashed ${V.neonGold}88`,
+        borderRadius: T.r_md,
+        display: "flex", flexDirection: "column", gap: T.s2,
+      }}>
+        <div style={{
+          display: "flex", alignItems: "center", justifyContent: "space-between",
+          gap: T.s2, flexWrap: "wrap",
+        }}>
+          <div style={{
+            fontSize: 10, fontFamily: T.font_mono, fontWeight: 700,
+            color: V.neonGold, letterSpacing: "0.15em",
+          }}>✨ COMPLEMENTS</div>
+          <div style={{ display: "flex", gap: T.s1 }}>
+            <button type="button" onClick={acceptAllSuggestions}
+              style={{
+                padding: "3px 8px", background: V.neonGold,
+                border: `1px solid ${V.neonGold}`, borderRadius: T.r_sm,
+                color: "#000", fontSize: 10, fontFamily: T.font_mono,
+                fontWeight: 700, letterSpacing: "0.1em", cursor: "pointer",
+              }}>ACCEPT ALL</button>
+            <button type="button" onClick={dismissSuggestions}
+              style={{
+                padding: "3px 8px", background: "transparent",
+                border: `1px solid ${T.border}`, borderRadius: T.r_sm,
+                color: T.textMuted, fontSize: 10, fontFamily: T.font_mono,
+                fontWeight: 700, letterSpacing: "0.1em", cursor: "pointer",
+              }}>DISMISS</button>
+          </div>
+        </div>
+        <div style={{
+          display: "grid",
+          gridTemplateColumns: isMobile ? "1fr" : `repeat(${Math.min(suggestions.targets.length, 3)}, minmax(0, 1fr))`,
+          gap: T.s2,
+        }}>
+          {suggestions.targets.map(id => {
+            const value = suggestions.values ? suggestions.values[id] : null;
+            const labelFor = {
+              mood: "Mood", groove: "Groove", lyricalVibe: "Lyrical",
+              energy: "Energy", vocalist: "Vocalist", harmonic: "Harmonic",
+              texture: "Texture", mix: "Mix",
+            };
+            const display = value
+              ? (id === "groove" ? (GROOVES.find(g => g.id === value)?.label || value) : value)
+              : null;
+            return (
+              <div key={id} style={{
+                display: "flex", flexDirection: "column", gap: 4,
+                padding: T.s2,
+                background: T.surface,
+                border: `1px solid ${T.border}`,
+                borderRadius: T.r_sm,
+                opacity: value ? 1 : 0.4,
+              }}>
+                <div style={{
+                  display: "flex", alignItems: "center", justifyContent: "space-between",
+                  gap: T.s1,
+                }}>
+                  <div style={{
+                    fontSize: 9, fontFamily: T.font_mono, fontWeight: 700,
+                    color: T.textMuted, letterSpacing: "0.15em",
+                  }}>{labelFor[id].toUpperCase()}</div>
+                  {value && (
+                    <button type="button"
+                      onClick={() => rerollSuggestion(id)}
+                      title="Reroll this suggestion"
+                      style={{
+                        padding: "2px 6px", background: "transparent",
+                        border: `1px solid ${T.border}`, borderRadius: T.r_sm,
+                        color: T.textMuted, fontSize: 11, cursor: "pointer",
+                        transition: `all ${T.dur_fast} ${T.ease}`,
+                      }}
+                      onMouseEnter={(e) => { e.currentTarget.style.borderColor = V.neonGold; e.currentTarget.style.color = V.neonGold; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.borderColor = T.border; e.currentTarget.style.color = T.textMuted; }}>
+                      🎲
+                    </button>
+                  )}
+                </div>
+                {value ? (
+                  <button type="button"
+                    onClick={() => acceptSuggestion(id, value)}
+                    style={{
+                      padding: "6px 10px",
+                      background: `${V.neonGold}15`,
+                      border: `1px solid ${V.neonGold}`,
+                      borderRadius: T.r_sm,
+                      color: T.text,
+                      fontSize: T.fs_sm, fontFamily: T.font_sans,
+                      fontWeight: 500, cursor: "pointer", textAlign: "left",
+                      boxShadow: `0 0 6px ${V.neonGold}44`,
+                      transition: `all ${T.dur_fast} ${T.ease}`,
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = `${V.neonGold}30`;
+                      e.currentTarget.style.boxShadow = `0 0 10px ${V.neonGold}88`;
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = `${V.neonGold}15`;
+                      e.currentTarget.style.boxShadow = `0 0 6px ${V.neonGold}44`;
+                    }}>
+                    {display}
+                  </button>
+                ) : (
+                  <span style={{
+                    padding: "6px 10px",
+                    fontSize: T.fs_sm, fontFamily: T.font_sans,
+                    color: T.textMuted, fontStyle: "italic",
+                  }}>Accepted ✓</span>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
     );
   };
 
@@ -8330,10 +8680,12 @@ function EnginePage({ onNavigate }) {
                       onClick: () => set("mood", state.mood === e ? "" : e),
                     }))}
                     {useCollapse && renderCollapseControls("mood", hiddenCount)}
+                    {renderSectionSuggestButton("mood")}
                   </>
                 );
               })()}
             </div>
+            {renderSectionSuggestPanel("mood")}
           </Section>
 
           <Section title="Energy arc"
@@ -8366,10 +8718,12 @@ function EnginePage({ onNavigate }) {
                       onClick: () => set("energy", state.energy === e ? "" : e),
                     }))}
                     {useCollapse && renderCollapseControls("energy", hiddenCount)}
+                    {renderSectionSuggestButton("energy")}
                   </>
                 );
               })()}
             </div>
+            {renderSectionSuggestPanel("energy")}
           </Section>
 
           <Section title="Groove" hint="Sets the rhythmic feel."
@@ -8420,10 +8774,12 @@ function EnginePage({ onNavigate }) {
                       onClick: () => set("groove", state.groove === e ? "" : e),
                     }))}
                     {useCollapse && renderCollapseControls("groove", hiddenCount)}
+                    {renderSectionSuggestButton("groove")}
                   </>
                 );
               })()}
             </div>
+            {renderSectionSuggestPanel("groove")}
           </Section>
 
           <Section title="BPM"
@@ -8559,10 +8915,12 @@ function EnginePage({ onNavigate }) {
                           onClick: () => set("vocalist", state.vocalist === e ? "" : e),
                         }))}
                         {useCollapse && renderCollapseControls("vocalist", hiddenCount)}
+                        {renderSectionSuggestButton("vocalist")}
                       </>
                     );
                   })()}
                 </div>
+                {renderSectionSuggestPanel("vocalist")}
               </Section>
 
               <Section title="Language" hint="Shifts vocal phrasing and cadence."
@@ -8615,10 +8973,12 @@ function EnginePage({ onNavigate }) {
                           onClick: () => set("lyricalVibe", state.lyricalVibe === e ? "" : e),
                         }))}
                         {useCollapse && renderCollapseControls("lyricalVibe", hiddenCount)}
+                        {renderSectionSuggestButton("lyricalVibe")}
                       </>
                     );
                   })()}
                 </div>
+                {renderSectionSuggestPanel("lyricalVibe")}
               </Section>
             </>
           )}
@@ -8641,6 +9001,7 @@ function EnginePage({ onNavigate }) {
                     <CountStepper value={state.specificCount} onChange={v => set("specificCount", v)} />
                   </>
                 )}
+                {renderSectionSuggestButton("specificInstruments")}
                 {renderLockBtn("specificInstruments")}
               </div>
             }>
@@ -8651,6 +9012,7 @@ function EnginePage({ onNavigate }) {
               onLockToggle={v => toggleOptionLock("specificInstruments", v)}
               casinoOutlines={casinoOutlines}
               maxPerCategory={Math.max(5, effectiveLimits.maxOptionsPerSection)} />
+            {renderSectionSuggestPanel("specificInstruments")}
           </Section>
 
           <Section title="Harmonic style"
@@ -8683,10 +9045,12 @@ function EnginePage({ onNavigate }) {
                       onClick: () => set("harmonic", state.harmonic === e ? "" : e),
                     }))}
                     {useCollapse && renderCollapseControls("harmonic", hiddenCount)}
+                    {renderSectionSuggestButton("harmonic")}
                   </>
                 );
               })()}
             </div>
+            {renderSectionSuggestPanel("harmonic")}
           </Section>
 
           <Section title="Sound texture"
@@ -8719,10 +9083,12 @@ function EnginePage({ onNavigate }) {
                       onClick: () => set("texture", state.texture === e ? "" : e),
                     }))}
                     {useCollapse && renderCollapseControls("texture", hiddenCount)}
+                    {renderSectionSuggestButton("texture")}
                   </>
                 );
               })()}
             </div>
+            {renderSectionSuggestPanel("texture")}
           </Section>
 
           <Section title="Mix character"
@@ -8755,10 +9121,12 @@ function EnginePage({ onNavigate }) {
                       onClick: () => set("mix", state.mix === e ? "" : e),
                     }))}
                     {useCollapse && renderCollapseControls("mix", hiddenCount)}
+                    {renderSectionSuggestButton("mix")}
                   </>
                 );
               })()}
             </div>
+            {renderSectionSuggestPanel("mix")}
           </Section>
         </div>
 
@@ -8801,187 +9169,6 @@ function EnginePage({ onNavigate }) {
               onNavigate={onNavigate}
               onLockedClick={() => setSalesModalFeature("joystick")}
             />
-            {/* ── SUGGEST COMPLEMENTS (global) ─────────────────────────
-                Button visible whenever ANY selection exists across any
-                section. Opens the suggestions panel below it — 3 picks
-                across the 3 currently-EMPTY of {mood, groove, lyricalVibe}.
-                Each suggestion has a 🎲 reroll button. Free feature. ──── */}
-            {hasAnySelection() && (
-              <button type="button"
-                onClick={handleSuggestClick}
-                title="Suggest complementary elements based on your current selections"
-                style={{
-                  padding: "10px 14px",
-                  background: suggestions ? `${V.neonGold}22` : "transparent",
-                  border: `1px solid ${suggestions ? V.neonGold : T.border}`,
-                  borderRadius: T.r_md,
-                  color: suggestions ? V.neonGold : T.textSec,
-                  fontSize: T.fs_xs, fontFamily: T.font_mono,
-                  fontWeight: 700, letterSpacing: "0.12em",
-                  cursor: "pointer",
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  gap: 6, minHeight: 40,
-                  transition: `all ${T.dur_fast} ${T.ease}`,
-                  boxShadow: suggestions ? `0 0 10px ${V.neonGold}66` : "none",
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.borderColor = V.neonGold;
-                  e.currentTarget.style.color = V.neonGold;
-                  e.currentTarget.style.boxShadow = `0 0 10px ${V.neonGold}66`;
-                }}
-                onMouseLeave={(e) => {
-                  if (suggestions) return;
-                  e.currentTarget.style.borderColor = T.border;
-                  e.currentTarget.style.color = T.textSec;
-                  e.currentTarget.style.boxShadow = "none";
-                }}>
-                ✨ SUGGEST COMPLEMENTS
-              </button>
-            )}
-            {suggestions && (
-              <div style={{
-                padding: T.s3,
-                background: `${V.neonGold}0A`,
-                border: `1px dashed ${V.neonGold}88`,
-                borderRadius: T.r_md,
-                display: "flex", flexDirection: "column", gap: T.s2,
-              }}>
-                {suggestions.noMappings ? (
-                  <div style={{
-                    fontSize: T.fs_sm, fontFamily: T.font_sans,
-                    color: T.textSec,
-                  }}>
-                    No complement data yet for your current picks. Try adding a common instrument, mood, or groove.
-                    <button type="button" onClick={dismissSuggestions}
-                      style={{
-                        marginLeft: T.s2,
-                        background: "transparent",
-                        border: "none", color: T.textMuted,
-                        fontSize: T.fs_xs, fontFamily: T.font_mono,
-                        fontWeight: 700, cursor: "pointer", padding: 0,
-                      }}>DISMISS</button>
-                  </div>
-                ) : (
-                  <>
-                    <div style={{
-                      display: "flex", alignItems: "center", justifyContent: "space-between",
-                      gap: T.s2, flexWrap: "wrap",
-                    }}>
-                      <div style={{
-                        fontSize: 9, fontFamily: T.font_mono, fontWeight: 700,
-                        color: V.neonGold, letterSpacing: "0.15em",
-                      }}>
-                        ✨ COMPLEMENTS
-                      </div>
-                      <div style={{ display: "flex", gap: T.s1 }}>
-                        <button type="button" onClick={acceptAllSuggestions}
-                          style={{
-                            padding: "3px 8px",
-                            background: V.neonGold,
-                            border: `1px solid ${V.neonGold}`,
-                            borderRadius: T.r_sm,
-                            color: "#000",
-                            fontSize: 10, fontFamily: T.font_mono,
-                            fontWeight: 700, letterSpacing: "0.1em",
-                            cursor: "pointer",
-                          }}>ACCEPT ALL</button>
-                        <button type="button" onClick={dismissSuggestions}
-                          style={{
-                            padding: "3px 8px",
-                            background: "transparent",
-                            border: `1px solid ${T.border}`,
-                            borderRadius: T.r_sm,
-                            color: T.textMuted,
-                            fontSize: 10, fontFamily: T.font_mono,
-                            fontWeight: 700, letterSpacing: "0.1em",
-                            cursor: "pointer",
-                          }}>DISMISS</button>
-                      </div>
-                    </div>
-                    <div style={{
-                      display: "flex", flexDirection: "column", gap: T.s1,
-                    }}>
-                      {suggestions.targets && suggestions.targets.map(id => {
-                        const value = suggestions.values ? suggestions.values[id] : null;
-                        const labelFor = { mood: "Mood", groove: "Groove", lyricalVibe: "Lyrical" };
-                        const display = value
-                          ? (id === "groove" ? (GROOVES.find(g => g.id === value)?.label || value) : value)
-                          : null;
-                        return (
-                          <div key={id} style={{
-                            display: "flex", flexDirection: "column", gap: 2,
-                            padding: T.s2,
-                            background: T.surface,
-                            border: `1px solid ${T.border}`,
-                            borderRadius: T.r_sm,
-                            opacity: value ? 1 : 0.4,
-                          }}>
-                            <div style={{
-                              display: "flex", alignItems: "center", justifyContent: "space-between",
-                              gap: T.s1,
-                            }}>
-                              <div style={{
-                                fontSize: 9, fontFamily: T.font_mono, fontWeight: 700,
-                                color: T.textMuted, letterSpacing: "0.15em",
-                              }}>{labelFor[id].toUpperCase()}</div>
-                              {value && (
-                                <button type="button"
-                                  onClick={() => rerollSuggestion(id)}
-                                  title="Reroll this suggestion"
-                                  style={{
-                                    padding: "2px 6px",
-                                    background: "transparent",
-                                    border: `1px solid ${T.border}`,
-                                    borderRadius: T.r_sm,
-                                    color: T.textMuted,
-                                    fontSize: 11, cursor: "pointer",
-                                    transition: `all ${T.dur_fast} ${T.ease}`,
-                                  }}
-                                  onMouseEnter={(e) => { e.currentTarget.style.borderColor = V.neonGold; e.currentTarget.style.color = V.neonGold; }}
-                                  onMouseLeave={(e) => { e.currentTarget.style.borderColor = T.border; e.currentTarget.style.color = T.textMuted; }}>
-                                  🎲
-                                </button>
-                              )}
-                            </div>
-                            {value ? (
-                              <button type="button"
-                                onClick={() => acceptSuggestion(id, value)}
-                                style={{
-                                  padding: "6px 10px",
-                                  background: `${V.neonGold}15`,
-                                  border: `1px solid ${V.neonGold}`,
-                                  borderRadius: T.r_sm,
-                                  color: T.text,
-                                  fontSize: T.fs_sm, fontFamily: T.font_sans,
-                                  fontWeight: 500, cursor: "pointer", textAlign: "left",
-                                  boxShadow: `0 0 6px ${V.neonGold}44`,
-                                  transition: `all ${T.dur_fast} ${T.ease}`,
-                                }}
-                                onMouseEnter={(e) => {
-                                  e.currentTarget.style.background = `${V.neonGold}30`;
-                                  e.currentTarget.style.boxShadow = `0 0 10px ${V.neonGold}88`;
-                                }}
-                                onMouseLeave={(e) => {
-                                  e.currentTarget.style.background = `${V.neonGold}15`;
-                                  e.currentTarget.style.boxShadow = `0 0 6px ${V.neonGold}44`;
-                                }}>
-                                {display}
-                              </button>
-                            ) : (
-                              <span style={{
-                                padding: "6px 10px",
-                                fontSize: T.fs_sm, fontFamily: T.font_sans,
-                                color: T.textMuted, fontStyle: "italic",
-                              }}>Accepted ✓</span>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </>
-                )}
-              </div>
-            )}
             {/* Transient toast — shows when user clicks HIT with 0 fuel */}
             {toast && (
               <div style={{
