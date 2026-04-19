@@ -291,7 +291,7 @@ const TIER_FEATURES = {
 const FUEL_TYPES = {
   free:  { id: "free",  label: "Free Hit",  color: "#3B82F6", emoji: "🔵" },
   pro:   { id: "pro",   label: "Pro Hit",   color: "#FF1744", emoji: "🔴" },
-  vip:   { id: "vip",   label: "VIP Hit",   color: "#C792EA", emoji: "🟣" },
+  vip:   { id: "vip",   label: "VIP Hit",   color: "#FFD700", emoji: "🟣" },
   trend: { id: "trend", label: "Trend Hit", color: "#FFD700", emoji: "⭐" },
 };
 
@@ -479,6 +479,7 @@ const TierContext = createContext({
   streak: 0, dailyBonus: null, dismissDailyBonus: () => {},
   isDebug: false,
   toggleDevMode: () => {},
+  setDevTier: () => {},
   devModeActive: false,
 });
 
@@ -500,26 +501,22 @@ const ThemeContext = createContext({ theme: "dark", setTheme: () => {}, toggleTh
 function useTheme() { return useContext(ThemeContext); }
 
 function ThemeProvider({ children }) {
-  const [theme, setThemeState] = useState(() => {
-    if (typeof localStorage === "undefined") return "dark";
-    try {
-      const saved = localStorage.getItem("he-theme-v1");
-      if (saved === "dark" || saved === "light") return saved;
-    } catch {}
-    return "dark";
-  });
+  // Dark mode only — light theme removed from product. We keep the
+  // provider so the CSS var system still works, but state is locked.
+  const [theme] = useState("dark");
 
-  // Apply theme to document root. Also inject the CSS var stylesheet once.
+  // Apply theme to document root.
   useEffect(() => {
     if (typeof document === "undefined") return;
-    document.documentElement.dataset.theme = theme;
-    try { localStorage.setItem("he-theme-v1", theme); } catch {}
-  }, [theme]);
+    document.documentElement.dataset.theme = "dark";
+    // Clear any stale stored preference from the old light-mode build
+    try { localStorage.removeItem("he-theme-v1"); } catch {}
+  }, []);
 
-  const setTheme = (next) => {
-    if (next === "dark" || next === "light") setThemeState(next);
-  };
-  const toggleTheme = () => setThemeState(t => t === "dark" ? "light" : "dark");
+  // No-op setters kept for API compatibility with any components still
+  // holding references to setTheme/toggleTheme.
+  const setTheme = () => {};
+  const toggleTheme = () => {};
 
   const value = useMemo(() => ({ theme, setTheme, toggleTheme }), [theme]);
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
@@ -1096,6 +1093,25 @@ function TierProvider({ children }) {
     }
   };
 
+  // DEV MODE — jump directly to any tier. Grants ownership of all lower
+  // tiers (so upgrade paths stay consistent) and sets the active tier.
+  // REMOVE BEFORE PUBLIC LAUNCH.
+  const setDevTier = (targetTier) => {
+    const allTiers = ["free", "pro", "vip", "admin"];
+    if (!allTiers.includes(targetTier)) return;
+    setOwnedTiers(prev => {
+      const next = new Set(prev);
+      // Grant ownership up to the target tier (free is always owned)
+      allTiers.forEach(t => {
+        if (TIER_RANK[t] <= TIER_RANK[targetTier]) next.add(t);
+      });
+      // Revoke admin if downgrading out of admin
+      if (targetTier !== "admin") next.delete("admin");
+      return next;
+    });
+    _setTierInternal(targetTier);
+  };
+
   const features = TIER_FEATURES[tier] || TIER_FEATURES.free;
   const value = useMemo(() => ({
     tier, setTier, features,
@@ -1103,6 +1119,7 @@ function TierProvider({ children }) {
     streak, dailyBonus, dismissDailyBonus: () => setDailyBonus(null),
     isDebug: isDebugMode() || ownedTiers.has("admin"),
     toggleDevMode,
+    setDevTier,
     devModeActive: ownedTiers.has("admin"),
   }), [tier, features, ownedTiers, streak, dailyBonus]);
   return <TierContext.Provider value={value}>{children}</TierContext.Provider>;
@@ -1270,55 +1287,134 @@ function TierLever({ tier, onChange, onOpenShop }) {
 
 
 // ────────────────────────────────────────────────────────────────────────────
-// TIER BADGE — static display of the user's subscribed plan.
-// Shows the tier the user is on (FREE / PRO / VIP) as a read-only badge.
-// No click, no sound, no state changes — purely informational, tucked in
-// the top-right of the nav so users always see their current plan. Styled
-// with the plan's color but muted so it doesn't compete with interactive
-// elements. Upgrade path lives elsewhere (sales modal from locked chips).
+// TIER GEARSHIFT — compact horizontal gear-track showing user's tier.
+// Structure mirrors the main joystick gearshift (gear track with a moving
+// knob indicator over labeled slots) but purpose is different:
+//   - devModeActive=false: LOCKED to the user's subscribed tier. Static.
+//       Cursor is default. No click, no sound, no state change.
+//   - devModeActive=true: UNLOCKED. Click anywhere cycles tier
+//       FREE → PRO → VIP → ADMIN → FREE. Cursor is pointer.
+//
+// Visually: 4 labeled slots (FREE/PRO/VIP/ADMIN), each tinted in its tier
+// color. An indicator knob slides to the active slot with a spring ease.
+// Active slot glows in its tier color, inactive slots are muted.
 // ────────────────────────────────────────────────────────────────────────────
-function TierBadge() {
-  const { tier } = useTier();
+function TierGearshift({ activeTier, devModeActive, onCycle }) {
   const { layout } = useLayout();
   const isMobile = layout === "mobile";
-  // Tier → display meta. ADMIN is internal/dev only, shown subtly.
+  const positions = ["free", "pro", "vip", "admin"];
+  const activeIdx = Math.max(0, positions.indexOf(activeTier));
   const META = {
-    free:  { label: "FREE",  color: "#3B82F6", dot: "#3B82F6" },
-    pro:   { label: "PRO",   color: "#FF1744", dot: "#FF1744" },
-    vip:   { label: "VIP",   color: "#C792EA", dot: "#C792EA" },
-    admin: { label: "ADMIN", color: "#FFD700", dot: "#FFD700" },
+    free:  { label: "FREE",  short: "F", color: "#3B82F6" },
+    pro:   { label: "PRO",   short: "P", color: "#FF1744" },
+    vip:   { label: "VIP",   short: "V", color: "#FFD700" },
+    admin: { label: "ADMIN", short: "A", color: "#FF3E9D" },
   };
-  const m = META[tier] || META.free;
+  const activeMeta = META[activeTier] || META.free;
+  const slotW = isMobile ? 38 : 32;
+  const gateH = isMobile ? 30 : 26;
+  const trackPadding = 4;
+  const trackInnerW = positions.length * slotW;
+  const housingW = trackInnerW + trackPadding * 2;
+  const knobW = slotW - 4;
+  const knobX = trackPadding + activeIdx * slotW + 2;
+
+  const handleClick = () => {
+    if (!devModeActive) return;
+    onCycle && onCycle();
+  };
+
   return (
     <div
-      title={`Your plan: ${m.label}`}
+      onClick={handleClick}
+      title={devModeActive
+        ? `Tier: ${activeMeta.label} — click to cycle (DEV MODE)`
+        : `Your plan: ${activeMeta.label}`}
       style={{
-        display: "inline-flex", alignItems: "center", gap: 6,
-        padding: isMobile ? "6px 10px" : "5px 10px",
-        height: isMobile ? 34 : 32,
-        background: `linear-gradient(180deg, ${m.color}14 0%, ${m.color}06 100%)`,
-        border: `1px solid ${m.color}55`,
+        position: "relative",
+        width: housingW,
+        height: gateH,
+        background: "linear-gradient(180deg, #0d0f14 0%, #05070a 100%)",
+        border: `1px solid ${devModeActive ? "#3a3d45" : "#24262d"}`,
         borderRadius: 6,
-        color: m.color,
-        fontFamily: T.font_mono,
-        fontSize: 10, fontWeight: 700,
-        letterSpacing: "0.18em",
-        textShadow: `0 0 6px ${m.color}44`,
-        boxShadow: `inset 0 1px 0 ${m.color}22, 0 0 10px ${m.color}14`,
+        boxShadow: devModeActive
+          ? `inset 0 2px 4px rgba(0,0,0,0.8), inset 0 -1px 0 rgba(255,255,255,0.04), 0 0 8px ${activeMeta.color}22`
+          : `inset 0 2px 4px rgba(0,0,0,0.8), inset 0 -1px 0 rgba(255,255,255,0.03)`,
+        cursor: devModeActive ? "pointer" : "default",
         userSelect: "none",
-        cursor: "default",
+        overflow: "hidden",
+        transition: "border-color 200ms ease, box-shadow 200ms ease",
       }}
     >
-      <span style={{
-        display: "inline-block",
-        width: 7, height: 7, borderRadius: "50%",
-        background: m.dot,
-        boxShadow: `0 0 6px ${m.dot}, 0 0 12px ${m.dot}88`,
+      {/* ── SLOT LABELS — row of tier abbreviations, muted when inactive ── */}
+      {positions.map((p, i) => {
+        const m = META[p];
+        const isActive = p === activeTier;
+        return (
+          <div key={p} style={{
+            position: "absolute",
+            left: trackPadding + i * slotW, top: 0,
+            width: slotW, height: "100%",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            fontFamily: T.font_mono,
+            fontSize: isMobile ? 9 : 8,
+            fontWeight: 700, letterSpacing: "0.12em",
+            color: isActive ? m.color : "#4a4d55",
+            textShadow: isActive ? `0 0 4px ${m.color}88` : "none",
+            zIndex: 1,
+            transition: "color 220ms ease, text-shadow 220ms ease",
+            pointerEvents: "none",
+          }}>
+            {isMobile ? m.short : m.label}
+          </div>
+        );
+      })}
+
+      {/* ── KNOB INDICATOR — glowing pill that slides to active slot ── */}
+      <div style={{
+        position: "absolute",
+        left: knobX, top: 2,
+        width: knobW, height: gateH - 4,
+        background: `linear-gradient(180deg, ${activeMeta.color}55 0%, ${activeMeta.color}22 100%)`,
+        border: `1px solid ${activeMeta.color}`,
+        borderRadius: 4,
+        boxShadow: `0 0 10px ${activeMeta.color}66, inset 0 1px 0 ${activeMeta.color}66, inset 0 -1px 0 rgba(0,0,0,0.3)`,
+        transition: "left 280ms cubic-bezier(0.5, 1.5, 0.5, 1), background 220ms ease, box-shadow 220ms ease",
+        pointerEvents: "none",
       }} />
-      {m.label}
+
+      {/* ── ACTIVE LABEL ON TOP OF KNOB — high contrast ── */}
+      <div style={{
+        position: "absolute",
+        left: knobX, top: 2,
+        width: knobW, height: gateH - 4,
+        display: "flex", alignItems: "center", justifyContent: "center",
+        fontFamily: T.font_mono,
+        fontSize: isMobile ? 9 : 8,
+        fontWeight: 800, letterSpacing: "0.14em",
+        color: "#FFFFFF",
+        textShadow: `0 0 6px ${activeMeta.color}, 0 0 2px ${activeMeta.color}`,
+        pointerEvents: "none",
+        zIndex: 2,
+      }}>
+        {isMobile ? activeMeta.short : activeMeta.label}
+      </div>
+
+      {/* ── DEV-OFF LOCK ICON — tiny padlock in corner when locked ── */}
+      {!devModeActive && (
+        <div style={{
+          position: "absolute",
+          top: 1, right: 2,
+          fontSize: 8,
+          color: "#555",
+          pointerEvents: "none",
+          lineHeight: 1,
+        }}>🔒</div>
+      )}
     </div>
   );
 }
+
 
 // ────────────────────────────────────────────────────────────────────────────
 // GENRE TREE
@@ -4005,7 +4101,9 @@ function Button({ children, variant = "secondary", size = "md", onClick, disable
     variant === "danger"    ? { background: "rgba(239,68,68,0.08)", borderColor: T.danger } : {}
   ) : {};
   return (
-    <button type={type} onClick={onClick} disabled={disabled} title={title}
+    <button type={type}
+      onClick={disabled ? undefined : (e) => { playSwitchSound(); onClick && onClick(e); }}
+      disabled={disabled} title={title}
       onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}
       style={{
         ...sizes[size], ...base, ...hoverStyle,
@@ -4439,34 +4537,35 @@ function Cubicle({ id, icon, title, description, valuePreview, filled, isOpen, o
   // (e.g. BPM which lives below the grid and never collapses).
   const headerClickable = !disabled && !alwaysOpen;
 
-  // Open state spans ALL grid columns and pushes siblings below.
-  const openGridSpan = { gridColumn: "1 / -1" };
+  // Open state — keep cubicle IN PLACE in the grid (no reposition to full-
+  // width). Give it a crisp white outline so the user can see what's active
+  // without layout shift.
+  const WHITE_OUTLINE = "#FFFFFF";
 
   // Border / surface choices per state.
-  // Filled + open: strongest glow, gradient border.
+  // Open: always white outline (supersedes filled gold).
   // Filled + closed: subtle gold tint + soft shadow halo.
-  // Empty: clean neutral surface with very subtle depth.
-  const borderColor = filled === true
-    ? (isOpen ? V.neonGold : V.neonGold + "66")
-    : (isOpen ? T.accent + "aa" : T.border);
-  const shadowGlow = filled === true
-    ? (isOpen ? `0 0 24px ${V.neonGold}44, 0 4px 16px rgba(0,0,0,0.12), inset 0 1px 0 ${V.neonGold}11`
-              : `0 0 12px ${V.neonGold}22, 0 2px 8px rgba(0,0,0,0.06)`)
-    : (isOpen ? `0 0 16px ${T.accent}33, 0 4px 16px rgba(0,0,0,0.1)`
-              : `0 1px 3px rgba(0,0,0,0.06), inset 0 1px 0 rgba(255,255,255,0.02)`);
+  // Empty + closed: clean neutral surface with very subtle depth.
+  const borderColor = isOpen
+    ? WHITE_OUTLINE
+    : (filled === true ? V.neonGold + "66" : T.border);
+  const shadowGlow = isOpen
+    ? `0 0 20px rgba(255,255,255,0.28), 0 0 2px rgba(255,255,255,0.6), 0 4px 16px rgba(0,0,0,0.1)`
+    : (filled === true
+        ? `0 0 12px ${V.neonGold}22, 0 2px 8px rgba(0,0,0,0.06)`
+        : `0 1px 3px rgba(0,0,0,0.06), inset 0 1px 0 rgba(255,255,255,0.02)`);
   // Glass-morphism surface: layered gradient over the base tile color
   const surfaceGradient = filled === true
     ? `linear-gradient(145deg, ${V.neonGold}12 0%, ${T.surface} 40%, ${T.surface} 100%)`
     : (isOpen
-        ? `linear-gradient(145deg, ${T.accent}10 0%, ${T.surface} 50%, ${T.surface} 100%)`
+        ? `linear-gradient(145deg, rgba(255,255,255,0.04) 0%, ${T.surface} 50%, ${T.surface} 100%)`
         : `linear-gradient(145deg, ${T.surface} 0%, ${T.elevated} 100%)`);
 
   return (
     <div
       style={{
-        ...(isOpen ? openGridSpan : {}),
         background: surfaceGradient,
-        border: `1px solid ${borderColor}`,
+        border: `${isOpen ? 2 : 1}px solid ${borderColor}`,
         borderRadius: T.r_md,
         boxShadow: shadowGlow,
         overflow: "hidden",
@@ -4820,7 +4919,7 @@ function SalesModal({ open, onClose, onUpgrade, feature }) {
   if (!open) return null;
   const copy = SALES_COPY[feature] || SALES_COPY.proPresets;
   const tierColor =
-    copy.tier === "vip" ? "#C792EA" :
+    copy.tier === "vip" ? "#FFD700" :
     copy.tier === "pro" ? "#FF1744" :
     T.accent;
   return (
@@ -5606,21 +5705,33 @@ function EngineLogo({ size = 96 }) {
 // ════════════════════════════════════════════════════════════════════════════
 
 function Nav({ page, onNavigate }) {
-  const { tier, setTier, features, devModeActive, toggleDevMode } = useTier();
+  const { tier, setTier, features, devModeActive, setDevTier, toggleDevMode } = useTier();
   const { refillForTier } = useFuel();
   const { layout } = useLayout();
   const [menuOpen, setMenuOpen] = useState(false);
   const isMobile = layout === "mobile";
 
-  // Wrap DEV MODE toggle to also refill fuel when turning admin ON
-  // (so the admin "unlimited fuel" state is reflected immediately).
+  // DEV MODE button — click = toggle dev mode on/off. When ON, the tier
+  // gearshift in the far-right corner becomes clickable and cycles tiers.
+  // When OFF, the gearshift is locked to the user's subscribed tier.
+  // REMOVE BEFORE PUBLIC LAUNCH.
   const handleDevToggle = () => {
-    const wasActive = devModeActive;
+    const wasOn = devModeActive;
     toggleDevMode();
-    if (!wasActive) {
-      // Was off, now turning ON — grant admin fuel
+    if (!wasOn) {
+      // Turning ON → grant admin access + refill
       refillForTier("admin");
     }
+  };
+
+  // Tier gearshift cycler (only callable when dev mode is ON).
+  const DEV_CYCLE = ["free", "pro", "vip", "admin"];
+  const handleTierCycle = () => {
+    if (!devModeActive) return;
+    const idx = DEV_CYCLE.indexOf(tier);
+    const nextTier = DEV_CYCLE[(idx + 1) % DEV_CYCLE.length];
+    setDevTier(nextTier);
+    refillForTier(nextTier);
   };
   const links = [
     { id: "engine",  label: "Engine" },
@@ -5663,13 +5774,15 @@ function Nav({ page, onNavigate }) {
         <div style={{ flex: 1 }} />
       )}
 
-      {/* Right side — DEV toggle, layout, gear-shift, tier on desktop; hamburger on mobile */}
+      {/* Right side — DEV toggle, layout, tier gearshift on desktop; hamburger on mobile */}
       <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
-        {/* DEV MODE toggle — desktop shows label, mobile shows icon only */}
-        {/* TODO: REMOVE BEFORE PUBLIC LAUNCH */}
+        {/* DEV MODE — binary toggle. Click ON to unlock the tier gearshift
+            (so you can cycle free→pro→vip→admin). Click OFF to lock it back
+            to the user's real subscribed tier.
+            TODO: REMOVE BEFORE PUBLIC LAUNCH. */}
         <button type="button"
           onClick={handleDevToggle}
-          title={devModeActive ? "DEV MODE ACTIVE — click to disable" : "Enable DEV MODE (grants admin tier)"}
+          title={devModeActive ? "DEV MODE ON — click to turn off" : "DEV MODE OFF — click to unlock tier switching"}
           style={{
             display: "inline-flex", alignItems: "center", gap: 5,
             padding: isMobile ? "6px 8px" : "5px 10px",
@@ -5677,38 +5790,40 @@ function Nav({ page, onNavigate }) {
             minWidth: isMobile ? 34 : "auto",
             justifyContent: "center",
             background: devModeActive
-              ? "linear-gradient(180deg, rgba(255,23,68,0.22) 0%, rgba(255,23,68,0.10) 100%)"
-              : "linear-gradient(180deg, rgba(255,23,68,0.06) 0%, rgba(255,23,68,0.02) 100%)",
-            border: `1px ${devModeActive ? "solid" : "dashed"} ${devModeActive ? "#FF1744" : "#FF174477"}`,
+              ? "linear-gradient(180deg, rgba(255,23,68,0.22) 0%, rgba(255,23,68,0.08) 100%)"
+              : "linear-gradient(180deg, rgba(120,120,120,0.10) 0%, rgba(60,60,60,0.04) 100%)",
+            border: `1px ${devModeActive ? "solid" : "dashed"} ${devModeActive ? "#FF1744" : "#66666688"}`,
             borderRadius: 6,
-            color: "#FF5577",
+            color: devModeActive ? "#FF5577" : "#888",
             cursor: "pointer",
             transition: "all 180ms ease-out",
             boxShadow: devModeActive
-              ? "0 0 12px rgba(255,23,68,0.45), inset 0 1px 0 rgba(255,100,120,0.3)"
+              ? "0 0 12px rgba(255,23,68,0.4), inset 0 1px 0 rgba(255,100,120,0.3)"
               : "none",
-            animation: devModeActive ? "devModePulse 2.2s ease-in-out infinite" : "none",
+            animation: devModeActive ? "devModePulse 2.4s ease-in-out infinite" : "none",
           }}>
           <style>{`
             @keyframes devModePulse {
-              0%, 100% { box-shadow: 0 0 12px rgba(255,23,68,0.45), inset 0 1px 0 rgba(255,100,120,0.3); }
-              50%      { box-shadow: 0 0 20px rgba(255,23,68,0.7),  inset 0 1px 0 rgba(255,100,120,0.5); }
+              0%, 100% { filter: brightness(1); }
+              50%      { filter: brightness(1.18); }
             }
           `}</style>
           <span style={{ fontSize: isMobile ? 13 : 10, lineHeight: 1 }}>⚡</span>
           {!isMobile && (
             <span style={{
               fontFamily: T.font_mono, fontSize: 9, fontWeight: 700,
-              letterSpacing: "0.18em", textShadow: "0 0 4px rgba(255,23,68,0.6)",
-            }}>DEV</span>
+              letterSpacing: "0.18em",
+              textShadow: devModeActive ? "0 0 4px rgba(255,23,68,0.7)" : "none",
+            }}>DEV {devModeActive ? "ON" : "OFF"}</span>
           )}
         </button>
         {!isMobile && <LayoutToggle />}
-        {!isMobile && <ThemeToggle />}
         {!isMobile && (
-          <>
-            <TierBadge />
-          </>
+          <TierGearshift
+            activeTier={tier}
+            devModeActive={devModeActive}
+            onCycle={handleTierCycle}
+          />
         )}
         {isMobile && (
           <button type="button"
@@ -5764,7 +5879,11 @@ function Nav({ page, onNavigate }) {
               fontSize: 10, fontFamily: T.font_mono, fontWeight: 700,
               letterSpacing: "0.2em", color: T.textMuted, marginBottom: 8,
             }}>YOUR PLAN</div>
-            <TierBadge />
+            <TierGearshift
+              activeTier={tier}
+              devModeActive={devModeActive}
+              onCycle={handleTierCycle}
+            />
           </div>
 
           {/* Layout toggle — in mobile menu */}
@@ -5774,15 +5893,6 @@ function Nav({ page, onNavigate }) {
               letterSpacing: "0.2em", color: T.textMuted,
             }}>VIEW AS</span>
             <LayoutToggle />
-          </div>
-
-          {/* Theme toggle — in mobile menu */}
-          <div style={{ padding: "8px 12px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
-            <span style={{
-              fontSize: 10, fontFamily: T.font_mono, fontWeight: 700,
-              letterSpacing: "0.2em", color: T.textMuted,
-            }}>THEME</span>
-            <ThemeToggle />
           </div>
         </div>
       )}
@@ -9589,7 +9699,7 @@ function EnginePage({ onNavigate }) {
     if (!effectiveLimits.locksAvailable) {
       return (
         <button type="button"
-          onClick={() => setSalesModalFeature("slotLock")}
+          onClick={() => { playSwitchSound(); setSalesModalFeature("slotLock"); }}
           title="Pro feature — click to learn more"
           style={{
             background: "transparent",
@@ -9620,7 +9730,7 @@ function EnginePage({ onNavigate }) {
     const isLocked = state.sectionLocks?.[sectionKey];
     return (
       <button type="button"
-        onClick={() => toggleSectionLock(sectionKey)}
+        onClick={() => { playSwitchSound(); toggleSectionLock(sectionKey); }}
         title={isLocked ? "Section locked — randomize will preserve this value" : "Lock this section against randomize"}
         style={{
           background: isLocked ? `${V.neonGold}22` : "transparent",
@@ -9683,7 +9793,7 @@ function EnginePage({ onNavigate }) {
     const off = state.toggles?.[sectionId] === "off";
     return (
       <button type="button"
-        onClick={() => { if (!off) rerollSection(sectionId); }}
+        onClick={() => { if (!off) { playSwitchSound(); rerollSection(sectionId); } }}
         disabled={off}
         title={off ? "Section is off" : "Randomize just this section"}
         style={{
@@ -9775,7 +9885,7 @@ function EnginePage({ onNavigate }) {
     const color = isExpanded ? T.textMuted : T.textSec;
     return (
       <button type="button"
-        onClick={() => toggleSectionExpanded(sectionId)}
+        onClick={() => { playSwitchSound(); toggleSectionExpanded(sectionId); }}
         style={{
           padding: "4px 12px",
           background: "transparent",
@@ -9815,7 +9925,7 @@ function EnginePage({ onNavigate }) {
     return (
       <button
         type="button"
-        onClick={() => handleSuggestClick(sectionId)}
+        onClick={() => { playSwitchSound(); handleSuggestClick(sectionId); }}
         title="Suggest complementary elements based on this selection"
         style={{
           padding: "4px 10px",
@@ -9862,7 +9972,7 @@ function EnginePage({ onNavigate }) {
           gap: T.s2,
         }}>
           <span>This pick stands well on its own — try pairing it with another element first.</span>
-          <button type="button" onClick={dismissSuggestions}
+          <button type="button" onClick={() => { playSwitchSound(); dismissSuggestions(); }}
             style={{
               background: "transparent", border: "none", color: T.textMuted,
               fontSize: T.fs_xs, fontFamily: T.font_mono, fontWeight: 700,
@@ -9889,14 +9999,14 @@ function EnginePage({ onNavigate }) {
             color: V.neonGold, letterSpacing: "0.15em",
           }}>✨ COMPLEMENTS</div>
           <div style={{ display: "flex", gap: T.s1 }}>
-            <button type="button" onClick={acceptAllSuggestions}
+            <button type="button" onClick={() => { playSwitchSound(); acceptAllSuggestions(); }}
               style={{
                 padding: "3px 8px", background: V.neonGold,
                 border: `1px solid ${V.neonGold}`, borderRadius: T.r_sm,
                 color: "#000", fontSize: 10, fontFamily: T.font_mono,
                 fontWeight: 700, letterSpacing: "0.1em", cursor: "pointer",
               }}>ACCEPT ALL</button>
-            <button type="button" onClick={dismissSuggestions}
+            <button type="button" onClick={() => { playSwitchSound(); dismissSuggestions(); }}
               style={{
                 padding: "3px 8px", background: "transparent",
                 border: `1px solid ${T.border}`, borderRadius: T.r_sm,
@@ -9939,7 +10049,7 @@ function EnginePage({ onNavigate }) {
                   }}>{labelFor[id].toUpperCase()}</div>
                   {value && (
                     <button type="button"
-                      onClick={() => rerollSuggestion(id)}
+                      onClick={() => { playSwitchSound(); rerollSuggestion(id); }}
                       title="Reroll this suggestion"
                       style={{
                         padding: "2px 6px", background: "transparent",
@@ -9955,7 +10065,7 @@ function EnginePage({ onNavigate }) {
                 </div>
                 {value ? (
                   <button type="button"
-                    onClick={() => acceptSuggestion(id, value)}
+                    onClick={() => { playSwitchSound(); acceptSuggestion(id, value); }}
                     style={{
                       padding: "6px 10px",
                       background: `${V.neonGold}15`,
@@ -10384,7 +10494,11 @@ function EnginePage({ onNavigate }) {
           overflowY: isMobile ? "visible" : "auto",
           overflowX: "hidden",
           borderRight: isMobile ? "none" : `1px solid ${T.border}`,
-          borderBottom: isMobile ? `1px solid ${T.border}` : "none",
+          // On mobile the LEFT pane sits BELOW the right pane (HIT button goes
+          // to the top of the viewport for better mobile UX), so the separator
+          // becomes a top border rather than a bottom one.
+          borderTop: isMobile ? `1px solid ${T.border}` : "none",
+          order: isMobile ? 1 : 0,
           padding: isMobile
             ? `${T.s5}px ${T.s4}px ${T.s6}px`
             : `${T.s8}px ${T.s7}px ${T.s10}px ${T.s8}px`,
@@ -10399,30 +10513,65 @@ function EnginePage({ onNavigate }) {
             }}>
               <AnimatedBanner size={isMobile ? 56 : 112} />
             </h1>
+            {/* Italic serif tagline — softer, magazine-style lead */}
             <p style={{
-              color: T.text, fontSize: T.fs_lg, lineHeight: 1.5,
-              maxWidth: 600, margin: 0, marginBottom: T.s3,
-              fontFamily: T.font_sans, fontWeight: 500,
+              color: T.text,
+              fontSize: isMobile ? T.fs_lg : T.fs_xl,
+              lineHeight: 1.25,
+              maxWidth: 640, margin: 0, marginBottom: T.s2,
+              fontFamily: "'Instrument Serif', Georgia, serif",
+              fontStyle: "italic",
+              fontWeight: 400,
+              letterSpacing: "-0.01em",
             }}>
-              Deterministic prompt engine for modern AI music generators.
+              Prompts engineered to speak the language Suno and Udio already listen for.
             </p>
+            {/* Short, bold instruction — three beats separated by gold dots */}
             <p style={{
-              color: T.textSec, fontSize: T.fs_md, lineHeight: 1.55,
-              maxWidth: 600, margin: 0, marginBottom: T.s3,
-              fontFamily: T.font_sans,
+              color: T.textSec, fontSize: T.fs_md, lineHeight: 1.6,
+              maxWidth: 640, margin: 0, marginBottom: T.s4,
+              fontFamily: T.font_sans, fontWeight: 450,
+              display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8,
             }}>
-              Pick a genre. Hit the red button. Get a prompt engineered for how the models actually read language.
+              <span>Pick a sound.</span>
+              <span style={{ color: V.neonGold, textShadow: `0 0 6px ${V.neonGold}77` }}>◆</span>
+              <span>Hit the button.</span>
+              <span style={{ color: V.neonGold, textShadow: `0 0 6px ${V.neonGold}77` }}>◆</span>
+              <span>Ship a hit.</span>
             </p>
-            <p style={{
-              color: T.textTer, fontSize: T.fs_sm, lineHeight: 1.55,
-              maxWidth: 600, margin: 0, fontFamily: T.font_sans,
+            {/* Interaction legend — tinted chip row, each with its own icon
+                and subtle dashed separator between gesture + description.
+                Much easier to scan than inline dot-separated prose. */}
+            <div style={{
+              display: "flex", flexWrap: "wrap", gap: T.s2,
+              fontFamily: T.font_mono, fontSize: T.fs_xs,
+              letterSpacing: "0.08em",
             }}>
-              <span style={{ color: T.text, fontWeight: 500 }}>Click</span> to select
-              {" · "}
-              <span style={{ color: T.text, fontWeight: 500 }}>Double-click</span> to favorite
-              {" · "}
-              <span style={{ color: V.neonGold, fontWeight: 500 }}>Right-click</span> to lock from randomize
-            </p>
+              {[
+                { icon: "▸",  key: "CLICK",        desc: "select",            color: T.text,    tint: "rgba(255,255,255,0.04)" },
+                { icon: "▸▸", key: "DOUBLE-CLICK", desc: "favorite",          color: T.text,    tint: "rgba(255,255,255,0.04)" },
+                { icon: "✦",  key: "RIGHT-CLICK",  desc: "lock from randomize", color: V.neonGold, tint: `${V.neonGold}12` },
+              ].map(item => (
+                <span key={item.key} style={{
+                  display: "inline-flex", alignItems: "center", gap: 8,
+                  padding: "6px 10px 6px 8px",
+                  background: item.tint,
+                  border: `1px solid ${item.color === V.neonGold ? V.neonGold + "55" : T.border}`,
+                  borderRadius: T.r_sm,
+                  color: T.textSec,
+                  fontWeight: 600,
+                }}>
+                  <span style={{
+                    color: item.color, fontWeight: 700,
+                    textShadow: item.color === V.neonGold ? `0 0 4px ${V.neonGold}77` : "none",
+                  }}>{item.icon}</span>
+                  <span style={{ color: item.color, fontWeight: 700 }}>{item.key}</span>
+                  <span style={{ color: T.textTer, fontFamily: T.font_sans, textTransform: "none", letterSpacing: "0.01em" }}>
+                    {item.desc}
+                  </span>
+                </span>
+              ))}
+            </div>
           </div>
 
           <TipsManual />
@@ -10439,6 +10588,7 @@ function EnginePage({ onNavigate }) {
                 </Label>
                 <button type="button"
                   onClick={() => {
+                    playSwitchSound();
                     if (canShufflePresets) {
                       setVisiblePresetIds(shuffle5Presets());
                     } else {
@@ -10453,9 +10603,9 @@ function EnginePage({ onNavigate }) {
                     padding: isMobile ? `6px 10px` : `3px 8px`,
                     minHeight: isMobile ? 32 : "auto",
                     background: "transparent",
-                    border: `1px solid ${canShufflePresets ? T.border : "#C792EA55"}`,
+                    border: `1px solid ${canShufflePresets ? T.border : "#FFD70055"}`,
                     borderRadius: T.r_sm,
-                    color: canShufflePresets ? T.textMuted : "#C792EA",
+                    color: canShufflePresets ? T.textMuted : "#FFD700",
                     fontFamily: T.font_mono, fontSize: T.fs_xs, fontWeight: 700,
                     letterSpacing: "0.15em",
                     cursor: "pointer",
@@ -10466,8 +10616,8 @@ function EnginePage({ onNavigate }) {
                       e.currentTarget.style.borderColor = T.borderFocus;
                       e.currentTarget.style.color = T.text;
                     } else {
-                      e.currentTarget.style.borderColor = "#C792EA";
-                      e.currentTarget.style.background = "#C792EA10";
+                      e.currentTarget.style.borderColor = "#FFD700";
+                      e.currentTarget.style.background = "#FFD70010";
                     }
                   }}
                   onMouseLeave={e => {
@@ -10475,7 +10625,7 @@ function EnginePage({ onNavigate }) {
                       e.currentTarget.style.borderColor = T.border;
                       e.currentTarget.style.color = T.textMuted;
                     } else {
-                      e.currentTarget.style.borderColor = "#C792EA55";
+                      e.currentTarget.style.borderColor = "#FFD70055";
                       e.currentTarget.style.background = "transparent";
                     }
                   }}>
@@ -10485,7 +10635,7 @@ function EnginePage({ onNavigate }) {
               <div style={{ display: "flex", flexWrap: "wrap", gap: T.s2 }}>
                 {visiblePresets.map(p => (
                   <button key={p.id} type="button"
-                    onClick={() => applyPreset(p)}
+                    onClick={() => { playSwitchSound(); applyPreset(p); }}
                     style={{
                       display: "inline-flex", alignItems: "center", gap: T.s2,
                       padding: isMobile ? `10px 14px` : `${T.s2}px ${T.s3}px`,
@@ -10557,7 +10707,7 @@ function EnginePage({ onNavigate }) {
                       favorite={favSetFor("language").has(lang.code)}
                       locked={optionLockSetFor("language").has(lang.code)}
                       casinoOutline={casinoOutlines.get(`language:${lang.code}`)}
-                      onClick={() => set("language", lang.code)}
+                      onClick={() => { playSwitchSound(); set("language", lang.code); }}
                       onDoubleClick={() => toggleFavorite("language", lang.code)} />
                   ))}
                   {renderCustomTail("language", (e) => ({
@@ -10594,7 +10744,7 @@ function EnginePage({ onNavigate }) {
                             tierLocked={isOptionLocked(i)}
                             onLockedClick={() => setSalesModalFeature("moreOptions")}
                             casinoOutline={casinoOutlines.get(`mood:${o}`)}
-                            onClick={() => set("mood", state.mood === o ? "" : o)}
+                            onClick={() => { playSwitchSound(); set("mood", state.mood === o ? "" : o); }}
                             onDoubleClick={() => toggleFavorite("mood", o)} />
                         );
                       })}
@@ -10638,7 +10788,7 @@ function EnginePage({ onNavigate }) {
                             tierLocked={isOptionLocked(i)}
                             onLockedClick={() => setSalesModalFeature("moreOptions")}
                             casinoOutline={casinoOutlines.get(`energy:${o}`)}
-                            onClick={() => set("energy", state.energy === o ? "" : o)}
+                            onClick={() => { playSwitchSound(); set("energy", state.energy === o ? "" : o); }}
                             onDoubleClick={() => toggleFavorite("energy", o)} />
                         );
                       })}
@@ -10684,7 +10834,7 @@ function EnginePage({ onNavigate }) {
                             tierLocked={isOptionLocked(i)}
                             onLockedClick={() => setSalesModalFeature("moreOptions")}
                             casinoOutline={casinoOutlines.get(`groove:${g.id}`)}
-                            onClick={() => set("groove", g.id)}
+                            onClick={() => { playSwitchSound(); set("groove", g.id); }}
                             onDoubleClick={() => toggleFavorite("groove", g.id)} />
                         );
                       })}
@@ -10732,7 +10882,7 @@ function EnginePage({ onNavigate }) {
                               tierLocked={isOptionLocked(i)}
                               onLockedClick={() => setSalesModalFeature("moreOptions")}
                               casinoOutline={casinoOutlines.get(`vocalist:${o}`)}
-                              onClick={() => set("vocalist", state.vocalist === o ? "" : o)}
+                              onClick={() => { playSwitchSound(); set("vocalist", state.vocalist === o ? "" : o); }}
                               onDoubleClick={() => toggleFavorite("vocalist", o)} />
                           );
                         })}
@@ -10779,7 +10929,7 @@ function EnginePage({ onNavigate }) {
                               tierLocked={isOptionLocked(i)}
                               onLockedClick={() => setSalesModalFeature("moreOptions")}
                               casinoOutline={casinoOutlines.get(`lyricalVibe:${o}`)}
-                              onClick={() => set("lyricalVibe", state.lyricalVibe === o ? "" : o)}
+                              onClick={() => { playSwitchSound(); set("lyricalVibe", state.lyricalVibe === o ? "" : o); }}
                               onDoubleClick={() => toggleFavorite("lyricalVibe", o)} />
                           );
                         })}
@@ -10873,7 +11023,7 @@ function EnginePage({ onNavigate }) {
                             tierLocked={isOptionLocked(i)}
                             onLockedClick={() => setSalesModalFeature("moreOptions")}
                             casinoOutline={casinoOutlines.get(`harmonic:${o}`)}
-                            onClick={() => set("harmonic", state.harmonic === o ? "" : o)}
+                            onClick={() => { playSwitchSound(); set("harmonic", state.harmonic === o ? "" : o); }}
                             onDoubleClick={() => toggleFavorite("harmonic", o)} />
                         );
                       })}
@@ -10917,7 +11067,7 @@ function EnginePage({ onNavigate }) {
                             tierLocked={isOptionLocked(i)}
                             onLockedClick={() => setSalesModalFeature("moreOptions")}
                             casinoOutline={casinoOutlines.get(`texture:${o}`)}
-                            onClick={() => set("texture", state.texture === o ? "" : o)}
+                            onClick={() => { playSwitchSound(); set("texture", state.texture === o ? "" : o); }}
                             onDoubleClick={() => toggleFavorite("texture", o)} />
                         );
                       })}
@@ -10961,7 +11111,7 @@ function EnginePage({ onNavigate }) {
                             tierLocked={isOptionLocked(i)}
                             onLockedClick={() => setSalesModalFeature("moreOptions")}
                             casinoOutline={casinoOutlines.get(`mix:${o}`)}
-                            onClick={() => set("mix", state.mix === o ? "" : o)}
+                            onClick={() => { playSwitchSound(); set("mix", state.mix === o ? "" : o); }}
                             onDoubleClick={() => toggleFavorite("mix", o)} />
                         );
                       })}
@@ -11092,7 +11242,7 @@ function EnginePage({ onNavigate }) {
                   {bpmOff ? "OFF" : (state.bpm > 0 ? `${state.bpm} BPM` : "not set")}
                 </div>
                 <button type="button"
-                  onClick={() => set("bpm", 60 + Math.floor(Math.random() * 71) * 2)}
+                  onClick={() => { playSwitchSound(); set("bpm", 60 + Math.floor(Math.random() * 71) * 2); }}
                   title="Random BPM (60-200, step 2)"
                   style={{
                     padding: `${T.s2}px ${T.s3}px`,
@@ -11117,7 +11267,7 @@ function EnginePage({ onNavigate }) {
                 </button>
                 {state.bpm > 0 && (
                   <button type="button"
-                    onClick={() => set("bpm", 0)}
+                    onClick={() => { playSwitchSound(); set("bpm", 0); }}
                     title="Reset to auto"
                     style={{
                       padding: `${T.s2}px ${T.s3}px`,
@@ -11173,7 +11323,7 @@ function EnginePage({ onNavigate }) {
                   <div style={{ display: "flex", flexWrap: "wrap", gap: T.s1 }}>
                     {suggestions.map(g => (
                       <button type="button" key={g}
-                        onClick={() => commitGenre(g)}
+                        onClick={() => { playSwitchSound(); commitGenre(g); }}
                         title={`Add ${g} to a genre slot`}
                         style={{
                           padding: "4px 10px",
@@ -11213,11 +11363,21 @@ function EnginePage({ onNavigate }) {
         <div className={isMobile ? "" : "pane-scroll"} style={{
           overflowY: isMobile ? "visible" : "auto",
           overflowX: "hidden",
+          order: isMobile ? 0 : 1,
           padding: isMobile
-            ? `${T.s6}px ${T.s4}px ${T.s8}px`
+            ? `${T.s4}px ${T.s4}px ${T.s6}px`
             : `${T.s8}px ${T.s8}px ${T.s10}px ${T.s7}px`,
         }}>
-          <div style={{ marginBottom: T.s5, display: "flex", flexDirection: "column", gap: T.s3 }}>
+          <div style={{
+            marginBottom: T.s5,
+            display: "flex",
+            flexDirection: "column",
+            gap: T.s3,
+            // Center + cap on mobile so the button + credits readout don't
+            // stretch edge-to-edge on wider phones; reads as a deliberate
+            // hero module instead of a full-width header bar.
+            ...(isMobile ? { maxWidth: 420, margin: "0 auto", width: "100%", marginBottom: T.s5 } : {}),
+          }}>
             <HitButton onRandomize={triggerHit} isRolling={isRolling}
               disabled={Number.isFinite(fuels[activeFuel]) && fuels[activeFuel] <= 0}
               compact={isMobile} fuelType={activeFuel} />
@@ -11312,7 +11472,7 @@ function EnginePage({ onNavigate }) {
                 reset/danger UI grammar in the app. ───────────────────── */}
             <button
               type="button"
-              onClick={clearAll}
+              onClick={() => { playSwitchSound(); clearAll(); }}
               title="Clear all selections — start fresh"
               style={{
                 alignSelf: "stretch",
@@ -14517,7 +14677,7 @@ function GenreBrowser({ selectedGenre, onSelectGenre, onNavigate }) {
                   borderRadius: 4,
                   color: sortMode === "popularity"
                     ? "#fff"
-                    : (canSortByPopularity ? T.textMuted : "#C792EA"),
+                    : (canSortByPopularity ? T.textMuted : "#FFD700"),
                   fontFamily: T.font_mono, fontSize: 10, fontWeight: 700,
                   letterSpacing: "0.12em",
                   cursor: "pointer",
@@ -14881,7 +15041,7 @@ function HistoryPage({ onNavigate }) {
         <Button variant="ghost" size="sm" onClick={selectAllVisible}>
           Select top {Math.min(MAX_SELECTED, filteredGenres.length)}
         </Button>
-        <Button variant="ghost" size="sm" onClick={clearAll}>Clear</Button>
+        <Button variant="ghost" size="sm" onClick={() => { playSwitchSound(); clearAll(); }}>Clear</Button>
       </div>
 
       {/* ── CHART AREA ─────────────────────────────────────────────── */}
@@ -16091,7 +16251,7 @@ const ANTI_PATTERNS = [
     label: "Contradictory Signals",
     prompt: "Aggressive death metal lullaby, soft and screaming, 60 BPM with blast beats",
     diagnosis: "Every specification contradicts another. The model can't reconcile 'lullaby' with 'death metal' or '60 BPM' with 'blast beats'.",
-    fix: "Pick one lane. If you want contrast, name an artist who bridged them — e.g. 'in the style of Deftones' (soft-loud done right).",
+    fix: "Pick one lane. If you want contrast, describe the hybrid mechanically — e.g. 'soft-loud dynamics, whispered verses giving way to screamed choruses'. Tell the model what the structure does, not who does it.",
     severity: 3,
   },
   {
@@ -16469,11 +16629,11 @@ const PLAYBOOK_CHAPTERS = [
       { type: "h2", text: "When to ignore all of this." },
       {
         type: "prose",
-        text: "Rules describe probability distributions, not physics. Sometimes a distant fusion works because one specific artist already made it work. Country-rap exists because Lil Nas X proved it could. Hyperpop exists because SOPHIE proved glitched bubblegum-industrial was listenable. If you have a specific artist reference for a distant fusion, name them explicitly — 'in the style of 100 gecs' does heavy lifting that abstract genre labels can't.",
+        text: "Rules describe probability distributions, not physics. Sometimes a distant fusion works because the culture has already absorbed the hybrid. Country-rap became viable once a viral crossover broke through. Hyperpop became legible once glitched bubblegum-industrial had a scene. If you're chasing a distant fusion, describe the hybrid's mechanics specifically — which elements collide, what the production does, where the vocal sits — rather than relying on a genre label to do the bridging for you.",
       },
       {
         type: "annotated-quote",
-        text: "Reference specific artists, not abstract sounds. The model remembers names.",
+        text: "Describe sonic mechanics, not resemblance. The model remembers structures, not who built them.",
         source: "Working principle · PB.II §5",
       },
     ],
@@ -16727,12 +16887,12 @@ const PLAYBOOK_CHAPTERS = [
       { type: "h2", text: "The 'sounds like' trap." },
       {
         type: "prose",
-        text: "Describing what you want a song to 'sound like' is fine when you reference specific artists ('in the style of Billie Eilish' does real work). It's poor when the reference is vague ('sounds like a summer afternoon', 'sounds emotional'). Metaphors don't translate to the model's training data; specific artists and specific songs do. When you feel the urge to reach for a metaphor, reach for a name instead.",
+        text: "Describing what you want a song to 'sound like' is fine when you're specific about the sonic mechanics (vocal placement, production choices, rhythmic feel, instrument roles). It's poor when the reference is vague ('sounds like a summer afternoon', 'sounds emotional'). Metaphors don't translate to the model's training data; concrete sonic descriptions do. When you feel the urge to reach for a metaphor, reach for a mechanic instead — what does the low end do, where does the vocal sit, how does the drum pattern feel.",
       },
       { type: "h2", text: "The contradiction trap." },
       {
         type: "prose",
-        text: "Beginners often combine terms that make stylistic sense individually but contradict each other in combination. 'Minimalist maximalist', 'aggressive gentle', 'fast slow'. The model attempts to reconcile these, and the result is either averaged mush or one signal dominating and the other disappearing. If you catch yourself writing a contradiction, pick one side. If you truly want both, name an artist who fuses them successfully.",
+        text: "Beginners often combine terms that make stylistic sense individually but contradict each other in combination. 'Minimalist maximalist', 'aggressive gentle', 'fast slow'. The model attempts to reconcile these, and the result is either averaged mush or one signal dominating and the other disappearing. If you catch yourself writing a contradiction, pick one side. If you truly want both, describe the mechanism of the fusion — e.g. 'gentle verses exploding into aggressive choruses' — so the model knows whether the tension resolves across time, across sections, or within a single moment.",
       },
       {
         type: "annotated-quote",
@@ -17526,10 +17686,16 @@ function TrendSetterPage() {
   const trendFuelLeft = fuels.trend;
 
   const generatePrompt = (item) => {
-    // Deterministic prompt built from the viral item's metadata.
+    // IMPORTANT: prompts must NEVER name real artists or real tracks — doing
+    // so creates legal/IP exposure and degrades output quality (AI models
+    // trained on copyrighted material will refuse or mangle named-artist
+    // requests). Instead we describe the SONIC FINGERPRINT using the
+    // item's genre + style-descriptor metadata, which captures the viral
+    // quality without referencing any protected work.
+    //
     // Trend Setter implies user wants vocals (most viral tracks have vocals),
     // so we sanitize Suno's vocal-killer words from the output.
-    const raw = `${item.genre}, in the style of ${item.artist} "${item.track}", ${item.style}, modern mix, radio-ready production, 2026 viral energy`;
+    const raw = `${item.genre}, ${item.style}, modern mix, radio-ready production, 2026 viral energy, contemporary chart-topping sound`;
     return sunoSanitize(raw, true);
   };
 
@@ -18212,10 +18378,10 @@ function Joystick({ onNavigate, onLockedClick }) {
                     <g transform={`translate(${x + SCREEN_W / 2 - 9}, ${SCREEN_Y + SCREEN_H / 2 - 11})`}>
                       {/* Shackle (arc above body) */}
                       <path d="M 4 9 L 4 5.5 A 5 5 0 0 1 14 5.5 L 14 9"
-                        fill="none" stroke="#C792EA" strokeWidth="2" strokeLinecap="round" />
+                        fill="none" stroke="#FFD700" strokeWidth="2" strokeLinecap="round" />
                       {/* Body */}
                       <rect x="1" y="9" width="16" height="13" rx="2"
-                        fill="#C792EA" stroke="#9B7ED8" strokeWidth="0.6" />
+                        fill="#FFD700" stroke="#9B7ED8" strokeWidth="0.6" />
                       {/* Keyhole */}
                       <circle cx="9" cy="14.5" r="1.5" fill="#1a1025" />
                       <rect x="8.4" y="14.5" width="1.2" height="3.5" fill="#1a1025" />
