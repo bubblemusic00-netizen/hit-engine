@@ -17702,7 +17702,7 @@ function playSwitchSound() {
   try {
     if (typeof window === "undefined" || typeof Audio === "undefined") return;
     if (!_switchAudioPool) {
-      _switchAudioPool = [new Audio("/SWITCH-SOUND.mp3"), new Audio("/SWITCH-SOUND.mp3"), new Audio("/SWITCH-SOUND.mp3")];
+      _switchAudioPool = [new Audio("/switch-sound.mp3"), new Audio("/switch-sound.mp3"), new Audio("/switch-sound.mp3")];
       _switchAudioPool.forEach(a => { a.volume = 0.5; a.preload = "auto"; });
     }
     const a = _switchAudioPool[_switchAudioIdx];
@@ -17721,7 +17721,7 @@ function playButtonSound() {
   try {
     if (typeof window === "undefined" || typeof Audio === "undefined") return;
     if (!_buttonAudioPool) {
-      _buttonAudioPool = [new Audio("/BUTTON-SOUND.mp3"), new Audio("/BUTTON-SOUND.mp3"), new Audio("/BUTTON-SOUND.mp3")];
+      _buttonAudioPool = [new Audio("/button-sound.mp3"), new Audio("/button-sound.mp3"), new Audio("/button-sound.mp3")];
       _buttonAudioPool.forEach(a => { a.volume = 0.5; a.preload = "auto"; });
     }
     const a = _buttonAudioPool[_buttonAudioIdx];
@@ -17741,7 +17741,7 @@ function playFuelButtonSound() {
   try {
     if (typeof window === "undefined" || typeof Audio === "undefined") return;
     if (!_fuelBtnAudioPool) {
-      _fuelBtnAudioPool = [new Audio("/FUEL-BUTTON-SOUND.mp3"), new Audio("/FUEL-BUTTON-SOUND.mp3"), new Audio("/FUEL-BUTTON-SOUND.mp3")];
+      _fuelBtnAudioPool = [new Audio("/button-sound.mp3"), new Audio("/button-sound.mp3"), new Audio("/button-sound.mp3")];
       _fuelBtnAudioPool.forEach(a => { a.volume = 0.55; a.preload = "auto"; });
     }
     const a = _fuelBtnAudioPool[_fuelBtnAudioIdx];
