@@ -3686,6 +3686,21 @@ const MOOD_COMPLEMENTS = {
   "Lonely":              { groove: ["rubato","half-time","swing"], lyricalVibe: ["Letter to self","Heartbreak elegy","Confessional diary"], texture: ["Airy & weightless","Distressed & decayed","Organic & breathing"], vocalist: ["Smooth tenor","Breathy female lead","Whisper to full belt"], energy: ["Intimate & bare throughout","Sparse to wall of sound","Tension without full release"], harmonic: ["Minor-key introspection","Classical voice-leading","Modal ambiguity"], mix: ["Intimate close-mic","Heavy reverb cathedral","Lo-fi tape warmth"] },
   "Dreamlike":           { groove: ["rubato","half-time","experimental"], lyricalVibe: ["Surreal dreamscape","Abstract poetry","Mythic / allegorical"], texture: ["Airy & weightless","Granular & particulate","Crystalline & brittle"], vocalist: ["Breathy female lead","Layered harmonies no lead","Androgynous voice"], energy: ["Sparse to wall of sound","Intimate & bare throughout","Slow burn to explosion"], harmonic: ["Modal ambiguity","Drone-based static harmony","Microtonal"], mix: ["Heavy reverb cathedral","Vintage analog","Futuristic digital"] },
   "Furious":             { groove: ["straight","broken","syncopated"], lyricalVibe: ["Defiant anthem","Political protest","Stream-of-consciousness"], texture: ["Thick & saturated","Metallic & reflective","Distressed & decayed"], vocalist: ["Screamed verse / melodic chorus","Raw male baritone","Whisper to full belt"], energy: ["Driving & relentless","Slow burn to explosion","Tension without full release"], harmonic: ["Dissonant tension","Minor-key introspection","Bluesy dominant"], mix: ["Raw & uncompressed","Punchy & compressed","Dry & direct"] },
+  // ── Additions for newer moods (MOODS catalog 30 entries) — fills
+  // coverage gaps so these don't silently return nothing from the
+  // suggestion UI. Each pairing is musically considered, not keyword-
+  // matched. Triple per category reads as "3 good companions" rather
+  // than a definitive taxonomy.
+  "Catchy":              { groove: ["straight","syncopated","motorik"], lyricalVibe: ["Party celebration","Hedonistic escapism","Romantic devotion"], texture: ["Smooth & liquid","Digital & precise","Crystalline & brittle"], vocalist: ["Auto-tuned melodic delivery","Falsetto-led","Smooth tenor"], energy: ["Euphoric continuous build","Steady groove throughout","Driving & relentless"], harmonic: ["Major-key lift","Jazz extensions","Suspended chord hang"], mix: ["Ultra clean & polished","Slick radio master","Punchy & compressed"] },
+  "Confident":           { groove: ["half-time","syncopated","straight"], lyricalVibe: ["Braggadocio flex","Defiant anthem","Social commentary"], texture: ["Thick & saturated","Smooth & liquid","Metallic & reflective"], vocalist: ["Smooth tenor","Spoken rap over sung hook","Raw male baritone"], energy: ["Steady groove throughout","Driving & relentless","Locked intensity, no dynamics"], harmonic: ["Major-key lift","Minor-key introspection","Bluesy dominant"], mix: ["Punchy & compressed","Stadium bus compression","Slick radio master"] },
+  "Hopeful":             { groove: ["straight","shuffle","swing"], lyricalVibe: ["Coming-of-age narrative","Letter to self","Ode to a place"], texture: ["Airy & weightless","Smooth & liquid","Organic & breathing"], vocalist: ["Breathy female lead","Smooth tenor","Gospel ensemble"], energy: ["Slow burn to explosion","Euphoric continuous build","Starts huge then strips back"], harmonic: ["Major-key lift","Suspended chord hang","Lydian dreamy wonder"], mix: ["Wide cinematic","Lo-fi tape warmth","Ultra clean & polished"] },
+  "Pensive":             { groove: ["rubato","half-time","swing"], lyricalVibe: ["Letter to self","Confessional diary","Existential questioning"], texture: ["Organic & breathing","Airy & weightless","Smooth & liquid"], vocalist: ["Smooth tenor","Breathy female lead","Whisper to full belt"], energy: ["Intimate & bare throughout","Sparse to wall of sound","Slow burn to explosion"], harmonic: ["Minor-key introspection","Jazz extensions","Modal ambiguity"], mix: ["Intimate close-mic","Lo-fi tape warmth","Dry & direct"] },
+  "Playful":             { groove: ["syncopated","shuffle","swing"], lyricalVibe: ["Inside-joke wink","Party celebration","Hedonistic escapism"], texture: ["Crystalline & brittle","Organic & breathing","Rubbery & elastic"], vocalist: ["Falsetto-led","Child chorus accents","Breathy female lead"], energy: ["Steady groove throughout","Euphoric continuous build","Quiet-loud-quiet loop"], harmonic: ["Major-key lift","Jazz extensions","Lydian dreamy wonder"], mix: ["Lo-fi tape warmth","Bedroom DIY aesthetic","Punchy & compressed"] },
+  "Reverent":            { groove: ["rubato","straight","polyrhythm"], lyricalVibe: ["Spiritual seeking","Mythic / allegorical","Ode to a place"], texture: ["Airy & weightless","Crystalline & brittle","Organic & breathing"], vocalist: ["Gospel ensemble","Melismatic soprano","Layered harmonies no lead"], energy: ["Sparse to wall of sound","Slow burn to explosion","Euphoric continuous build"], harmonic: ["Classical voice-leading","Drone-based static harmony","Modal ambiguity"], mix: ["Heavy reverb cathedral","Wide cinematic","Vintage analog"] },
+  "Romantic":            { groove: ["swing","rubato","half-time"], lyricalVibe: ["Romantic devotion","Imagined letter to ex","Confessional diary"], texture: ["Smooth & liquid","Velvety & plush","Organic & breathing"], vocalist: ["Breathy female lead","Smooth tenor","Falsetto-led"], energy: ["Slow burn to explosion","Intimate & bare throughout","Euphoric continuous build"], harmonic: ["Major-key lift","Jazz extensions","Suspended chord hang"], mix: ["Intimate close-mic","Lo-fi tape warmth","Vintage analog"] },
+  "Smoldering":          { groove: ["half-time","syncopated","swing"], lyricalVibe: ["Revenge fantasy","Romantic devotion","City at 3AM portrait"], texture: ["Velvety & plush","Thick & saturated","Smooth & liquid"], vocalist: ["Husky alto","Breathy female lead","Smooth tenor"], energy: ["Slow burn to explosion","Locked intensity, no dynamics","Tension without full release"], harmonic: ["Minor-key introspection","Phrygian exotic tension","Bluesy dominant"], mix: ["Lo-fi tape warmth","Dark subterranean sub","Intimate close-mic"] },
+  "Summery":             { groove: ["syncopated","shuffle","straight"], lyricalVibe: ["Party celebration","Ode to a place","Hedonistic escapism"], texture: ["Warm & sun-baked","Smooth & liquid","Airy & weightless"], vocalist: ["Smooth tenor","Breathy female lead","Falsetto-led"], energy: ["Steady groove throughout","Euphoric continuous build","Driving & relentless"], harmonic: ["Major-key lift","Jazz extensions","Pentatonic folk simplicity"], mix: ["Vintage analog","Wide cinematic","Lo-fi tape warmth"] },
+  "Uplifting":           { groove: ["straight","motorik","shuffle"], lyricalVibe: ["Manifesto / call to action","Coming-of-age narrative","Spiritual seeking"], texture: ["Airy & weightless","Smooth & liquid","Thick & saturated"], vocalist: ["Gospel ensemble","Melismatic soprano","Whisper to full belt"], energy: ["Euphoric continuous build","Starts huge then strips back","Fever-pitch final third"], harmonic: ["Major-key lift","Lydian dreamy wonder","Suspended chord hang"], mix: ["Wide cinematic","Ultra clean & polished","Stadium bus compression"] },
 };
 
 const GROOVE_COMPLEMENTS = {
@@ -3722,6 +3737,17 @@ const LYRICAL_COMPLEMENTS = {
   "Social commentary":          { mood: ["Defiant","Anxious","Furious"],      groove: ["straight","broken","syncopated"], texture: ["Distressed & decayed","Organic & breathing","Digital & precise"], vocalist: ["Spoken word over melody","Raw male baritone","Screamed verse / melodic chorus"], energy: ["Driving & relentless","Slow burn to explosion","Tension without full release"], harmonic: ["Minor-key introspection","Bluesy dominant","Dissonant tension"], mix: ["Dry & direct","Raw & uncompressed","Lo-fi tape warmth"] },
   "Letter to self":             { mood: ["Lonely","Tender","Bittersweet"],    groove: ["rubato","half-time","swing"], texture: ["Organic & breathing","Airy & weightless","Smooth & liquid"], vocalist: ["Smooth tenor","Breathy female lead","Whisper to full belt"], energy: ["Intimate & bare throughout","Sparse to wall of sound","Slow burn to explosion"], harmonic: ["Minor-key introspection","Classical voice-leading","Jazz extensions"], mix: ["Intimate close-mic","Lo-fi tape warmth","Heavy reverb cathedral"] },
   "Ode to a place":             { mood: ["Nostalgic","Serene","Spiritual"],   groove: ["swing","rubato","polyrhythm"], texture: ["Organic & breathing","Airy & weightless","Distressed & decayed"], vocalist: ["Smooth tenor","Layered harmonies no lead","Spoken word over melody"], energy: ["Steady groove throughout","Sparse to wall of sound","Starts huge then strips back"], harmonic: ["Major-key lift","Modal ambiguity","Jazz extensions"], mix: ["Wide cinematic","Lo-fi tape warmth","Vintage analog"] },
+  // ── Additions for newer lyrical vibes (LYRICAL_VIBES catalog 30) ──
+  "Character study / third-person": { mood: ["Nostalgic","Bittersweet","Pensive"],   groove: ["swing","rubato","straight"], texture: ["Organic & breathing","Distressed & decayed","Smooth & liquid"], vocalist: ["Smooth tenor","Spoken word over melody","Raw male baritone"], energy: ["Steady groove throughout","Starts huge then strips back","Slow burn to explosion"], harmonic: ["Minor-key introspection","Jazz extensions","Bluesy dominant"], mix: ["Lo-fi tape warmth","Vintage analog","Intimate close-mic"] },
+  "City at 3AM portrait":           { mood: ["Smoldering","Lonely","Melancholic"], groove: ["half-time","swing","rubato"], texture: ["Velvety & plush","Foggy & diffused","Smooth & liquid"], vocalist: ["Husky alto","Smooth tenor","Breathy female lead"], energy: ["Steady groove throughout","Slow burn to explosion","Intimate & bare throughout"], harmonic: ["Minor-key introspection","Jazz extensions","Phrygian exotic tension"], mix: ["Dark subterranean sub","Lo-fi tape warmth","Intimate close-mic"] },
+  "Dance-floor chant":              { mood: ["Ecstatic","Euphoric","Defiant"],     groove: ["motorik","straight","syncopated"], texture: ["Thick & saturated","Metallic & reflective","Rubbery & elastic"], vocalist: ["Gospel ensemble","Auto-tuned melodic delivery","Call-and-response duet"], energy: ["Euphoric continuous build","Driving & relentless","Fever-pitch final third"], harmonic: ["Major-key lift","Drone-based static harmony","Suspended chord hang"], mix: ["Punchy & compressed","Stadium bus compression","Ultra clean & polished"] },
+  "Generational family story":      { mood: ["Nostalgic","Bittersweet","Tender"],  groove: ["swing","shuffle","rubato"], texture: ["Organic & breathing","Distressed & decayed","Warm & sun-baked"], vocalist: ["Smooth tenor","Raw male baritone","Gospel ensemble"], energy: ["Starts huge then strips back","Steady groove throughout","Slow burn to explosion"], harmonic: ["Major-key lift","Minor-key introspection","Classical voice-leading"], mix: ["Lo-fi tape warmth","Vintage analog","Wide cinematic"] },
+  "Grief held at distance":         { mood: ["Melancholic","Pensive","Lonely"],    groove: ["rubato","half-time","swing"], texture: ["Airy & weightless","Foggy & diffused","Crystalline & brittle"], vocalist: ["Whisper to full belt","Breathy female lead","Smooth tenor"], energy: ["Intimate & bare throughout","Sparse to wall of sound","Slow burn to explosion"], harmonic: ["Minor-key introspection","Classical voice-leading","Suspended chord hang"], mix: ["Intimate close-mic","Heavy reverb cathedral","Lo-fi tape warmth"] },
+  "Imagined letter to ex":          { mood: ["Melancholic","Romantic","Bittersweet"], groove: ["rubato","half-time","swing"], texture: ["Organic & breathing","Smooth & liquid","Velvety & plush"], vocalist: ["Smooth tenor","Breathy female lead","Whisper to full belt"], energy: ["Intimate & bare throughout","Slow burn to explosion","Tension without full release"], harmonic: ["Minor-key introspection","Jazz extensions","Bluesy dominant"], mix: ["Intimate close-mic","Lo-fi tape warmth","Bedroom DIY aesthetic"] },
+  "Inside-joke wink":               { mood: ["Playful","Unbothered","Catchy"],     groove: ["shuffle","swing","syncopated"], texture: ["Rubbery & elastic","Crystalline & brittle","Organic & breathing"], vocalist: ["Falsetto-led","Spoken word over melody","Child chorus accents"], energy: ["Steady groove throughout","Quiet-loud-quiet loop","Intimate & bare throughout"], harmonic: ["Major-key lift","Jazz extensions","Suspended chord hang"], mix: ["Bedroom DIY aesthetic","Lo-fi tape warmth","Dry & direct"] },
+  "Late-night drive monologue":     { mood: ["Pensive","Smoldering","Nostalgic"],  groove: ["half-time","straight","swing"], texture: ["Velvety & plush","Foggy & diffused","Smooth & liquid"], vocalist: ["Smooth tenor","Husky alto","Spoken word over melody"], energy: ["Locked intensity, no dynamics","Steady groove throughout","Slow burn to explosion"], harmonic: ["Minor-key introspection","Jazz extensions","Modal ambiguity"], mix: ["Lo-fi tape warmth","Dark subterranean sub","Vintage analog"] },
+  "Manifesto / call to action":     { mood: ["Defiant","Triumphant","Uplifting"],  groove: ["straight","motorik","syncopated"], texture: ["Thick & saturated","Metallic & reflective","Organic & breathing"], vocalist: ["Raw male baritone","Gospel ensemble","Spoken rap over sung hook"], energy: ["Fever-pitch final third","Driving & relentless","Crescendo to abrupt cut"], harmonic: ["Major-key lift","Minor-key introspection","Dissonant tension"], mix: ["Stadium bus compression","Wide cinematic","Raw & uncompressed"] },
+  "Revenge fantasy":                { mood: ["Smoldering","Defiant","Furious"],    groove: ["half-time","broken","syncopated"], texture: ["Thick & saturated","Gritty & sandy","Metallic & reflective"], vocalist: ["Husky alto","Raw male baritone","Pitched-down bass mumble"], energy: ["Tension without full release","Slow burn to explosion","Locked intensity, no dynamics"], harmonic: ["Minor-key introspection","Phrygian exotic tension","Dissonant tension"], mix: ["Dark subterranean sub","Punchy & compressed","Raw & uncompressed"] },
 };
 
 // ENERGY_COMPLEMENTS: maps energy arc → {mood, groove, lyricalVibe}
@@ -3734,6 +3760,19 @@ const ENERGY_COMPLEMENTS = {
   "Driving & relentless":          { mood: ["Defiant","Furious","Electric"],       groove: ["motorik","straight","syncopated"],  lyricalVibe: ["Defiant anthem","Political protest","Braggadocio flex"], texture: ["Thick & saturated","Metallic & reflective","Digital & precise"], vocalist: ["Raw male baritone","Screamed verse / melodic chorus","Auto-tuned melodic delivery"], harmonic: ["Minor-key introspection","Dissonant tension","Major-key lift"], mix: ["Punchy & compressed","Raw & uncompressed","Futuristic digital"] },
   "Starts huge then strips back":  { mood: ["Triumphant","Melancholic","Bittersweet"], groove: ["straight","half-time","rubato"], lyricalVibe: ["Cinematic scene-setting","Letter to self","Coming-of-age narrative"], texture: ["Thick & saturated","Organic & breathing","Distressed & decayed"], vocalist: ["Whisper to full belt","Smooth tenor","Breathy female lead"], harmonic: ["Major-key lift","Minor-key introspection","Classical voice-leading"], mix: ["Wide cinematic","Lo-fi tape warmth","Intimate close-mic"] },
   "Tension without full release":  { mood: ["Anxious","Haunted","Desperate"],      groove: ["broken","experimental","half-time"], lyricalVibe: ["Existential questioning","Stream-of-consciousness","Surreal dreamscape"], texture: ["Granular & particulate","Crystalline & brittle","Metallic & reflective"], vocalist: ["Whisper to full belt","Androgynous voice","Spoken word over melody"], harmonic: ["Dissonant tension","Microtonal","Drone-based static harmony"], mix: ["Heavy reverb cathedral","Dry & direct","Raw & uncompressed"] },
+  // ── Additions for newer energy arcs (ENERGIES catalog 18) — each
+  // describes a specific dynamic shape so the complements target that
+  // SHAPE, not just "high energy" or "low energy".
+  "Breath cycles — inhale then release":  { mood: ["Serene","Pensive","Reverent"],    groove: ["rubato","half-time","straight"], lyricalVibe: ["Spiritual seeking","Letter to self","Ode to a place"], texture: ["Airy & weightless","Organic & breathing","Foggy & diffused"], vocalist: ["Breathy female lead","Layered harmonies no lead","Whisper to full belt"], harmonic: ["Suspended chord hang","Modal ambiguity","Drone-based static harmony"], mix: ["Heavy reverb cathedral","Intimate close-mic","Wide cinematic"] },
+  "Cascading drops throughout":           { mood: ["Ecstatic","Electric","Euphoric"], groove: ["motorik","syncopated","straight"], lyricalVibe: ["Hedonistic escapism","Dance-floor chant","Party celebration"], texture: ["Digital & precise","Metallic & reflective","Rubbery & elastic"], vocalist: ["Auto-tuned melodic delivery","Falsetto-led","Vocoder & robotic treatment"], harmonic: ["Drone-based static harmony","Major-key lift","Suspended chord hang"], mix: ["Futuristic digital","Stadium bus compression","Punchy & compressed"] },
+  "Crescendo to abrupt cut":              { mood: ["Anxious","Triumphant","Desperate"], groove: ["straight","rubato","broken"], lyricalVibe: ["Cinematic scene-setting","Manifesto / call to action","Existential questioning"], texture: ["Thick & saturated","Crystalline & brittle","Distressed & decayed"], vocalist: ["Whisper to full belt","Screamed verse / melodic chorus","Melismatic soprano"], harmonic: ["Dissonant tension","Minor-key introspection","Classical voice-leading"], mix: ["Wide cinematic","Raw & uncompressed","Heavy reverb cathedral"] },
+  "Fever-pitch final third":              { mood: ["Triumphant","Ecstatic","Defiant"], groove: ["straight","motorik","syncopated"], lyricalVibe: ["Manifesto / call to action","Defiant anthem","Dance-floor chant"], texture: ["Thick & saturated","Metallic & reflective","Gritty & sandy"], vocalist: ["Gospel ensemble","Raw male baritone","Whisper to full belt"], harmonic: ["Major-key lift","Minor-key introspection","Dissonant tension"], mix: ["Stadium bus compression","Wide cinematic","Punchy & compressed"] },
+  "Floors then slams back in":            { mood: ["Defiant","Electric","Catchy"],    groove: ["straight","broken","syncopated"], lyricalVibe: ["Dance-floor chant","Party celebration","Hedonistic escapism"], texture: ["Thick & saturated","Digital & precise","Rubbery & elastic"], vocalist: ["Auto-tuned melodic delivery","Raw male baritone","Falsetto-led"], harmonic: ["Major-key lift","Minor-key introspection","Bluesy dominant"], mix: ["Punchy & compressed","Stadium bus compression","Ultra clean & polished"] },
+  "Gradual decay into silence":           { mood: ["Melancholic","Lonely","Pensive"], groove: ["rubato","half-time","experimental"], lyricalVibe: ["Grief held at distance","Letter to self","Existential questioning"], texture: ["Airy & weightless","Foggy & diffused","Granular & particulate"], vocalist: ["Whisper to full belt","Breathy female lead","Layered harmonies no lead"], harmonic: ["Minor-key introspection","Suspended chord hang","Modal ambiguity"], mix: ["Heavy reverb cathedral","Intimate close-mic","Lo-fi tape warmth"] },
+  "Locked intensity, no dynamics":        { mood: ["Smoldering","Confident","Defiant"], groove: ["half-time","motorik","straight"], lyricalVibe: ["Revenge fantasy","Braggadocio flex","Late-night drive monologue"], texture: ["Thick & saturated","Velvety & plush","Gritty & sandy"], vocalist: ["Husky alto","Pitched-down bass mumble","Raw male baritone"], harmonic: ["Minor-key introspection","Drone-based static harmony","Phrygian exotic tension"], mix: ["Dark subterranean sub","Punchy & compressed","Bone-dry boom-bap drums"] },
+  "Pulse waves — swells every 8 bars":    { mood: ["Dreamlike","Serene","Euphoric"],   groove: ["motorik","half-time","straight"], lyricalVibe: ["Surreal dreamscape","Spiritual seeking","Abstract poetry"], texture: ["Airy & weightless","Smooth & liquid","Crystalline & brittle"], vocalist: ["Layered harmonies no lead","Breathy female lead","Androgynous voice"], harmonic: ["Drone-based static harmony","Modal ambiguity","Suspended chord hang"], mix: ["Heavy reverb cathedral","Wide cinematic","Futuristic digital"] },
+  "Punch-and-dissipate phrasing":         { mood: ["Unbothered","Playful","Confident"], groove: ["half-time","syncopated","broken"], lyricalVibe: ["Inside-joke wink","Stream-of-consciousness","Braggadocio flex"], texture: ["Rubbery & elastic","Distressed & decayed","Smooth & liquid"], vocalist: ["Spoken rap over sung hook","Spoken word over melody","Pitched-down bass mumble"], harmonic: ["Minor-key introspection","Jazz extensions","Bluesy dominant"], mix: ["Bone-dry boom-bap drums","Lo-fi tape warmth","Dry & direct"] },
+  "Quiet-loud-quiet loop":                { mood: ["Anxious","Bittersweet","Defiant"], groove: ["straight","broken","rubato"], lyricalVibe: ["Confessional diary","Defiant anthem","Coming-of-age narrative"], texture: ["Organic & breathing","Thick & saturated","Distressed & decayed"], vocalist: ["Whisper to full belt","Raw male baritone","Smooth tenor"], harmonic: ["Minor-key introspection","Major-key lift","Dissonant tension"], mix: ["Raw & uncompressed","Punchy & compressed","Intimate close-mic"] },
 };
 
 // VOCALIST_COMPLEMENTS: maps vocal type → {mood, groove, lyricalVibe}
@@ -3750,6 +3789,15 @@ const VOCALIST_COMPLEMENTS = {
   "Layered harmonies no lead":        { mood: ["Serene","Dreamlike","Spiritual"],    groove: ["rubato","straight","shuffle"],   lyricalVibe: ["Mythic / allegorical","Surreal dreamscape","Spiritual seeking"], texture: ["Airy & weightless","Crystalline & brittle","Smooth & liquid"], energy: ["Sparse to wall of sound","Intimate & bare throughout","Euphoric continuous build"], harmonic: ["Classical voice-leading","Modal ambiguity","Drone-based static harmony"], mix: ["Heavy reverb cathedral","Wide cinematic","Vintage analog"] },
   "Auto-tuned melodic delivery":      { mood: ["Electric","Unbothered","Nostalgic"], groove: ["half-time","syncopated","motorik"], lyricalVibe: ["Braggadocio flex","Hedonistic escapism","Stream-of-consciousness"], texture: ["Metallic & reflective","Digital & precise","Smooth & liquid"], energy: ["Steady groove throughout","Driving & relentless","Euphoric continuous build"], harmonic: ["Minor-key introspection","Major-key lift","Bluesy dominant"], mix: ["Futuristic digital","Punchy & compressed","Ultra clean & polished"] },
   "Falsetto-led":                     { mood: ["Sensual","Tender","Dreamlike"],      groove: ["half-time","swing","syncopated"], lyricalVibe: ["Romantic devotion","Letter to self","Confessional diary"], texture: ["Smooth & liquid","Airy & weightless","Organic & breathing"], energy: ["Steady groove throughout","Intimate & bare throughout","Euphoric continuous build"], harmonic: ["Major-key lift","Jazz extensions","Minor-key introspection"], mix: ["Lo-fi tape warmth","Intimate close-mic","Punchy & compressed"] },
+  // ── Additions for newer vocalists (VOCALISTS catalog 20) ──
+  "Gruff growler":                    { mood: ["Defiant","Furious","Smoldering"],    groove: ["straight","half-time","broken"], lyricalVibe: ["Revenge fantasy","Political protest","Defiant anthem"], texture: ["Gritty & sandy","Thick & saturated","Distressed & decayed"], energy: ["Driving & relentless","Locked intensity, no dynamics","Slow burn to explosion"], harmonic: ["Minor-key introspection","Bluesy dominant","Dissonant tension"], mix: ["Raw & uncompressed","Dark subterranean sub","Bone-dry boom-bap drums"] },
+  "Husky alto":                       { mood: ["Smoldering","Sensual","Melancholic"], groove: ["swing","half-time","rubato"],   lyricalVibe: ["City at 3AM portrait","Revenge fantasy","Romantic devotion"], texture: ["Velvety & plush","Smooth & liquid","Warm & sun-baked"], energy: ["Locked intensity, no dynamics","Slow burn to explosion","Steady groove throughout"], harmonic: ["Minor-key introspection","Jazz extensions","Bluesy dominant"], mix: ["Lo-fi tape warmth","Intimate close-mic","Vintage analog"] },
+  "Choirboy clarity":                 { mood: ["Reverent","Tender","Hopeful"],       groove: ["rubato","straight","shuffle"],   lyricalVibe: ["Spiritual seeking","Grief held at distance","Mythic / allegorical"], texture: ["Airy & weightless","Crystalline & brittle","Glassy & transparent"], energy: ["Sparse to wall of sound","Euphoric continuous build","Slow burn to explosion"], harmonic: ["Classical voice-leading","Major-key lift","Suspended chord hang"], mix: ["Heavy reverb cathedral","Wide cinematic","Hi-fi audiophile clarity"] },
+  "Vocoder & robotic treatment":      { mood: ["Electric","Dreamlike","Unbothered"], groove: ["motorik","syncopated","straight"], lyricalVibe: ["Abstract poetry","Hedonistic escapism","Surreal dreamscape"], texture: ["Digital & precise","Metallic & reflective","Glassy & transparent"], energy: ["Steady groove throughout","Cascading drops throughout","Driving & relentless"], harmonic: ["Drone-based static harmony","Major-key lift","Modal ambiguity"], mix: ["Futuristic digital","Ultra clean & polished","Underwater / muffled filter"] },
+  "Pitched-down bass mumble":         { mood: ["Smoldering","Dark & brooding","Electric"], groove: ["half-time","syncopated","broken"], lyricalVibe: ["Revenge fantasy","Braggadocio flex","Late-night drive monologue"], texture: ["Thick & saturated","Gritty & sandy","Woolly & muffled"], energy: ["Locked intensity, no dynamics","Steady groove throughout","Tension without full release"], harmonic: ["Minor-key introspection","Phrygian exotic tension","Bluesy dominant"], mix: ["Dark subterranean sub","Bone-dry boom-bap drums","Punchy & compressed"] },
+  "Call-and-response duet":           { mood: ["Ecstatic","Spiritual","Triumphant"], groove: ["shuffle","syncopated","polyrhythm"], lyricalVibe: ["Dance-floor chant","Spiritual seeking","Party celebration"], texture: ["Thick & saturated","Organic & breathing","Airy & weightless"], energy: ["Euphoric continuous build","Driving & relentless","Starts huge then strips back"], harmonic: ["Major-key lift","Bluesy dominant","Modal ambiguity"], mix: ["Wide cinematic","Vintage analog","Stadium bus compression"] },
+  "Spoken rap over sung hook":        { mood: ["Confident","Unbothered","Nostalgic"], groove: ["half-time","syncopated","swing"], lyricalVibe: ["Braggadocio flex","Stream-of-consciousness","Character study / third-person"], texture: ["Thick & saturated","Smooth & liquid","Velvety & plush"], energy: ["Steady groove throughout","Punch-and-dissipate phrasing","Slow burn to explosion"], harmonic: ["Minor-key introspection","Jazz extensions","Bluesy dominant"], mix: ["Lo-fi tape warmth","Punchy & compressed","Bone-dry boom-bap drums"] },
+  "Child chorus accents":             { mood: ["Playful","Haunted","Nostalgic"],     groove: ["straight","rubato","shuffle"],   lyricalVibe: ["Inside-joke wink","Coming-of-age narrative","Mythic / allegorical"], texture: ["Crystalline & brittle","Glassy & transparent","Airy & weightless"], energy: ["Starts huge then strips back","Sparse to wall of sound","Quiet-loud-quiet loop"], harmonic: ["Major-key lift","Modal ambiguity","Classical voice-leading"], mix: ["Lo-fi tape warmth","Wide cinematic","Bedroom DIY aesthetic"] },
 };
 
 // HARMONIC_COMPLEMENTS: maps harmonic style → {mood, groove, lyricalVibe}
@@ -3763,6 +3811,16 @@ const HARMONIC_COMPLEMENTS = {
   "Classical voice-leading":   { mood: ["Tender","Triumphant","Melancholic"],    groove: ["rubato","straight","swing"],    lyricalVibe: ["Romantic devotion","Mythic / allegorical","Cinematic scene-setting"], texture: ["Smooth & liquid","Organic & breathing","Crystalline & brittle"], vocalist: ["Melismatic soprano","Smooth tenor","Breathy female lead"], energy: ["Starts huge then strips back","Intimate & bare throughout","Euphoric continuous build"], mix: ["Wide cinematic","Heavy reverb cathedral","Ultra clean & polished"] },
   "Bluesy dominant":           { mood: ["Desperate","Sensual","Nostalgic"],      groove: ["shuffle","swing","syncopated"], lyricalVibe: ["Heartbreak elegy","Confessional diary","Nostalgic storytelling"], texture: ["Distressed & decayed","Organic & breathing","Thick & saturated"], vocalist: ["Raw male baritone","Smooth tenor","Gospel ensemble"], energy: ["Slow burn to explosion","Steady groove throughout","Intimate & bare throughout"], mix: ["Lo-fi tape warmth","Vintage analog","Raw & uncompressed"] },
   "Microtonal":                { mood: ["Haunted","Spiritual","Dreamlike"],      groove: ["rubato","experimental","polyrhythm"], lyricalVibe: ["Mythic / allegorical","Abstract poetry","Surreal dreamscape"], texture: ["Crystalline & brittle","Granular & particulate","Metallic & reflective"], vocalist: ["Androgynous voice","Whisper to full belt","Layered harmonies no lead"], energy: ["Sparse to wall of sound","Tension without full release","Slow burn to explosion"], mix: ["Futuristic digital","Heavy reverb cathedral","Dry & direct"] },
+  // ── Additions for newer harmonic languages (HARMONIC_STYLES 18) ──
+  "Dorian mode mystery":         { mood: ["Haunted","Pensive","Dreamlike"],     groove: ["rubato","half-time","polyrhythm"], lyricalVibe: ["Mythic / allegorical","City at 3AM portrait","Existential questioning"], texture: ["Airy & weightless","Foggy & diffused","Smooth & liquid"], vocalist: ["Breathy female lead","Layered harmonies no lead","Smooth tenor"], energy: ["Slow burn to explosion","Steady groove throughout","Sparse to wall of sound"], mix: ["Lo-fi tape warmth","Heavy reverb cathedral","Vintage analog"] },
+  "Lydian dreamy wonder":        { mood: ["Dreamlike","Hopeful","Uplifting"],   groove: ["rubato","straight","half-time"], lyricalVibe: ["Surreal dreamscape","Coming-of-age narrative","Ode to a place"], texture: ["Airy & weightless","Glassy & transparent","Crystalline & brittle"], vocalist: ["Breathy female lead","Falsetto-led","Layered harmonies no lead"], energy: ["Sparse to wall of sound","Euphoric continuous build","Pulse waves — swells every 8 bars"], mix: ["Heavy reverb cathedral","Wide cinematic","Hi-fi audiophile clarity"] },
+  "Phrygian exotic tension":     { mood: ["Smoldering","Haunted","Furious"],    groove: ["half-time","syncopated","polyrhythm"], lyricalVibe: ["Revenge fantasy","Mythic / allegorical","City at 3AM portrait"], texture: ["Gritty & sandy","Thick & saturated","Metallic & reflective"], vocalist: ["Husky alto","Raw male baritone","Melismatic soprano"], energy: ["Locked intensity, no dynamics","Slow burn to explosion","Tension without full release"], mix: ["Dark subterranean sub","Raw & uncompressed","Vintage analog"] },
+  "Suspended chord hang":        { mood: ["Hopeful","Pensive","Catchy"],        groove: ["straight","rubato","shuffle"],   lyricalVibe: ["Letter to self","Romantic devotion","Manifesto / call to action"], texture: ["Airy & weightless","Smooth & liquid","Glassy & transparent"], vocalist: ["Falsetto-led","Breathy female lead","Smooth tenor"], energy: ["Slow burn to explosion","Euphoric continuous build","Steady groove throughout"], mix: ["Ultra clean & polished","Wide cinematic","Hi-fi audiophile clarity"] },
+  "Parallel motion harmonies":   { mood: ["Nostalgic","Reverent","Bittersweet"], groove: ["straight","rubato","shuffle"],  lyricalVibe: ["Generational family story","Coming-of-age narrative","Spiritual seeking"], texture: ["Organic & breathing","Airy & weightless","Smooth & liquid"], vocalist: ["Layered harmonies no lead","Gospel ensemble","Smooth tenor"], energy: ["Starts huge then strips back","Steady groove throughout","Euphoric continuous build"], mix: ["Vintage analog","Heavy reverb cathedral","Lo-fi tape warmth"] },
+  "Chromatic bass line walks":   { mood: ["Sensual","Nostalgic","Smoldering"],  groove: ["swing","shuffle","half-time"],  lyricalVibe: ["Romantic devotion","City at 3AM portrait","Nostalgic storytelling"], texture: ["Smooth & liquid","Organic & breathing","Velvety & plush"], vocalist: ["Smooth tenor","Husky alto","Breathy female lead"], energy: ["Steady groove throughout","Slow burn to explosion","Locked intensity, no dynamics"], mix: ["Lo-fi tape warmth","Vintage analog","Intimate close-mic"] },
+  "Pentatonic folk simplicity":  { mood: ["Nostalgic","Summery","Hopeful"],     groove: ["straight","shuffle","swing"],   lyricalVibe: ["Ode to a place","Generational family story","Coming-of-age narrative"], texture: ["Organic & breathing","Warm & sun-baked","Airy & weightless"], vocalist: ["Smooth tenor","Breathy female lead","Gospel ensemble"], energy: ["Steady groove throughout","Starts huge then strips back","Intimate & bare throughout"], mix: ["Lo-fi tape warmth","Vintage analog","Hi-fi audiophile clarity"] },
+  "Augmented / whole-tone shimmer": { mood: ["Dreamlike","Haunted","Anxious"],  groove: ["rubato","experimental","half-time"], lyricalVibe: ["Surreal dreamscape","Abstract poetry","Existential questioning"], texture: ["Glassy & transparent","Crystalline & brittle","Granular & particulate"], vocalist: ["Androgynous voice","Layered harmonies no lead","Melismatic soprano"], energy: ["Pulse waves — swells every 8 bars","Sparse to wall of sound","Tension without full release"], mix: ["Heavy reverb cathedral","Futuristic digital","Underwater / muffled filter"] },
+  "Quartal stacked fourths":     { mood: ["Pensive","Unbothered","Dreamlike"],  groove: ["swing","rubato","half-time"],    lyricalVibe: ["Stream-of-consciousness","Abstract poetry","Late-night drive monologue"], texture: ["Smooth & liquid","Airy & weightless","Crystalline & brittle"], vocalist: ["Smooth tenor","Spoken word over melody","Breathy female lead"], energy: ["Steady groove throughout","Intimate & bare throughout","Slow burn to explosion"], mix: ["Lo-fi tape warmth","Intimate close-mic","Vintage analog"] },
 };
 
 // TEXTURE_COMPLEMENTS: maps sound texture → {mood, groove, lyricalVibe}
@@ -3776,6 +3834,16 @@ const TEXTURE_COMPLEMENTS = {
   "Organic & breathing":       { mood: ["Tender","Nostalgic","Serene"],          groove: ["swing","rubato","shuffle"],           lyricalVibe: ["Confessional diary","Ode to a place","Nostalgic storytelling"], vocalist: ["Breathy female lead","Smooth tenor","Spoken word over melody"], energy: ["Intimate & bare throughout","Steady groove throughout","Sparse to wall of sound"], harmonic: ["Major-key lift","Minor-key introspection","Jazz extensions"], mix: ["Lo-fi tape warmth","Intimate close-mic","Vintage analog"] },
   "Digital & precise":         { mood: ["Electric","Unbothered","Anxious"],      groove: ["motorik","straight","syncopated"],    lyricalVibe: ["Abstract poetry","Hedonistic escapism","Social commentary"], vocalist: ["Auto-tuned melodic delivery","Androgynous voice","Spoken word over melody"], energy: ["Steady groove throughout","Driving & relentless","Euphoric continuous build"], harmonic: ["Minor-key introspection","Dissonant tension","Major-key lift"], mix: ["Ultra clean & polished","Futuristic digital","Punchy & compressed"] },
   "Distressed & decayed":      { mood: ["Nostalgic","Melancholic","Haunted"],    groove: ["swing","rubato","half-time"],         lyricalVibe: ["Nostalgic storytelling","Letter to self","Heartbreak elegy"], vocalist: ["Smooth tenor","Raw male baritone","Spoken word over melody"], energy: ["Intimate & bare throughout","Slow burn to explosion","Steady groove throughout"], harmonic: ["Minor-key introspection","Bluesy dominant","Jazz extensions"], mix: ["Lo-fi tape warmth","Vintage analog","Raw & uncompressed"] },
+  // ── Additions for newer textures (SOUND_TEXTURES 18) ──
+  "Velvety & plush":           { mood: ["Smoldering","Sensual","Romantic"],      groove: ["half-time","swing","rubato"],         lyricalVibe: ["Romantic devotion","City at 3AM portrait","Imagined letter to ex"], vocalist: ["Husky alto","Breathy female lead","Smooth tenor"], energy: ["Slow burn to explosion","Locked intensity, no dynamics","Steady groove throughout"], harmonic: ["Jazz extensions","Minor-key introspection","Chromatic bass line walks"], mix: ["Lo-fi tape warmth","Vintage analog","Intimate close-mic"] },
+  "Gritty & sandy":            { mood: ["Defiant","Smoldering","Furious"],       groove: ["straight","broken","half-time"],      lyricalVibe: ["Revenge fantasy","Defiant anthem","Political protest"], vocalist: ["Gruff growler","Raw male baritone","Pitched-down bass mumble"], energy: ["Locked intensity, no dynamics","Driving & relentless","Slow burn to explosion"], harmonic: ["Minor-key introspection","Phrygian exotic tension","Bluesy dominant"], mix: ["Raw & uncompressed","Dark subterranean sub","Bone-dry boom-bap drums"] },
+  "Waxy & pliable":            { mood: ["Unbothered","Playful","Sensual"],       groove: ["swing","syncopated","shuffle"],       lyricalVibe: ["Stream-of-consciousness","Inside-joke wink","Romantic devotion"], vocalist: ["Smooth tenor","Falsetto-led","Spoken word over melody"], energy: ["Steady groove throughout","Intimate & bare throughout","Quiet-loud-quiet loop"], harmonic: ["Jazz extensions","Major-key lift","Suspended chord hang"], mix: ["Lo-fi tape warmth","Bedroom DIY aesthetic","Vintage analog"] },
+  "Foggy & diffused":          { mood: ["Dreamlike","Pensive","Lonely"],         groove: ["rubato","half-time","experimental"],  lyricalVibe: ["Grief held at distance","Late-night drive monologue","Surreal dreamscape"], vocalist: ["Whisper to full belt","Breathy female lead","Layered harmonies no lead"], energy: ["Breath cycles — inhale then release","Sparse to wall of sound","Gradual decay into silence"], harmonic: ["Modal ambiguity","Dorian mode mystery","Suspended chord hang"], mix: ["Heavy reverb cathedral","Underwater / muffled filter","Lo-fi tape warmth"] },
+  "Glassy & transparent":      { mood: ["Serene","Dreamlike","Hopeful"],         groove: ["rubato","straight","half-time"],      lyricalVibe: ["Spiritual seeking","Letter to self","Ode to a place"], vocalist: ["Choirboy clarity","Breathy female lead","Falsetto-led"], energy: ["Sparse to wall of sound","Pulse waves — swells every 8 bars","Euphoric continuous build"], harmonic: ["Lydian dreamy wonder","Suspended chord hang","Augmented / whole-tone shimmer"], mix: ["Hi-fi audiophile clarity","Wide cinematic","Heavy reverb cathedral"] },
+  "Rubbery & elastic":         { mood: ["Playful","Catchy","Ecstatic"],          groove: ["syncopated","motorik","shuffle"],     lyricalVibe: ["Dance-floor chant","Party celebration","Inside-joke wink"], vocalist: ["Falsetto-led","Auto-tuned melodic delivery","Vocoder & robotic treatment"], energy: ["Cascading drops throughout","Floors then slams back in","Euphoric continuous build"], harmonic: ["Major-key lift","Suspended chord hang","Jazz extensions"], mix: ["Punchy & compressed","Ultra clean & polished","Stadium bus compression"] },
+  "Woolly & muffled":          { mood: ["Nostalgic","Pensive","Lonely"],         groove: ["half-time","swing","rubato"],         lyricalVibe: ["Generational family story","Grief held at distance","Confessional diary"], vocalist: ["Pitched-down bass mumble","Spoken word over melody","Smooth tenor"], energy: ["Intimate & bare throughout","Steady groove throughout","Gradual decay into silence"], harmonic: ["Minor-key introspection","Modal ambiguity","Jazz extensions"], mix: ["Underwater / muffled filter","Lo-fi tape warmth","Bedroom DIY aesthetic"] },
+  "Icy & sharp":               { mood: ["Electric","Haunted","Anxious"],         groove: ["motorik","broken","syncopated"],      lyricalVibe: ["Abstract poetry","Revenge fantasy","Manifesto / call to action"], vocalist: ["Androgynous voice","Vocoder & robotic treatment","Whisper to full belt"], energy: ["Tension without full release","Driving & relentless","Crescendo to abrupt cut"], harmonic: ["Dissonant tension","Microtonal","Augmented / whole-tone shimmer"], mix: ["Hi-fi audiophile clarity","Futuristic digital","Dry & direct"] },
+  "Warm & sun-baked":          { mood: ["Summery","Nostalgic","Hopeful"],        groove: ["swing","shuffle","straight"],         lyricalVibe: ["Ode to a place","Generational family story","Coming-of-age narrative"], vocalist: ["Smooth tenor","Husky alto","Gospel ensemble"], energy: ["Steady groove throughout","Starts huge then strips back","Euphoric continuous build"], harmonic: ["Pentatonic folk simplicity","Major-key lift","Bluesy dominant"], mix: ["Vintage analog","Lo-fi tape warmth","Wide cinematic"] },
 };
 
 // MIX_COMPLEMENTS: maps mix character → {mood, groove, lyricalVibe}
@@ -3790,6 +3858,15 @@ const MIX_COMPLEMENTS = {
   "Vintage analog":            { mood: ["Nostalgic","Sensual","Unbothered"],     groove: ["swing","shuffle","syncopated"],  lyricalVibe: ["Nostalgic storytelling","Romantic devotion","Hedonistic escapism"], texture: ["Organic & breathing","Distressed & decayed","Smooth & liquid"], vocalist: ["Smooth tenor","Breathy female lead","Spoken word over melody"], energy: ["Steady groove throughout","Intimate & bare throughout","Starts huge then strips back"], harmonic: ["Jazz extensions","Bluesy dominant","Major-key lift"] },
   "Futuristic digital":        { mood: ["Electric","Dreamlike","Ecstatic"],      groove: ["motorik","straight","experimental"], lyricalVibe: ["Abstract poetry","Surreal dreamscape","Hedonistic escapism"], texture: ["Digital & precise","Metallic & reflective","Granular & particulate"], vocalist: ["Auto-tuned melodic delivery","Androgynous voice","Falsetto-led"], energy: ["Driving & relentless","Tension without full release","Euphoric continuous build"], harmonic: ["Modal ambiguity","Dissonant tension","Microtonal"] },
   "Dry & direct":              { mood: ["Unbothered","Defiant","Tender"],        groove: ["straight","swing","half-time"],  lyricalVibe: ["Confessional diary","Social commentary","Braggadocio flex"], texture: ["Organic & breathing","Distressed & decayed","Digital & precise"], vocalist: ["Spoken word over melody","Raw male baritone","Smooth tenor"], energy: ["Intimate & bare throughout","Steady groove throughout","Driving & relentless"], harmonic: ["Minor-key introspection","Bluesy dominant","Jazz extensions"] },
+  // ── Additions for newer mix characters (MIX_CHARS 18) ──
+  "Bedroom DIY aesthetic":     { mood: ["Nostalgic","Unbothered","Playful"],      groove: ["swing","shuffle","rubato"],       lyricalVibe: ["Confessional diary","Inside-joke wink","Coming-of-age narrative"], texture: ["Organic & breathing","Waxy & pliable","Distressed & decayed"], vocalist: ["Smooth tenor","Breathy female lead","Spoken word over melody"], energy: ["Intimate & bare throughout","Steady groove throughout","Quiet-loud-quiet loop"], harmonic: ["Major-key lift","Jazz extensions","Suspended chord hang"] },
+  "80s gated reverb drums":    { mood: ["Triumphant","Nostalgic","Electric"],     groove: ["straight","syncopated","motorik"], lyricalVibe: ["Defiant anthem","Coming-of-age narrative","Manifesto / call to action"], texture: ["Metallic & reflective","Thick & saturated","Crystalline & brittle"], vocalist: ["Whisper to full belt","Raw male baritone","Falsetto-led"], energy: ["Fever-pitch final third","Driving & relentless","Starts huge then strips back"], harmonic: ["Major-key lift","Minor-key introspection","Suspended chord hang"] },
+  "Slick radio master":        { mood: ["Catchy","Euphoric","Romantic"],          groove: ["straight","syncopated","motorik"], lyricalVibe: ["Party celebration","Romantic devotion","Dance-floor chant"], texture: ["Smooth & liquid","Rubbery & elastic","Digital & precise"], vocalist: ["Auto-tuned melodic delivery","Falsetto-led","Smooth tenor"], energy: ["Euphoric continuous build","Cascading drops throughout","Steady groove throughout"], harmonic: ["Major-key lift","Suspended chord hang","Jazz extensions"] },
+  "Underwater / muffled filter":{ mood: ["Dreamlike","Pensive","Lonely"],         groove: ["half-time","rubato","experimental"], lyricalVibe: ["Grief held at distance","Surreal dreamscape","Late-night drive monologue"], texture: ["Foggy & diffused","Woolly & muffled","Airy & weightless"], vocalist: ["Whisper to full belt","Pitched-down bass mumble","Layered harmonies no lead"], energy: ["Breath cycles — inhale then release","Gradual decay into silence","Pulse waves — swells every 8 bars"], harmonic: ["Modal ambiguity","Dorian mode mystery","Suspended chord hang"] },
+  "Stadium bus compression":   { mood: ["Triumphant","Uplifting","Euphoric"],     groove: ["straight","motorik","syncopated"],   lyricalVibe: ["Manifesto / call to action","Dance-floor chant","Defiant anthem"], texture: ["Thick & saturated","Rubbery & elastic","Metallic & reflective"], vocalist: ["Gospel ensemble","Whisper to full belt","Auto-tuned melodic delivery"], energy: ["Fever-pitch final third","Euphoric continuous build","Driving & relentless"], harmonic: ["Major-key lift","Suspended chord hang","Minor-key introspection"] },
+  "Bone-dry boom-bap drums":   { mood: ["Nostalgic","Confident","Unbothered"],    groove: ["swing","syncopated","half-time"],    lyricalVibe: ["Character study / third-person","Braggadocio flex","Stream-of-consciousness"], texture: ["Distressed & decayed","Waxy & pliable","Organic & breathing"], vocalist: ["Spoken rap over sung hook","Smooth tenor","Raw male baritone"], energy: ["Steady groove throughout","Punch-and-dissipate phrasing","Locked intensity, no dynamics"], harmonic: ["Jazz extensions","Bluesy dominant","Minor-key introspection"] },
+  "Dark subterranean sub":     { mood: ["Smoldering","Dark & brooding","Defiant"], groove: ["half-time","syncopated","broken"],  lyricalVibe: ["Revenge fantasy","City at 3AM portrait","Late-night drive monologue"], texture: ["Thick & saturated","Gritty & sandy","Woolly & muffled"], vocalist: ["Pitched-down bass mumble","Gruff growler","Husky alto"], energy: ["Locked intensity, no dynamics","Tension without full release","Slow burn to explosion"], harmonic: ["Minor-key introspection","Phrygian exotic tension","Drone-based static harmony"] },
+  "Hi-fi audiophile clarity":  { mood: ["Reverent","Serene","Hopeful"],           groove: ["rubato","straight","swing"],         lyricalVibe: ["Spiritual seeking","Letter to self","Mythic / allegorical"], texture: ["Glassy & transparent","Crystalline & brittle","Airy & weightless"], vocalist: ["Choirboy clarity","Melismatic soprano","Smooth tenor"], energy: ["Sparse to wall of sound","Breath cycles — inhale then release","Euphoric continuous build"], harmonic: ["Classical voice-leading","Lydian dreamy wonder","Suspended chord hang"] },
 };
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -11804,6 +11881,12 @@ function GenreSlotPicker({ slots, onChange, slotLocks, onToggleSlotLock, maxSlot
       {activeSlot !== null && (
         <div style={{
           marginTop: T.s4,
+          // Cap the drawer width on desktop — the full column width
+          // (~700px) made long rows of chips stretch too wide,
+          // forcing the eye to scan horizontally to find items.
+          // Narrower reads like a focused configuration panel rather
+          // than a page-width sprawl. Mobile stays full-width.
+          maxWidth: isMobile ? "100%" : 560,
           background: T.surface, border: `1px solid ${T.border}`,
           borderRadius: T.r_lg, padding: T.s5,
           boxShadow: "0 1px 0 rgba(255,255,255,0.03)",
@@ -12038,7 +12121,17 @@ function GenreSlotPicker({ slots, onChange, slotLocks, onToggleSlotLock, maxSlot
 
           <div style={{ marginBottom: T.s4 }}>
             <Label color={T.textTer} style={{ display: "block", marginBottom: T.s2 }}>Main genre (commits immediately)</Label>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: T.s1 }}>
+            {/* Same scroll cap pattern — typically 15+ categories
+                render fine but if more are added later the cap
+                prevents regression. Modest cap since categories
+                are the TOP of the tree — user should see most
+                at once. */}
+            <div style={{
+              display: "flex", flexWrap: "wrap", gap: T.s1,
+              maxHeight: isMobile ? "32vh" : "30vh",
+              overflowY: "auto",
+              paddingRight: 4,
+            }}>
               {Object.keys(GENRE_TREE).sort((a, b) => a.localeCompare(b)).filter(cat => {
                 if (!q) return true;
                 // Show category if: its own name matches, OR any of its subgenres/microstyles match
@@ -12070,7 +12163,19 @@ function GenreSlotPicker({ slots, onChange, slotLocks, onToggleSlotLock, maxSlot
                   (optional · refines your selection){restrictSubgenres ? " · Pro unlocks full list" : ""}
                 </span>
               </Label>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: T.s1 }}>
+              {/* Scrollable chip region — categories like "Hebrew" or
+                  "Electronic" have 40+ subgenres and used to balloon
+                  the drawer past the viewport, cutting off bottom
+                  chips. maxHeight caps the region and delegates to
+                  internal scroll (chips stay sized, not compressed).
+                  The small right-side padding compensates for the
+                  scrollbar so wrapped rows still align flush-left. */}
+              <div style={{
+                display: "flex", flexWrap: "wrap", gap: T.s1,
+                maxHeight: isMobile ? "38vh" : "44vh",
+                overflowY: "auto",
+                paddingRight: 4,
+              }}>
                 {Object.keys(GENRE_TREE[activeCat])
                   .sort((a, b) => a.localeCompare(b))
                   .filter(g => {
@@ -12106,7 +12211,15 @@ function GenreSlotPicker({ slots, onChange, slotLocks, onToggleSlotLock, maxSlot
                   (optional){restrictSubgenres ? " · Pro unlocks microstyles" : ""}
                 </span>
               </Label>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: T.s1 }}>
+              {/* Same pattern for microstyle chips — some genres
+                  (e.g. Hip-Hop > Trap, Electronic > House) have 20+
+                  microstyles that also need a height cap. */}
+              <div style={{
+                display: "flex", flexWrap: "wrap", gap: T.s1,
+                maxHeight: isMobile ? "32vh" : "36vh",
+                overflowY: "auto",
+                paddingRight: 4,
+              }}>
                 {(GENRE_TREE[activeCat]?.[activeGenre] || [])
                   .slice()
                   .sort((a, b) => a.localeCompare(b))
@@ -14789,6 +14902,14 @@ function EngineWorkspace({ onNavigate, variant = "default" }) {
   // user has interacted. Set after first render pass via the effect
   // guard below.
   const lastScrolledDetailedRef = useRef(null);
+  // HIT button anchor — used by the "↑ HIT" return pill that appears
+  // once the user has scrolled past the hit button (typically after a
+  // prompt generation). Mounted on the button's wrapper below.
+  const hitButtonRef = useRef(null);
+  // Visibility flag for the return-to-HIT pill. Driven by an
+  // IntersectionObserver that watches hitButtonRef — pill shows when
+  // the HIT button is fully off-screen, hides when it's in view.
+  const [showReturnToHit, setShowReturnToHit] = useState(false);
 
   // ── COLLAPSIBLE SECTIONS ────────────────────────────────────────────
   // Each chip-list section collapses to its TOP_5 curated shortlist by
@@ -17039,6 +17160,32 @@ function EngineWorkspace({ onNavigate, variant = "default" }) {
     return () => clearTimeout(t);
   }, [detailedResult?.text, isRolling]);
 
+  // ── "↑ HIT" RETURN PILL — visibility observer ─────────────────────
+  // Watch the HIT button's wrapper. When it scrolls fully out of view
+  // (typical after a prompt generation that auto-scrolls to the result
+  // pane), fade the floating return pill in. When it's even partially
+  // visible, hide the pill. Uses IntersectionObserver so we don't have
+  // to attach a scroll listener — browser handles the observation.
+  useEffect(() => {
+    const el = hitButtonRef.current;
+    if (!el || typeof IntersectionObserver === "undefined") return;
+    const io = new IntersectionObserver(
+      ([entry]) => setShowReturnToHit(!entry.isIntersecting),
+      { root: null, threshold: 0, rootMargin: "-40px 0px 0px 0px" }
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
+
+  // Smooth-scroll the HIT button back into view + flash-focus it so the
+  // user gets a confirmation that they arrived. Used by the return pill
+  // below plus the mobile-bottom-bar keyboard shortcut (future turn).
+  const scrollToHit = () => {
+    const el = hitButtonRef.current;
+    if (!el || typeof el.scrollIntoView !== "function") return;
+    el.scrollIntoView({ behavior: "smooth", block: "center" });
+  };
+
   return (
     <div className={isRolling ? "engine-shake" : ""} style={{
       position: "relative",
@@ -17047,6 +17194,61 @@ function EngineWorkspace({ onNavigate, variant = "default" }) {
       minHeight: isMobile ? "calc(100vh - 53px)" : "auto",
       overflow: isMobile ? "visible" : "hidden",
     }}>
+      {/* ── FLOATING "↑ HIT" RETURN PILL ────────────────────────────
+          Appears when the HIT button has scrolled off-screen (usually
+          after a prompt generation auto-scrolls to the result). One
+          tap/click returns the viewport to the button so the producer
+          can re-roll without scrolling back manually. Positioned
+          bottom-right on desktop, bottom-center on mobile where the
+          thumb can reach it. Fades in/out with the observer-backed
+          showReturnToHit flag so it never fights the button when
+          both are visible. */}
+      {showReturnToHit && (
+        <button
+          type="button"
+          onClick={() => { playSwitchSound(); scrollToHit(); }}
+          aria-label="Scroll back to HIT button"
+          style={{
+            position: "fixed",
+            right: isMobile ? "50%" : 24,
+            bottom: isMobile ? 20 : 28,
+            transform: isMobile ? "translateX(50%)" : "none",
+            zIndex: 60,
+            display: "inline-flex", alignItems: "center", gap: 8,
+            padding: isMobile ? "11px 18px" : "10px 16px",
+            background: `linear-gradient(135deg, ${V.neonGold} 0%, #FFB800 100%)`,
+            color: "#1a1408",
+            border: "none",
+            borderRadius: 999,
+            fontFamily: T.font_mono,
+            fontSize: isMobile ? 12 : 11,
+            fontWeight: 800,
+            letterSpacing: "0.18em",
+            cursor: "pointer",
+            boxShadow: `0 10px 24px rgba(0,0,0,0.55), 0 0 0 1px rgba(255, 215, 0, 0.45), 0 0 24px rgba(255, 184, 0, 0.35)`,
+            animation: "engineReturnPillIn 280ms cubic-bezier(0.2, 0.9, 0.25, 1.25)",
+            transition: `transform 180ms ease, box-shadow 180ms ease`,
+          }}
+          onMouseEnter={e => {
+            e.currentTarget.style.transform = (isMobile ? "translateX(50%) " : "") + "translateY(-2px)";
+            e.currentTarget.style.boxShadow = `0 14px 30px rgba(0,0,0,0.55), 0 0 0 1px rgba(255, 215, 0, 0.6), 0 0 34px rgba(255, 184, 0, 0.55)`;
+          }}
+          onMouseLeave={e => {
+            e.currentTarget.style.transform = isMobile ? "translateX(50%)" : "none";
+            e.currentTarget.style.boxShadow = `0 10px 24px rgba(0,0,0,0.55), 0 0 0 1px rgba(255, 215, 0, 0.45), 0 0 24px rgba(255, 184, 0, 0.35)`;
+          }}
+        >
+          <span style={{ fontSize: 14, lineHeight: 1 }}>↑</span>
+          <span>BACK TO HIT</span>
+        </button>
+      )}
+      <style>{`
+        @keyframes engineReturnPillIn {
+          from { opacity: 0; transform: ${isMobile ? 'translateX(50%) ' : ''}translateY(12px); }
+          to   { opacity: 1; transform: ${isMobile ? 'translateX(50%)' : 'translateY(0)'}; }
+        }
+      `}</style>
+
       {/* Casino particle canvas — always-on floating glitter */}
       <CasinoParticles isRolling={isRolling} />
 
@@ -17138,14 +17340,98 @@ function EngineWorkspace({ onNavigate, variant = "default" }) {
           padding: isMobile
             ? `${T.s5}px ${T.s4}px ${T.s6}px`
             : `${T.s8}px ${T.s6}px ${T.s10}px ${T.s9}px`,
+          // Stacking context — children with position:relative z-index:1
+          // render ABOVE the ambient-glow layer injected just below.
+          position: "relative",
         }}>
+          {/* ── AMBIENT GLOWS — atmospheric lighting layer ─────────
+              Two large, soft radial gradients sitting behind the
+              content to simulate screens casting light onto a dark,
+              tactile surface. Deep indigo-purple in the upper-left
+              region (behind the logo / tagline / Bubble Tools rail),
+              cyan in the mid-right region (behind the Quick Prompts
+              card + type switch). Very low opacity so they read as
+              atmosphere not decoration.
+
+              z-index: 0 + pointer-events: none keeps them below and
+              ignored by hit-testing. Absolute positioning anchors
+              them to the pane (not the viewport) so they scroll with
+              content and stay visually tied to the cards they're
+              lighting. Desktop-only — mobile has limited pixel budget
+              and the glows would fight with the HIT button sitting
+              at the top of the small viewport. */}
+          {!isMobile && (
+            <div aria-hidden="true" style={{
+              position: "absolute", inset: 0,
+              pointerEvents: "none", zIndex: 0,
+              overflow: "hidden",
+            }}>
+              {/* Upper deep-purple bloom — sits behind the logo + BT rail.
+                  Sized big (~60vw) at low opacity so the gradient edges
+                  fade into the T.bg backdrop without creating visible
+                  seams. Offset slightly top-left so it catches the
+                  logo's left edge and spreads across the hero. */}
+              <div style={{
+                position: "absolute",
+                top: "-5%", left: "-10%",
+                width: "75%", height: "55%",
+                background: `radial-gradient(ellipse at 40% 40%,
+                  rgba(94, 106, 210, 0.18) 0%,
+                  rgba(74, 86, 190, 0.10) 28%,
+                  rgba(54, 46, 110, 0.04) 55%,
+                  transparent 75%)`,
+                filter: "blur(12px)",
+              }} />
+              {/* Mid cyan bloom — sits behind Quick Prompts + the
+                  mid-page control cards. Cyan counterpoint to the
+                  purple above, simulating two screens casting cool
+                  light onto the same dark surface. Lower on the Y
+                  axis so it reads as a SECOND light source, not an
+                  extension of the first. */}
+              <div style={{
+                position: "absolute",
+                top: "35%", left: "20%",
+                width: "85%", height: "60%",
+                background: `radial-gradient(ellipse at 50% 50%,
+                  rgba(0, 229, 255, 0.10) 0%,
+                  rgba(0, 200, 230, 0.06) 32%,
+                  rgba(0, 140, 180, 0.025) 60%,
+                  transparent 80%)`,
+                filter: "blur(14px)",
+              }} />
+              {/* Bottom accent pool — very faint indigo re-anchor near
+                  the bottom of the pane so long pages (Quick Prompts
+                  pagination, full control stack) don't lose the glow
+                  context as the user scrolls. Smallest of the three,
+                  just enough to keep the "dark surface under screens"
+                  illusion continuous. */}
+              <div style={{
+                position: "absolute",
+                bottom: "-10%", right: "-5%",
+                width: "55%", height: "40%",
+                background: `radial-gradient(ellipse at 60% 40%,
+                  rgba(94, 106, 210, 0.08) 0%,
+                  rgba(74, 86, 190, 0.04) 40%,
+                  transparent 70%)`,
+                filter: "blur(16px)",
+              }} />
+            </div>
+          )}
         {/* ── INNER CENTERED COLUMN ──────────────────────────────
             All left-pane content shares one left-aligned column (max
             700px on desktop). Starts at the pane's left padding (the
             same X as nav links) so the composition reads top-down as
-            a single clean vertical rhythm. */}
+            a single clean vertical rhythm.
+
+            position:relative + zIndex:1 is intentional — it lifts the
+            content layer above the absolute-positioned ambient-glow
+            layer above (the purple + cyan radial blooms that simulate
+            screens casting light onto the dark surface). Without this,
+            the glows would render ON TOP OF the content. */}
         <div style={{
           maxWidth: isMobile ? "100%" : 700,
+          position: "relative",
+          zIndex: 1,
         }}>
           {/* ── HERO ─────────────────────────────────────────────────
               Architectural composition: banner at left anchor, tagline
@@ -17153,16 +17439,37 @@ function EngineWorkspace({ onNavigate, variant = "default" }) {
               gold leading mark for an asymmetric editorial feel.
               Banner owns its own vertical space; tagline reads as
               subtitle pulling FROM the banner rather than weighing
-              the same as it. */}
+              the same as it.
+
+              Logo group left edge now visually aligns with the Quick
+              Prompts card's content edge — shifted right to
+              T.s5 + 8 (32px on desktop) so the HIT banner's visual
+              H-stroke lines up with the "✦ QUICK" chip + "Quick
+              Prompts" title inside the card below. Before this the
+              logo looked adrift because the banner's own letter
+              spacing and SVG glows pulled the eye further left than
+              the paddingLeft value alone suggested.
+
+              Extra 15px of vertical breathing room between the banner
+              and the italic subtext line — originally the subtext
+              sat tight against the banner baseline; the extra space
+              sharpens the typographic hierarchy so the banner reads
+              as the primary mark and the subtext as true subtitle
+              (pulling from, not competing with). Mobile keeps the
+              logo flush so the narrow screen doesn't waste pixels. */}
           <div style={{
             marginBottom: isMobile ? T.s5 : T.s7,
+            paddingLeft: isMobile ? 0 : T.s5 + 8,
           }}>
             {/* Banner + notes container. Position relative so the
                 absolute-positioned notes strip can anchor to this box. */}
             <div style={{
               position: "relative",
               display: "inline-block",
-              marginBottom: isMobile ? T.s3 : T.s4,
+              // 15px extra below the banner before the subtext line —
+              // builds a clearer typographic rhythm (banner is primary,
+              // subtext is secondary).
+              marginBottom: isMobile ? T.s3 + 15 : T.s4 + 15 + 15,
             }}>
               {/* Notes strip — absolute, fills the banner box horizontally.
                   Starts at ~9% (just inside the H) and ends at 100%
@@ -18735,7 +19042,7 @@ function EngineWorkspace({ onNavigate, variant = "default" }) {
             ? `${T.s4}px ${T.s4}px ${T.s6}px`
             : `${T.s8}px ${T.s8}px ${T.s10}px ${T.s7}px`,
         }}>
-          <div style={{
+          <div ref={hitButtonRef} style={{
             marginBottom: T.s5,
             display: "flex",
             flexDirection: "column",
@@ -26574,6 +26881,652 @@ function Joystick({ onNavigate, onLockedClick }) {
 // ════════════════════════════════════════════════════════════════════════════
 
 // ════════════════════════════════════════════════════════════════════════════
+// GENRE SLOT PICKER — CRT VARIANT
+// ════════════════════════════════════════════════════════════════════════════
+// CRT/hacker-terminal variant of GenreSlotPicker, purpose-built for the
+// SunoMasterConsole inside BubbleTools. Same data model as the consumer
+// picker (GENRE_TREE navigation → {genre, sub, micro} slot output), but
+// styled entirely in the green-terminal palette so it composes with the
+// surrounding hacker console without visual dissonance.
+//
+// Design choices that differ from the consumer picker:
+//   - No tier-locking UI (admin-only by definition of where it renders)
+//   - No empty-state upsell CTA (admin always has all slots)
+//   - Terminal-style path label at the top of the drawer
+//     ("~/genres/hip-hop/trap") reflecting the current navigation depth
+//   - Monospace everywhere, letter-spaced uppercase for headers
+//   - Instant-commit on selection (same as consumer)
+//   - Per-slot lock toggle retained for Turn-3 integration (lock buttons
+//     render but their handler is a no-op in Turn 1 — plumbing is ready
+//     when we want to wire it up for re-roll protection)
+//
+// Props:
+//   slots           — array of {genre, sub, micro} or null, length=3
+//   onChange        — (newSlots) => void
+//   slotLocks       — optional boolean[] per slot (reserved, Turn 3)
+//   onToggleSlotLock— optional (idx) => void (reserved, Turn 3)
+// ════════════════════════════════════════════════════════════════════════════
+
+function GenreSlotPickerCRT({ slots, onChange, slotLocks, onToggleSlotLock }) {
+  const { layout } = useLayout();
+  const isMobile = layout === "mobile";
+  const [activeSlot, setActiveSlot] = useState(null);
+  const [activeCat, setActiveCat] = useState(null);
+  const [activeGenre, setActiveGenre] = useState(null);
+  const [searchQuery, setSearchQuery] = useState("");
+
+  // Local palette tokens — match SunoMasterConsole so the picker feels
+  // native to the console frame. Defined once, reused everywhere below.
+  const GREEN = "#00FF41";
+  const GREEN_HI = "#66FF88";
+  const GREEN_DIM = "rgba(0, 255, 65, 0.55)";
+  const GREEN_MUTE = "rgba(0, 255, 65, 0.32)";
+  const GREEN_FAINT = "rgba(0, 255, 65, 0.15)";
+  const GREEN_BG = "rgba(0, 255, 65, 0.04)";
+  const BLACK = "#050805";
+  const BLACK_RAISED = "#0A1008";
+  const MAX_SLOTS = 3;
+
+  const q = searchQuery.trim().toLowerCase();
+  const matches = (s) => !q || s.toLowerCase().includes(q);
+
+  const openSlot = (idx) => {
+    setActiveSlot(idx);
+    const ex = slots[idx];
+    if (ex) {
+      // Resolve existing {genre, sub, micro} selection back into category
+      // + genre so opening a filled slot lands the drawer in the right place.
+      const cat = Object.keys(GENRE_TREE).find(c => Object.keys(GENRE_TREE[c]).includes(ex.genre));
+      setActiveCat(cat || null);
+      setActiveGenre(ex.genre);
+    } else {
+      setActiveCat(null);
+      setActiveGenre(null);
+    }
+    setSearchQuery("");
+  };
+  const closeSlot = () => {
+    setActiveSlot(null);
+    setActiveCat(null);
+    setActiveGenre(null);
+    setSearchQuery("");
+  };
+
+  // Instant commit — any picker action immediately mutates the slot
+  // structure upstream via onChange. No "apply" button. Keeps the UX tight.
+  const commitSlot = (mainCat, subGenre, micro) => {
+    const next = [...slots];
+    if (subGenre) {
+      next[activeSlot] = { genre: subGenre, sub: micro || null, micro: null };
+    } else if (mainCat) {
+      next[activeSlot] = { genre: mainCat, sub: null, micro: null };
+    } else {
+      next[activeSlot] = null;
+    }
+    onChange(next);
+  };
+
+  const clearSlot = (idx) => {
+    const next = [...slots];
+    next[idx] = null;
+    onChange(next);
+  };
+
+  // Render a single slot card. Extracted so the three-card row stays
+  // legible in the main JSX. Uses active/filled/empty states to pick
+  // the right visual treatment.
+  const renderSlotCard = (i) => {
+    const slot = slots[i];
+    const isActive = activeSlot === i;
+    const isLocked = slotLocks?.[i];
+    const hasContent = !!slot;
+
+    // Stacked display: slot number → genre (top) → sub (mid) → micro (bottom).
+    // Empty slot shows a dimmed "+ EMPTY" prompt so the card is tappable.
+    return (
+      <div key={i} style={{
+        position: "relative",
+        padding: "10px 12px",
+        minHeight: 82,
+        background: hasContent ? "rgba(0, 255, 65, 0.05)" : "rgba(0, 255, 65, 0.015)",
+        border: `1px solid ${isLocked ? "#FFD700" : isActive ? GREEN : hasContent ? GREEN_DIM : GREEN_FAINT}`,
+        borderRadius: 3,
+        cursor: "pointer",
+        transition: `all 150ms ease`,
+        boxShadow: isLocked
+          ? `0 0 0 1px #FFD70055, 0 0 10px #FFD70033`
+          : isActive
+          ? `0 0 0 1px ${GREEN}33, 0 0 10px ${GREEN_DIM}`
+          : "none",
+      }}
+      onClick={() => { playSwitchSound(); isActive ? closeSlot() : openSlot(i); }}
+      onMouseEnter={e => {
+        if (!isActive && !isLocked) e.currentTarget.style.borderColor = GREEN_DIM;
+      }}
+      onMouseLeave={e => {
+        if (!isActive && !isLocked) {
+          e.currentTarget.style.borderColor = hasContent ? GREEN_DIM : GREEN_FAINT;
+        }
+      }}
+      >
+        {/* Header row: slot number + action buttons (lock / clear) */}
+        <div style={{
+          display: "flex", alignItems: "center", justifyContent: "space-between",
+          marginBottom: 6,
+        }}>
+          <span style={{
+            fontFamily: T.font_mono, fontSize: 9, fontWeight: 700,
+            letterSpacing: "0.22em",
+            color: isLocked ? "#FFD700" : hasContent ? GREEN : GREEN_MUTE,
+          }}>
+            ▸ SLOT_{i + 1}{isLocked ? " · LOCKED" : ""}
+          </span>
+          <div style={{ display: "flex", gap: 4 }}>
+            {/* Clear button — visible only when slot has content */}
+            {hasContent && (
+              <button type="button"
+                onClick={e => { e.stopPropagation(); playSwitchSound(); clearSlot(i); }}
+                title="Clear this slot"
+                style={{
+                  padding: "1px 6px",
+                  background: "transparent",
+                  border: `1px solid ${GREEN_FAINT}`,
+                  borderRadius: 2,
+                  color: GREEN_MUTE,
+                  fontFamily: T.font_mono, fontSize: 9, fontWeight: 700,
+                  letterSpacing: "0.1em",
+                  cursor: "pointer",
+                  lineHeight: 1.2,
+                }}
+              >✕</button>
+            )}
+            {/* Lock toggle — wired to upstream handler if provided,
+                otherwise a visual no-op placeholder for Turn 3. */}
+            <button type="button"
+              onClick={e => { e.stopPropagation(); playSwitchSound(); onToggleSlotLock?.(i); }}
+              title={isLocked ? "Unlock slot" : "Lock slot against re-roll"}
+              style={{
+                padding: "1px 6px",
+                background: isLocked ? "rgba(255, 215, 0, 0.12)" : "transparent",
+                border: `1px solid ${isLocked ? "#FFD700" : GREEN_FAINT}`,
+                borderRadius: 2,
+                color: isLocked ? "#FFD700" : GREEN_MUTE,
+                fontFamily: T.font_mono, fontSize: 9, fontWeight: 700,
+                letterSpacing: "0.1em",
+                cursor: "pointer",
+                lineHeight: 1.2,
+              }}
+            >{isLocked ? "🔒" : "🔓"}</button>
+          </div>
+        </div>
+
+        {/* Slot content body */}
+        {hasContent ? (
+          <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+            <span style={{
+              fontFamily: T.font_mono, fontSize: 12, fontWeight: 700,
+              color: GREEN_HI, lineHeight: 1.3,
+              textShadow: `0 0 6px ${GREEN_MUTE}`,
+            }}>{slot.genre}</span>
+            {slot.sub && (
+              <span style={{
+                fontFamily: T.font_mono, fontSize: 10, fontWeight: 500,
+                color: GREEN_DIM, lineHeight: 1.3,
+              }}>› {slot.sub}</span>
+            )}
+            {slot.micro && (
+              <span style={{
+                fontFamily: T.font_mono, fontSize: 9, fontWeight: 400,
+                color: GREEN_MUTE, lineHeight: 1.3, fontStyle: "italic",
+              }}>  · {slot.micro}</span>
+            )}
+          </div>
+        ) : (
+          <div style={{
+            fontFamily: T.font_mono, fontSize: 10, fontWeight: 500,
+            color: GREEN_MUTE, letterSpacing: "0.08em",
+          }}>
+            + CLICK_TO_ASSIGN
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  // ── DRAWER CONTENT — helper renderers for each depth ──
+
+  // Category grid (top-level of GENRE_TREE). Shows all main categories
+  // when no category is active. Each one a tappable terminal chip.
+  const renderCategoryGrid = () => (
+    <div style={{
+      display: "grid",
+      gridTemplateColumns: `repeat(${isMobile ? 2 : 4}, 1fr)`,
+      gap: 6,
+      // Scroll cap — if more categories get added later they won't
+      // balloon the drawer past the viewport. Generous cap since
+      // categories are the top of the tree. Matches the consumer
+      // Engine picker's behavior so mental model is the same.
+      maxHeight: isMobile ? "32vh" : "30vh",
+      overflowY: "auto",
+      paddingRight: 4,
+    }}>
+      {Object.keys(GENRE_TREE).filter(matches).map(cat => (
+        <button key={cat} type="button"
+          onClick={() => { playSwitchSound(); setActiveCat(cat); setSearchQuery(""); }}
+          style={{
+            padding: "9px 11px",
+            background: "transparent",
+            border: `1px solid ${GREEN_FAINT}`,
+            borderRadius: 3,
+            color: GREEN,
+            fontFamily: T.font_mono, fontSize: 11, fontWeight: 600,
+            letterSpacing: "0.03em",
+            cursor: "pointer",
+            textAlign: "left",
+            transition: "all 150ms ease",
+          }}
+          onMouseEnter={e => {
+            e.currentTarget.style.borderColor = GREEN;
+            e.currentTarget.style.background = "rgba(0, 255, 65, 0.06)";
+          }}
+          onMouseLeave={e => {
+            e.currentTarget.style.borderColor = GREEN_FAINT;
+            e.currentTarget.style.background = "transparent";
+          }}
+        >{cat}</button>
+      ))}
+    </div>
+  );
+
+  // Subgenre grid — rendered once a category is active. Include a
+  // "commit just the category" button at top so users can pick a broad
+  // genre without drilling deeper. Each subgenre is also tappable to
+  // commit, OR to drill into its microstyles.
+  const renderSubgenreGrid = () => {
+    if (!activeCat) return null;
+    const subs = Object.keys(GENRE_TREE[activeCat]).filter(matches);
+    return (
+      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        {/* Category-level commit button */}
+        <button type="button"
+          onClick={() => { playSwitchSound(); commitSlot(activeCat, null, null); closeSlot(); }}
+          style={{
+            padding: "8px 11px",
+            background: "rgba(0, 255, 65, 0.10)",
+            border: `1px dashed ${GREEN}`,
+            borderRadius: 3,
+            color: GREEN_HI,
+            fontFamily: T.font_mono, fontSize: 10, fontWeight: 700,
+            letterSpacing: "0.15em",
+            cursor: "pointer",
+            textAlign: "left",
+            textShadow: `0 0 6px ${GREEN_MUTE}`,
+          }}
+        >◂ COMMIT AS ‹{activeCat.toUpperCase()}› (NO SUBGENRE)</button>
+
+        {/* Subgenre grid */}
+        <div style={{
+          display: "grid",
+          gridTemplateColumns: `repeat(${isMobile ? 2 : 3}, 1fr)`,
+          gap: 6,
+          // Scroll cap — Hebrew / Electronic / World categories have
+          // 40+ subgenres and would balloon the drawer past the
+          // viewport, cutting off bottom chips. Caps at ~44vh with
+          // internal scroll so all chips are reachable.
+          maxHeight: isMobile ? "38vh" : "44vh",
+          overflowY: "auto",
+          paddingRight: 4,
+        }}>
+          {subs.map(sub => (
+            <button key={sub} type="button"
+              onClick={() => { playSwitchSound(); setActiveGenre(sub); setSearchQuery(""); }}
+              style={{
+                padding: "8px 10px",
+                background: activeGenre === sub ? "rgba(0, 255, 65, 0.08)" : "transparent",
+                border: `1px solid ${activeGenre === sub ? GREEN : GREEN_FAINT}`,
+                borderRadius: 3,
+                color: activeGenre === sub ? GREEN_HI : GREEN,
+                fontFamily: T.font_mono, fontSize: 10, fontWeight: 600,
+                letterSpacing: "0.02em",
+                cursor: "pointer",
+                textAlign: "left",
+                transition: "all 150ms ease",
+              }}
+              onMouseEnter={e => {
+                if (activeGenre !== sub) e.currentTarget.style.borderColor = GREEN_DIM;
+              }}
+              onMouseLeave={e => {
+                if (activeGenre !== sub) e.currentTarget.style.borderColor = GREEN_FAINT;
+              }}
+            >{sub}</button>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
+  // Microstyle grid — rendered once both category + subgenre are active.
+  // Show a "commit without microstyle" button at top for cleaner commits.
+  const renderMicroGrid = () => {
+    if (!activeCat || !activeGenre) return null;
+    const micros = (GENRE_TREE[activeCat][activeGenre] || []).filter(matches);
+    return (
+      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        {/* Subgenre-level commit button */}
+        <button type="button"
+          onClick={() => { playSwitchSound(); commitSlot(activeCat, activeGenre, null); closeSlot(); }}
+          style={{
+            padding: "8px 11px",
+            background: "rgba(0, 255, 65, 0.10)",
+            border: `1px dashed ${GREEN}`,
+            borderRadius: 3,
+            color: GREEN_HI,
+            fontFamily: T.font_mono, fontSize: 10, fontWeight: 700,
+            letterSpacing: "0.15em",
+            cursor: "pointer",
+            textAlign: "left",
+            textShadow: `0 0 6px ${GREEN_MUTE}`,
+          }}
+        >◂ COMMIT AS ‹{activeGenre.toUpperCase()}› (NO MICROSTYLE)</button>
+
+        {/* Microstyle grid */}
+        <div style={{
+          display: "grid",
+          gridTemplateColumns: `repeat(${isMobile ? 2 : 3}, 1fr)`,
+          gap: 6,
+          // Same scroll cap pattern as subgenre grid. Some subgenres
+          // (Trap, House, Hebrew Mizrahi) have 20+ microstyles.
+          maxHeight: isMobile ? "32vh" : "36vh",
+          overflowY: "auto",
+          paddingRight: 4,
+        }}>
+          {micros.map(micro => (
+            <button key={micro} type="button"
+              onClick={() => { playSwitchSound(); commitSlot(activeCat, activeGenre, micro); closeSlot(); }}
+              style={{
+                padding: "8px 10px",
+                background: "transparent",
+                border: `1px solid ${GREEN_FAINT}`,
+                borderRadius: 3,
+                color: GREEN_DIM,
+                fontFamily: T.font_mono, fontSize: 10, fontWeight: 500,
+                letterSpacing: "0.02em",
+                cursor: "pointer",
+                textAlign: "left",
+                fontStyle: "italic",
+                transition: "all 150ms ease",
+              }}
+              onMouseEnter={e => {
+                e.currentTarget.style.borderColor = GREEN;
+                e.currentTarget.style.background = "rgba(0, 255, 65, 0.06)";
+                e.currentTarget.style.color = GREEN_HI;
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.borderColor = GREEN_FAINT;
+                e.currentTarget.style.background = "transparent";
+                e.currentTarget.style.color = GREEN_DIM;
+              }}
+            >· {micro}</button>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
+  // Search results — when the user types, flatten GENRE_TREE to subgenre
+  // and microstyle hits, sort alphabetically, and surface them as
+  // one-click commit chips. Short-circuits the category navigation.
+  const renderSearchResults = () => {
+    const subHits = [];
+    const microHits = [];
+    Object.keys(GENRE_TREE).forEach(cat => {
+      const subs = GENRE_TREE[cat];
+      Object.keys(subs).forEach(sub => {
+        if (matches(sub)) subHits.push({ cat, sub });
+        (subs[sub] || []).forEach(micro => {
+          if (matches(micro)) microHits.push({ cat, sub, micro });
+        });
+      });
+    });
+    subHits.sort((a, b) => a.sub.localeCompare(b.sub));
+    microHits.sort((a, b) => a.micro.localeCompare(b.micro));
+    const MAX_SUB = 20;
+    const MAX_MICRO = 14;
+    const subVisible = subHits.slice(0, MAX_SUB);
+    const microVisible = microHits.slice(0, MAX_MICRO);
+    const total = subHits.length + microHits.length;
+
+    if (total === 0) {
+      return (
+        <div style={{
+          padding: "16px 12px", textAlign: "center",
+          color: GREEN_DIM, fontFamily: T.font_mono, fontSize: 11,
+          border: `1px dashed ${GREEN_FAINT}`,
+          borderRadius: 3,
+          letterSpacing: "0.05em",
+        }}>
+          &gt; no matches for "{searchQuery}"
+        </div>
+      );
+    }
+    return (
+      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+        {subVisible.length > 0 && (
+          <div>
+            <div style={{
+              fontFamily: T.font_mono, fontSize: 9, fontWeight: 700,
+              letterSpacing: "0.22em", color: GREEN_DIM,
+              marginBottom: 6,
+            }}>
+              ▸ SUBGENRES ({subHits.length})
+            </div>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
+              {subVisible.map(({ cat, sub }) => (
+                <button key={`s-${cat}-${sub}`} type="button"
+                  onClick={() => { playSwitchSound(); commitSlot(cat, sub, null); closeSlot(); }}
+                  style={{
+                    padding: "5px 10px",
+                    background: "transparent",
+                    border: `1px solid ${GREEN_FAINT}`,
+                    borderRadius: 3,
+                    color: GREEN,
+                    fontFamily: T.font_mono, fontSize: 10, fontWeight: 600,
+                    cursor: "pointer",
+                    letterSpacing: "0.02em",
+                  }}
+                  onMouseEnter={e => { e.currentTarget.style.borderColor = GREEN; e.currentTarget.style.background = "rgba(0, 255, 65, 0.06)"; }}
+                  onMouseLeave={e => { e.currentTarget.style.borderColor = GREEN_FAINT; e.currentTarget.style.background = "transparent"; }}
+                >{sub}<span style={{ color: GREEN_MUTE, marginLeft: 5, fontSize: 8 }}>/{cat}</span></button>
+              ))}
+              {subHits.length > MAX_SUB && (
+                <span style={{ color: GREEN_MUTE, fontFamily: T.font_mono, fontSize: 9, padding: "5px 6px" }}>
+                  +{subHits.length - MAX_SUB} more
+                </span>
+              )}
+            </div>
+          </div>
+        )}
+        {microVisible.length > 0 && (
+          <div>
+            <div style={{
+              fontFamily: T.font_mono, fontSize: 9, fontWeight: 700,
+              letterSpacing: "0.22em", color: GREEN_DIM,
+              marginBottom: 6,
+            }}>
+              ▸ MICROSTYLES ({microHits.length})
+            </div>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
+              {microVisible.map(({ cat, sub, micro }) => (
+                <button key={`m-${cat}-${sub}-${micro}`} type="button"
+                  onClick={() => { playSwitchSound(); commitSlot(cat, sub, micro); closeSlot(); }}
+                  style={{
+                    padding: "5px 10px",
+                    background: "transparent",
+                    border: `1px dashed ${GREEN_FAINT}`,
+                    borderRadius: 3,
+                    color: GREEN_DIM,
+                    fontFamily: T.font_mono, fontSize: 10, fontWeight: 500,
+                    cursor: "pointer",
+                    fontStyle: "italic",
+                  }}
+                  onMouseEnter={e => { e.currentTarget.style.borderColor = GREEN; e.currentTarget.style.color = GREEN_HI; }}
+                  onMouseLeave={e => { e.currentTarget.style.borderColor = GREEN_FAINT; e.currentTarget.style.color = GREEN_DIM; }}
+                >· {micro}<span style={{ color: GREEN_MUTE, marginLeft: 5, fontSize: 8 }}>/{sub}</span></button>
+              ))}
+              {microHits.length > MAX_MICRO && (
+                <span style={{ color: GREEN_MUTE, fontFamily: T.font_mono, fontSize: 9, padding: "5px 6px" }}>
+                  +{microHits.length - MAX_MICRO} more
+                </span>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  // Breadcrumb path — terminal-style string showing where the user is
+  // in the tree. Refreshes the spatial sense of "what level am I at".
+  const renderPath = () => {
+    const parts = [`~`, `genres`];
+    if (activeCat) parts.push(activeCat.toLowerCase().replace(/\s+/g, "-").replace("/", "-"));
+    if (activeGenre) parts.push(activeGenre.toLowerCase().replace(/\s+/g, "-"));
+    return parts.join("/");
+  };
+
+  return (
+    <div>
+      {/* ═══ SLOT CARDS ROW ═══ */}
+      <div style={{
+        display: "grid",
+        gridTemplateColumns: isMobile ? "1fr" : `repeat(${MAX_SLOTS}, 1fr)`,
+        gap: 8,
+      }}>
+        {Array.from({ length: MAX_SLOTS }).map((_, i) => renderSlotCard(i))}
+      </div>
+
+      {/* ═══ DRAWER — open when activeSlot is non-null ═══ */}
+      {activeSlot !== null && (
+        <div style={{
+          marginTop: 10,
+          padding: 14,
+          // Cap drawer width on desktop — the CRT console renders
+          // at full pane width (~580px inside SMC), and 580 for
+          // chip navigation was too wide to scan. 520 tightens the
+          // horizontal scan without hiding any chip text. Mobile
+          // stays 100%.
+          maxWidth: isMobile ? "100%" : 520,
+          background: BLACK_RAISED,
+          border: `1px solid ${GREEN_DIM}`,
+          borderRadius: 4,
+          boxShadow: `0 0 0 1px ${GREEN_FAINT}, 0 0 20px ${GREEN_FAINT}`,
+        }}>
+          {/* Drawer title bar: path + close button */}
+          <div style={{
+            display: "flex", alignItems: "center", gap: 8,
+            marginBottom: 10,
+            paddingBottom: 10,
+            borderBottom: `1px dashed ${GREEN_FAINT}`,
+          }}>
+            <span style={{
+              fontFamily: T.font_mono, fontSize: 10, color: GREEN,
+              letterSpacing: "0.08em",
+              textShadow: `0 0 4px ${GREEN_MUTE}`,
+              flex: 1,
+              overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+            }}>
+              <span style={{ color: GREEN_MUTE }}>$</span> cd <span style={{ color: GREEN_HI }}>{renderPath()}</span>
+              <span style={{
+                display: "inline-block", width: 6, height: 11,
+                background: GREEN, marginLeft: 3, verticalAlign: "-2px",
+                animation: "smcCaretBlink 1s steps(1) infinite",
+              }} />
+            </span>
+            {/* Back button — only show if user has drilled deeper than root */}
+            {(activeCat || activeGenre) && (
+              <button type="button"
+                onClick={() => {
+                  playSwitchSound();
+                  if (activeGenre) setActiveGenre(null);
+                  else if (activeCat) setActiveCat(null);
+                }}
+                style={{
+                  padding: "3px 8px",
+                  background: "transparent",
+                  border: `1px solid ${GREEN_FAINT}`,
+                  borderRadius: 2,
+                  color: GREEN_DIM,
+                  fontFamily: T.font_mono, fontSize: 9, fontWeight: 700,
+                  letterSpacing: "0.1em",
+                  cursor: "pointer",
+                }}
+              >◂ BACK</button>
+            )}
+            <button type="button"
+              onClick={() => { playSwitchSound(); closeSlot(); }}
+              style={{
+                padding: "3px 8px",
+                background: "transparent",
+                border: `1px solid ${GREEN_FAINT}`,
+                borderRadius: 2,
+                color: GREEN_DIM,
+                fontFamily: T.font_mono, fontSize: 9, fontWeight: 700,
+                letterSpacing: "0.1em",
+                cursor: "pointer",
+              }}
+            >CLOSE ✕</button>
+          </div>
+
+          {/* Search field */}
+          <div style={{ marginBottom: 12, position: "relative" }}>
+            <input type="text" value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              placeholder="// search genres + microstyles..."
+              style={{
+                width: "100%", boxSizing: "border-box",
+                padding: isMobile ? "9px 36px 9px 12px" : "7px 36px 7px 12px",
+                background: BLACK,
+                border: `1px solid ${GREEN_FAINT}`,
+                borderRadius: 3,
+                color: GREEN,
+                fontFamily: T.font_mono,
+                fontSize: isMobile ? 16 : 12,
+                fontWeight: 500,
+                letterSpacing: "0.02em",
+                outline: "none",
+              }}
+              onFocus={e => { e.currentTarget.style.borderColor = GREEN; }}
+              onBlur={e => { e.currentTarget.style.borderColor = GREEN_FAINT; }}
+            />
+            {searchQuery && (
+              <button type="button"
+                onClick={() => { playSwitchSound(); setSearchQuery(""); }}
+                style={{
+                  position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)",
+                  width: 22, height: 22, display: "grid", placeItems: "center",
+                  background: "transparent", border: "none", color: GREEN_DIM,
+                  cursor: "pointer", fontSize: 12, lineHeight: 1,
+                  borderRadius: 2,
+                }}
+              >✕</button>
+            )}
+          </div>
+
+          {/* Body — depends on current navigation state */}
+          {q
+            ? renderSearchResults()
+            : !activeCat
+              ? renderCategoryGrid()
+              : !activeGenre
+                ? renderSubgenreGrid()
+                : renderMicroGrid()}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ════════════════════════════════════════════════════════════════════════════
 // SUNO MASTER CONSOLE — purpose-built producer workstation for Israeli scene
 // ════════════════════════════════════════════════════════════════════════════
 // Lives inside BubbleToolsPage only (admin-gated upstream). This is NOT a
@@ -26623,7 +27576,16 @@ function SunoMasterConsole() {
   // ── State ──
   const [artistId, setArtistId] = useState(israeliArtists[0]?.artistId || null);
   const [dnaOpen, setDnaOpen] = useState(false);
-  const [genre, setGenre] = useState("Mediterranean pop");
+  // Slot structure — mirrors consumer Engine: 3 slots, each either null
+  // or { genre, sub, micro } from GENRE_TREE navigation. First slot is
+  // the "primary" genre, subsequent slots layer/blend additional styles
+  // into the Suno prompt. Seeded from active artist's first pack on
+  // mount and whenever the artist changes.
+  const [slots, setSlots] = useState([null, null, null]);
+  // Per-slot locks — Turn 3 will wire these to a re-roll action. For
+  // now they toggle independently and do nothing destructive. Exposed
+  // via the picker's lock button; enables the gold-border treatment.
+  const [slotLocks, setSlotLocks] = useState([false, false, false]);
   const [mood, setMood] = useState("Defiant");
   const [energy, setEnergy] = useState("Steady groove throughout");
   const [groove, setGroove] = useState("straight");
@@ -26631,6 +27593,17 @@ function SunoMasterConsole() {
   const [mix, setMix] = useState("Modern polished radio");
   const [harmonic, setHarmonic] = useState("Minor-key introspection");
   const [bpm, setBpm] = useState(96);
+  // Turn 1 of the full-parity rebuild: consumer-Engine fields that were
+  // missing from the original minimal console. All optional — "Any"
+  // leaves them out of the generated prompt so Suno doesn't get over-
+  // constrained. Each maps cleanly to a single catalog constant above.
+  const [vocalist, setVocalist] = useState("Any");
+  const [language, setLanguage] = useState("en");
+  const [lyricalVibe, setLyricalVibe] = useState("Any");
+  // Instrumental / Song switch — mirrors the consumer Engine's
+  // LyricalSwitch. When true, Suno prompt includes a "with vocals"
+  // framing; when false, an "instrumental, no vocals" explicit flag.
+  const [lyricsOn, setLyricsOn] = useState(true);
   const [copied, setCopied] = useState(false);
 
   const activeArtist = israeliArtists.find(a => a.artistId === artistId) || israeliArtists[0];
@@ -26640,7 +27613,8 @@ function SunoMasterConsole() {
   useEffect(() => { setDnaOpen(false); }, [artistId]);
 
   // Auto-suggest defaults when artist changes: pull the first pack's
-  // state as a soft seed so new artists don't open empty.
+  // state as a soft seed so new artists don't open empty. Now seeds
+  // the full 3-slot genre tree selection plus all other controls.
   useEffect(() => {
     if (!activeArtist) return;
     const firstPack = activeArtist.packs[0];
@@ -26653,16 +27627,65 @@ function SunoMasterConsole() {
     if (s.mix) setMix(s.mix);
     if (s.harmonic) setHarmonic(s.harmonic);
     if (typeof s.bpm === "number") setBpm(s.bpm);
-    if (s.slots && s.slots[0] && s.slots[0].sub) setGenre(s.slots[0].sub);
+    // Turn 1 full-parity seeds — vocalist / language / lyrical vibe
+    // from the first-pack state. If the pack doesn't specify one we
+    // leave the user's current selection untouched rather than
+    // forcing "Any" (respect manual overrides across artist switches).
+    if (s.vocalist) setVocalist(s.vocalist);
+    if (s.language) setLanguage(s.language);
+    if (s.lyricalVibe) setLyricalVibe(s.lyricalVibe);
+    // Seed the full slot structure. Pack slots are already in
+    // {genre, sub, micro} format — just copy the reference (pad/truncate
+    // to exactly 3 entries so picker state shape is stable).
+    if (Array.isArray(s.slots)) {
+      const padded = [...s.slots];
+      while (padded.length < 3) padded.push(null);
+      setSlots(padded.slice(0, 3));
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [artistId]);
 
   // ── Prompt preview build — structured format Suno accepts well ──
+  // Genre line is now assembled from the slot structure: primary genre
+  // from slot[0], blended secondaries from subsequent non-null slots.
+  // Format examples:
+  //   "Mediterranean pop (bouzouki pluck microstyle)"
+  //   "Trap + Afrobeats blend"
+  //   "Hip-Hop" (category-only commit)
+  const genrePhrase = useMemo(() => {
+    const filled = slots.filter(Boolean);
+    if (filled.length === 0) return "genre unset";
+    const rendered = filled.map(s => {
+      if (s.sub) return s.micro ? `${s.sub} (${s.micro})` : s.sub;
+      return s.genre;
+    });
+    if (rendered.length === 1) return rendered[0];
+    return rendered.join(" + ");
+  }, [slots]);
+
   const prompt = useMemo(() => {
     const parts = [];
-    parts.push(`${genre}, ${mood} mood, ${energy}`);
+    // Line 1: genre stack + mood + energy
+    parts.push(`${genrePhrase}, ${mood} mood, ${energy}`);
+    // Line 2: rhythmic feel + BPM
     parts.push(`${groove} groove at ${bpm} BPM`);
+    // Line 3: harmonic + texture + mix
     parts.push(`${harmonic}, ${texture} texture, ${mix}`);
+    // Line 4: vocal character + language + lyrical framing
+    //   - skip the voice block entirely if instrumental
+    //   - omit any field set to "Any" so the prompt isn't over-
+    //     specified (Suno handles absence better than vague spec)
+    if (!lyricsOn) {
+      parts.push(`instrumental, no vocals`);
+    } else {
+      const voiceBits = [];
+      if (vocalist && vocalist !== "Any") voiceBits.push(`${vocalist.toLowerCase()} vocal`);
+      const langLabel = (LANGUAGES.find(l => l.code === language) || {}).label;
+      if (langLabel && language !== "en") voiceBits.push(`${langLabel} lyrics`);
+      if (lyricalVibe && lyricalVibe !== "Any") voiceBits.push(`${lyricalVibe.toLowerCase()} lyrical mode`);
+      if (voiceBits.length) parts.push(voiceBits.join(", "));
+    }
+    // Line 5: DNA block — pulled from ARTIST_VOCABULARY when available
     if (vocab) {
       const vParts = [];
       if (Array.isArray(vocab.vocal) && vocab.vocal.length) vParts.push(vocab.vocal[0]);
@@ -26673,7 +27696,7 @@ function SunoMasterConsole() {
       parts.push(`[in the style of: ${activeArtist.artistName} pack palette]`);
     }
     return parts.join(". ");
-  }, [genre, mood, energy, groove, bpm, harmonic, texture, mix, vocab, activeArtist]);
+  }, [genrePhrase, mood, energy, groove, bpm, harmonic, texture, mix, vocalist, language, lyricalVibe, lyricsOn, vocab, activeArtist]);
 
   const doCopy = async () => {
     try {
@@ -26691,6 +27714,25 @@ function SunoMasterConsole() {
   const HARMONIC_OPTIONS = useMemo(() => (typeof HARMONIC_STYLES !== "undefined" ? HARMONIC_STYLES : [harmonic]), [harmonic]);
   const TEXTURE_OPTIONS = useMemo(() => (typeof SOUND_TEXTURES !== "undefined" ? SOUND_TEXTURES : [texture]), [texture]);
   const MIX_OPTIONS = useMemo(() => (typeof MIX_CHARS !== "undefined" ? MIX_CHARS : [mix]), [mix]);
+  // Turn 1 parity additions. "Any" is injected as the first option so
+  // the producer can explicitly leave a field unspecified. The prompt
+  // builder respects "Any" by omitting the related line entirely rather
+  // than writing "Any vocalist" into the prompt.
+  const VOCALISTS_OPTIONS = useMemo(
+    () => ["Any", ...(typeof VOCALISTS !== "undefined" ? VOCALISTS : [])],
+    []
+  );
+  const LYRICAL_VIBES_OPTIONS = useMemo(
+    () => ["Any", ...(typeof LYRICAL_VIBES !== "undefined" ? LYRICAL_VIBES : [])],
+    []
+  );
+  // Languages are objects {code, label} — we render the label but
+  // store the code so prompt logic / seeding stays stable across
+  // translations.
+  const LANGUAGES_OPTIONS = useMemo(
+    () => (typeof LANGUAGES !== "undefined" ? LANGUAGES : [{ code: "en", label: "English" }]),
+    []
+  );
 
   // Genre list — pull top subgenre names from GENRE_TREE. Flat list of
   // subgenres across all Tier-A genres so the dropdown is useful without
@@ -27030,12 +28072,108 @@ function SunoMasterConsole() {
             </div>
 
             {/* Structured slots */}
+            {/* ═══════ GENRE SLOTS — 3-slot tree picker ═══════
+                Full genre / subgenre / microgenre tree navigation
+                lives in its own block above the other config sliders
+                because it's structurally bigger + more important
+                (it's the primary anchor of any prompt). The other
+                sliders stay in the 2-col grid below. */}
+            <div>
+              <div style={{
+                display: "flex", alignItems: "baseline", gap: 6,
+                marginBottom: 8,
+              }}>
+                <span style={{
+                  fontSize: 9, fontWeight: 700, letterSpacing: "0.22em",
+                  color: GREEN_DIM, fontFamily: T.font_mono,
+                }}>
+                  ▸ GENRE_STACK
+                </span>
+                <span style={{
+                  fontSize: 9, color: GREEN_MUTE, fontFamily: T.font_mono,
+                  letterSpacing: "0.05em",
+                }}>
+                  // primary + blend slots · tree: genre › subgenre › microstyle
+                </span>
+              </div>
+              <GenreSlotPickerCRT
+                slots={slots}
+                onChange={setSlots}
+                slotLocks={slotLocks}
+                onToggleSlotLock={(i) => {
+                  setSlotLocks(prev => {
+                    const next = [...prev];
+                    next[i] = !next[i];
+                    return next;
+                  });
+                }}
+              />
+            </div>
+
+            {/* ═══════ INSTRUMENTAL / SONG SWITCH ═══════
+                Before the genre stack — first decision a producer
+                makes. Gates whether the vocal block renders below
+                (instrumental hides VOCALIST / LANGUAGE / LYRICAL_VIBE
+                since those are meaningless without vocals). Styled
+                as a CRT dual-tab rail to match the terminal aesthetic. */}
+            <div>
+              <div style={{
+                display: "flex", alignItems: "baseline", gap: 6,
+                marginBottom: 8,
+              }}>
+                <span style={{
+                  fontSize: 9, fontWeight: 700, letterSpacing: "0.22em",
+                  color: GREEN_DIM, fontFamily: T.font_mono,
+                }}>▸ TYPE</span>
+                <span style={{
+                  fontSize: 9, color: GREEN_MUTE, fontFamily: T.font_mono,
+                  letterSpacing: "0.05em",
+                }}>// instrumental vs vocal song — gates voice block below</span>
+              </div>
+              <div style={{
+                display: "inline-flex",
+                border: `1px solid ${GREEN_FAINT}`,
+                borderRadius: 3,
+                overflow: "hidden",
+                background: BLACK,
+              }}>
+                {[
+                  { id: true,  label: "▶ SONG", note: "with vocals" },
+                  { id: false, label: "▬ INSTRUMENTAL", note: "no vocals" },
+                ].map(opt => {
+                  const active = lyricsOn === opt.id;
+                  return (
+                    <button key={String(opt.id)} type="button"
+                      onClick={() => { playSwitchSound(); setLyricsOn(opt.id); }}
+                      style={{
+                        padding: isMobile ? "9px 14px" : "8px 16px",
+                        background: active ? "rgba(0, 255, 65, 0.12)" : "transparent",
+                        border: "none",
+                        color: active ? GREEN_HI : GREEN_MUTE,
+                        fontFamily: T.font_mono,
+                        fontSize: isMobile ? 13 : 11, fontWeight: 700,
+                        letterSpacing: "0.15em",
+                        cursor: "pointer",
+                        textShadow: active ? `0 0 6px ${GREEN_DIM}` : "none",
+                        transition: `all ${T.dur_fast} ${T.ease}`,
+                      }}
+                    >
+                      {opt.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* ═══════ REMAINING CONFIG GRID ═══════
+                Mood / energy / groove / harmonic / texture / mix / BPM
+                as terminal-skinned dropdowns + slider. Laid out in a
+                2-column grid (single column on mobile). */}
             <div style={{
               display: "grid",
               gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr",
               gap: 14,
             }}>
-              {slot("GENRE",     genre,     setGenre,     GENRE_OPTIONS, "primary style anchor")}
               {slot("MOOD",      mood,      setMood,      MOODS_OPTIONS, "emotional tone")}
               {slot("ENERGY",    energy,    setEnergy,    ENERGIES_OPTIONS, "dynamic arc")}
               {slot("GROOVE",    groove,    setGroove,    GROOVES_OPTIONS, "rhythmic feel")}
@@ -27063,6 +28201,83 @@ function SunoMasterConsole() {
                 />
               </div>
             </div>
+
+            {/* ═══════ VOCAL MODE ═══════
+                Only renders in SONG mode (lyricsOn=true). In
+                INSTRUMENTAL mode the whole block collapses — vocalist /
+                language / lyrical vibe are meaningless without vocals.
+                Gated render keeps the console tight and honest about
+                what's actually driving the prompt. */}
+            {lyricsOn && (
+              <div>
+                <div style={{
+                  display: "flex", alignItems: "baseline", gap: 6,
+                  marginBottom: 8,
+                }}>
+                  <span style={{
+                    fontSize: 9, fontWeight: 700, letterSpacing: "0.22em",
+                    color: GREEN_DIM, fontFamily: T.font_mono,
+                  }}>▸ VOCAL_MODE</span>
+                  <span style={{
+                    fontSize: 9, color: GREEN_MUTE, fontFamily: T.font_mono,
+                    letterSpacing: "0.05em",
+                  }}>// vocal character · language · lyrical framing</span>
+                </div>
+                <div style={{
+                  display: "grid",
+                  gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr 1fr",
+                  gap: 14,
+                }}>
+                  {slot("VOCALIST", vocalist, setVocalist, VOCALISTS_OPTIONS, "vocal character")}
+                  {/* LANGUAGE — uses code as value, label as display */}
+                  <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                    <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
+                      <span style={{
+                        fontSize: 9, fontWeight: 700, letterSpacing: "0.22em",
+                        color: GREEN_DIM, fontFamily: T.font_mono,
+                      }}>▸ LANGUAGE</span>
+                      <span style={{
+                        fontSize: 9, color: GREEN_MUTE, fontFamily: T.font_mono,
+                        letterSpacing: "0.05em",
+                      }}>// lyric language</span>
+                    </div>
+                    <select
+                      value={language}
+                      onChange={e => { playSwitchSound(); setLanguage(e.target.value); }}
+                      style={{
+                        padding: isMobile ? "9px 12px" : "7px 10px",
+                        background: BLACK,
+                        border: `1px solid ${GREEN_FAINT}`,
+                        borderRadius: 3,
+                        color: GREEN,
+                        fontFamily: T.font_mono,
+                        fontSize: isMobile ? 16 : 12,
+                        fontWeight: 600,
+                        letterSpacing: "0.02em",
+                        outline: "none",
+                        cursor: "pointer",
+                        appearance: "none",
+                        WebkitAppearance: "none",
+                        backgroundImage: `linear-gradient(45deg, transparent 50%, ${GREEN_DIM} 50%), linear-gradient(135deg, ${GREEN_DIM} 50%, transparent 50%)`,
+                        backgroundPosition: `calc(100% - 14px) calc(50% - 2px), calc(100% - 9px) calc(50% - 2px)`,
+                        backgroundSize: "5px 5px, 5px 5px",
+                        backgroundRepeat: "no-repeat",
+                        paddingRight: 28,
+                      }}
+                      onFocus={e => { e.currentTarget.style.borderColor = GREEN; }}
+                      onBlur={e => { e.currentTarget.style.borderColor = GREEN_FAINT; }}
+                    >
+                      {LANGUAGES_OPTIONS.map(l => (
+                        <option key={l.code} value={l.code} style={{ background: BLACK, color: GREEN }}>
+                          {l.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  {slot("LYRICAL_VIBE", lyricalVibe, setLyricalVibe, LYRICAL_VIBES_OPTIONS, "lyric framing")}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* ═══════════ RIGHT PANE — LIVE PROMPT ═══════════ */}
@@ -27141,7 +28356,8 @@ function SunoMasterConsole() {
               lineHeight: 1.7,
             }}>
               <div>length: {prompt.length} chars</div>
-              <div>slots_configured: {[genre, mood, energy, groove, harmonic, texture, mix].filter(Boolean).length}/7</div>
+              <div>genre_slots: {slots.filter(Boolean).length}/3 · locked: {slotLocks.filter(Boolean).length}</div>
+              <div>mode: {lyricsOn ? "song" : "instrumental"}{lyricsOn && language !== "en" ? ` · ${language}` : ""}</div>
               <div>dna_source: {vocab ? "ARTIST_VOCABULARY" : "pack_palette_fallback"}</div>
             </div>
           </div>
