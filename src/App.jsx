@@ -1928,6 +1928,27 @@ const SPECIFIC_INSTRUMENT_FLAT = Object.entries(SPECIFIC_INSTRUMENTS).flatMap(
   ([cat, insts]) => Object.keys(insts).map(i => ({ cat, name: i }))
 );
 
+// Per-category emoji for the tabbed category bar in the Instruments picker.
+// Order here should match the order of keys in SPECIFIC_INSTRUMENTS since the
+// UI iterates Object.entries. If a new category is added to SPECIFIC_INSTRUMENTS,
+// add its icon here too (falls back to a generic note if missing).
+const CATEGORY_ICONS = {
+  "Keys":          "🎹",
+  "Synths":        "🎛️",
+  "Strings":       "🎻",
+  "Guitars":       "🎸",
+  "Bass":          "🎚️",
+  "Drums":         "🥁",
+  "Percussion":    "🪘",
+  "Brass":         "🎺",
+  "Woodwinds":     "🪈",
+  "World":         "🌍",
+  "Mallet":        "🔔",
+  "Voice / Choir": "🎤",
+  "Folk":          "🪕",
+  "Latin":         "💃",
+};
+
 // ── INSTRUMENT ESSENTIALS — curated starter picks ─────────────────────
 // These are the "no-brainer" instruments users reach for most often.
 // Organized by use-case rather than category so users pick intent first.
@@ -4438,7 +4459,7 @@ function Section({ title, children, hint, toggle, onToggleChange, extra, filled 
 // the full section content (chips, toggles, reroll, lock, etc.).
 // Only ONE cubicle is open at a time — click another to swap.
 // ════════════════════════════════════════════════════════════════════════════
-function Cubicle({ id, icon, title, valuePreview, filled, isOpen, onToggle, toggle, children, extra, hint }) {
+function Cubicle({ id, icon, title, description, valuePreview, filled, isOpen, onToggle, toggle, children, extra, hint }) {
   const disabled = toggle === "off";
   const showLed = !disabled && filled !== undefined;
   const ledGreen = filled === true;
@@ -4552,6 +4573,13 @@ function Cubicle({ id, icon, title, valuePreview, filled, isOpen, onToggle, togg
                 whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
               }}>{title}</div>
             </div>
+            {description && (
+              <div style={{
+                fontSize: 10.5, color: T.textTer, fontFamily: T.font_sans,
+                lineHeight: 1.35, letterSpacing: "0.01em",
+                whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+              }}>{description}</div>
+            )}
             {valuePreview && (
               <div style={{
                 fontSize: 11, fontFamily: T.font_mono,
@@ -6892,7 +6920,10 @@ function SpecificInstrumentsPicker({
   const { layout } = useLayout();
   const isMobile = layout === "mobile";
   const [expanded, setExpanded] = useState(null);
-  const [openCategories, setOpenCategories] = useState(() => new Set(["Keys"]));
+  // Active category tab — only one category's instruments show at a time.
+  // Defaults to "Keys"; when the user picks an instrument, the active tab
+  // switches to that instrument's category so picks are always visible.
+  const [activeCategory, setActiveCategory] = useState("Keys");
   // Starter combos: collapsed by default so the picker opens clean. User
   // can tap the header to reveal the combo grid.
   const [combosOpen, setCombosOpen] = useState(false);
@@ -6907,39 +6938,18 @@ function SpecificInstrumentsPicker({
     if (isSel) delete nextArts[inst];
     setState(s => ({ ...s, specificInstruments: next, specificArticulations: nextArts }));
     if (isSel && expanded === inst) setExpanded(null);
-    // When SELECTING an instrument, auto-open its parent category and
-    // auto-close categories that have no picks in them (post-select).
-    // On DESELECT, leave open state alone — user manages it themselves.
+    // On SELECT: switch the active tab to this instrument's category so the
+    // newly-picked item stays visible in the grid.
     if (!isSel) {
       let parentCat = null;
       for (const [cat, insts] of Object.entries(SPECIFIC_INSTRUMENTS)) {
         if (Object.prototype.hasOwnProperty.call(insts, inst)) { parentCat = cat; break; }
       }
-      if (parentCat) {
-        setOpenCategories(() => {
-          // After this pick, which categories will have selected items?
-          const afterSelected = new Set(next);
-          const openSet = new Set();
-          for (const [cat, insts] of Object.entries(SPECIFIC_INSTRUMENTS)) {
-            const hasPick = Object.keys(insts).some(n => afterSelected.has(n));
-            if (hasPick) openSet.add(cat);
-          }
-          // Always keep the parent of the just-picked instrument open
-          openSet.add(parentCat);
-          return openSet;
-        });
-      }
+      if (parentCat) setActiveCategory(parentCat);
     }
   };
   const setArticulation = (inst, art) => {
     setState(s => ({ ...s, specificArticulations: { ...(s.specificArticulations || {}), [inst]: art } }));
-  };
-  const toggleCategory = (cat) => {
-    setOpenCategories(prev => {
-      const next = new Set(prev);
-      if (next.has(cat)) next.delete(cat); else next.add(cat);
-      return next;
-    });
   };
 
   const searchLower = search.trim().toLowerCase();
@@ -6969,14 +6979,6 @@ function SpecificInstrumentsPicker({
           onFocus={e => e.currentTarget.style.borderColor = T.borderFocus}
           onBlur={e => e.currentTarget.style.borderColor = T.border}
         />
-        <Button variant="ghost" size="sm"
-          onClick={() => setOpenCategories(new Set(Object.keys(SPECIFIC_INSTRUMENTS)))}>
-          Expand all
-        </Button>
-        <Button variant="ghost" size="sm"
-          onClick={() => setOpenCategories(new Set())}>
-          Collapse
-        </Button>
       </div>
 
       {/* ── ESSENTIALS + COMBOS — quick-pick section ─────────────────────
@@ -7219,56 +7221,120 @@ function SpecificInstrumentsPicker({
         </div>
       )}
 
+      {/* ── CATEGORY TAB BAR ─────────────────────────────────────────
+          Horizontal scrollable strip of all instrument categories.
+          Only one is active at a time; clicking switches which set of
+          instruments is shown below. Each tab shows emoji + name + a
+          gold dot if that category has user picks. Hidden during
+          search since search spans all categories anyway. ─────────── */}
+      {!isSearching && (
+        <div style={{
+          display: "flex", gap: T.s1, overflowX: "auto", overflowY: "hidden",
+          padding: `${T.s1}px 0 ${T.s2}px`,
+          marginBottom: T.s2,
+          scrollbarWidth: "thin",
+          WebkitOverflowScrolling: "touch",
+        }}>
+          {Object.keys(SPECIFIC_INSTRUMENTS).map(cat => {
+            const icon = CATEGORY_ICONS[cat] || "🎵";
+            const isActive = activeCategory === cat;
+            const insts = SPECIFIC_INSTRUMENTS[cat];
+            const pickCount = Object.keys(insts).filter(n => selected.includes(n)).length;
+            const hasPicks = pickCount > 0;
+            return (
+              <button type="button" key={cat}
+                onClick={() => setActiveCategory(cat)}
+                style={{
+                  display: "inline-flex", alignItems: "center", gap: 6,
+                  padding: isMobile ? "8px 12px" : "7px 12px",
+                  height: isMobile ? 38 : 34,
+                  flexShrink: 0,
+                  background: isActive
+                    ? `linear-gradient(135deg, ${T.accent}18 0%, ${T.accent}08 100%)`
+                    : (hasPicks ? `${V.neonGold}0c` : T.surface),
+                  border: `1px solid ${isActive ? T.accent : (hasPicks ? V.neonGold + "55" : T.border)}`,
+                  borderRadius: T.r_md,
+                  color: isActive ? T.accentHi : T.text,
+                  fontSize: isMobile ? 13 : T.fs_sm, fontFamily: T.font_sans,
+                  fontWeight: isActive ? 600 : 500,
+                  cursor: "pointer", userSelect: "none",
+                  transition: `all ${T.dur_fast} ${T.ease}`,
+                  boxShadow: isActive ? `0 0 0 1px ${T.accent}33, 0 2px 8px ${T.accent}22` : "none",
+                  whiteSpace: "nowrap",
+                }}
+                onMouseEnter={e => {
+                  if (isActive) return;
+                  e.currentTarget.style.borderColor = T.borderFocus;
+                  e.currentTarget.style.background = T.elevated;
+                }}
+                onMouseLeave={e => {
+                  if (isActive) return;
+                  e.currentTarget.style.borderColor = hasPicks ? V.neonGold + "55" : T.border;
+                  e.currentTarget.style.background = hasPicks ? `${V.neonGold}0c` : T.surface;
+                }}>
+                <span style={{ fontSize: 15, lineHeight: 1 }}>{icon}</span>
+                <span>{cat}</span>
+                {hasPicks && (
+                  <span style={{
+                    display: "inline-flex", alignItems: "center", justifyContent: "center",
+                    minWidth: 16, height: 16,
+                    padding: "0 4px",
+                    background: V.neonGold,
+                    color: "#000",
+                    fontSize: 9, fontFamily: T.font_mono, fontWeight: 700,
+                    borderRadius: 999,
+                    boxShadow: `0 0 4px ${V.neonGold}88`,
+                  }}>{pickCount}</span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
       <div style={{ display: "flex", flexDirection: "column", gap: T.s1 }}>
         {(() => {
-          // Reorder: categories with at least one selected instrument float to
-          // the top, preserving their original order among themselves. Others
-          // keep their original order below. If the user is searching, we
-          // skip the reorder so search results stay predictable.
+          // If searching, show all categories with matching instruments.
+          // Otherwise, show ONLY the active category's block.
           const entries = Object.entries(SPECIFIC_INSTRUMENTS);
-          if (isSearching || selected.length === 0) return entries;
-          const hasPick = ([cat, instruments]) =>
-            Object.keys(instruments).some(n => selected.includes(n));
-          return [
-            ...entries.filter(hasPick),
-            ...entries.filter(e => !hasPick(e)),
-          ];
+          if (isSearching) return entries;
+          return entries.filter(([cat]) => cat === activeCategory);
         })().map(([category, instruments]) => {
           const instEntries = Object.entries(instruments);
           const matching = isSearching
             ? instEntries.filter(([name]) => name.toLowerCase().includes(searchLower))
             : instEntries;
           if (isSearching && matching.length === 0) return null;
-          const isOpen = isSearching || openCategories.has(category);
+          // In tabbed mode, a category's body is ALWAYS visible when it's
+          // rendered (tab = on), so no accordion toggle needed. In search
+          // mode each matching category shows all its matches.
+          const isOpen = true;
           const selectedInCat = matching.filter(([n]) => selected.includes(n)).length;
 
           return (
             <div key={category} style={{
-              border: `1px solid ${T.border}`,
+              border: isSearching ? `1px solid ${T.border}` : "none",
               borderRadius: T.r_md,
-              background: T.surface,
+              background: isSearching ? T.surface : "transparent",
               overflow: "hidden",
             }}>
-              <div onClick={() => !isSearching && toggleCategory(category)}
-                style={{
+              {/* Header: only shown in search mode so user sees category boundaries.
+                  In tabbed mode, the category name is already in the tab bar. */}
+              {isSearching && (
+                <div style={{
                   display: "flex", alignItems: "center", justifyContent: "space-between",
-                  padding: `${T.s2}px ${T.s3}px`, cursor: isSearching ? "default" : "pointer",
-                  transition: `background ${T.dur_fast} ${T.ease}`,
+                  padding: `${T.s2}px ${T.s3}px`,
                   userSelect: "none",
-                }}
-                onMouseEnter={e => { if (!isSearching) e.currentTarget.style.background = T.hover; }}
-                onMouseLeave={e => e.currentTarget.style.background = "transparent"}
-              >
-                <div style={{ display: "flex", alignItems: "center", gap: T.s2 }}>
-                  <span style={{ color: T.textTer, fontSize: T.fs_sm, fontFamily: T.font_mono, width: 10 }}>
-                    {isSearching ? "·" : (isOpen ? "−" : "+")}
+                }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: T.s2 }}>
+                    <span style={{ color: T.textTer, fontSize: T.fs_sm, fontFamily: T.font_mono, width: 10 }}>·</span>
+                    <span style={{ fontSize: T.fs_md, color: T.text, fontWeight: 500, fontFamily: T.font_sans }}>{category}</span>
+                  </div>
+                  <span style={{ fontSize: T.fs_sm, color: T.textTer, fontFamily: T.font_mono }}>
+                    {selectedInCat > 0 ? `${selectedInCat} / ${matching.length}` : matching.length}
                   </span>
-                  <span style={{ fontSize: T.fs_md, color: T.text, fontWeight: 500, fontFamily: T.font_sans }}>{category}</span>
                 </div>
-                <span style={{ fontSize: T.fs_sm, color: T.textTer, fontFamily: T.font_mono }}>
-                  {selectedInCat > 0 ? `${selectedInCat} / ${matching.length}` : matching.length}
-                </span>
-              </div>
+              )}
 
               {isOpen && (
                 <div style={{
@@ -8102,26 +8168,15 @@ function EnginePage({ onNavigate }) {
     setExpandedSections(prev => ({ ...prev, [sectionId]: !prev[sectionId] }));
   };
   // Returns { visibleItems, hiddenCount } based on expanded state + TOP_5 +
-  // always-show rules (locked, favorite, or currently selected items are
-  // never hidden, regardless of whether they're in the curated shortlist).
+  // Always return the full item list and 0 hidden count. Cubicles are
+  // now the collapse mechanism at the section level — no need for
+  // per-section "top N + expand" UI inside an already-expanded cubicle.
+  // Free tier still gets its option-level lock gating via restrictSubgenres
+  // (that lives in the callsite's useCollapse check), so this change only
+  // removes the intra-section shortlist-then-expand behavior.
+  // eslint-disable-next-line no-unused-vars
   const getCollapsibleSlice = (sectionId, fullItems, itemKey, selectedKey) => {
-    const isExpanded = !!expandedSections[sectionId];
-    if (isExpanded) return { visibleItems: fullItems, hiddenCount: 0 };
-    const topSet = new Set(TOP_5[sectionId] || []);
-    const favSet = favSetFor(sectionId);
-    const lockSet = optionLockSetFor(sectionId);
-    const selectedValue = selectedKey !== undefined ? selectedKey : state[sectionId];
-    const visible = [];
-    let hidden = 0;
-    fullItems.forEach((item) => {
-      const key = typeof itemKey === "function" ? itemKey(item) : item;
-      if (topSet.has(key) || favSet.has(key) || lockSet.has(key) || selectedValue === key) {
-        visible.push(item);
-      } else {
-        hidden += 1;
-      }
-    });
-    return { visibleItems: visible, hiddenCount: hidden };
+    return { visibleItems: fullItems, hiddenCount: 0 };
   };
 
   // ── SMART SUGGESTIONS ───────────────────────────────────────────────
@@ -9561,6 +9616,7 @@ function EnginePage({ onNavigate }) {
               Only ONE can be open at a time.                         */}
           <CubicleGrid isMobile={isMobile}>
             <Cubicle id="mood" icon="🎭" title="Mood"
+              description="The emotional weather of the song"
               filled={!!state.mood}
               valuePreview={state.mood || "—"}
               isOpen={openCubicle === "mood"} onToggle={toggleCubicle}
@@ -9604,6 +9660,7 @@ function EnginePage({ onNavigate }) {
             </Cubicle>
 
             <Cubicle id="energy" icon="⚡" title="Energy arc"
+              description="How the track rises and falls"
               filled={!!state.energy}
               valuePreview={state.energy || "—"}
               isOpen={openCubicle === "energy"} onToggle={toggleCubicle}
@@ -9647,6 +9704,7 @@ function EnginePage({ onNavigate }) {
             </Cubicle>
 
             <Cubicle id="groove" icon="🥁" title="Groove"
+              description="The rhythmic feel that moves you"
               filled={state.groove && state.groove !== "default"}
               valuePreview={state.groove && state.groove !== "default"
                 ? (GROOVES.find(g => g.id === state.groove)?.label || state.groove)
@@ -9661,25 +9719,8 @@ function EnginePage({ onNavigate }) {
               <div style={{ display: "flex", flexWrap: "wrap", gap: T.s1 }}>
                 {(() => {
                   const useCollapse = !effectiveLimits.restrictSubgenres;
-                  const alwaysVisibleIds = new Set(["default", ...(TOP_5.groove || [])]);
-                  const { visibleItems, hiddenCount } = useCollapse
-                    ? (() => {
-                        const isExpanded = !!expandedSections["groove"];
-                        if (isExpanded) return { visibleItems: GROOVES, hiddenCount: 0 };
-                        const favSet = favSetFor("groove");
-                        const lockSet = optionLockSetFor("groove");
-                        const visible = [];
-                        let hidden = 0;
-                        GROOVES.forEach(g => {
-                          if (alwaysVisibleIds.has(g.id) || favSet.has(g.id) || lockSet.has(g.id) || state.groove === g.id) {
-                            visible.push(g);
-                          } else {
-                            hidden += 1;
-                          }
-                        });
-                        return { visibleItems: visible, hiddenCount: hidden };
-                      })()
-                    : { visibleItems: GROOVES, hiddenCount: 0 };
+                  const visibleItems = GROOVES;
+                  const hiddenCount = 0;
                   return (
                     <>
                       {visibleItems.map((g) => {
@@ -9718,6 +9759,7 @@ function EnginePage({ onNavigate }) {
           <CubicleGrid isMobile={isMobile}>
             {lyricsOn && (
               <Cubicle id="vocalist" icon="🎤" title="Vocalist"
+                description="Who's singing and how they sound"
                 filled={!!state.vocalist}
                 valuePreview={state.vocalist || (state.language ? "pick a voice" : "—")}
                 hint={state.language && !state.vocalist
@@ -9766,6 +9808,7 @@ function EnginePage({ onNavigate }) {
 
             {lyricsOn && (
               <Cubicle id="lyricalVibe" icon="✍️" title="Lyrical vibe"
+                description="The angle the words take"
                 filled={!!state.lyricalVibe}
                 valuePreview={state.lyricalVibe || "—"}
                 hint="How the words frame the song."
@@ -9811,6 +9854,7 @@ function EnginePage({ onNavigate }) {
             )}
 
             <Cubicle id="specificInstruments" icon="🎸" title="Instruments"
+              description="The sonic palette — what's playing"
               filled={(state.specificInstruments || []).length > 0}
               valuePreview={
                 (state.specificInstruments || []).length === 0
@@ -9859,6 +9903,7 @@ function EnginePage({ onNavigate }) {
             </Cubicle>
 
             <Cubicle id="harmonic" icon="🎼" title="Harmonic style"
+              description="Chord language and tonal direction"
               filled={!!state.harmonic}
               valuePreview={state.harmonic || "—"}
               isOpen={openCubicle === "harmonic"} onToggle={toggleCubicle}
@@ -9902,6 +9947,7 @@ function EnginePage({ onNavigate }) {
             </Cubicle>
 
             <Cubicle id="texture" icon="🌊" title="Sound texture"
+              description="How the sound feels in the ear"
               filled={!!state.texture}
               valuePreview={state.texture || "—"}
               isOpen={openCubicle === "texture"} onToggle={toggleCubicle}
@@ -9945,6 +9991,7 @@ function EnginePage({ onNavigate }) {
             </Cubicle>
 
             <Cubicle id="mix" icon="🎚️" title="Mix character"
+              description="The final sonic stamp — space and glue"
               filled={!!state.mix}
               valuePreview={state.mix || "—"}
               isOpen={openCubicle === "mix"} onToggle={toggleCubicle}
