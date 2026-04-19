@@ -3945,12 +3945,17 @@ function Chip({ label, selected, onClick, onDoubleClick, onLockToggle, favorite,
   // in which case it's clickable (only that one gesture — no fav, no lock).
   const hasLockedRedirect = tierLocked && onLockedClick;
   const inactive = disabled || (tierLocked && !onLockedClick);
+  // Chip sizing: use minHeight (not height) so long labels with descenders
+  // (like "Screamed verse / melodic chorus") always fit vertically without
+  // clipping 'y' 'g' 'p' tails. lineHeight 1.4 gives glyph descenders room
+  // inside the padding box. Line-height + padding combine to the displayed
+  // total, so minHeight just acts as the floor for uniformity between rows.
   const sizes = isMobile ? {
     sm: { padding: "9px 14px", fontSize: T.fs_md, minHeight: 40 },
     md: { padding: "11px 16px", fontSize: T.fs_md, minHeight: 44 },
   } : {
-    sm: { padding: "4px 10px", fontSize: T.fs_sm, height: 24 },
-    md: { padding: "6px 12px", fontSize: T.fs_md, height: 28 },
+    sm: { padding: "5px 10px", fontSize: T.fs_sm, minHeight: 26 },
+    md: { padding: "7px 12px", fontSize: T.fs_md, minHeight: 30 },
   };
   const borderColor = casinoOutline
     ? casinoOutline
@@ -3996,6 +4001,8 @@ function Chip({ label, selected, onClick, onDoubleClick, onLockToggle, favorite,
         ...sizes[size], ...base,
         fontFamily: T.font_sans,
         fontWeight: 450,
+        lineHeight: 1.4,
+        whiteSpace: "nowrap",
         cursor: hasLockedRedirect ? "pointer" : (inactive ? "not-allowed" : "pointer"),
         borderRadius: T.r_md, userSelect: "none",
         display: "inline-flex", alignItems: "center", gap: 6,
@@ -4043,6 +4050,7 @@ function Chip({ label, selected, onClick, onDoubleClick, onLockToggle, favorite,
           transition: "filter 180ms ease-out",
           userSelect: tierLocked ? "none" : "auto",
           position: "relative", zIndex: 1,
+          flexShrink: 0,
         }}>
         {tierLocked ? obfuscateLabel(label) : label}
       </span>
@@ -4830,7 +4838,7 @@ const SALES_COPY = {
   sortByPopularity: {
     tier: "vip",
     headline: "Sort genres by what's hot right now",
-    subline: "Arrange the 280+ genre tree by current streaming popularity. Spot rising sounds before they break.",
+    subline: "Arrange the 290+ subgenre tree by current streaming popularity. Spot rising sounds before they break.",
     bullet: [
       "Re-rank any genre list live",
       "Plus: all VIP tools (Trend Fuel, shuffle deck, custom options)",
@@ -4873,11 +4881,11 @@ const SALES_COPY = {
   lockedSubgenre: {
     tier: "pro",
     headline: "Unlock the full subgenre tree",
-    subline: "Free tier sees 5 starter subgenres per category. Pro unlocks all 280+ subgenres and 2000+ microstyles — the entire tree.",
+    subline: "Free tier gives you 3 starter subgenres in each main genre. Pro opens the full catalog — every subgenre, every microstyle.",
     bullet: [
-      "280+ subgenres across every main category",
-      "2000+ microstyles for ultra-specific prompts",
-      "Plus: custom tags, option locks, 100 daily hits",
+      "All 290+ subgenres across 18 main genres",
+      "1,000+ microstyles for ultra-specific prompts",
+      "Plus: custom tags, option locks, 100 daily Pro hits",
     ],
     cta: "Upgrade to Pro",
   },
@@ -9974,26 +9982,15 @@ function EnginePage({ onNavigate }) {
   const effectiveLimits = useMemo(() => {
     const isFreeFuel = activeFuel === "free";
 
-    // Mode access rules:
-    //   Free tier     → only simple + moderated  (regardless of fuel)
-    //   Pro/VIP/Admin → simple, moderated, expanded, vast, chaos
-    //   Free fuel     → additionally restricts to at most {simple, moderated, chaos}
-    //                   which intersects with the tier's allowed modes.
-    // Net effect:
-    //   Free tier + any fuel    → simple, moderated
-    //   Pro tier  + free fuel   → simple, moderated, chaos
-    //   Pro tier  + pro fuel    → simple, moderated, expanded, vast, chaos
-    //   VIP       + any fuel    → simple, moderated, expanded, vast, chaos
-    // Tier is ALWAYS the hard cap — fuel can only tighten, never expand
-    // beyond the tier's entitlement. This prevents a Free user from
-    // touching expanded/vast/chaos by buying Pro fuel.
-    const tierModes = new Set(features.modes);
-    let allowedModes;
-    if (isFreeFuel) {
-      allowedModes = ["simple", "moderated", "chaos"].filter(m => tierModes.has(m));
-    } else {
-      allowedModes = ["simple", "moderated", "expanded", "vast", "chaos"].filter(m => tierModes.has(m));
-    }
+    // Mode access rules (tier is the SOLE authority on depth modes):
+    //   Free tier     → simple, moderated
+    //   Pro/VIP/Bubble → simple, moderated, expanded, vast, chaos
+    // Fuel type does NOT affect mode availability. Previously Free Fuel
+    // artificially restricted Pro/VIP users to {simple, moderated, chaos}
+    // by default, which contradicted the "Pro/VIP always default to
+    // expanded" product rule. Fuel still controls option/instrument
+    // depth restrictions below, just not the depth-mode selector.
+    const allowedModes = [...features.modes];
 
     return {
       // SLOTS — tier entitlement is the floor. Free fuel only caps slots
@@ -10081,13 +10078,55 @@ function EnginePage({ onNavigate }) {
   };
 
   // ── TIER + FUEL ENFORCEMENT ─────────────────────────────────────────
-  // Mode fallback if outside allowed list
+
+  // ── HARD TIER MODE ENFORCEMENT ──────────────────────────────────────
+  // Non-negotiable rule (per product direction):
+  //   • Free tier   → ALWAYS on "moderated" unless the user explicitly
+  //                   picks "simple" (the only other allowed mode).
+  //   • Pro / VIP / Bubble → ALWAYS on "expanded" on every render unless
+  //                   they've manually picked a different mode *within
+  //                   this render cycle* (handleModeChange triggers a
+  //                   ref flag cleared by the next tier change).
+  //
+  // The ref approach (not state) ensures:
+  //   1. On login/mount: non-free user lands on expanded, guaranteed.
+  //   2. On tier upgrade (DEV MODE cycle or real upgrade): mode snaps
+  //      to expanded the moment the tier changes, overriding whatever
+  //      was previously selected. This is the behavior user explicitly
+  //      asked for: "every user except free will have depth mode on
+  //      expanded automatically".
+  //   3. Within a session on a stable tier: manual clicks survive,
+  //      because the ref blocks the auto-snap until the next tier
+  //      transition.
+  const prevTierRef = useRef(tier);
+  const manualOverrideRef = useRef(false);
   useEffect(() => {
+    // Tier changed → clear the manual override, re-enforce the default.
+    if (prevTierRef.current !== tier) {
+      manualOverrideRef.current = false;
+      prevTierRef.current = tier;
+    }
+    // Enforce the hard rule if the user hasn't manually overridden.
+    if (!manualOverrideRef.current) {
+      const target = tier === "free" ? "moderated" : "expanded";
+      if (effectiveLimits.modes.includes(target) && mode !== target) {
+        setMode(target);
+        return;
+      }
+    }
+    // Safety fallback: current mode must always be within allowed set.
     if (!effectiveLimits.modes.includes(mode)) {
       const fallback = effectiveLimits.modes[effectiveLimits.modes.length - 1];
       if (fallback) setMode(fallback);
     }
-  }, [effectiveLimits.modes, mode]);
+  }, [tier, effectiveLimits.modes, mode]);
+
+  // Wrap setMode so manual clicks flip the override. The ref is cleared
+  // on the next tier change so upgrading still snaps to expanded.
+  const handleModeChange = (m) => {
+    manualOverrideRef.current = true;
+    setMode(m);
+  };
 
   // Cap instrument count
   useEffect(() => {
@@ -11909,18 +11948,35 @@ function EnginePage({ onNavigate }) {
                 }}>
                   ● CREDITS
                 </span>
-                <span style={{
-                  color: FUEL_TYPES[activeFuel].color,
-                  textShadow: `
-                    0 0 8px ${FUEL_TYPES[activeFuel].color}88,
-                    0 0 16px ${FUEL_TYPES[activeFuel].color}44
-                  `,
-                  fontSize: 20, fontWeight: 800,
-                  letterSpacing: "0.03em",
-                  lineHeight: 1,
-                }}>
-                  {Number.isFinite(fuels[activeFuel]) ? fuels[activeFuel] : "∞"}
-                </span>
+                {Number.isFinite(fuels[activeFuel]) ? (
+                  <span style={{
+                    color: FUEL_TYPES[activeFuel].color,
+                    textShadow: `
+                      0 0 8px ${FUEL_TYPES[activeFuel].color}88,
+                      0 0 16px ${FUEL_TYPES[activeFuel].color}44
+                    `,
+                    fontSize: 20, fontWeight: 800,
+                    letterSpacing: "0.03em",
+                    lineHeight: 1,
+                  }}>{fuels[activeFuel]}</span>
+                ) : (
+                  // ── PSYCHEDELIC VEGAS INFINITY ──────────────────────
+                  // When credits are infinite, replace the drab "∞" with
+                  // an oversized neon glyph that rotates through hot-pink,
+                  // amber, cyan, and violet — a miniature Fremont St. sign.
+                  // Drops a 4-layer textShadow (cyan/magenta/amber/hot-pink)
+                  // so it reads as chromatic, wavy, and alive.
+                  <span style={{
+                    fontSize: 40,
+                    fontWeight: 900,
+                    lineHeight: 1,
+                    letterSpacing: 0,
+                    display: "inline-block",
+                    animation: "infinityPsychedelic 4s ease-in-out infinite",
+                    filter: "drop-shadow(0 0 12px rgba(255, 62, 157, 0.55))",
+                    transform: "translateY(-2px)", // optical centering
+                  }}>∞</span>
+                )}
               </div>
             </div>
             <Joystick
@@ -12001,7 +12057,7 @@ function EnginePage({ onNavigate }) {
           </div>
 
           <div style={{ marginBottom: T.s5 }}>
-            <ModeSelector value={mode} onChange={setMode} allowedModes={effectiveLimits.modes} />
+            <ModeSelector value={mode} onChange={handleModeChange} allowedModes={effectiveLimits.modes} />
           </div>
 
           {hasMinimum ? (
@@ -19867,6 +19923,65 @@ export default function HitEngine() {
         }
         .page-transition {
           animation: pageFadeIn 380ms cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        /* ── Psychedelic Vegas infinity ────────────────────────────────
+           Cycles through 4 neon phases (hot-pink → amber → cyan → violet)
+           with a chromatic-aberration textShadow trick. Rotates subtly
+           so it reads as alive and carnival-bright. ─────────────────── */
+        @keyframes infinityPsychedelic {
+          0%, 100% {
+            color: #FF3E9D;
+            transform: translateY(-2px) rotate(-2deg) scale(1);
+            text-shadow:
+              -2px  0 #00E5FF,
+               2px  0 #FFD700,
+               0   -1px #FF2E5E,
+               0    0 10px #FF3E9DAA,
+               0    0 24px #FF3E9D55,
+               0    0 40px #A855F733;
+          }
+          25% {
+            color: #FFD700;
+            transform: translateY(-2px) rotate(1deg) scale(1.06);
+            text-shadow:
+              -2px  0 #FF3E9D,
+               2px  0 #00E5FF,
+               0   -1px #FFA500,
+               0    0 12px #FFD700AA,
+               0    0 28px #FFD70055,
+               0    0 44px #FF3E9D33;
+          }
+          50% {
+            color: #00E5FF;
+            transform: translateY(-3px) rotate(2deg) scale(1.04);
+            text-shadow:
+              -2px  0 #A855F7,
+               2px  0 #FF3E9D,
+               0   -1px #00FFD1,
+               0    0 10px #00E5FFAA,
+               0    0 24px #00E5FF55,
+               0    0 40px #A855F733;
+          }
+          75% {
+            color: #A855F7;
+            transform: translateY(-2px) rotate(-1deg) scale(1.06);
+            text-shadow:
+              -2px  0 #FFD700,
+               2px  0 #00E5FF,
+               0   -1px #FF3E9D,
+               0    0 12px #A855F7AA,
+               0    0 28px #A855F755,
+               0    0 44px #FFD70033;
+          }
+        }
+        /* ── Space-graffiti motto — subtle hue-shift + breath pulse ── */
+        @keyframes mottoDrift {
+          0%, 100% { filter: hue-rotate(0deg)   brightness(1);    transform: translateY(0); }
+          50%      { filter: hue-rotate(-18deg) brightness(1.12); transform: translateY(-3px); }
+        }
+        @keyframes mottoStarShimmer {
+          0%, 100% { opacity: 0.35; transform: scale(1); }
+          50%      { opacity: 0.85; transform: scale(1.25); }
         }
       `}</style>
       {/* Theme CSS variables — dark default, [data-theme="light"] override */}
