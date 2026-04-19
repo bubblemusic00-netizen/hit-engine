@@ -248,8 +248,8 @@ const TIER_FEATURES = {
     maxPromptVariants: 5,          // batch generate 5 variants per roll
     shareableLinks: true,
     exportJSON: true,              // export configurations as JSON
-    // ── Fuel — VIP gets its own premium fuel type with full allocation
-    dailyFuel: { free: Infinity, pro: Infinity, vip: Infinity, trend: 50 },
+    // ── Fuel — VIP: 500 pro credits + 50 vip credits daily (free is unlimited, trend is 50)
+    dailyFuel: { free: Infinity, pro: 500, vip: 50, trend: 50 },
     // ── History — full depth
     historyAccess: "full-monthly",
     historyMaxSelect: 25,
@@ -4367,7 +4367,7 @@ function Section({ title, children, hint, toggle, onToggleChange, extra, filled 
   const showLed = !disabled && filled !== undefined;
   const ledGreen = filled === true;
   return (
-    <div style={{ paddingTop: T.s6, paddingBottom: T.s2 }}>
+    <div style={{ paddingTop: T.s5, paddingBottom: T.s1 }}>
       <style>{`
         @keyframes sectionLedPulseGreen {
           0%, 100% {
@@ -4419,8 +4419,121 @@ function Section({ title, children, hint, toggle, onToggleChange, extra, filled 
         opacity: disabled ? 0.35 : 1,
         pointerEvents: disabled ? "none" : "auto",
         transition: `opacity ${T.dur_norm} ${T.ease}`,
+        padding: `${T.s3}px ${T.s4}px`,
+        background: filled === true ? `${T.accent}06` : T.surface,
+        border: `1px solid ${filled === true ? T.accentBorder : T.border}`,
+        borderRadius: T.r_md,
+        boxShadow: filled === true
+          ? `0 0 0 1px ${T.accentBorder}22, 0 2px 8px ${T.accent}10`
+          : `0 1px 2px rgba(0,0,0,0.04)`,
       }}>{children}</div>
     </div>
+  );
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// CUBICLE — compact collapsible tile for the engine element grid.
+// When closed: shows name + LED + value preview in a uniform box.
+// When open: same tile but expands to full-width row below, revealing
+// the full section content (chips, toggles, reroll, lock, etc.).
+// Only ONE cubicle is open at a time — click another to swap.
+// ════════════════════════════════════════════════════════════════════════════
+function Cubicle({ id, title, valuePreview, filled, isOpen, onToggle, toggle, children, extra, hint }) {
+  const disabled = toggle === "off";
+  const showLed = !disabled && filled !== undefined;
+  const ledGreen = filled === true;
+
+  // Closed state — compact tile. Always 100% width of its grid cell.
+  // Open state — spans ALL grid columns and pushes siblings below it.
+  const openGridSpan = { gridColumn: "1 / -1" };
+
+  return (
+    <div
+      style={{
+        ...(isOpen ? openGridSpan : {}),
+        background: isOpen
+          ? (filled === true ? `${T.accent}08` : T.surface)
+          : (filled === true ? `${T.accent}06` : T.surface),
+        border: `1px solid ${filled === true ? T.accentBorder : T.border}`,
+        borderRadius: T.r_md,
+        boxShadow: filled === true
+          ? `0 0 0 1px ${T.accentBorder}22, 0 2px 8px ${T.accent}10`
+          : `0 1px 2px rgba(0,0,0,0.04)`,
+        overflow: "hidden",
+        transition: `all ${T.dur_fast} ${T.ease}`,
+        opacity: disabled ? 0.55 : 1,
+      }}>
+      {/* Header — always clickable. Opens/closes the cubicle. */}
+      <div
+        onClick={() => { if (!disabled) onToggle(id); }}
+        style={{
+          display: "flex", alignItems: "center", justifyContent: "space-between",
+          gap: T.s2, padding: `${T.s2}px ${T.s3}px`,
+          cursor: disabled ? "not-allowed" : "pointer",
+          userSelect: "none",
+          minHeight: 52,
+        }}
+        onMouseEnter={e => { if (!disabled && !isOpen) e.currentTarget.style.background = `${T.accent}05`; }}
+        onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}>
+        <div style={{ display: "flex", alignItems: "center", gap: T.s2, minWidth: 0, flex: 1 }}>
+          {showLed && (
+            <span style={{
+              display: "inline-block", flexShrink: 0,
+              width: 8, height: 8, borderRadius: "50%",
+              background: ledGreen ? "#10b981" : "#ef4444",
+              boxShadow: ledGreen ? "0 0 4px #10b98188" : "0 0 4px #ef444488",
+            }} />
+          )}
+          <div style={{ display: "flex", flexDirection: "column", gap: 1, minWidth: 0 }}>
+            <div style={{
+              fontSize: T.fs_sm, fontWeight: 600, color: T.text,
+              fontFamily: T.font_sans, letterSpacing: "0.01em",
+              whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+            }}>{title}</div>
+            {valuePreview && (
+              <div style={{
+                fontSize: 11, color: T.textTer, fontFamily: T.font_mono,
+                whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+              }}>{valuePreview}</div>
+            )}
+          </div>
+        </div>
+        <span style={{
+          flexShrink: 0,
+          color: isOpen ? T.accent : T.textTer, fontSize: 14,
+          width: 14, textAlign: "center",
+          transition: `color ${T.dur_fast} ${T.ease}`,
+        }}>
+          {isOpen ? "−" : "+"}
+        </span>
+      </div>
+      {/* Expanded content + extras bar */}
+      {isOpen && (
+        <div style={{ padding: `${T.s3}px ${T.s4}px ${T.s4}px`, borderTop: `1px solid ${T.border}` }}>
+          {(extra || hint) && (
+            <div style={{
+              display: "flex", alignItems: "center", justifyContent: "space-between",
+              gap: T.s2, flexWrap: "wrap", marginBottom: T.s3,
+            }}>
+              {hint && <span style={{ fontSize: T.fs_sm, color: T.textTer, fontFamily: T.font_sans }}>{hint}</span>}
+              {extra && <div style={{ display: "flex", alignItems: "center", gap: T.s3, marginLeft: "auto" }}>{extra}</div>}
+            </div>
+          )}
+          {children}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function CubicleGrid({ children, isMobile }) {
+  return (
+    <div style={{
+      display: "grid",
+      gridTemplateColumns: isMobile ? "repeat(2, minmax(0, 1fr))" : "repeat(3, minmax(0, 1fr))",
+      gap: T.s2,
+      marginTop: T.s3, marginBottom: T.s3,
+    }}>{children}</div>
   );
 }
 
@@ -4487,6 +4600,17 @@ const SALES_COPY = {
       "Tap ✨ on any instrument chip to open",
       "🎲 reroll any card individually",
       "Plus: all VIP tools (Trend Fuel, shuffle deck, sort by popularity)",
+    ],
+    cta: "Upgrade to VIP",
+  },
+  starterCombos: {
+    tier: "vip",
+    headline: "One-tap instrument kits",
+    subline: "VIP unlocks the full starter kit deck — curated 3–5 instrument bundles that drop a genre-ready setup in a single tap. Trap kit, Afrobeats stack, indie folk ensemble, and more.",
+    bullet: [
+      "All kits instantly available",
+      "Add 3–5 instruments per tap — zero manual hunting",
+      "Plus: all VIP tools (per-instrument suggest, Trend Fuel, shuffle deck)",
     ],
     cta: "Upgrade to VIP",
   },
@@ -4579,8 +4703,8 @@ const SALES_COPY = {
   },
   moreOptions: {
     tier: "pro",
-    headline: "See every option, not just the top 5",
-    subline: "Free tier shows 5 options per section. Pro reveals the whole shelf — every mood, groove, instrument, vocal style, texture, mix character we've catalogued.",
+    headline: "Unlock the full option catalog",
+    subline: "Free tier shows a curated shortlist per section. Pro reveals the whole shelf — every mood, groove, instrument, vocal style, texture, mix character we've catalogued.",
     bullet: [
       "Full catalog unlocked in every section",
       "More variety = less repetitive prompts",
@@ -6538,7 +6662,7 @@ function InstrumentSuggestPanel({ instrSuggest, isMobile, onInstrReroll, onInstr
   if (!instrSuggest) return null;
   if (instrSuggest.noMappings) {
     return (
-      <div style={{
+      <div data-instr-panel={instrSuggest.inst} style={{
         padding: `${T.s2}px ${T.s3}px`,
         background: `${V.neonGold}0A`,
         border: `1px dashed ${V.neonGold}88`,
@@ -6548,7 +6672,7 @@ function InstrumentSuggestPanel({ instrSuggest, isMobile, onInstrReroll, onInstr
         display: "flex", alignItems: "center", justifyContent: "space-between",
         gap: T.s2, flexWrap: "wrap",
       }}>
-        <span>No suggestion data yet for {instrSuggest.inst}.</span>
+        <span>Fill in other sections first, then try {instrSuggest.inst} again — it will suggest against what's missing.</span>
         <button type="button" onClick={onInstrDismiss}
           style={{
             background: "transparent", border: "none", color: T.textMuted,
@@ -6568,7 +6692,7 @@ function InstrumentSuggestPanel({ instrSuggest, isMobile, onInstrReroll, onInstr
   };
   const cards = FIELD_ORDER.filter(f => f in values);
   return (
-    <div style={{
+    <div data-instr-panel={instrSuggest.inst} style={{
       padding: T.s3,
       background: `${V.neonGold}0A`,
       border: `1px dashed ${V.neonGold}88`,
@@ -6688,11 +6812,15 @@ function SpecificInstrumentsPicker({
   state, setState, favorites, onFavorite, casinoOutlines, maxPerCategory = Infinity,
   canUseInstrSuggest, instrSuggest,
   onInstrSuggestClick, onInstrReroll, onInstrAccept, onInstrAcceptAll, onInstrDismiss,
+  starterCombosLocked = false, onLockedClick,
 }) {
   const { layout } = useLayout();
   const isMobile = layout === "mobile";
   const [expanded, setExpanded] = useState(null);
   const [openCategories, setOpenCategories] = useState(() => new Set(["Keys"]));
+  // Starter combos: collapsed by default so the picker opens clean. User
+  // can tap the header to reveal the combo grid.
+  const [combosOpen, setCombosOpen] = useState(false);
   const [search, setSearch] = useState("");
   const selected = state.specificInstruments || [];
   const arts = state.specificArticulations || {};
@@ -6704,6 +6832,29 @@ function SpecificInstrumentsPicker({
     if (isSel) delete nextArts[inst];
     setState(s => ({ ...s, specificInstruments: next, specificArticulations: nextArts }));
     if (isSel && expanded === inst) setExpanded(null);
+    // When SELECTING an instrument, auto-open its parent category and
+    // auto-close categories that have no picks in them (post-select).
+    // On DESELECT, leave open state alone — user manages it themselves.
+    if (!isSel) {
+      let parentCat = null;
+      for (const [cat, insts] of Object.entries(SPECIFIC_INSTRUMENTS)) {
+        if (Object.prototype.hasOwnProperty.call(insts, inst)) { parentCat = cat; break; }
+      }
+      if (parentCat) {
+        setOpenCategories(() => {
+          // After this pick, which categories will have selected items?
+          const afterSelected = new Set(next);
+          const openSet = new Set();
+          for (const [cat, insts] of Object.entries(SPECIFIC_INSTRUMENTS)) {
+            const hasPick = Object.keys(insts).some(n => afterSelected.has(n));
+            if (hasPick) openSet.add(cat);
+          }
+          // Always keep the parent of the just-picked instrument open
+          openSet.add(parentCat);
+          return openSet;
+        });
+      }
+    }
   };
   const setArticulation = (inst, art) => {
     setState(s => ({ ...s, specificArticulations: { ...(s.specificArticulations || {}), [inst]: art } }));
@@ -6763,32 +6914,80 @@ function SpecificInstrumentsPicker({
           {/* ── QUICK COMBOS ────────────────────────────────────────── */}
           <div style={{
             padding: isMobile ? T.s3 : T.s4,
-            background: `linear-gradient(180deg, ${T.accent}0d 0%, transparent 100%)`,
-            border: `1px solid ${T.accentBorder}`,
+            background: `linear-gradient(135deg, ${V.neonGold}12 0%, ${T.accent}08 50%, transparent 100%)`,
+            border: `1px solid ${combosOpen ? V.neonGold : V.neonGold + "66"}`,
             borderRadius: T.r_md,
             marginBottom: T.s3,
+            boxShadow: combosOpen ? `0 0 16px ${V.neonGold}33` : `0 0 8px ${V.neonGold}22`,
+            transition: `all ${T.dur_fast} ${T.ease}`,
           }}>
-            <div style={{
-              display: "flex", alignItems: "baseline", justifyContent: "space-between",
-              marginBottom: T.s3, gap: T.s2, flexWrap: "wrap",
-            }}>
-              <Label color={T.accentHi}>
-                ✨ Starter combos
-              </Label>
-              <span style={{
-                fontSize: 11, color: T.textTer, fontFamily: T.font_mono, letterSpacing: "0.08em",
+            {/* Clickable header — louder, clearer meaning. Title says what it
+                IS, subtitle says what it DOES, pill on the right shows the
+                action hint. Always visible, even when the grid is collapsed. */}
+            <div onClick={() => setCombosOpen(v => !v)}
+              style={{
+                display: "flex", alignItems: "center", justifyContent: "space-between",
+                gap: T.s3, flexWrap: "wrap",
+                marginBottom: combosOpen ? T.s3 : 0,
+                cursor: "pointer", userSelect: "none",
               }}>
-                Tap to add 3–5 instruments at once
-              </span>
+              <div style={{ display: "flex", alignItems: "center", gap: T.s3, flex: 1, minWidth: 0 }}>
+                <span style={{
+                  fontSize: 22, lineHeight: 1,
+                  filter: `drop-shadow(0 0 4px ${V.neonGold}88)`,
+                }}>🎛️</span>
+                <div style={{ display: "flex", flexDirection: "column", gap: 2, minWidth: 0 }}>
+                  <div style={{
+                    fontSize: T.fs_md, fontWeight: 700, color: V.neonGold,
+                    fontFamily: T.font_sans,
+                    textShadow: `0 0 8px ${V.neonGold}33`,
+                    letterSpacing: "0.01em",
+                  }}>
+                    One-tap instrument kits
+                  </div>
+                  <div style={{
+                    fontSize: T.fs_xs, color: T.textSec,
+                    fontFamily: T.font_sans, lineHeight: 1.3,
+                  }}>
+                    Load a full genre-ready setup (3–5 instruments) with one click
+                  </div>
+                </div>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: T.s2, flexShrink: 0 }}>
+                <span style={{
+                  padding: "3px 10px",
+                  background: `${V.neonGold}18`,
+                  border: `1px solid ${V.neonGold}77`,
+                  borderRadius: 999,
+                  color: V.neonGold,
+                  fontSize: 10, fontFamily: T.font_mono, fontWeight: 700,
+                  letterSpacing: "0.15em",
+                }}>
+                  {INSTRUMENT_COMBOS.length} KITS
+                </span>
+                <span style={{
+                  color: V.neonGold, fontSize: 18, lineHeight: 1,
+                  width: 18, textAlign: "center",
+                  transform: combosOpen ? "rotate(0deg)" : "rotate(0deg)",
+                  transition: `transform ${T.dur_fast} ${T.ease}`,
+                }}>
+                  {combosOpen ? "−" : "+"}
+                </span>
+              </div>
             </div>
-            <div style={{
-              display: "grid",
-              gridTemplateColumns: isMobile ? "repeat(2, 1fr)" : "repeat(auto-fill, minmax(180px, 1fr))",
-              gap: T.s2,
-            }}>
+            {combosOpen && (
+              <div style={{
+                display: "grid",
+                gridTemplateColumns: isMobile ? "repeat(2, 1fr)" : "repeat(auto-fill, minmax(180px, 1fr))",
+                gap: T.s2,
+              }}>
               {INSTRUMENT_COMBOS.map(combo => (
                 <button key={combo.id} type="button"
                   onClick={() => {
+                    if (starterCombosLocked) {
+                      if (onLockedClick) onLockedClick("starterCombos");
+                      return;
+                    }
                     // Add any combo instruments that exist in SPECIFIC_INSTRUMENT_FLAT and aren't already selected
                     const available = combo.instruments.filter(i =>
                       SPECIFIC_INSTRUMENT_FLAT.some(x => x.name === i)
@@ -6804,19 +7003,31 @@ function SpecificInstrumentsPicker({
                     display: "flex", flexDirection: "column", alignItems: "flex-start",
                     padding: isMobile ? "10px 12px" : "11px 14px",
                     minHeight: 60,
-                    background: T.surface,
-                    border: `1px solid ${T.border}`,
+                    background: starterCombosLocked ? `${T.accent}06` : T.surface,
+                    border: `1px solid ${starterCombosLocked ? T.border : T.border}`,
                     borderRadius: T.r_md,
                     cursor: "pointer",
                     transition: `all ${T.dur_fast} ${T.ease}`,
                     textAlign: "left",
                     gap: 2,
+                    opacity: starterCombosLocked ? 0.55 : 1,
+                    position: "relative",
                   }}
                   onMouseEnter={e => {
+                    if (starterCombosLocked) {
+                      e.currentTarget.style.borderColor = T.accent;
+                      e.currentTarget.style.opacity = "0.8";
+                      return;
+                    }
                     e.currentTarget.style.background = T.elevated;
                     e.currentTarget.style.borderColor = T.accent;
                   }}
                   onMouseLeave={e => {
+                    if (starterCombosLocked) {
+                      e.currentTarget.style.borderColor = T.border;
+                      e.currentTarget.style.opacity = "0.55";
+                      return;
+                    }
                     e.currentTarget.style.background = T.surface;
                     e.currentTarget.style.borderColor = T.border;
                   }}>
@@ -6825,7 +7036,7 @@ function SpecificInstrumentsPicker({
                     fontSize: T.fs_md, fontWeight: 600, color: T.text,
                     fontFamily: T.font_sans,
                   }}>
-                    <span style={{ color: T.accent, fontSize: 13 }}>{combo.icon}</span>
+                    <span style={{ color: T.accent, fontSize: 13 }}>{starterCombosLocked ? "🔒" : combo.icon}</span>
                     {combo.label}
                   </span>
                   <span style={{
@@ -6837,6 +7048,7 @@ function SpecificInstrumentsPicker({
                 </button>
               ))}
             </div>
+            )}
           </div>
 
           {/* ── ESSENTIALS — 12 universal no-brainer picks ──────────── */}
@@ -6909,80 +7121,23 @@ function SpecificInstrumentsPicker({
           <Label color={T.accentHi} style={{ display: "block", marginBottom: T.s2 }}>
             Selected · {selected.length}
           </Label>
-          {/* Column layout so each chip can have its own mini-panel inline
-              below it without disrupting sibling chips in the flex flow. */}
-          <div style={{ display: "flex", flexDirection: "column", gap: T.s2 }}>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: T.s1 }}>
             {selected.map(inst => {
               const artSel = arts[inst];
-              const isPanelOpen = instrSuggest && instrSuggest.inst === inst;
-              const hasMapping = !!(SUGGESTION_MAP[inst] || INSTRUMENT_GENRES[inst]);
               return (
-                <div key={inst} style={{ display: "flex", flexDirection: "column", gap: T.s1 }}>
-                  {/* Chip row */}
-                  <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: T.s1 }}>
-                    <span style={{
-                      display: "inline-flex", alignItems: "center", gap: 6,
-                      padding: "4px 10px", background: T.elevated,
-                      border: `1px solid ${isPanelOpen ? V.neonGold : T.accentBorder}`,
-                      borderRadius: T.r_md,
-                      fontSize: T.fs_sm, color: T.text,
-                      fontFamily: T.font_sans,
-                      transition: `border-color ${T.dur_fast} ${T.ease}`,
-                    }}>
-                      {inst}
-                      {artSel && <span style={{ color: T.textTer, fontSize: T.fs_xs, fontFamily: T.font_mono }}>· {artSel}</span>}
-                      <button type="button" onClick={() => toggleInst(inst)}
-                        style={{ background: "transparent", border: "none", color: T.textTer, padding: 0, marginLeft: 2, cursor: "pointer", fontSize: T.fs_base, lineHeight: 1 }}>×</button>
-                    </span>
-                    {/* ✨ SUGGEST button — VIP-gated. Locked users still see
-                        the button but clicking opens SalesModal via parent. */}
-                    {hasMapping && (
-                      <button type="button"
-                        onClick={() => onInstrSuggestClick && onInstrSuggestClick(inst)}
-                        title={canUseInstrSuggest
-                          ? "Suggest complements for this instrument"
-                          : "VIP feature — click for details"}
-                        style={{
-                          padding: "3px 9px",
-                          background: isPanelOpen ? `${V.neonGold}22` : "transparent",
-                          border: `1px dashed ${canUseInstrSuggest ? V.neonGold + "88" : T.border}`,
-                          borderRadius: T.r_md,
-                          color: canUseInstrSuggest ? V.neonGold : T.textMuted,
-                          fontSize: 10, fontFamily: T.font_mono,
-                          fontWeight: 700, letterSpacing: "0.1em",
-                          cursor: "pointer",
-                          display: "inline-flex", alignItems: "center", gap: 3,
-                          height: 22,
-                          transition: `all ${T.dur_fast} ${T.ease}`,
-                          boxShadow: isPanelOpen ? `0 0 6px ${V.neonGold}66` : "none",
-                        }}
-                        onMouseEnter={(e) => {
-                          if (!canUseInstrSuggest) return;
-                          e.currentTarget.style.background = `${V.neonGold}22`;
-                          e.currentTarget.style.borderColor = V.neonGold;
-                          e.currentTarget.style.boxShadow = `0 0 6px ${V.neonGold}66`;
-                        }}
-                        onMouseLeave={(e) => {
-                          if (isPanelOpen || !canUseInstrSuggest) return;
-                          e.currentTarget.style.background = "transparent";
-                          e.currentTarget.style.borderColor = V.neonGold + "88";
-                          e.currentTarget.style.boxShadow = "none";
-                        }}>
-                        {canUseInstrSuggest ? "✨ SUGGEST" : "🔒 VIP SUGGEST"}
-                      </button>
-                    )}
-                  </div>
-                  {/* Mini-panel — renders only when this chip is the open one */}
-                  {isPanelOpen && (
-                    <InstrumentSuggestPanel
-                      instrSuggest={instrSuggest}
-                      isMobile={isMobile}
-                      onInstrReroll={onInstrReroll}
-                      onInstrAccept={onInstrAccept}
-                      onInstrAcceptAll={onInstrAcceptAll}
-                      onInstrDismiss={onInstrDismiss} />
-                  )}
-                </div>
+                <span key={inst} style={{
+                  display: "inline-flex", alignItems: "center", gap: 6,
+                  padding: "4px 10px", background: T.elevated,
+                  border: `1px solid ${T.accentBorder}`,
+                  borderRadius: T.r_md,
+                  fontSize: T.fs_sm, color: T.text,
+                  fontFamily: T.font_sans,
+                }}>
+                  {inst}
+                  {artSel && <span style={{ color: T.textTer, fontSize: T.fs_xs, fontFamily: T.font_mono }}>· {artSel}</span>}
+                  <button type="button" onClick={() => toggleInst(inst)}
+                    style={{ background: "transparent", border: "none", color: T.textTer, padding: 0, marginLeft: 2, cursor: "pointer", fontSize: T.fs_base, lineHeight: 1 }}>×</button>
+                </span>
               );
             })}
           </div>
@@ -6990,7 +7145,20 @@ function SpecificInstrumentsPicker({
       )}
 
       <div style={{ display: "flex", flexDirection: "column", gap: T.s1 }}>
-        {Object.entries(SPECIFIC_INSTRUMENTS).map(([category, instruments]) => {
+        {(() => {
+          // Reorder: categories with at least one selected instrument float to
+          // the top, preserving their original order among themselves. Others
+          // keep their original order below. If the user is searching, we
+          // skip the reorder so search results stay predictable.
+          const entries = Object.entries(SPECIFIC_INSTRUMENTS);
+          if (isSearching || selected.length === 0) return entries;
+          const hasPick = ([cat, instruments]) =>
+            Object.keys(instruments).some(n => selected.includes(n));
+          return [
+            ...entries.filter(hasPick),
+            ...entries.filter(e => !hasPick(e)),
+          ];
+        })().map(([category, instruments]) => {
           const instEntries = Object.entries(instruments);
           const matching = isSearching
             ? instEntries.filter(([name]) => name.toLowerCase().includes(searchLower))
@@ -7081,17 +7249,22 @@ function SpecificInstrumentsPicker({
                     const artSel = arts[inst];
                     const isFav = favorites ? favorites.has(inst) : false;
                     const co = casinoOutlines ? casinoOutlines.get(`si:${inst}`) : null;
+                    const isPanelOpen = instrSuggest && instrSuggest.inst === inst;
+                    const hasMapping = !!(SUGGESTION_MAP[inst] || INSTRUMENT_GENRES[inst]);
                     return (
                       <div key={inst} style={{
                         background: T.accentBg,
-                        border: `1px solid ${co || T.accentBorder}`,
-                        boxShadow: co ? `0 0 0 1px ${co}, 0 0 12px ${co}66` : "none",
+                        border: `1px solid ${isPanelOpen ? V.neonGold : (co || T.accentBorder)}`,
+                        boxShadow: isPanelOpen
+                          ? `0 0 8px ${V.neonGold}55`
+                          : (co ? `0 0 0 1px ${co}, 0 0 12px ${co}66` : "none"),
                         borderRadius: T.r_md,
                         padding: T.s2,
                         display: "flex", flexDirection: "column", gap: T.s2,
+                        transition: `border-color ${T.dur_fast} ${T.ease}, box-shadow ${T.dur_fast} ${T.ease}`,
                       }}>
-                        {/* Row 1: instrument name + remove */}
-                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: T.s2 }}>
+                        {/* Row 1: instrument name + suggest + remove */}
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: T.s2, flexWrap: "wrap" }}>
                           <span style={{
                             display: "inline-flex", alignItems: "center", gap: 6,
                             color: T.accentHi, fontSize: T.fs_md,
@@ -7107,18 +7280,64 @@ function SpecificInstrumentsPicker({
                               }}>{artSel}</span>
                             )}
                           </span>
-                          <button type="button"
-                            onClick={() => toggleInst(inst)}
-                            title="Remove this instrument"
-                            style={{
-                              background: "transparent", border: "none",
-                              color: T.textTer, cursor: "pointer",
-                              fontSize: T.fs_base, padding: "2px 6px",
-                              fontFamily: T.font_mono, lineHeight: 1,
-                            }}
-                            onMouseEnter={e => { e.currentTarget.style.color = T.danger; }}
-                            onMouseLeave={e => { e.currentTarget.style.color = T.textTer; }}
-                          >remove</button>
+                          <div style={{ display: "inline-flex", alignItems: "center", gap: T.s2 }}>
+                            {hasMapping && onInstrSuggestClick && (
+                              <button type="button"
+                                onClick={() => onInstrSuggestClick(inst)}
+                                title={canUseInstrSuggest
+                                  ? "Suggest complements for this instrument"
+                                  : "VIP feature — click for details"}
+                                style={{
+                                  padding: "3px 9px",
+                                  background: isPanelOpen ? `${V.neonGold}22` : "transparent",
+                                  border: `1px dashed ${canUseInstrSuggest ? V.neonGold + "88" : T.border}`,
+                                  borderRadius: T.r_md,
+                                  color: canUseInstrSuggest ? V.neonGold : T.textMuted,
+                                  fontSize: 10, fontFamily: T.font_mono,
+                                  fontWeight: 700, letterSpacing: "0.1em",
+                                  cursor: "pointer",
+                                  display: "inline-flex", alignItems: "center", gap: 3,
+                                  height: 22,
+                                  transition: `all ${T.dur_fast} ${T.ease}`,
+                                  boxShadow: isPanelOpen ? `0 0 6px ${V.neonGold}66` : "none",
+                                }}
+                                onMouseEnter={e => {
+                                  if (!canUseInstrSuggest) {
+                                    e.currentTarget.style.borderColor = V.neonGold + "55";
+                                    e.currentTarget.style.color = V.neonGold;
+                                    return;
+                                  }
+                                  e.currentTarget.style.background = `${V.neonGold}22`;
+                                  e.currentTarget.style.borderColor = V.neonGold;
+                                  e.currentTarget.style.boxShadow = `0 0 6px ${V.neonGold}66`;
+                                }}
+                                onMouseLeave={e => {
+                                  if (!canUseInstrSuggest) {
+                                    e.currentTarget.style.borderColor = T.border;
+                                    e.currentTarget.style.color = T.textMuted;
+                                    return;
+                                  }
+                                  if (isPanelOpen) return;
+                                  e.currentTarget.style.background = "transparent";
+                                  e.currentTarget.style.borderColor = V.neonGold + "88";
+                                  e.currentTarget.style.boxShadow = "none";
+                                }}>
+                                {canUseInstrSuggest ? "✨ SUGGEST" : "🔒 VIP SUGGEST"}
+                              </button>
+                            )}
+                            <button type="button"
+                              onClick={() => toggleInst(inst)}
+                              title="Remove this instrument"
+                              style={{
+                                background: "transparent", border: "none",
+                                color: T.textTer, cursor: "pointer",
+                                fontSize: T.fs_base, padding: "2px 6px",
+                                fontFamily: T.font_mono, lineHeight: 1,
+                              }}
+                              onMouseEnter={e => { e.currentTarget.style.color = T.danger; }}
+                              onMouseLeave={e => { e.currentTarget.style.color = T.textTer; }}
+                            >remove</button>
+                          </div>
                         </div>
 
                         {/* Row 2: inline articulation chips — always visible when instrument is selected */}
@@ -7136,6 +7355,17 @@ function SpecificInstrumentsPicker({
                               ))}
                             </div>
                           </div>
+                        )}
+
+                        {/* Row 3: mini-panel for per-instrument suggestions (VIP only) */}
+                        {isPanelOpen && (
+                          <InstrumentSuggestPanel
+                            instrSuggest={instrSuggest}
+                            isMobile={isMobile}
+                            onInstrReroll={onInstrReroll}
+                            onInstrAccept={onInstrAccept}
+                            onInstrAcceptAll={onInstrAcceptAll}
+                            onInstrDismiss={onInstrDismiss} />
                         )}
                       </div>
                     );
@@ -7612,7 +7842,7 @@ const DEFAULT_TOGGLES = {
   vocalist: "auto", language: "auto", lyricalVibe: "auto",
   specificInstruments: "auto",
   harmonic: "auto", texture: "auto", mix: "auto",
-  bpm: "auto",
+  bpm: "off",
 };
 
 const ENGINE_DEF = {
@@ -7790,12 +8020,15 @@ function EnginePage({ onNavigate }) {
   // re-collapse. State is session-local (not persisted) so every visit
   // starts clean. Free tier sees a locked PRO upsell button instead.
   const [expandedSections, setExpandedSections] = useState({});
+  // Cubicle grid: only one cubicle open at a time. null = all closed.
+  const [openCubicle, setOpenCubicle] = useState(null);
+  const toggleCubicle = (id) => setOpenCubicle(curr => curr === id ? null : id);
   const toggleSectionExpanded = (sectionId) => {
     setExpandedSections(prev => ({ ...prev, [sectionId]: !prev[sectionId] }));
   };
   // Returns { visibleItems, hiddenCount } based on expanded state + TOP_5 +
   // always-show rules (locked, favorite, or currently selected items are
-  // never hidden, regardless of whether they're in the top 5).
+  // never hidden, regardless of whether they're in the curated shortlist).
   const getCollapsibleSlice = (sectionId, fullItems, itemKey, selectedKey) => {
     const isExpanded = !!expandedSections[sectionId];
     if (isExpanded) return { visibleItems: fullItems, hiddenCount: 0 };
@@ -8075,6 +8308,33 @@ function EnginePage({ onNavigate }) {
 
   const dismissInstrSuggestions = () => setInstrSuggest(null);
 
+  // ── AUTO-SCROLL SUGGESTION PANEL INTO VIEW ──────────────────────────
+  // When either suggestion panel opens (section-local or per-instrument),
+  // scroll it into the middle of the viewport so the user doesn't have to
+  // hunt for it. Uses data-suggest-panel attributes placed on each panel
+  // wrapper; effect runs after the DOM commits the new panel.
+  useEffect(() => {
+    if (!suggestions || !suggestions.sourceId) return;
+    const id = setTimeout(() => {
+      const el = document.querySelector(`[data-suggest-panel="${suggestions.sourceId}"]`);
+      if (el && typeof el.scrollIntoView === "function") {
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+    }, 60); // small delay so the panel has rendered
+    return () => clearTimeout(id);
+  }, [suggestions?.sourceId]);
+
+  useEffect(() => {
+    if (!instrSuggest || !instrSuggest.inst) return;
+    const id = setTimeout(() => {
+      const el = document.querySelector(`[data-instr-panel="${CSS.escape(instrSuggest.inst)}"]`);
+      if (el && typeof el.scrollIntoView === "function") {
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+    }, 60);
+    return () => clearTimeout(id);
+  }, [instrSuggest?.inst]);
+
   // ── PRESETS SHUFFLE ─────────────────────────────────────────────────
   // Gate: Free/Pro see the same fixed 5 curated starting points. Only VIP
   // (and Admin) can shuffle through the full 50-preset catalog. This makes
@@ -8318,6 +8578,87 @@ function EnginePage({ onNavigate }) {
   };
 
   // ─────────────────────────────────────────────────────────────────────
+  // PER-SECTION RANDOMIZE
+  // Small 🎲 button in each section header. Re-rolls just that section
+  // from its pool, independent of HIT. Useful for exploring variety within
+  // one section while keeping everything else fixed. Respects the section
+  // toggle (won't reroll if section is "off") and custom-added options.
+  // ─────────────────────────────────────────────────────────────────────
+  const rerollSection = (sectionId) => {
+    const pick = (arr) => arr.length === 0 ? null : arr[Math.floor(Math.random() * arr.length)];
+    // Build pool per section, including custom options
+    const customs = customOptions[sectionId] || [];
+    const poolCap = Math.max(5, effectiveLimits.maxOptionsPerSection);
+    const clip = (pool) => pool.slice(0, poolCap);
+    const withCustom = (pool) => [...customs, ...pool];
+
+    switch (sectionId) {
+      case "mood":        set("mood", pick(withCustom(clip(MOODS)))); break;
+      case "energy":      set("energy", pick(withCustom(clip(ENERGIES)))); break;
+      case "groove":      set("groove", pick(withCustom(clip(GROOVES.slice(1).map(g => g.id))))); break;
+      case "vocalist":    set("vocalist", pick(withCustom(clip(VOCALISTS)))); break;
+      case "language":    set("language", pick(withCustom(LANGUAGES.map(l => l.code)))); break;
+      case "lyricalVibe": set("lyricalVibe", pick(withCustom(clip(LYRICAL_VIBES)))); break;
+      case "harmonic":    set("harmonic", pick(withCustom(clip(HARMONIC_STYLES)))); break;
+      case "texture":     set("texture", pick(withCustom(clip(SOUND_TEXTURES)))); break;
+      case "mix":         set("mix", pick(withCustom(clip(MIX_CHARS)))); break;
+      case "bpm":
+        set("bpm", 60 + Math.floor(Math.random() * 61) * 2);
+        if (state.toggles.bpm === "off") setToggle("bpm", "on");
+        break;
+      case "specificInstruments": {
+        // Pick 3 random instruments from the flat pool (respects tier cap).
+        const pool = SPECIFIC_INSTRUMENT_FLAT.map(i => i.name);
+        const shuffled = [...pool].sort(() => Math.random() - 0.5);
+        set("specificInstruments", shuffled.slice(0, 3));
+        break;
+      }
+      default: break;
+    }
+  };
+
+  const renderRerollBtn = (sectionId) => {
+    const off = state.toggles?.[sectionId] === "off";
+    return (
+      <button type="button"
+        onClick={() => { if (!off) rerollSection(sectionId); }}
+        disabled={off}
+        title={off ? "Section is off" : "Randomize just this section"}
+        style={{
+          background: "transparent",
+          border: `1px solid ${T.border}`,
+          color: off ? T.textMuted : T.textSec,
+          padding: "4px 8px", cursor: off ? "not-allowed" : "pointer",
+          fontSize: T.fs_base, lineHeight: 1,
+          borderRadius: T.r_sm,
+          transition: `all ${T.dur_fast} ${T.ease}`,
+          opacity: off ? 0.4 : 1,
+        }}
+        onMouseEnter={e => {
+          if (off) return;
+          e.currentTarget.style.borderColor = T.accent;
+          e.currentTarget.style.color = T.accent;
+        }}
+        onMouseLeave={e => {
+          if (off) return;
+          e.currentTarget.style.borderColor = T.border;
+          e.currentTarget.style.color = T.textSec;
+        }}>
+        🎲
+      </button>
+    );
+  };
+
+  // Shortcut: emit reroll + lock buttons in the standard order for a
+  // section header's `extra` slot.
+  const sectionExtras = (sectionId) => (
+    <>
+      {renderRerollBtn(sectionId)}
+      {renderLockBtn(sectionId)}
+    </>
+  );
+
+  // ─────────────────────────────────────────────────────────────────────
   // CUSTOM OPTIONS TAIL
   // Renders after the built-in chips in each chip-list section.
   // For each custom entry: a chip that behaves identically to built-in
@@ -8447,7 +8788,7 @@ function EnginePage({ onNavigate }) {
     if (!suggestions || suggestions.sourceId !== sectionId) return null;
     if (suggestions.noMappings) {
       return (
-        <div style={{
+        <div data-suggest-panel={sectionId} style={{
           marginTop: T.s2,
           padding: `${T.s2}px ${T.s3}px`,
           background: `${V.neonGold}0A`,
@@ -8458,7 +8799,7 @@ function EnginePage({ onNavigate }) {
           display: "flex", alignItems: "center", justifyContent: "space-between",
           gap: T.s2,
         }}>
-          <span>No complement data yet for this pick.</span>
+          <span>This pick stands well on its own — try pairing it with another element first.</span>
           <button type="button" onClick={dismissSuggestions}
             style={{
               background: "transparent", border: "none", color: T.textMuted,
@@ -8469,7 +8810,7 @@ function EnginePage({ onNavigate }) {
       );
     }
     return (
-      <div style={{
+      <div data-suggest-panel={sectionId} style={{
         marginTop: T.s2,
         padding: T.s3,
         background: `${V.neonGold}0A`,
@@ -8765,7 +9106,19 @@ function EnginePage({ onNavigate }) {
       mood:      maybe("mood",     () => withCustom("mood", clipPool(MOODS))),
       energy:    maybe("energy",   () => withCustom("energy", clipPool(ENERGIES))),
       groove:    maybe("groove",   () => withCustom("groove", clipPool(GROOVES.slice(1).map(g => g.id))), "default"),
-      vocalist:  maybe("vocalist", () => withCustom("vocalist", clipPool(VOCALISTS))),
+      vocalist:  (() => {
+        const picked = maybe("vocalist", () => withCustom("vocalist", clipPool(VOCALISTS)));
+        // Enforce: if a language will be set post-randomize AND vocalist ended up empty,
+        // force-pick one from the pool so the prompt isn't inconsistent.
+        const langWillBeSet = (secLocks.language || state.languageLocked)
+          ? !!state.language
+          : (chosen.has("language") ? true : true); // "en" default always sets
+        if (langWillBeSet && !picked) {
+          const pool = clipPool(VOCALISTS);
+          if (pool.length > 0) return pool[Math.floor(Math.random() * pool.length)];
+        }
+        return picked;
+      })(),
       // Language: sectionLock OR legacy languageLocked both preserve
       language:  (secLocks.language || state.languageLocked)
                    ? state.language
@@ -9102,136 +9455,422 @@ function EnginePage({ onNavigate }) {
               onLockedClick={(f) => setSalesModalFeature(f || "lockedSubgenre")} />
           </Section>
 
-          <Section title="Mood"
-            filled={!!state.mood}
-            toggle={state.toggles.mood} onToggleChange={v => setToggle("mood", v)}
-            extra={renderLockBtn("mood")}>
+          {/* LANGUAGE — positioned at the top of the element stack per spec.
+              Hidden when lyricsOn is false (instrumental mode) since language
+              is only meaningful for sung content. */}
+          {lyricsOn && (
+            <Section title="Language" hint="Shifts vocal phrasing and cadence."
+              filled={!!state.language}
+              toggle={state.toggles.language} onToggleChange={v => setToggle("language", v)}
+              extra={sectionExtras("language")}>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: T.s1 }}>
+                {LANGUAGES.map(lang => (
+                  <Chip key={lang.code} label={lang.label} selected={state.language === lang.code}
+                    favorite={favSetFor("language").has(lang.code)}
+                    locked={optionLockSetFor("language").has(lang.code)}
+                    casinoOutline={casinoOutlines.get(`language:${lang.code}`)}
+                    onClick={() => set("language", lang.code)}
+                    onDoubleClick={() => toggleFavorite("language", lang.code)} />
+                ))}
+                {renderCustomTail("language", (e) => ({
+                  isSelected: state.language === e,
+                  onClick: () => set("language", state.language === e ? "" : e),
+                }))}
+              </div>
+            </Section>
+          )}
+
+          {/* ── CUBICLE GRID (pilot) ────────────────────────────────
+              3 columns on desktop / 2 on mobile. Click a tile to expand
+              it inline; it spans full width and pushes siblings below.
+              Only ONE can be open at a time.                         */}
+          <CubicleGrid isMobile={isMobile}>
+            <Cubicle id="mood" title="Mood"
+              filled={!!state.mood}
+              valuePreview={state.mood || "—"}
+              isOpen={openCubicle === "mood"} onToggle={toggleCubicle}
+              toggle={state.toggles.mood}
+              extra={<>
+                {sectionExtras("mood")}
+                <TriToggle value={state.toggles.mood} onChange={v => setToggle("mood", v)} />
+              </>}>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: T.s1 }}>
+                {(() => {
+                  const useCollapse = !effectiveLimits.restrictSubgenres;
+                  const { visibleItems, hiddenCount } = useCollapse
+                    ? getCollapsibleSlice("mood", MOODS)
+                    : { visibleItems: MOODS, hiddenCount: 0 };
+                  return (
+                    <>
+                      {visibleItems.map((o) => {
+                        const i = MOODS.indexOf(o);
+                        return (
+                          <Chip key={o} label={o} selected={state.mood === o}
+                            favorite={favSetFor("mood").has(o)}
+                            locked={optionLockSetFor("mood").has(o)}
+                            tierLocked={isOptionLocked(i)}
+                            onLockedClick={() => setSalesModalFeature("moreOptions")}
+                            casinoOutline={casinoOutlines.get(`mood:${o}`)}
+                            onClick={() => set("mood", state.mood === o ? "" : o)}
+                            onDoubleClick={() => toggleFavorite("mood", o)} />
+                        );
+                      })}
+                      {renderCustomTail("mood", (e) => ({
+                        isSelected: state.mood === e,
+                        onClick: () => set("mood", state.mood === e ? "" : e),
+                      }))}
+                      {useCollapse && renderCollapseControls("mood", hiddenCount)}
+                      {renderSectionSuggestButton("mood")}
+                    </>
+                  );
+                })()}
+              </div>
+              {renderSectionSuggestPanel("mood")}
+            </Cubicle>
+
+            <Cubicle id="energy" title="Energy arc"
+              filled={!!state.energy}
+              valuePreview={state.energy || "—"}
+              isOpen={openCubicle === "energy"} onToggle={toggleCubicle}
+              toggle={state.toggles.energy}
+              extra={<>
+                {sectionExtras("energy")}
+                <TriToggle value={state.toggles.energy} onChange={v => setToggle("energy", v)} />
+              </>}>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: T.s1 }}>
+                {(() => {
+                  const useCollapse = !effectiveLimits.restrictSubgenres;
+                  const { visibleItems, hiddenCount } = useCollapse
+                    ? getCollapsibleSlice("energy", ENERGIES)
+                    : { visibleItems: ENERGIES, hiddenCount: 0 };
+                  return (
+                    <>
+                      {visibleItems.map((o) => {
+                        const i = ENERGIES.indexOf(o);
+                        return (
+                          <Chip key={o} label={o} selected={state.energy === o}
+                            favorite={favSetFor("energy").has(o)}
+                            locked={optionLockSetFor("energy").has(o)}
+                            tierLocked={isOptionLocked(i)}
+                            onLockedClick={() => setSalesModalFeature("moreOptions")}
+                            casinoOutline={casinoOutlines.get(`energy:${o}`)}
+                            onClick={() => set("energy", state.energy === o ? "" : o)}
+                            onDoubleClick={() => toggleFavorite("energy", o)} />
+                        );
+                      })}
+                      {renderCustomTail("energy", (e) => ({
+                        isSelected: state.energy === e,
+                        onClick: () => set("energy", state.energy === e ? "" : e),
+                      }))}
+                      {useCollapse && renderCollapseControls("energy", hiddenCount)}
+                      {renderSectionSuggestButton("energy")}
+                    </>
+                  );
+                })()}
+              </div>
+              {renderSectionSuggestPanel("energy")}
+            </Cubicle>
+
+            <Cubicle id="groove" title="Groove"
+              filled={state.groove && state.groove !== "default"}
+              valuePreview={state.groove && state.groove !== "default"
+                ? (GROOVES.find(g => g.id === state.groove)?.label || state.groove)
+                : "—"}
+              hint="Sets the rhythmic feel."
+              isOpen={openCubicle === "groove"} onToggle={toggleCubicle}
+              toggle={state.toggles.groove}
+              extra={<>
+                {sectionExtras("groove")}
+                <TriToggle value={state.toggles.groove} onChange={v => setToggle("groove", v)} />
+              </>}>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: T.s1 }}>
+                {(() => {
+                  const useCollapse = !effectiveLimits.restrictSubgenres;
+                  const alwaysVisibleIds = new Set(["default", ...(TOP_5.groove || [])]);
+                  const { visibleItems, hiddenCount } = useCollapse
+                    ? (() => {
+                        const isExpanded = !!expandedSections["groove"];
+                        if (isExpanded) return { visibleItems: GROOVES, hiddenCount: 0 };
+                        const favSet = favSetFor("groove");
+                        const lockSet = optionLockSetFor("groove");
+                        const visible = [];
+                        let hidden = 0;
+                        GROOVES.forEach(g => {
+                          if (alwaysVisibleIds.has(g.id) || favSet.has(g.id) || lockSet.has(g.id) || state.groove === g.id) {
+                            visible.push(g);
+                          } else {
+                            hidden += 1;
+                          }
+                        });
+                        return { visibleItems: visible, hiddenCount: hidden };
+                      })()
+                    : { visibleItems: GROOVES, hiddenCount: 0 };
+                  return (
+                    <>
+                      {visibleItems.map((g) => {
+                        const i = GROOVES.indexOf(g);
+                        return (
+                          <Chip key={g.id} label={g.label} selected={state.groove === g.id}
+                            favorite={favSetFor("groove").has(g.id)}
+                            locked={optionLockSetFor("groove").has(g.id)}
+                            tierLocked={isOptionLocked(i)}
+                            onLockedClick={() => setSalesModalFeature("moreOptions")}
+                            casinoOutline={casinoOutlines.get(`groove:${g.id}`)}
+                            onClick={() => set("groove", g.id)}
+                            onDoubleClick={() => toggleFavorite("groove", g.id)} />
+                        );
+                      })}
+                      {renderCustomTail("groove", (e) => ({
+                        isSelected: state.groove === e,
+                        onClick: () => set("groove", state.groove === e ? "" : e),
+                      }))}
+                      {useCollapse && renderCollapseControls("groove", hiddenCount)}
+                      {renderSectionSuggestButton("groove")}
+                    </>
+                  );
+                })()}
+              </div>
+              {renderSectionSuggestPanel("groove")}
+            </Cubicle>
+          </CubicleGrid>
+
+
+
+          {lyricsOn && (
+            <>
+              <Section title="Vocalist"
+                filled={!!state.vocalist}
+                hint={state.language && !state.vocalist
+                  ? "Pick a vocalist — a language is set and needs a voice."
+                  : undefined}
+                toggle={state.toggles.vocalist} onToggleChange={v => setToggle("vocalist", v)}
+                extra={sectionExtras("vocalist")}>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: T.s1 }}>
+                  {(() => {
+                    const useCollapse = !effectiveLimits.restrictSubgenres;
+                    const { visibleItems, hiddenCount } = useCollapse
+                      ? getCollapsibleSlice("vocalist", VOCALISTS)
+                      : { visibleItems: VOCALISTS, hiddenCount: 0 };
+                    return (
+                      <>
+                        {visibleItems.map((o) => {
+                          const i = VOCALISTS.indexOf(o);
+                          return (
+                            <Chip key={o} label={o} selected={state.vocalist === o}
+                              favorite={favSetFor("vocalist").has(o)}
+                              locked={optionLockSetFor("vocalist").has(o)}
+                              tierLocked={isOptionLocked(i)}
+                              onLockedClick={() => setSalesModalFeature("moreOptions")}
+                              casinoOutline={casinoOutlines.get(`vocalist:${o}`)}
+                              onClick={() => set("vocalist", state.vocalist === o ? "" : o)}
+                              onDoubleClick={() => toggleFavorite("vocalist", o)} />
+                          );
+                        })}
+                        {renderCustomTail("vocalist", (e) => ({
+                          isSelected: state.vocalist === e,
+                          onClick: () => set("vocalist", state.vocalist === e ? "" : e),
+                        }))}
+                        {useCollapse && renderCollapseControls("vocalist", hiddenCount)}
+                        {renderSectionSuggestButton("vocalist")}
+                      </>
+                    );
+                  })()}
+                </div>
+                {renderSectionSuggestPanel("vocalist")}
+              </Section>
+
+              <Section title="Lyrical vibe" hint="How the words frame the song."
+                filled={!!state.lyricalVibe}
+                toggle={state.toggles.lyricalVibe} onToggleChange={v => setToggle("lyricalVibe", v)}
+                extra={sectionExtras("lyricalVibe")}>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: T.s1 }}>
+                  {(() => {
+                    const useCollapse = !effectiveLimits.restrictSubgenres;
+                    const { visibleItems, hiddenCount } = useCollapse
+                      ? getCollapsibleSlice("lyricalVibe", LYRICAL_VIBES)
+                      : { visibleItems: LYRICAL_VIBES, hiddenCount: 0 };
+                    return (
+                      <>
+                        {visibleItems.map((o) => {
+                          const i = LYRICAL_VIBES.indexOf(o);
+                          return (
+                            <Chip key={o} label={o} selected={state.lyricalVibe === o}
+                              favorite={favSetFor("lyricalVibe").has(o)}
+                              locked={optionLockSetFor("lyricalVibe").has(o)}
+                              tierLocked={isOptionLocked(i)}
+                              onLockedClick={() => setSalesModalFeature("moreOptions")}
+                              casinoOutline={casinoOutlines.get(`lyricalVibe:${o}`)}
+                              onClick={() => set("lyricalVibe", state.lyricalVibe === o ? "" : o)}
+                              onDoubleClick={() => toggleFavorite("lyricalVibe", o)} />
+                          );
+                        })}
+                        {renderCustomTail("lyricalVibe", (e) => ({
+                          isSelected: state.lyricalVibe === e,
+                          onClick: () => set("lyricalVibe", state.lyricalVibe === e ? "" : e),
+                        }))}
+                        {useCollapse && renderCollapseControls("lyricalVibe", hiddenCount)}
+                        {renderSectionSuggestButton("lyricalVibe")}
+                      </>
+                    );
+                  })()}
+                </div>
+                {renderSectionSuggestPanel("lyricalVibe")}
+              </Section>
+            </>
+          )}
+
+          <Section title="Specific instruments"
+            filled={(state.specificInstruments || []).length > 0}
+            hint={
+              state.toggles.specificInstruments === "off" ? "Excluded."
+              : state.toggles.specificInstruments === "on"
+                ? `${state.specificInstruments.length} selected. Forced count: ${state.specificCount}.`
+                : `${state.specificInstruments.length} selected. Auto.`
+            }
+            toggle={state.toggles.specificInstruments}
+            onToggleChange={v => setToggle("specificInstruments", v)}
+            extra={
+              <div style={{ display: "flex", alignItems: "center", gap: T.s2, flexWrap: "wrap" }}>
+                {state.toggles.specificInstruments === "on" && (
+                  <>
+                    <Label color={T.textTer}>Count</Label>
+                    <CountStepper value={state.specificCount} onChange={v => set("specificCount", v)} />
+                  </>
+                )}
+                {renderRerollBtn("specificInstruments")}
+                {renderLockBtn("specificInstruments")}
+              </div>
+            }>
+            <SpecificInstrumentsPicker state={state} setState={setState}
+              favorites={favSetFor("specificInstruments")}
+              onFavorite={v => toggleFavorite("specificInstruments", v)}
+              optionLocks={optionLockSetFor("specificInstruments")}
+              onLockToggle={v => toggleOptionLock("specificInstruments", v)}
+              casinoOutlines={casinoOutlines}
+              maxPerCategory={Math.max(5, effectiveLimits.maxOptionsPerSection)}
+              canUseInstrSuggest={canUseInstrSuggest}
+              instrSuggest={instrSuggest}
+              onInstrSuggestClick={handleInstrSuggestClick}
+              onInstrReroll={rerollInstrSuggestion}
+              onInstrAccept={acceptInstrSuggestion}
+              onInstrAcceptAll={acceptAllInstrSuggestions}
+              onInstrDismiss={dismissInstrSuggestions}
+              starterCombosLocked={tier !== "vip" && tier !== "admin"}
+              onLockedClick={(key) => setSalesModalFeature(key)} />
+          </Section>
+
+          <Section title="Harmonic style"
+            filled={!!state.harmonic}
+            toggle={state.toggles.harmonic} onToggleChange={v => setToggle("harmonic", v)}
+            extra={sectionExtras("harmonic")}>
             <div style={{ display: "flex", flexWrap: "wrap", gap: T.s1 }}>
               {(() => {
                 const useCollapse = !effectiveLimits.restrictSubgenres;
                 const { visibleItems, hiddenCount } = useCollapse
-                  ? getCollapsibleSlice("mood", MOODS)
-                  : { visibleItems: MOODS, hiddenCount: 0 };
+                  ? getCollapsibleSlice("harmonic", HARMONIC_STYLES)
+                  : { visibleItems: HARMONIC_STYLES, hiddenCount: 0 };
                 return (
                   <>
                     {visibleItems.map((o) => {
-                      const i = MOODS.indexOf(o);
+                      const i = HARMONIC_STYLES.indexOf(o);
                       return (
-                        <Chip key={o} label={o} selected={state.mood === o}
-                          favorite={favSetFor("mood").has(o)}
-                          locked={optionLockSetFor("mood").has(o)}
+                        <Chip key={o} label={o} selected={state.harmonic === o}
+                          favorite={favSetFor("harmonic").has(o)}
+                          locked={optionLockSetFor("harmonic").has(o)}
                           tierLocked={isOptionLocked(i)}
                           onLockedClick={() => setSalesModalFeature("moreOptions")}
-                          casinoOutline={casinoOutlines.get(`mood:${o}`)}
-                          onClick={() => set("mood", state.mood === o ? "" : o)}
-                          onDoubleClick={() => toggleFavorite("mood", o)} />
+                          casinoOutline={casinoOutlines.get(`harmonic:${o}`)}
+                          onClick={() => set("harmonic", state.harmonic === o ? "" : o)}
+                          onDoubleClick={() => toggleFavorite("harmonic", o)} />
                       );
                     })}
-                    {renderCustomTail("mood", (e) => ({
-                      isSelected: state.mood === e,
-                      onClick: () => set("mood", state.mood === e ? "" : e),
+                    {renderCustomTail("harmonic", (e) => ({
+                      isSelected: state.harmonic === e,
+                      onClick: () => set("harmonic", state.harmonic === e ? "" : e),
                     }))}
-                    {useCollapse && renderCollapseControls("mood", hiddenCount)}
-                    {renderSectionSuggestButton("mood")}
+                    {useCollapse && renderCollapseControls("harmonic", hiddenCount)}
+                    {renderSectionSuggestButton("harmonic")}
                   </>
                 );
               })()}
             </div>
-            {renderSectionSuggestPanel("mood")}
+            {renderSectionSuggestPanel("harmonic")}
           </Section>
 
-          <Section title="Energy arc"
-            filled={!!state.energy}
-            toggle={state.toggles.energy} onToggleChange={v => setToggle("energy", v)}
-            extra={renderLockBtn("energy")}>
+          <Section title="Sound texture"
+            filled={!!state.texture}
+            toggle={state.toggles.texture} onToggleChange={v => setToggle("texture", v)}
+            extra={sectionExtras("texture")}>
             <div style={{ display: "flex", flexWrap: "wrap", gap: T.s1 }}>
               {(() => {
                 const useCollapse = !effectiveLimits.restrictSubgenres;
                 const { visibleItems, hiddenCount } = useCollapse
-                  ? getCollapsibleSlice("energy", ENERGIES)
-                  : { visibleItems: ENERGIES, hiddenCount: 0 };
+                  ? getCollapsibleSlice("texture", SOUND_TEXTURES)
+                  : { visibleItems: SOUND_TEXTURES, hiddenCount: 0 };
                 return (
                   <>
                     {visibleItems.map((o) => {
-                      const i = ENERGIES.indexOf(o);
+                      const i = SOUND_TEXTURES.indexOf(o);
                       return (
-                        <Chip key={o} label={o} selected={state.energy === o}
-                          favorite={favSetFor("energy").has(o)}
-                          locked={optionLockSetFor("energy").has(o)}
+                        <Chip key={o} label={o} selected={state.texture === o}
+                          favorite={favSetFor("texture").has(o)}
+                          locked={optionLockSetFor("texture").has(o)}
                           tierLocked={isOptionLocked(i)}
                           onLockedClick={() => setSalesModalFeature("moreOptions")}
-                          casinoOutline={casinoOutlines.get(`energy:${o}`)}
-                          onClick={() => set("energy", state.energy === o ? "" : o)}
-                          onDoubleClick={() => toggleFavorite("energy", o)} />
+                          casinoOutline={casinoOutlines.get(`texture:${o}`)}
+                          onClick={() => set("texture", state.texture === o ? "" : o)}
+                          onDoubleClick={() => toggleFavorite("texture", o)} />
                       );
                     })}
-                    {renderCustomTail("energy", (e) => ({
-                      isSelected: state.energy === e,
-                      onClick: () => set("energy", state.energy === e ? "" : e),
+                    {renderCustomTail("texture", (e) => ({
+                      isSelected: state.texture === e,
+                      onClick: () => set("texture", state.texture === e ? "" : e),
                     }))}
-                    {useCollapse && renderCollapseControls("energy", hiddenCount)}
-                    {renderSectionSuggestButton("energy")}
+                    {useCollapse && renderCollapseControls("texture", hiddenCount)}
+                    {renderSectionSuggestButton("texture")}
                   </>
                 );
               })()}
             </div>
-            {renderSectionSuggestPanel("energy")}
+            {renderSectionSuggestPanel("texture")}
           </Section>
 
-          <Section title="Groove" hint="Sets the rhythmic feel."
-            filled={state.groove && state.groove !== "default"}
-            toggle={state.toggles.groove} onToggleChange={v => setToggle("groove", v)}
-            extra={renderLockBtn("groove")}>
+          <Section title="Mix character"
+            filled={!!state.mix}
+            toggle={state.toggles.mix} onToggleChange={v => setToggle("mix", v)}
+            extra={sectionExtras("mix")}>
             <div style={{ display: "flex", flexWrap: "wrap", gap: T.s1 }}>
               {(() => {
                 const useCollapse = !effectiveLimits.restrictSubgenres;
-                // Groove items are objects keyed by id — pass itemKey accessor.
-                // "default" is the no-op option — always keep it visible.
-                const alwaysVisibleIds = new Set(["default", ...(TOP_5.groove || [])]);
                 const { visibleItems, hiddenCount } = useCollapse
-                  ? (() => {
-                      const isExpanded = !!expandedSections["groove"];
-                      if (isExpanded) return { visibleItems: GROOVES, hiddenCount: 0 };
-                      const favSet = favSetFor("groove");
-                      const lockSet = optionLockSetFor("groove");
-                      const visible = [];
-                      let hidden = 0;
-                      GROOVES.forEach(g => {
-                        if (alwaysVisibleIds.has(g.id) || favSet.has(g.id) || lockSet.has(g.id) || state.groove === g.id) {
-                          visible.push(g);
-                        } else {
-                          hidden += 1;
-                        }
-                      });
-                      return { visibleItems: visible, hiddenCount: hidden };
-                    })()
-                  : { visibleItems: GROOVES, hiddenCount: 0 };
+                  ? getCollapsibleSlice("mix", MIX_CHARS)
+                  : { visibleItems: MIX_CHARS, hiddenCount: 0 };
                 return (
                   <>
-                    {visibleItems.map((g) => {
-                      const i = GROOVES.indexOf(g);
+                    {visibleItems.map((o) => {
+                      const i = MIX_CHARS.indexOf(o);
                       return (
-                        <Chip key={g.id} label={g.label} selected={state.groove === g.id}
-                          favorite={favSetFor("groove").has(g.id)}
-                          locked={optionLockSetFor("groove").has(g.id)}
+                        <Chip key={o} label={o} selected={state.mix === o}
+                          favorite={favSetFor("mix").has(o)}
+                          locked={optionLockSetFor("mix").has(o)}
                           tierLocked={isOptionLocked(i)}
                           onLockedClick={() => setSalesModalFeature("moreOptions")}
-                          casinoOutline={casinoOutlines.get(`groove:${g.id}`)}
-                          onClick={() => set("groove", g.id)}
-                          onDoubleClick={() => toggleFavorite("groove", g.id)} />
+                          casinoOutline={casinoOutlines.get(`mix:${o}`)}
+                          onClick={() => set("mix", state.mix === o ? "" : o)}
+                          onDoubleClick={() => toggleFavorite("mix", o)} />
                       );
                     })}
-                    {renderCustomTail("groove", (e) => ({
-                      isSelected: state.groove === e,
-                      onClick: () => set("groove", state.groove === e ? "" : e),
+                    {renderCustomTail("mix", (e) => ({
+                      isSelected: state.mix === e,
+                      onClick: () => set("mix", state.mix === e ? "" : e),
                     }))}
-                    {useCollapse && renderCollapseControls("groove", hiddenCount)}
-                    {renderSectionSuggestButton("groove")}
+                    {useCollapse && renderCollapseControls("mix", hiddenCount)}
+                    {renderSectionSuggestButton("mix")}
                   </>
                 );
               })()}
             </div>
-            {renderSectionSuggestPanel("groove")}
+            {renderSectionSuggestPanel("mix")}
           </Section>
 
           <Section title="BPM"
@@ -9242,7 +9881,7 @@ function EnginePage({ onNavigate }) {
                   ? "Excluded from prompt"
                   : "Randomize on HIT, or set manually")}
             toggle={state.toggles.bpm} onToggleChange={v => setToggle("bpm", v)}
-            extra={renderLockBtn("bpm")}>
+            extra={sectionExtras("bpm")}>
             <div style={{ display: "flex", alignItems: "center", gap: T.s3, flexWrap: "wrap" }}>
               <div style={{ display: "flex", alignItems: "center", gap: T.s2, flex: 1, minWidth: 220 }}>
                 <span style={{
@@ -9255,7 +9894,12 @@ function EnginePage({ onNavigate }) {
                   max="200"
                   step="1"
                   value={state.bpm || 110}
-                  onChange={(e) => set("bpm", parseInt(e.target.value, 10))}
+                  onChange={(e) => {
+                    const v = parseInt(e.target.value, 10);
+                    set("bpm", v);
+                    // Auto-enable when user drags the slider (defaults to off)
+                    if (state.toggles.bpm === "off") setToggle("bpm", "on");
+                  }}
                   style={{
                     flex: 1,
                     height: 6,
@@ -9334,257 +9978,6 @@ function EnginePage({ onNavigate }) {
               </div>
             </div>
           </Section>
-
-          {lyricsOn && (
-            <>
-              <Section title="Vocalist"
-                filled={!!state.vocalist}
-                toggle={state.toggles.vocalist} onToggleChange={v => setToggle("vocalist", v)}
-                extra={renderLockBtn("vocalist")}>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: T.s1 }}>
-                  {(() => {
-                    const useCollapse = !effectiveLimits.restrictSubgenres;
-                    const { visibleItems, hiddenCount } = useCollapse
-                      ? getCollapsibleSlice("vocalist", VOCALISTS)
-                      : { visibleItems: VOCALISTS, hiddenCount: 0 };
-                    return (
-                      <>
-                        {visibleItems.map((o) => {
-                          const i = VOCALISTS.indexOf(o);
-                          return (
-                            <Chip key={o} label={o} selected={state.vocalist === o}
-                              favorite={favSetFor("vocalist").has(o)}
-                              locked={optionLockSetFor("vocalist").has(o)}
-                              tierLocked={isOptionLocked(i)}
-                              onLockedClick={() => setSalesModalFeature("moreOptions")}
-                              casinoOutline={casinoOutlines.get(`vocalist:${o}`)}
-                              onClick={() => set("vocalist", state.vocalist === o ? "" : o)}
-                              onDoubleClick={() => toggleFavorite("vocalist", o)} />
-                          );
-                        })}
-                        {renderCustomTail("vocalist", (e) => ({
-                          isSelected: state.vocalist === e,
-                          onClick: () => set("vocalist", state.vocalist === e ? "" : e),
-                        }))}
-                        {useCollapse && renderCollapseControls("vocalist", hiddenCount)}
-                        {renderSectionSuggestButton("vocalist")}
-                      </>
-                    );
-                  })()}
-                </div>
-                {renderSectionSuggestPanel("vocalist")}
-              </Section>
-
-              <Section title="Language" hint="Shifts vocal phrasing and cadence."
-                filled={!!state.language}
-                toggle={state.toggles.language} onToggleChange={v => setToggle("language", v)}
-                extra={renderLockBtn("language")}>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: T.s1 }}>
-                  {LANGUAGES.map(lang => (
-                    <Chip key={lang.code} label={lang.label} selected={state.language === lang.code}
-                      favorite={favSetFor("language").has(lang.code)}
-                      locked={optionLockSetFor("language").has(lang.code)}
-                      casinoOutline={casinoOutlines.get(`language:${lang.code}`)}
-                      onClick={() => set("language", lang.code)}
-                      onDoubleClick={() => toggleFavorite("language", lang.code)} />
-                  ))}
-                  {renderCustomTail("language", (e) => ({
-                    isSelected: state.language === e,
-                    onClick: () => set("language", state.language === e ? "" : e),
-                  }))}
-                </div>
-              </Section>
-
-              <Section title="Lyrical vibe" hint="How the words frame the song."
-                filled={!!state.lyricalVibe}
-                toggle={state.toggles.lyricalVibe} onToggleChange={v => setToggle("lyricalVibe", v)}
-                extra={renderLockBtn("lyricalVibe")}>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: T.s1 }}>
-                  {(() => {
-                    const useCollapse = !effectiveLimits.restrictSubgenres;
-                    const { visibleItems, hiddenCount } = useCollapse
-                      ? getCollapsibleSlice("lyricalVibe", LYRICAL_VIBES)
-                      : { visibleItems: LYRICAL_VIBES, hiddenCount: 0 };
-                    return (
-                      <>
-                        {visibleItems.map((o) => {
-                          const i = LYRICAL_VIBES.indexOf(o);
-                          return (
-                            <Chip key={o} label={o} selected={state.lyricalVibe === o}
-                              favorite={favSetFor("lyricalVibe").has(o)}
-                              locked={optionLockSetFor("lyricalVibe").has(o)}
-                              tierLocked={isOptionLocked(i)}
-                              onLockedClick={() => setSalesModalFeature("moreOptions")}
-                              casinoOutline={casinoOutlines.get(`lyricalVibe:${o}`)}
-                              onClick={() => set("lyricalVibe", state.lyricalVibe === o ? "" : o)}
-                              onDoubleClick={() => toggleFavorite("lyricalVibe", o)} />
-                          );
-                        })}
-                        {renderCustomTail("lyricalVibe", (e) => ({
-                          isSelected: state.lyricalVibe === e,
-                          onClick: () => set("lyricalVibe", state.lyricalVibe === e ? "" : e),
-                        }))}
-                        {useCollapse && renderCollapseControls("lyricalVibe", hiddenCount)}
-                        {renderSectionSuggestButton("lyricalVibe")}
-                      </>
-                    );
-                  })()}
-                </div>
-                {renderSectionSuggestPanel("lyricalVibe")}
-              </Section>
-            </>
-          )}
-
-          <Section title="Specific instruments"
-            filled={(state.specificInstruments || []).length > 0}
-            hint={
-              state.toggles.specificInstruments === "off" ? "Excluded."
-              : state.toggles.specificInstruments === "on"
-                ? `${state.specificInstruments.length} selected. Forced count: ${state.specificCount}.`
-                : `${state.specificInstruments.length} selected. Auto.`
-            }
-            toggle={state.toggles.specificInstruments}
-            onToggleChange={v => setToggle("specificInstruments", v)}
-            extra={
-              <div style={{ display: "flex", alignItems: "center", gap: T.s2, flexWrap: "wrap" }}>
-                {state.toggles.specificInstruments === "on" && (
-                  <>
-                    <Label color={T.textTer}>Count</Label>
-                    <CountStepper value={state.specificCount} onChange={v => set("specificCount", v)} />
-                  </>
-                )}
-                {renderLockBtn("specificInstruments")}
-              </div>
-            }>
-            <SpecificInstrumentsPicker state={state} setState={setState}
-              favorites={favSetFor("specificInstruments")}
-              onFavorite={v => toggleFavorite("specificInstruments", v)}
-              optionLocks={optionLockSetFor("specificInstruments")}
-              onLockToggle={v => toggleOptionLock("specificInstruments", v)}
-              casinoOutlines={casinoOutlines}
-              maxPerCategory={Math.max(5, effectiveLimits.maxOptionsPerSection)}
-              canUseInstrSuggest={canUseInstrSuggest}
-              instrSuggest={instrSuggest}
-              onInstrSuggestClick={handleInstrSuggestClick}
-              onInstrReroll={rerollInstrSuggestion}
-              onInstrAccept={acceptInstrSuggestion}
-              onInstrAcceptAll={acceptAllInstrSuggestions}
-              onInstrDismiss={dismissInstrSuggestions} />
-          </Section>
-
-          <Section title="Harmonic style"
-            filled={!!state.harmonic}
-            toggle={state.toggles.harmonic} onToggleChange={v => setToggle("harmonic", v)}
-            extra={renderLockBtn("harmonic")}>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: T.s1 }}>
-              {(() => {
-                const useCollapse = !effectiveLimits.restrictSubgenres;
-                const { visibleItems, hiddenCount } = useCollapse
-                  ? getCollapsibleSlice("harmonic", HARMONIC_STYLES)
-                  : { visibleItems: HARMONIC_STYLES, hiddenCount: 0 };
-                return (
-                  <>
-                    {visibleItems.map((o) => {
-                      const i = HARMONIC_STYLES.indexOf(o);
-                      return (
-                        <Chip key={o} label={o} selected={state.harmonic === o}
-                          favorite={favSetFor("harmonic").has(o)}
-                          locked={optionLockSetFor("harmonic").has(o)}
-                          tierLocked={isOptionLocked(i)}
-                          onLockedClick={() => setSalesModalFeature("moreOptions")}
-                          casinoOutline={casinoOutlines.get(`harmonic:${o}`)}
-                          onClick={() => set("harmonic", state.harmonic === o ? "" : o)}
-                          onDoubleClick={() => toggleFavorite("harmonic", o)} />
-                      );
-                    })}
-                    {renderCustomTail("harmonic", (e) => ({
-                      isSelected: state.harmonic === e,
-                      onClick: () => set("harmonic", state.harmonic === e ? "" : e),
-                    }))}
-                    {useCollapse && renderCollapseControls("harmonic", hiddenCount)}
-                    {renderSectionSuggestButton("harmonic")}
-                  </>
-                );
-              })()}
-            </div>
-            {renderSectionSuggestPanel("harmonic")}
-          </Section>
-
-          <Section title="Sound texture"
-            filled={!!state.texture}
-            toggle={state.toggles.texture} onToggleChange={v => setToggle("texture", v)}
-            extra={renderLockBtn("texture")}>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: T.s1 }}>
-              {(() => {
-                const useCollapse = !effectiveLimits.restrictSubgenres;
-                const { visibleItems, hiddenCount } = useCollapse
-                  ? getCollapsibleSlice("texture", SOUND_TEXTURES)
-                  : { visibleItems: SOUND_TEXTURES, hiddenCount: 0 };
-                return (
-                  <>
-                    {visibleItems.map((o) => {
-                      const i = SOUND_TEXTURES.indexOf(o);
-                      return (
-                        <Chip key={o} label={o} selected={state.texture === o}
-                          favorite={favSetFor("texture").has(o)}
-                          locked={optionLockSetFor("texture").has(o)}
-                          tierLocked={isOptionLocked(i)}
-                          onLockedClick={() => setSalesModalFeature("moreOptions")}
-                          casinoOutline={casinoOutlines.get(`texture:${o}`)}
-                          onClick={() => set("texture", state.texture === o ? "" : o)}
-                          onDoubleClick={() => toggleFavorite("texture", o)} />
-                      );
-                    })}
-                    {renderCustomTail("texture", (e) => ({
-                      isSelected: state.texture === e,
-                      onClick: () => set("texture", state.texture === e ? "" : e),
-                    }))}
-                    {useCollapse && renderCollapseControls("texture", hiddenCount)}
-                    {renderSectionSuggestButton("texture")}
-                  </>
-                );
-              })()}
-            </div>
-            {renderSectionSuggestPanel("texture")}
-          </Section>
-
-          <Section title="Mix character"
-            filled={!!state.mix}
-            toggle={state.toggles.mix} onToggleChange={v => setToggle("mix", v)}
-            extra={renderLockBtn("mix")}>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: T.s1 }}>
-              {(() => {
-                const useCollapse = !effectiveLimits.restrictSubgenres;
-                const { visibleItems, hiddenCount } = useCollapse
-                  ? getCollapsibleSlice("mix", MIX_CHARS)
-                  : { visibleItems: MIX_CHARS, hiddenCount: 0 };
-                return (
-                  <>
-                    {visibleItems.map((o) => {
-                      const i = MIX_CHARS.indexOf(o);
-                      return (
-                        <Chip key={o} label={o} selected={state.mix === o}
-                          favorite={favSetFor("mix").has(o)}
-                          locked={optionLockSetFor("mix").has(o)}
-                          tierLocked={isOptionLocked(i)}
-                          onLockedClick={() => setSalesModalFeature("moreOptions")}
-                          casinoOutline={casinoOutlines.get(`mix:${o}`)}
-                          onClick={() => set("mix", state.mix === o ? "" : o)}
-                          onDoubleClick={() => toggleFavorite("mix", o)} />
-                      );
-                    })}
-                    {renderCustomTail("mix", (e) => ({
-                      isSelected: state.mix === e,
-                      onClick: () => set("mix", state.mix === e ? "" : e),
-                    }))}
-                    {useCollapse && renderCollapseControls("mix", hiddenCount)}
-                    {renderSectionSuggestButton("mix")}
-                  </>
-                );
-              })()}
-            </div>
-            {renderSectionSuggestPanel("mix")}
-          </Section>
         </div>
 
         {/* RIGHT PANE */}
@@ -9622,6 +10015,60 @@ function EnginePage({ onNavigate }) {
                 {Number.isFinite(fuels[activeFuel]) ? fuels[activeFuel] : "∞"}
               </span>
             </div>
+            {/* ── CLEAR ALL — wipe every selection and start fresh.
+                Respects section locks and the slot locks for paid tiers —
+                the user can still lock things they want to keep. For Free
+                tier locks aren't available, so this is a true nuke. ───── */}
+            <button type="button"
+              onClick={() => {
+                if (isRolling) return;
+                const confirmed = (state.specificInstruments?.length || 0) > 0
+                  || state.mood || state.energy
+                  || (state.groove && state.groove !== "default")
+                  || state.vocalist || state.lyricalVibe
+                  || state.harmonic || state.texture || state.mix
+                  || (state.slots || []).some(s => s)
+                  || state.bpm > 0;
+                if (!confirmed) return; // already empty, nothing to clear
+                // Preserve language and slot/section locks (paid tiers).
+                setState(s => ({
+                  ...s,
+                  slots: (s.slotLocks || []).map((lk, i) => lk ? s.slots[i] : null),
+                  mood: s.sectionLocks?.mood ? s.mood : "",
+                  energy: s.sectionLocks?.energy ? s.energy : "",
+                  groove: s.sectionLocks?.groove ? s.groove : "default",
+                  vocalist: s.sectionLocks?.vocalist ? s.vocalist : "",
+                  lyricalVibe: s.sectionLocks?.lyricalVibe ? s.lyricalVibe : "",
+                  harmonic: s.sectionLocks?.harmonic ? s.harmonic : "",
+                  texture: s.sectionLocks?.texture ? s.texture : "",
+                  mix: s.sectionLocks?.mix ? s.mix : "",
+                  specificInstruments: s.sectionLocks?.specificInstruments ? s.specificInstruments : [],
+                  specificArticulations: s.sectionLocks?.specificInstruments ? s.specificArticulations : {},
+                  bpm: s.sectionLocks?.bpm ? s.bpm : 0,
+                  toggles: { ...s.toggles, bpm: "off" },
+                }));
+              }}
+              style={{
+                padding: `${T.s2}px ${T.s3}px`,
+                background: "transparent",
+                border: `1px solid ${T.danger}55`,
+                borderRadius: T.r_md,
+                color: T.danger,
+                fontFamily: T.font_mono, fontSize: T.fs_xs,
+                fontWeight: 700, letterSpacing: "0.15em",
+                cursor: "pointer", height: 34,
+                transition: `all ${T.dur_fast} ${T.ease}`,
+              }}
+              onMouseEnter={e => {
+                e.currentTarget.style.background = `${T.danger}12`;
+                e.currentTarget.style.borderColor = T.danger;
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.background = "transparent";
+                e.currentTarget.style.borderColor = `${T.danger}55`;
+              }}>
+              CLEAR ALL
+            </button>
             <Joystick
               onNavigate={onNavigate}
               onLockedClick={() => setSalesModalFeature("joystick")}
