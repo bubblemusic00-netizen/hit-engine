@@ -2895,6 +2895,142 @@ const ARTIST_VOCABULARY = {
     ],
     era: "2019-present Israeli pop — genre-agnostic auteur wave, self-producing female Mizrahi-pop outlier",
   },
+
+  // ── ITAY LEVI (איתי לוי) ──────────────────────────────────────
+  // Core: Born Jan 25, 1988 Gan Yavne / Rehovot. Biggest streaming
+  // Mizrahi-pop artist of the 2020s — 1M+ social follow, dominates
+  // Galgalatz year after year. Breakthrough: "Kim'at Shir Ahava"
+  // (Almost a Love Song) 2013. LABEL SHIFT IS THE KEY SONIC DETAIL:
+  // was at Liam Productions (Eyal Golan's label) until July 2020,
+  // founded Ruth Productions (named after his mother) and since
+  // then has been mostly self-directing his releases — a trend
+  // toward mainstream Mediterranean-pop (radio-polished, less
+  // traditional Mizrahi). Won MasterChef VIP 2019, judge on Next
+  // Star for Eurovision, starred in "Kazablan" musical at Habima
+  // 2022. Recent chart-toppers: "Hula Yarach" (#1 Media Forest),
+  // "Nachlat Binyamin" (Tel Aviv street ode), "Just Don't Fall in
+  // Love" (w/ Subliminal + The Shadow, #2). Key collaborators:
+  // Stéphane Legar, Sasson Ifram Shaulov, Agam Buchbot, Dudu
+  // Aharon, Lior Narkis. Vocal: warm Mediterranean tenor — less
+  // melismatic than Omer Adam, more song-first than silsulim-first.
+  "itay-levi": {
+    vocal: [
+      "warm Mediterranean tenor — song-first delivery, not silsulim showcase",
+      "romantic-ballad phrasing with restraint — holds emotional attacks for the bridge",
+      "Hebrew diction with mainstream-pop clarity, lighter Mizrahi accent than traditionalists",
+      "conversational verse into full-voice chorus lift, rarely enters falsetto",
+      "collaborative duet-friendly vocalist — sits well with rap verses (Subliminal) or female leads",
+      "radio-polished consistency — same vocal signature across ballads and up-tempo",
+    ],
+    production: [
+      "post-2020 shift to Ruth Productions self-direction — mainstream Mediterranean-pop polish",
+      "Liam Productions Eyal-Golan-school foundation on pre-2020 catalog (more traditional Mizrahi)",
+      "darbuka + bouzouki + oud Mediterranean percussion bed over modern pop programming",
+      "808 sub + acoustic-guitar-and-piano hybrid on recent crossover singles",
+      "Habima theatrical range capable (Kazablan cast) — arrangement scale from intimate to full-orchestra",
+      "Subliminal hip-hop collaboration production — rap-melodic hybrid beds when working urban",
+    ],
+    signature: [
+      "biggest-streaming Mizrahi-pop voice of the 2020s — the commercial Galgalatz centerpiece",
+      "Ruth Productions independence as sonic signature — self-directed mainstream Mediterranean-pop",
+      "song-first writing over vocal-acrobatics — hits win on melody + lyric, not silsulim fireworks",
+      "wedding-hall-to-Yarkon-Park range — works at intimate wedding and 50K-capacity arena",
+      "cross-generational collaborator — hosts Gen-Z (Legar, Buchbot) + veterans (Narkis, Aharon) equally",
+    ],
+    era: "2013-present Israeli pop — defining mainstream Mediterranean-pop voice of the 2020s, post-Eyal-Golan-label independence wave",
+  },
+
+  // ── EDEN HASSON (עדן חסון) ────────────────────────────────────
+  // Core: Born Aug 25, 1994 Pardes Hanna-Karkur. RELIGIOUS Algerian
+  // Sephardic Jewish family — distinct heritage branch (not the
+  // dominant Yemenite or Moroccan Mizrahi template). Father Yoram
+  // truck driver, mother Esther kindergarten teacher. IAF service
+  // at Mitzpe Ramon emergency squad. Failed Kokhav Nold audition
+  // (season 9). Four-way auteur: singer + songwriter + producer
+  // + co-composer. Co-producers: Dolev Ram + Yaaqov Lamay + Penn
+  // Hazut (on "Shki'ot Adumot" 2020). Breakthrough:
+  // "Shemishehu Yaatzor Oti" (Someone Stop Me) 2017 — ACUM Song
+  // of the Year 2018 (rare critical + commercial double win).
+  // Sonic signature: acoustic-guitar-led sensitive Mizrahi-pop,
+  // emotional-relational lyrics, less dance-floor more
+  // heart-on-sleeve. Key tracks: "Einayim" (Eyes), "Lev Shavur"
+  // (Broken Heart), "Shoshanim Atzuvot" (Sad Roses, co-written
+  // with Jasmin Moallem). Sold out 12,000 Tel Aviv. November
+  // 2024: publicly came out as gay — first major post-Sarit-Hadad
+  // Mizrahi-pop star to do so, received widespread industry
+  // support (Sarit Hadad, Netta Barzilai, Eyal Golan). Engaged
+  // to partner Yotam Gavriel. Culturally significant because
+  // Mizrahi fanbase skews religious-conservative.
+  "eden-hasson": {
+    vocal: [
+      "emotional warm tenor with restrained Mizrahi melisma — feeling over ornament",
+      "Algerian Sephardic Hebrew phrasing — distinct from Yemenite/Moroccan Mizrahi templates",
+      "acoustic-guitar-troubadour delivery — every lyric sits clearly above the arrangement",
+      "heart-on-sleeve sincere mode — no irony, no distance, no flex",
+      "breathy intimate verse into full-voice emotional chorus lift",
+      "religious-family-rooted spiritual gravity without being overtly liturgical",
+    ],
+    production: [
+      "Dolev Ram + Yaaqov Lamay + Penn Hazut co-production on signature catalog",
+      "self-produced auteur — credits as co-producer on multiple releases",
+      "acoustic guitar + piano as the foundation layer — almost always the melodic anchor",
+      "darbuka / soft Mediterranean percussion when the track needs movement",
+      "understated synth-pad washes — no supersaw flash, just warmth",
+      "radio-polished mix with foregrounded vocal presence — voice is always the subject",
+    ],
+    signature: [
+      "acoustic-guitar-led sensitive Mizrahi-pop — distinct from reggaeton-heavy Static/Ben-El template",
+      "four-way auteur (singer + writer + composer + producer) like Jasmin Moallem + Osher Cohen",
+      "emotional-relational lyric territory — love / heartbreak / yearning as primary subject",
+      "Algerian Sephardic heritage as underrepresented Mizrahi variant in pop territory",
+      "cultural milestone of being openly gay in a religious-conservative Mizrahi fanbase",
+    ],
+    era: "2017-present Israeli pop — acoustic-Mizrahi auteur wave, post-Eyal-Golan emotional-sincerity turn",
+  },
+
+  // ── OSHER COHEN (אושר כהן) ────────────────────────────────────
+  // Core: Born Dec 15, 1998 Kiryat Bialik (Tzur Shalom). Son of
+  // Ilan Cohen (former Mizrahi singer, worked the chafla/wedding
+  // circuit) + singer Chani — music family. Conservatory-trained
+  // from age 5: piano, bagan, guitar, clarinet, violin. Started
+  // performing as backup keyboardist at age 11. Went AWOL from
+  // IDF 9 months, served 6 months in military prison. Home studio
+  // since age 16. Breakthrough: "Bergaim SheAt Holechet" 2018
+  // (#2 Media Forest). Four-way auteur + prolific WRITER FOR
+  // OTHERS — wrote for Sarit Hadad ("Kacha Bli Shalom"), Noa
+  // Kirel ("Ra'ashim"), Odeya, Eyal Golan. Co-managed by Omer
+  // Adam (key endorsement) + Bni Menashe (Aroma Music) + Roberto
+  // Ben Shoshan. Public re anxiety/agoraphobia episodes. Recent
+  // output: "Ein Oti" (w/ Noa Kirel, #1 Galgalatz weekly), "Loop",
+  // mini-album "Guitar VeLinshom" 2025. Signature: HEAVY TURKISH
+  // melodic influence noted by Israeli critics — distinct from
+  // Yemenite/Moroccan Mizrahi dominant template.
+  "osher-cohen": {
+    vocal: [
+      "emotional warm tenor with conservatory-trained technical range",
+      "Turkish-melodic-influenced phrasing — distinct from Yemenite/Moroccan Mizrahi templates",
+      "multi-instrumentalist's melodic sensibility — vocal lines feel composed, not improvised",
+      "soft intimate delivery as default mode, climbs to belt only when the song earns it",
+      "Hebrew diction with slight Northern-Israel accent color (Kiryat Bialik origin)",
+      "duet-friendly voice — pairs cleanly with Noa Kirel, Odeya, Dudu Aharon",
+    ],
+    production: [
+      "self-produces nearly everything — built home studio age 16",
+      "Turkish-Mizrahi melodic palette (bouzouki / kanun / oud) distinct from oud-darbuka default",
+      "piano-and-guitar foundation layer — conservatory multi-instrumentalist signature",
+      "Aroma Music (Bni Menashe) / Omer Adam co-management polish on key singles",
+      "acoustic auteur mode on mini-albums ('Guitar VeLinshom' 2025)",
+      "radio-ready Mediterranean-pop arrangement on collab tracks (Noa Kirel, Sarit Hadad)",
+    ],
+    signature: [
+      "four-way auteur like Eden Hasson + Jasmin Moallem — writes, composes, produces, performs",
+      "Turkish melodic influence as sonic fingerprint — unusual in Israeli pop, distinguishes him",
+      "prolific writer-for-others — hits for Sarit Hadad, Noa Kirel, Odeya, Eyal Golan",
+      "Omer Adam co-sign as commercial accelerant — anointed by the generation above him",
+      "conservatory-trained craftsman in a scene dominated by self-taught vocalists",
+    ],
+    era: "2018-present Israeli pop — Turkish-inflected auteur wave, post-IDF-prison breakthrough generation",
+  },
 };
 
 // Resolve the vocabulary descriptors to attach to a pack's prompt.
@@ -6778,6 +6914,322 @@ const MIMIC_PACKS = [
           specificInstruments: ["Piano", "Soft strings", "Acoustic guitar fingerpick", "Synth pad"],
           specificArticulations: {}, bpm: 68,
           harmonic: "Major-key lift", texture: "Airy & weightless", mix: "Heavy reverb cathedral",
+        } },
+    ],
+  },
+  // ══════════════ ITAY LEVI ══════════════════════════════════════════
+  // Biggest streaming Mizrahi-pop act 2020s. Left Liam (Eyal Golan's
+  // label) July 2020, founded Ruth Productions (named after his mother)
+  // — post-2020 releases are SELF-PRODUCED. Gan Yavne / Rehovot born
+  // 1988. Breakthrough: "Kim'at Shir Ahava" 2013. Post-2020 shift
+  // toward mainstream Mediterranean pop (less traditional Mizrahi).
+  // Key collaborators: Subliminal, Stéphane Legar, Sasson Ifram
+  // Shaulov, Agam Buchbot, Lior Narkis, Dudu Aharon.
+  {
+    artistId: "itay-levi",
+    artistName: "Itay Levi",
+    region: "israeli",
+    packs: [
+      { id: "ityl-1", name: "Hula Yarach radio", emoji: "🌙", vibe: "anthemic", state: {
+          slots: [{ genre: "Pop", sub: "Mediterranean pop", micro: null }, null, null],
+          mood: "Confident", energy: "Steady groove throughout", groove: "straight",
+          vocalist: "Warm Mediterranean tenor", language: "he",
+          lyricalVibe: "Romantic devotion",
+          specificInstruments: ["Darbuka", "Bouzouki pluck", "Synth lead", "808 drum machine"],
+          specificArticulations: {}, bpm: 104,
+          harmonic: "Minor-key modal", texture: "Warm & sun-baked", mix: "Modern polished radio",
+        } },
+      { id: "ityl-2", name: "Kim'at Shir Ahava classic", emoji: "💫", vibe: "romantic", state: {
+          slots: [{ genre: "Pop", sub: "Mediterranean pop", micro: null }, null, null],
+          mood: "Romantic", energy: "Slow burn to explosion", groove: "straight",
+          vocalist: "Warm Mediterranean tenor", language: "he",
+          lyricalVibe: "Romantic devotion",
+          specificInstruments: ["Acoustic guitar fingerpick", "Oud", "Darbuka", "Piano"],
+          specificArticulations: {}, bpm: 88,
+          harmonic: "Minor-key introspection", texture: "Warm & sun-baked", mix: "Modern polished radio",
+        } },
+      { id: "ityl-3", name: "Nachlat Binyamin Tel Aviv", emoji: "🏙️", vibe: "moody", state: {
+          slots: [{ genre: "Pop", sub: "Mediterranean pop", micro: null }, null, null],
+          mood: "Nostalgic", energy: "Steady groove throughout", groove: "straight",
+          vocalist: "Warm Mediterranean tenor", language: "he",
+          lyricalVibe: "Ode to a place",
+          specificInstruments: ["Acoustic guitar", "Oud", "Soft strings", "Piano"],
+          specificArticulations: {}, bpm: 92,
+          harmonic: "Minor-key modal", texture: "Warm & analog", mix: "Modern polished radio",
+        } },
+      { id: "ityl-4", name: "Just don't fall in love", emoji: "💔", vibe: "heartbreak", state: {
+          slots: [{ genre: "Pop", sub: "Mediterranean pop", micro: null }, { genre: "Hip-Hop", sub: "Melodic Rap", micro: null }, null],
+          mood: "Bittersweet", energy: "Steady groove throughout", groove: "straight",
+          vocalist: "Warm Mediterranean tenor", language: "he",
+          lyricalVibe: "Heartbreak elegy",
+          specificInstruments: ["Darbuka", "808 sub", "Bouzouki pluck", "Synth pad"],
+          specificArticulations: {}, bpm: 96,
+          harmonic: "Minor-key introspection", texture: "Warm & sun-baked", mix: "Modern polished radio",
+        } },
+      { id: "ityl-5", name: "Wedding hall headliner", emoji: "💍", vibe: "anthemic", state: {
+          slots: [{ genre: "Pop", sub: "Mediterranean pop", micro: null }, null, null],
+          mood: "Euphoric", energy: "Euphoric continuous build", groove: "straight",
+          vocalist: "Warm Mediterranean tenor", language: "he",
+          lyricalVibe: "Party celebration",
+          specificInstruments: ["Darbuka", "Bouzouki pluck", "Brass section", "Synth lead"],
+          specificArticulations: {}, bpm: 118,
+          harmonic: "Major-key lift", texture: "Warm & sun-baked", mix: "Stadium bus compression",
+        } },
+      { id: "ityl-6", name: "Ma'arif Rishon sunset", emoji: "🌇", vibe: "romantic", state: {
+          slots: [{ genre: "Pop", sub: "Mediterranean pop", micro: null }, null, null],
+          mood: "Tender", energy: "Slow burn to explosion", groove: "straight",
+          vocalist: "Warm Mediterranean tenor", language: "he",
+          lyricalVibe: "Romantic devotion",
+          specificInstruments: ["Piano", "Oud", "Soft strings", "Darbuka"],
+          specificArticulations: {}, bpm: 78,
+          harmonic: "Minor-key modal", texture: "Warm & analog", mix: "Modern polished radio",
+        } },
+      { id: "ityl-7", name: "Kazablan theatrical", emoji: "🎭", vibe: "anthemic", state: {
+          slots: [{ genre: "Pop", sub: "Mediterranean pop", micro: null }, null, null],
+          mood: "Defiant", energy: "Fever-pitch final third", groove: "straight",
+          vocalist: "Warm Mediterranean tenor", language: "he",
+          lyricalVibe: "Braggadocio flex",
+          specificInstruments: ["Brass section", "Darbuka", "Orchestral hit", "Bouzouki pluck"],
+          specificArticulations: {}, bpm: 108,
+          harmonic: "Minor-key modal", texture: "Thick & saturated", mix: "Stadium bus compression",
+        } },
+      { id: "ityl-8", name: "Ruth Productions intimate", emoji: "🎙️", vibe: "moody", state: {
+          slots: [{ genre: "Pop", sub: "Mediterranean pop", micro: null }, null, null],
+          mood: "Pensive", energy: "Slow burn to explosion", groove: "straight",
+          vocalist: "Warm Mediterranean tenor", language: "he",
+          lyricalVibe: "Confessional diary",
+          specificInstruments: ["Piano", "Acoustic guitar fingerpick", "Soft strings"],
+          specificArticulations: {}, bpm: 72,
+          harmonic: "Minor-key introspection", texture: "Warm & analog", mix: "Modern polished radio",
+        } },
+      { id: "ityl-9", name: "Subliminal collab urban", emoji: "🎤", vibe: "confident", state: {
+          slots: [{ genre: "Hip-Hop", sub: "Melodic Rap", micro: null }, { genre: "Pop", sub: "Mediterranean pop", micro: null }, null],
+          mood: "Confident", energy: "Steady groove throughout", groove: "half-time",
+          vocalist: "Warm Mediterranean tenor", language: "he",
+          lyricalVibe: "Braggadocio flex",
+          specificInstruments: ["808 drum machine", "Darbuka", "Synth pad", "Hi-hat triplet roll"],
+          specificArticulations: {}, bpm: 92,
+          harmonic: "Minor-key introspection", texture: "Thick & saturated", mix: "Punchy & compressed",
+        } },
+      { id: "ityl-10", name: "Memorial day reservists", emoji: "🕯️", vibe: "heartbreak", state: {
+          slots: [{ genre: "Pop", sub: "Mediterranean pop", micro: null }, null, null],
+          mood: "Bittersweet", energy: "Slow burn to explosion", groove: "straight",
+          vocalist: "Warm Mediterranean tenor", language: "he",
+          lyricalVibe: "Heartbreak elegy",
+          specificInstruments: ["Piano", "Soft strings", "Oud", "Acoustic guitar fingerpick"],
+          specificArticulations: {}, bpm: 68,
+          harmonic: "Minor-key introspection", texture: "Airy & weightless", mix: "Heavy reverb cathedral",
+        } },
+    ],
+  },
+  // ══════════════ EDEN HASSON ════════════════════════════════════════
+  // Pardes Hanna-Karkur born 1994, religious Algerian Sephardic family.
+  // Singer-songwriter-PRODUCER (four-way auteur). Breakthrough
+  // "Shemishehu Yaatzor Oti" 2017 — ACUM Song of the Year 2018.
+  // Co-producers: Dolev Ram, Yaaqov Lamay, Penn Hazut. Signature:
+  // acoustic-guitar-led sensitive Mizrahi-pop, emotional relational
+  // lyrics. Came out Nov 2024 — first major post-Sarit-Hadad
+  // Mizrahi-pop artist to do so. Sold out 12,000 in Tel Aviv.
+  {
+    artistId: "eden-hasson",
+    artistName: "Eden Hasson",
+    region: "israeli",
+    packs: [
+      { id: "edh-1", name: "Shemishehu Yaatzor Oti", emoji: "🪕", vibe: "heartbreak", state: {
+          slots: [{ genre: "Pop", sub: "Mediterranean pop", micro: null }, null, null],
+          mood: "Bittersweet", energy: "Slow burn to explosion", groove: "straight",
+          vocalist: "Emotional warm tenor", language: "he",
+          lyricalVibe: "Heartbreak elegy",
+          specificInstruments: ["Acoustic guitar fingerpick", "Piano", "Soft strings", "Darbuka"],
+          specificArticulations: {}, bpm: 84,
+          harmonic: "Minor-key introspection", texture: "Warm & analog", mix: "Modern polished radio",
+        } },
+      { id: "edh-2", name: "Einayim Mizrahi-pop", emoji: "👁️", vibe: "romantic", state: {
+          slots: [{ genre: "Pop", sub: "Mediterranean pop", micro: null }, null, null],
+          mood: "Romantic", energy: "Steady groove throughout", groove: "straight",
+          vocalist: "Emotional warm tenor", language: "he",
+          lyricalVibe: "Romantic devotion",
+          specificInstruments: ["Acoustic guitar", "Oud", "Piano", "Darbuka"],
+          specificArticulations: {}, bpm: 92,
+          harmonic: "Minor-key modal", texture: "Warm & sun-baked", mix: "Modern polished radio",
+        } },
+      { id: "edh-3", name: "Lev Shavur ballad", emoji: "💔", vibe: "heartbreak", state: {
+          slots: [{ genre: "Pop", sub: "Mediterranean pop", micro: null }, null, null],
+          mood: "Tender", energy: "Slow burn to explosion", groove: "straight",
+          vocalist: "Emotional warm tenor", language: "he",
+          lyricalVibe: "Heartbreak elegy",
+          specificInstruments: ["Piano", "Acoustic guitar fingerpick", "Soft strings", "Synth pad"],
+          specificArticulations: {}, bpm: 70,
+          harmonic: "Minor-key introspection", texture: "Airy & weightless", mix: "Heavy reverb cathedral",
+        } },
+      { id: "edh-4", name: "Shoshanim Atzuvot (w/ Jasmin)", emoji: "🌹", vibe: "moody", state: {
+          slots: [{ genre: "Pop", sub: "Mediterranean pop", micro: null }, null, null],
+          mood: "Pensive", energy: "Slow burn to explosion", groove: "straight",
+          vocalist: "Emotional warm tenor", language: "he",
+          lyricalVibe: "Confessional diary",
+          specificInstruments: ["Acoustic guitar fingerpick", "Piano", "Oud", "Soft strings"],
+          specificArticulations: {}, bpm: 76,
+          harmonic: "Minor-key introspection", texture: "Warm & analog", mix: "Modern polished radio",
+        } },
+      { id: "edh-5", name: "Kapiyot anthem", emoji: "👏", vibe: "anthemic", state: {
+          slots: [{ genre: "Pop", sub: "Mediterranean pop", micro: null }, null, null],
+          mood: "Euphoric", energy: "Euphoric continuous build", groove: "straight",
+          vocalist: "Emotional warm tenor", language: "he",
+          lyricalVibe: "Party celebration",
+          specificInstruments: ["Darbuka", "Acoustic guitar", "Synth lead", "808 drum machine"],
+          specificArticulations: {}, bpm: 114,
+          harmonic: "Major-key lift", texture: "Warm & sun-baked", mix: "Stadium bus compression",
+        } },
+      { id: "edh-6", name: "Yeladim Kaele nostalgia", emoji: "🏡", vibe: "moody", state: {
+          slots: [{ genre: "Pop", sub: "Mediterranean pop", micro: null }, null, null],
+          mood: "Nostalgic", energy: "Steady groove throughout", groove: "straight",
+          vocalist: "Emotional warm tenor", language: "he",
+          lyricalVibe: "Ode to a place",
+          specificInstruments: ["Acoustic guitar fingerpick", "Piano", "Oud", "Soft strings"],
+          specificArticulations: {}, bpm: 86,
+          harmonic: "Minor-key modal", texture: "Warm & analog", mix: "Modern polished radio",
+        } },
+      { id: "edh-7", name: "Mitpotzetz Li HaRosh club", emoji: "🎧", vibe: "confident", state: {
+          slots: [{ genre: "Pop", sub: "Mediterranean pop", micro: null }, { genre: "Electronic", sub: "House", micro: null }, null],
+          mood: "Defiant", energy: "Euphoric continuous build", groove: "straight",
+          vocalist: "Emotional warm tenor", language: "he",
+          lyricalVibe: "Braggadocio flex",
+          specificInstruments: ["4-on-the-floor kick", "Darbuka", "Synth lead", "Bass synth"],
+          specificArticulations: {}, bpm: 122,
+          harmonic: "Minor-key modal", texture: "Thick & saturated", mix: "Punchy & compressed",
+        } },
+      { id: "edh-8", name: "Acoustic guitar intimate", emoji: "🎸", vibe: "heartbreak", state: {
+          slots: [{ genre: "Pop", sub: "Indie Pop", micro: null }, null, null],
+          mood: "Tender", energy: "Slow burn to explosion", groove: "straight",
+          vocalist: "Emotional warm tenor", language: "he",
+          lyricalVibe: "Confessional diary",
+          specificInstruments: ["Acoustic guitar fingerpick", "Piano", "Soft strings"],
+          specificArticulations: {}, bpm: 72,
+          harmonic: "Major-key lift", texture: "Warm & analog", mix: "Modern polished radio",
+        } },
+      { id: "edh-9", name: "Shikorim groove", emoji: "🍷", vibe: "playful", state: {
+          slots: [{ genre: "Pop", sub: "Mediterranean pop", micro: null }, null, null],
+          mood: "Playful", energy: "Steady groove throughout", groove: "straight",
+          vocalist: "Emotional warm tenor", language: "he",
+          lyricalVibe: "Party celebration",
+          specificInstruments: ["Darbuka", "Acoustic guitar", "Bouzouki pluck", "808 drum machine"],
+          specificArticulations: {}, bpm: 100,
+          harmonic: "Major-key lift", texture: "Warm & sun-baked", mix: "Modern polished radio",
+        } },
+      { id: "edh-10", name: "Yarkon Park sold-out", emoji: "🎪", vibe: "anthemic", state: {
+          slots: [{ genre: "Pop", sub: "Mediterranean pop", micro: null }, null, null],
+          mood: "Euphoric", energy: "Fever-pitch final third", groove: "straight",
+          vocalist: "Emotional warm tenor", language: "he",
+          lyricalVibe: "Party celebration",
+          specificInstruments: ["Darbuka", "Brass section", "Synth lead", "Orchestral hit"],
+          specificArticulations: {}, bpm: 110,
+          harmonic: "Major-key lift", texture: "Thick & saturated", mix: "Stadium bus compression",
+        } },
+    ],
+  },
+  // ══════════════ OSHER COHEN ════════════════════════════════════════
+  // Kiryat Bialik born 1998, son of former Mizrahi singer Ilan Cohen.
+  // Multi-instrumentalist (piano/bagan/guitar/clarinet/violin) from
+  // conservatory age 5. SELF-PRODUCES everything — four-way auteur.
+  // Co-managed by Omer Adam + Bni Menashe (Aroma Music). Heavy
+  // Turkish-Mizrahi melodic influence noted in Israeli press.
+  // Breakthrough: "Bergaim SheAt Holechet" 2018 (#2 Media Forest).
+  // Writes for Sarit Hadad, Noa Kirel, Odeya. Anxiety/agoraphobia
+  // publicly discussed. Released IDF-prison after 9-month desertion.
+  {
+    artistId: "osher-cohen",
+    artistName: "Osher Cohen",
+    region: "israeli",
+    packs: [
+      { id: "oshc-1", name: "Bergaim SheAt Holechet", emoji: "🌙", vibe: "heartbreak", state: {
+          slots: [{ genre: "Pop", sub: "Mediterranean pop", micro: null }, null, null],
+          mood: "Bittersweet", energy: "Slow burn to explosion", groove: "straight",
+          vocalist: "Emotional warm tenor", language: "he",
+          lyricalVibe: "Heartbreak elegy",
+          specificInstruments: ["Piano", "Acoustic guitar fingerpick", "Soft strings", "Darbuka"],
+          specificArticulations: {}, bpm: 80,
+          harmonic: "Minor-key introspection", texture: "Warm & analog", mix: "Modern polished radio",
+        } },
+      { id: "oshc-2", name: "Turkish melodic influence", emoji: "🇹🇷", vibe: "moody", state: {
+          slots: [{ genre: "Pop", sub: "Mediterranean pop", micro: null }, null, null],
+          mood: "Pensive", energy: "Slow burn to explosion", groove: "straight",
+          vocalist: "Emotional warm tenor", language: "he",
+          lyricalVibe: "Heartbreak elegy",
+          specificInstruments: ["Bouzouki pluck", "Oud", "Kanun", "Darbuka"],
+          specificArticulations: {}, bpm: 78,
+          harmonic: "Minor-key modal", texture: "Warm & analog", mix: "Modern polished radio",
+        } },
+      { id: "oshc-3", name: "Ra'ashim (w/ Noa Kirel)", emoji: "🔊", vibe: "playful", state: {
+          slots: [{ genre: "Pop", sub: "Mediterranean pop", micro: null }, null, null],
+          mood: "Playful", energy: "Steady groove throughout", groove: "straight",
+          vocalist: "Emotional warm tenor", language: "he",
+          lyricalVibe: "Romantic devotion",
+          specificInstruments: ["Acoustic guitar", "Darbuka", "Synth lead", "808 drum machine"],
+          specificArticulations: {}, bpm: 102,
+          harmonic: "Major-key lift", texture: "Warm & sun-baked", mix: "Modern polished radio",
+        } },
+      { id: "oshc-4", name: "Ani Po (w/ Odeya)", emoji: "💞", vibe: "romantic", state: {
+          slots: [{ genre: "Pop", sub: "Mediterranean pop", micro: null }, null, null],
+          mood: "Romantic", energy: "Slow burn to explosion", groove: "straight",
+          vocalist: "Emotional warm tenor", language: "he",
+          lyricalVibe: "Romantic devotion",
+          specificInstruments: ["Piano", "Acoustic guitar fingerpick", "Soft strings", "Oud"],
+          specificArticulations: {}, bpm: 76,
+          harmonic: "Minor-key introspection", texture: "Warm & analog", mix: "Modern polished radio",
+        } },
+      { id: "oshc-5", name: "Ein Oti Galgalatz #1", emoji: "📻", vibe: "heartbreak", state: {
+          slots: [{ genre: "Pop", sub: "Mediterranean pop", micro: null }, null, null],
+          mood: "Bittersweet", energy: "Slow burn to explosion", groove: "straight",
+          vocalist: "Emotional warm tenor", language: "he",
+          lyricalVibe: "Confessional diary",
+          specificInstruments: ["Piano", "Acoustic guitar fingerpick", "Synth pad", "Darbuka"],
+          specificArticulations: {}, bpm: 82,
+          harmonic: "Minor-key introspection", texture: "Warm & analog", mix: "Modern polished radio",
+        } },
+      { id: "oshc-6", name: "Chamishi Shishi weekend", emoji: "🎉", vibe: "anthemic", state: {
+          slots: [{ genre: "Pop", sub: "Mediterranean pop", micro: null }, null, null],
+          mood: "Euphoric", energy: "Euphoric continuous build", groove: "straight",
+          vocalist: "Emotional warm tenor", language: "he",
+          lyricalVibe: "Party celebration",
+          specificInstruments: ["Darbuka", "Brass section", "Synth lead", "Bouzouki pluck"],
+          specificArticulations: {}, bpm: 116,
+          harmonic: "Major-key lift", texture: "Warm & sun-baked", mix: "Stadium bus compression",
+        } },
+      { id: "oshc-7", name: "Plasterim self-prod", emoji: "🩹", vibe: "moody", state: {
+          slots: [{ genre: "Pop", sub: "Indie Pop", micro: null }, null, null],
+          mood: "Pensive", energy: "Steady groove throughout", groove: "straight",
+          vocalist: "Emotional warm tenor", language: "he",
+          lyricalVibe: "Confessional diary",
+          specificInstruments: ["Piano", "Acoustic guitar fingerpick", "Synth pad", "Soft drums"],
+          specificArticulations: {}, bpm: 86,
+          harmonic: "Minor-key introspection", texture: "Warm & analog", mix: "Modern polished radio",
+        } },
+      { id: "oshc-8", name: "Guitar VeLinshom stripped", emoji: "🎸", vibe: "heartbreak", state: {
+          slots: [{ genre: "Pop", sub: "Indie Pop", micro: null }, null, null],
+          mood: "Tender", energy: "Slow burn to explosion", groove: "straight",
+          vocalist: "Emotional warm tenor", language: "he",
+          lyricalVibe: "Confessional diary",
+          specificInstruments: ["Acoustic guitar fingerpick", "Piano", "Soft strings"],
+          specificArticulations: {}, bpm: 68,
+          harmonic: "Major-key lift", texture: "Warm & analog", mix: "Modern polished radio",
+        } },
+      { id: "oshc-9", name: "Kacha Bli Shalom (Sarit Hadad)", emoji: "🎼", vibe: "moody", state: {
+          slots: [{ genre: "Pop", sub: "Mediterranean pop", micro: null }, null, null],
+          mood: "Pensive", energy: "Slow burn to explosion", groove: "straight",
+          vocalist: "Emotional warm tenor", language: "he",
+          lyricalVibe: "Heartbreak elegy",
+          specificInstruments: ["Piano", "Oud", "Darbuka", "Soft strings"],
+          specificArticulations: {}, bpm: 74,
+          harmonic: "Minor-key modal", texture: "Warm & analog", mix: "Modern polished radio",
+        } },
+      { id: "oshc-10", name: "Loop late-night", emoji: "🔁", vibe: "confident", state: {
+          slots: [{ genre: "Pop", sub: "Mediterranean pop", micro: null }, null, null],
+          mood: "Confident", energy: "Steady groove throughout", groove: "half-time",
+          vocalist: "Emotional warm tenor", language: "he",
+          lyricalVibe: "Braggadocio flex",
+          specificInstruments: ["808 drum machine", "Piano", "Darbuka", "Synth pad"],
+          specificArticulations: {}, bpm: 90,
+          harmonic: "Minor-key introspection", texture: "Warm & analog", mix: "Modern polished radio",
         } },
     ],
   },
