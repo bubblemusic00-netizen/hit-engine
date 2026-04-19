@@ -171,7 +171,7 @@ const TIER_FEATURES = {
   free: {
     // ── Engine capabilities
     maxSlots: 1,                   // only 1 genre slot
-    modes: ["simple", "moderated", "expanded", "chaos"],  // 4 of 5 modes (vast is Pro+)
+    modes: ["simple", "moderated"],  // 2 of 5 depth modes — upgrade unlocks expanded/vast/chaos
     maxInstruments: 10,            // 10 per category (generous taste)
     // Free tier shows only ~15-20% of each catalog. Floor of 3 so small
     // pools (like ENERGIES with 8 items) still feel usable; larger pools
@@ -4345,6 +4345,42 @@ function Cubicle({ id, icon, title, description, valuePreview, filled, isOpen, o
 
   const WHITE_OUTLINE = "#FFFFFF";
 
+  // ── OUTSIDE-CLICK TO CLOSE ───────────────────────────────────────────
+  // While the popover is open, any click that lands OUTSIDE both the tile
+  // header and the popover panel closes the cubicle. Scroll is unaffected
+  // (no scrim). On mobile the ✕ button is the primary dismiss target; this
+  // listener is the belt-and-suspenders backup for taps in the margins.
+  const cubicleRootRef = useRef(null);
+  useEffect(() => {
+    if (!isOpen) return;
+    const handler = (e) => {
+      const root = cubicleRootRef.current;
+      if (!root) return;
+      // If the click is inside the tile itself (header/icon/LED) do nothing
+      // — header's own onClick handles toggle. Same for the popover content.
+      if (root.contains(e.target)) return;
+      // Also ignore clicks inside any element marked as popover (handles
+      // the mobile fixed-bottom panel that's outside the tile's DOM tree).
+      const popover = e.target.closest?.('[data-cubicle-popover="true"]');
+      if (popover) return;
+      // Outside click — close the cubicle.
+      onToggle(id);
+    };
+    // Use capture phase so we see the click before downstream handlers
+    // inside other cubicles can re-open something else in the same tick.
+    // setTimeout defer prevents the opening click itself from triggering
+    // an immediate close (event bubbles after the cubicle has rendered).
+    const t = setTimeout(() => {
+      document.addEventListener("mousedown", handler, true);
+      document.addEventListener("touchstart", handler, true);
+    }, 0);
+    return () => {
+      clearTimeout(t);
+      document.removeEventListener("mousedown", handler, true);
+      document.removeEventListener("touchstart", handler, true);
+    };
+  }, [isOpen, id, onToggle]);
+
   const borderColor = isOpen
     ? WHITE_OUTLINE
     : (filled === true ? V.neonGold + "66" : T.border);
@@ -4417,6 +4453,7 @@ function Cubicle({ id, icon, title, description, valuePreview, filled, isOpen, o
     <div style={{ position: "relative" }}>
       {/* The tile itself — always rendered in its grid slot, always this size */}
       <div
+        ref={cubicleRootRef}
         style={{
           background: surfaceGradient,
           border: `${isOpen ? 2 : 1}px solid ${borderColor}`,
@@ -4473,28 +4510,26 @@ function Cubicle({ id, icon, title, description, valuePreview, filled, isOpen, o
           On mobile: anchors to viewport left/right edges so content
           reads across the full narrow screen (no side gutters eating
           real estate). Capped at a viewport-proportional max-height
-          with internal scroll for very long option lists. */}
+          with internal scroll for very long option lists.
+          SCROLL BEHAVIOR: no blocking scrim — page scroll passes through.
+          A document-level listener closes the popover on click-outside
+          and (on desktop) when the user scrolls the page so the anchor
+          tile moves significantly. Mobile popover is fixed-bottom so it
+          stays put while the user scrolls the config above. */}
       {isOpen && (
         <>
-          {/* Invisible scrim — click-outside closes the popover */}
-          <div
-            onClick={() => { playSwitchSound(); onToggle(id); }}
-            style={{
-              position: "fixed",
-              inset: 0,
-              zIndex: 4,
-              background: "transparent",
-            }}
-          />
+          {/* No scrim — scroll freely. Dismiss via click-outside handler
+              registered by the popover below. */}
           <div
             role="region"
             aria-label={`${title} options`}
+            data-cubicle-popover="true"
             style={{
               position: isMobile ? "fixed" : "absolute",
               ...(isMobile
                 ? {
                     // Mobile: fixed position, edge-to-edge (minus 8px gutter).
-                    // The user's thumb has the full screen to work with.
+                    // Stays docked while user scrolls the config page.
                     left: 8,
                     right: 8,
                     top: "auto",
@@ -6323,7 +6358,7 @@ function ModeSelector({ value, onChange, allowedModes }) {
             <button key={m.id} type="button"
               onClick={() => { if (!locked) { playSwitchSound(); onChange(m.id); } }}
               disabled={locked}
-              title={locked ? "Pro tier unlocks all modes" : ""}
+              title={locked ? `${m.label} unavailable — upgrade tier or switch to Pro fuel` : ""}
               style={{
                 position: "relative", zIndex: 1,
                 background: "transparent", border: "none",
@@ -9569,7 +9604,12 @@ function EnginePage({ onNavigate }) {
   const isMobile = layout === "mobile";
   const [state, setState] = useState(ENGINE_DEF);
   const [lyricsOn, setLyricsOn] = useState(true);
-  const [mode, setMode] = useState("expanded");
+  // Default prompt depth mode:
+  //   Free tier       → "moderated" (lighter detail, suits the 1-slot UX)
+  //   Pro/VIP/Bubble  → "expanded"  (rich description by default)
+  // A tier-change useEffect below enforces the fallback if the user's
+  // current mode becomes inaccessible after a tier downgrade.
+  const [mode, setMode] = useState(() => (tier === "free" ? "moderated" : "expanded"));
   const [copyState, setCopyState] = useState({ short: "idle", detailed: "idle" });
   const [isRolling, setIsRolling] = useState(false);
   const [casinoOutlines, setCasinoOutlines] = useState(new Map());
@@ -9934,15 +9974,25 @@ function EnginePage({ onNavigate }) {
   const effectiveLimits = useMemo(() => {
     const isFreeFuel = activeFuel === "free";
 
-    // Mode access:
-    //   Free fuel → Simple, Moderated, Chaos (intersected with tier)
-    //   Pro/VIP fuel → all 5 modes unlocked regardless of tier
+    // Mode access rules:
+    //   Free tier     → only simple + moderated  (regardless of fuel)
+    //   Pro/VIP/Admin → simple, moderated, expanded, vast, chaos
+    //   Free fuel     → additionally restricts to at most {simple, moderated, chaos}
+    //                   which intersects with the tier's allowed modes.
+    // Net effect:
+    //   Free tier + any fuel    → simple, moderated
+    //   Pro tier  + free fuel   → simple, moderated, chaos
+    //   Pro tier  + pro fuel    → simple, moderated, expanded, vast, chaos
+    //   VIP       + any fuel    → simple, moderated, expanded, vast, chaos
+    // Tier is ALWAYS the hard cap — fuel can only tighten, never expand
+    // beyond the tier's entitlement. This prevents a Free user from
+    // touching expanded/vast/chaos by buying Pro fuel.
+    const tierModes = new Set(features.modes);
     let allowedModes;
     if (isFreeFuel) {
-      const tierModes = new Set(features.modes);
       allowedModes = ["simple", "moderated", "chaos"].filter(m => tierModes.has(m));
     } else {
-      allowedModes = ["simple", "moderated", "expanded", "vast", "chaos"];
+      allowedModes = ["simple", "moderated", "expanded", "vast", "chaos"].filter(m => tierModes.has(m));
     }
 
     return {
