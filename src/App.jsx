@@ -4650,7 +4650,7 @@ function Cubicle({ id, icon, title, description, valuePreview, filled, isOpen, o
       <div
         onClick={() => {
           if (!headerClickable) return;
-          playButtonSound();
+          playSwitchSound();
           onToggle(id);
         }}
         style={{
@@ -6657,7 +6657,7 @@ function GenreSlotPicker({ slots, onChange, slotLocks, onToggleSlotLock, maxSlot
           return (
             <div key={i}
               onClick={() => {
-                playButtonSound();
+                playSwitchSound();
                 isActive ? closeSlot() : openSlot(i);
               }}
               style={{
@@ -7313,7 +7313,7 @@ function SpecificInstrumentsPicker({
             {/* Clickable header — louder, clearer meaning. Title says what it
                 IS, subtitle says what it DOES, pill on the right shows the
                 action hint. Always visible, even when the grid is collapsed. */}
-            <div onClick={() => { playButtonSound(); setCombosOpen(v => !v); }}
+            <div onClick={() => { playSwitchSound(); setCombosOpen(v => !v); }}
               style={{
                 display: "flex", alignItems: "center", justifyContent: "space-between",
                 gap: T.s3, flexWrap: "wrap",
