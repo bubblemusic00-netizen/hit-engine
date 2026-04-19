@@ -740,16 +740,30 @@ function TierProvider({ children }) {
   // to whatever the user is actually subscribed to.
   // REMOVE BEFORE PUBLIC LAUNCH.
   const [devModeActive, setDevModeActive] = useState(false);
+  // SNAPSHOT — captures the user's TRUE tier + ownership at the moment
+  // dev mode is activated. When dev mode deactivates, we restore this
+  // snapshot exactly. Without this, cycling through pro/vip while in
+  // dev mode would leak those ownerships back to the user on exit
+  // (they'd keep features they never paid for). The snapshot is a
+  // useRef so it survives re-renders without triggering them.
+  const preDevSnapshotRef = useRef(null);
 
-  // Persist on every change
+  // Persist on every change. IMPORTANT: while dev mode is active, we
+  // freeze persistence — the temporary tier/ownership changes made by
+  // setDevTier stay in memory only. Without this guard, reloading the
+  // page during a dev session would "promote" the user permanently
+  // to whatever tier they were last cycling through. Persistence
+  // resumes the moment dev mode exits (the snapshot restore triggers
+  // a re-run with the correct pre-dev values).
   useEffect(() => {
     if (typeof window === "undefined") return;
+    if (devModeActive) return; // freeze while testing
     try {
       localStorage.setItem(TIER_STORAGE_KEY, JSON.stringify({
         tier, owned: [...ownedTiers], lastVisit, streak,
       }));
     } catch { /* storage quota / privacy mode — ignore */ }
-  }, [tier, ownedTiers, lastVisit, streak]);
+  }, [tier, ownedTiers, lastVisit, streak, devModeActive]);
 
   // ── LOGIN STREAK — one daily bonus per calendar day ──────────────────
   // Runs once on mount. Compares today's key to lastVisit:
@@ -828,27 +842,43 @@ function TierProvider({ children }) {
   };
 
   // Auto-grant admin + enable dev mode when ?debug=1 is in the URL.
-  // Non-persisted — comes and goes with the query param.
+  // Non-persisted — comes and goes with the query param. Captures the
+  // pre-dev snapshot so turning dev mode OFF later cleanly restores
+  // the user's real tier and ownerships.
   useEffect(() => {
     if (isDebugMode() && !devModeActive) {
+      // Snapshot current state BEFORE granting admin, so the dev-mode
+      // exit path can restore exactly what the user had before.
+      preDevSnapshotRef.current = {
+        tier,
+        ownedTiers: new Set(ownedTiers),
+      };
       setOwnedTiers(prev => {
         const next = new Set(prev);
         next.add("admin");
         return next;
       });
+      _setTierInternal("admin");
       setDevModeActive(true);
     }
   }, []);
 
-  // DEV MODE — explicit on/off toggle. Flipping OFF drops the user back
-  // to whatever tier they actually own (or free). Flipping ON grants
-  // admin ownership so all tier features are unlocked + fuel refills.
+  // DEV MODE — explicit on/off toggle. Flipping ON captures a snapshot
+  // of the user's TRUE tier + ownership, then grants admin for testing.
+  // Flipping OFF restores that exact snapshot — revoking any ownerships
+  // or tier promotions that happened during dev mode. This prevents
+  // leaks where a user could keep pro/vip features after cycling
+  // through them in dev mode.
   // REMOVE BEFORE PUBLIC LAUNCH.
   const toggleDevMode = () => {
     setDevModeActive(prev => {
       const nextOn = !prev;
       if (nextOn) {
-        // Turning ON — grant admin ownership + set active tier to admin
+        // Turning ON — capture snapshot BEFORE any changes, then grant admin
+        preDevSnapshotRef.current = {
+          tier,
+          ownedTiers: new Set(ownedTiers),
+        };
         setOwnedTiers(prevOwned => {
           const next = new Set(prevOwned);
           next.add("admin");
@@ -856,43 +886,65 @@ function TierProvider({ children }) {
         });
         _setTierInternal("admin");
       } else {
-        // Turning OFF — revoke admin ownership, fall back to highest
-        // actually-owned tier (or free if none)
-        setOwnedTiers(prevOwned => {
-          const next = new Set(prevOwned);
-          next.delete("admin");
-          return next;
-        });
-        const remaining = [...ownedTiers].filter(x => x !== "admin");
-        const best = remaining.sort((a, b) => (TIER_RANK[b] ?? 0) - (TIER_RANK[a] ?? 0))[0] || "free";
-        _setTierInternal(best);
+        // Turning OFF — restore the exact pre-dev snapshot. Revoke
+        // everything granted during dev mode, including admin and any
+        // tier the user cycled into. User ends up exactly as they were
+        // before dev mode activated.
+        const snap = preDevSnapshotRef.current;
+        if (snap) {
+          setOwnedTiers(new Set(snap.ownedTiers));
+          _setTierInternal(snap.tier);
+          preDevSnapshotRef.current = null;
+        } else {
+          // Defensive: no snapshot (shouldn't happen in normal flow).
+          // Fall back to safest state: revoke admin, drop to free.
+          setOwnedTiers(prevOwned => {
+            const next = new Set(prevOwned);
+            next.delete("admin");
+            next.delete("vip");
+            next.delete("pro");
+            next.add("free");
+            return next;
+          });
+          _setTierInternal("free");
+        }
       }
       return nextOn;
     });
   };
 
-  // DEV MODE — jump directly to any tier's UI/features. Only works while
-  // dev mode is ON. Does NOT toggle dev mode off when switching away from
-  // admin — user stays in dev mode and can keep cycling tiers freely.
-  // Grants ownership of all lower tiers so upgrade paths read correctly.
+  // DEV MODE — click a tier slot in the gearshift to commit to that
+  // tier AND exit dev mode in one atomic action. After this call:
+  //   · devModeActive = false
+  //   · tier = targetTier
+  //   · ownedTiers = all tiers up to and including targetTier (no admin
+  //     unless targetTier === "admin")
+  //   · localStorage unfrozen and persists the new state
+  //   · debug UI disappears
+  // Net result: the user experiences targetTier exactly as a real
+  // subscriber of that tier would — locked to its features, strictly.
   // REMOVE BEFORE PUBLIC LAUNCH.
   const setDevTier = (targetTier) => {
     const allTiers = ["free", "pro", "vip", "admin"];
     if (!allTiers.includes(targetTier)) return;
-    setOwnedTiers(prev => {
-      const next = new Set(prev);
-      // Grant ownership up to the target tier. KEEP admin ownership while
-      // dev mode is on, regardless of what tier is currently selected, so
-      // the user doesn't accidentally exit dev mode by cycling.
-      allTiers.forEach(t => {
-        if (TIER_RANK[t] <= TIER_RANK[targetTier]) next.add(t);
-      });
-      // Always keep admin ownership while dev mode is active so the user
-      // can freely cycle between tiers without losing dev privileges.
-      next.add("admin");
-      return next;
+    // Safety: only honor from inside dev mode. Outside dev mode this
+    // would be a privilege escalation path.
+    if (!devModeActive) return;
+    // Build the ownership set for the target tier. Own everything at
+    // or below the target. Admin is included only when target is admin.
+    const targetOwned = new Set();
+    allTiers.forEach(t => {
+      if (TIER_RANK[t] <= TIER_RANK[targetTier]) targetOwned.add(t);
     });
+    // Commit in one pass:
+    //   · tier → targetTier
+    //   · ownedTiers → targetOwned (revokes admin if target isn't admin)
+    //   · devModeActive → false (unfreezes persistence, hides debug UI)
+    //   · snapshot cleared (no longer needed)
     _setTierInternal(targetTier);
+    setOwnedTiers(targetOwned);
+    preDevSnapshotRef.current = null;
+    setDevModeActive(false);
   };
 
   const features = TIER_FEATURES[tier] || TIER_FEATURES.free;
@@ -900,7 +952,12 @@ function TierProvider({ children }) {
     tier, setTier, features,
     ownedTiers, purchaseTier, revokeTier,
     streak, dailyBonus, dismissDailyBonus: () => setDailyBonus(null),
-    isDebug: isDebugMode() || devModeActive,
+    // isDebug follows devModeActive ONLY — not the URL param directly.
+    // The ?debug=1 URL turns dev mode ON via the mount effect above,
+    // but once the user toggles dev mode OFF, debug UI disappears even
+    // if the URL still has the query param. This matches the product
+    // rule: "dev mode is on only if dev mode stays selected."
+    isDebug: devModeActive,
     toggleDevMode,
     setDevTier,
     devModeActive,
@@ -1138,7 +1195,9 @@ function TierGearshift({ activeTier, devModeActive, onSelect }) {
       }} />
 
       {/* ── PER-SLOT CLICK ZONES — one button per tier. Label shows on top,
-          click is direct: click FREE to go free, click PRO to go pro. ── */}
+          click is direct: click FREE to go free, click PRO to go pro.
+          In dev mode, clicking ANY slot (including the active one)
+          commits that tier and exits dev mode. ── */}
       {positions.map((p, i) => {
         const m = META[p];
         const isActive = p === activeTier;
@@ -1147,14 +1206,13 @@ function TierGearshift({ activeTier, devModeActive, onSelect }) {
           <button
             key={p}
             type="button"
-            disabled={!clickable || isActive}
+            disabled={!clickable}
             onClick={() => {
               if (!clickable) return;
-              if (isActive) return;
               onSelect && onSelect(p);
             }}
             title={clickable
-              ? (isActive ? `${m.label} (current)` : `Switch to ${m.label}`)
+              ? `Commit to ${m.label} and exit dev mode`
               : undefined}
             style={{
               position: "absolute",
@@ -1174,17 +1232,21 @@ function TierGearshift({ activeTier, devModeActive, onSelect }) {
               background: "transparent",
               border: "none",
               padding: 0,
-              cursor: clickable ? (isActive ? "default" : "pointer") : "default",
+              cursor: clickable ? "pointer" : "default",
               zIndex: 2,
               transition: "color 220ms ease, text-shadow 220ms ease",
             }}
             onMouseEnter={e => {
-              if (!clickable || isActive) return;
+              if (!clickable) return;
+              // Active slot: already white with glow. Skip the hover
+              // shift since it'd be a no-op visually.
+              if (isActive) return;
               e.currentTarget.style.color = "#FFFFFF";
               e.currentTarget.style.textShadow = `0 0 4px ${m.color}`;
             }}
             onMouseLeave={e => {
-              if (!clickable || isActive) return;
+              if (!clickable) return;
+              if (isActive) return;
               e.currentTarget.style.color = m.color + "cc";
               e.currentTarget.style.textShadow = "none";
             }}
@@ -2002,10 +2064,412 @@ const LYRICAL_VIBES = [
   "Letter to self","Ode to a place",
   // New (+10) — distinct narrative modes, not synonyms of existing
   "Inside-joke wink","Dance-floor chant","Late-night drive monologue",
-  "Revenge fantasy","Family heirloom memory","Grief held at distance",
+  "Revenge fantasy","Generational family story","Grief held at distance",
   "Manifesto / call to action","Character study / third-person","Imagined letter to ex",
   "City at 3AM portrait",
 ];
+
+// ════════════════════════════════════════════════════════════════════════
+// POP INTUITION v2 — GENRE_INTUITION coherence table
+// ════════════════════════════════════════════════════════════════════════
+// The fundamental problem with v1 randomization: every field picks
+// independently from its pool, so you get nonsense combinations like
+// "Synth-Pop at 72 BPM with half-time trap groove and Phrygian scale."
+// Real hits have coherence — once you lock a genre, the BPM range,
+// groove, harmonic color, texture, mix, and energy all follow well-
+// established conventions. A Dance-Pop song lives at 110-128 BPM with
+// straight 4-on-the-floor, major-key lift, crystalline texture, and
+// punchy mix. A Drill song lives at 140-150 BPM (half-time 70-75 feel),
+// sliding 808s, minor-key Phrygian, thick saturated texture.
+//
+// GENRE_INTUITION encodes this DNA. Each entry keyed on genre sub-name
+// defines weighted pools that align with real-world production
+// conventions. The randomizer uses these weights to re-bias each
+// section's pick toward genre-coherent choices, while still allowing
+// surprise (a few unexpected picks slip through for creative spark).
+//
+// Shape per entry:
+//   bpmRange: [min, max]               — BPM constraint for this genre
+//   grooves: ["id", "id", "id"]        — repeated entries = weighted
+//   harmonics: weighted array
+//   textures: weighted array
+//   mixes: weighted array
+//   energies: weighted array
+//   moods: weighted array
+//   instrumentKeywords: [substrings]   — instruments whose names contain
+//                                        these substrings get priority
+//
+// Matching: by case-insensitive substring against genre slot's .sub
+// field. Falls through to "default" if no match. "default" uses
+// reasonable centrist values.
+// ════════════════════════════════════════════════════════════════════════
+
+// ════════════════════════════════════════════════════════════════════════
+// VIBE META — emotional buckets for organizing mimic packs
+// ════════════════════════════════════════════════════════════════════════
+// Each mimic pack is tagged with one of these 7 vibes (the `vibe` field
+// on every pack entry). The admin UI filters a selected artist's packs
+// by vibe so the 10-pack grid becomes browsable by emotion. Each entry:
+//   id: matches the pack.vibe field value
+//   label: short display name for the filter pill
+//   icon: emoji shown on the pill
+//   color: hex tint for the active-state pill glow
+//   tagline: one-line description shown in title attribute (tooltip)
+// Order matters — this is the display order in the filter row.
+// ════════════════════════════════════════════════════════════════════════
+
+const VIBE_META = [
+  { id: "anthemic",   label: "Anthemic",   icon: "🔥", color: "#FF6B35", tagline: "big-stage, fever-pitch, power moments" },
+  { id: "heartbreak", label: "Heartbreak", icon: "💔", color: "#EC4899", tagline: "longing, loss, bitter goodbyes, ballads" },
+  { id: "reverent",   label: "Reverent",   icon: "🕯️", color: "#FFD700", tagline: "faith, prayer, spiritual, contemplative" },
+  { id: "confident",  label: "Confident",  icon: "💎", color: "#06B6D4", tagline: "braggadocio, swagger, flex energy" },
+  { id: "romantic",   label: "Romantic",   icon: "💞", color: "#F472B6", tagline: "love, devotion, slow burn, intimate" },
+  { id: "playful",    label: "Playful",    icon: "🎉", color: "#22C55E", tagline: "party, summer, fun, dance floor joy" },
+  { id: "moody",      label: "Moody",      icon: "🌙", color: "#A855F7", tagline: "late-night, dreamy, haunted, confessional" },
+];
+
+// Vibe signature — for mixed-vibe blending. When a pack is applied
+// with a blend vibe set, these signatures override the pack's mood/
+// lyricalVibe/energy to shift the emotional surface while keeping the
+// sonic bones (BPM/groove/harmonic/instruments/mix/texture) intact.
+// Example: Drake Heartbreak pack + "anthemic" blend → same Drake beat
+// and chord language, but mood shifts from "Bittersweet" to "Triumphant"
+// and energy escalates to "Fever-pitch final third" — producing a
+// power-ballad instead of a whisper-ballad.
+const VIBE_SIGNATURE = {
+  anthemic:   { mood: "Triumphant",  lyricalVibe: "Defiant anthem",        energy: "Fever-pitch final third" },
+  heartbreak: { mood: "Bittersweet", lyricalVibe: "Heartbreak elegy",      energy: "Slow burn to explosion" },
+  reverent:   { mood: "Reverent",    lyricalVibe: "Spiritual seeking",     energy: "Slow burn to explosion" },
+  confident:  { mood: "Confident",   lyricalVibe: "Braggadocio flex",      energy: "Steady groove throughout" },
+  romantic:   { mood: "Romantic",    lyricalVibe: "Romantic devotion",     energy: "Slow burn to explosion" },
+  playful:    { mood: "Playful",     lyricalVibe: "Party celebration",     energy: "Euphoric continuous build" },
+  moody:      { mood: "Smoldering",  lyricalVibe: "Confessional diary",    energy: "Tension without full release" },
+};
+
+// Produce an override object for a blend vibe. Only mood + lyricalVibe
+// + energy are overridden — sonic fields stay as the pack defined them.
+// Returns empty object if the blend id is invalid.
+function getVibeBlendOverrides(blendVibeId, pack) {
+  const sig = VIBE_SIGNATURE[blendVibeId];
+  if (!sig) return {};
+  return { mood: sig.mood, lyricalVibe: sig.lyricalVibe, energy: sig.energy };
+}
+
+const GENRE_INTUITION = {
+  // ── POP FAMILY ───────────────────────────────────────────────────
+  "dance-pop": {
+    bpmRange: [110, 128],
+    grooves: ["straight", "straight", "straight", "syncopated"],
+    harmonics: ["Major-key lift", "Major-key lift", "Major-key lift", "Minor-key introspection"],
+    textures: ["Crystalline & brittle", "Crystalline & brittle", "Velvety & plush", "Glassy & transparent"],
+    mixes: ["Ultra clean & polished", "Punchy & compressed", "Slick radio master", "Wide cinematic"],
+    energies: ["Euphoric continuous build", "Steady groove throughout", "Slow burn to explosion", "Fever-pitch final third"],
+    moods: ["Euphoric", "Playful", "Confident", "Romantic", "Catchy", "Summery"],
+    instrumentKeywords: ["synth", "808", "clap", "snap", "disco", "clean electric"],
+  },
+  "synth-pop": {
+    bpmRange: [100, 124],
+    grooves: ["straight", "straight", "motorik"],
+    harmonics: ["Major-key lift", "Minor-key introspection", "Modal ambiguity"],
+    textures: ["Crystalline & brittle", "Glassy & transparent", "Velvety & plush"],
+    mixes: ["80s gated reverb drums", "Vintage analog", "Ultra clean & polished"],
+    energies: ["Steady groove throughout", "Slow burn to explosion", "Pulse waves — swells every 8 bars"],
+    moods: ["Nostalgic", "Dreamy", "Romantic", "Euphoric", "Confident"],
+    instrumentKeywords: ["synth", "arpeggiated", "gated", "analog"],
+  },
+  "indie pop": {
+    bpmRange: [88, 120],
+    grooves: ["straight", "swing", "syncopated"],
+    harmonics: ["Major-key lift", "Minor-key introspection", "Suspended chord hang"],
+    textures: ["Warm & sun-baked", "Airy & weightless", "Smooth & liquid"],
+    mixes: ["Bedroom DIY aesthetic", "Lo-fi tape warmth", "Ultra clean & polished"],
+    energies: ["Slow burn to explosion", "Steady groove throughout", "Quiet-loud-quiet loop"],
+    moods: ["Bittersweet", "Hopeful", "Tender", "Pensive", "Nostalgic"],
+    instrumentKeywords: ["acoustic", "clean electric", "fingerpick", "piano", "soft drums"],
+  },
+  "alt pop": {
+    bpmRange: [76, 118],
+    grooves: ["straight", "syncopated", "broken", "half-time"],
+    harmonics: ["Minor-key introspection", "Modal ambiguity", "Suspended chord hang", "Jazz extensions"],
+    textures: ["Airy & weightless", "Granular & particulate", "Velvety & plush", "Foggy & diffused"],
+    mixes: ["Wide cinematic", "Intimate close-mic", "Heavy reverb cathedral", "Dark subterranean sub"],
+    energies: ["Slow burn to explosion", "Tension without full release", "Sparse to wall of sound"],
+    moods: ["Smoldering", "Pensive", "Bittersweet", "Dreamlike", "Haunted"],
+    instrumentKeywords: ["ambient", "sub bass", "vocal chop", "finger snap", "pad"],
+  },
+  // ── HIP-HOP FAMILY ───────────────────────────────────────────────
+  "trap": {
+    bpmRange: [130, 150],
+    grooves: ["half-time", "half-time", "half-time"],
+    harmonics: ["Minor-key introspection", "Phrygian exotic tension", "Modal ambiguity"],
+    textures: ["Thick & saturated", "Dark subterranean sub", "Gritty & sandy"],
+    mixes: ["Punchy & compressed", "Dark subterranean sub", "Wide cinematic"],
+    energies: ["Steady groove throughout", "Fever-pitch final third", "Driving & relentless"],
+    moods: ["Defiant", "Confident", "Dark & brooding", "Furious"],
+    instrumentKeywords: ["808", "hi-hat triplet", "sub bass", "dark piano", "synth stab"],
+  },
+  "melodic rap": {
+    bpmRange: [72, 110],
+    grooves: ["half-time", "half-time", "syncopated"],
+    harmonics: ["Minor-key introspection", "Minor-key modal", "Jazz extensions"],
+    textures: ["Velvety & plush", "Airy & weightless", "Smooth & liquid"],
+    mixes: ["Wide cinematic", "Heavy reverb cathedral", "Dark subterranean sub"],
+    energies: ["Slow burn to explosion", "Steady groove throughout"],
+    moods: ["Smoldering", "Nostalgic", "Dreamy", "Bittersweet", "Confident"],
+    instrumentKeywords: ["808", "rhodes", "ambient synth", "moody piano", "vocal chop"],
+  },
+  "drill": {
+    bpmRange: [138, 150],
+    grooves: ["half-time", "half-time", "broken"],
+    harmonics: ["Minor-key introspection", "Phrygian exotic tension"],
+    textures: ["Thick & saturated", "Gritty & sandy", "Distressed & decayed"],
+    mixes: ["Punchy & compressed", "Dark subterranean sub"],
+    energies: ["Driving & relentless", "Locked intensity, no dynamics"],
+    moods: ["Dark & brooding", "Defiant", "Furious", "Unbothered"],
+    instrumentKeywords: ["sliding 808", "hi-hat", "dark piano", "sub bass"],
+  },
+  // ── R&B ──────────────────────────────────────────────────────────
+  "contemporary r&b": {
+    bpmRange: [68, 100],
+    grooves: ["half-time", "syncopated", "swing"],
+    harmonics: ["Jazz extensions", "Minor-key introspection", "Major-key lift"],
+    textures: ["Smooth & liquid", "Velvety & plush", "Warm & sun-baked"],
+    mixes: ["Heavy reverb cathedral", "Wide cinematic", "Ultra clean & polished"],
+    energies: ["Slow burn to explosion", "Intimate & bare throughout", "Steady groove throughout"],
+    moods: ["Sensual", "Smoldering", "Romantic", "Tender", "Bittersweet"],
+    instrumentKeywords: ["rhodes", "soft drums", "piano", "strings", "synth pad"],
+  },
+  "alt r&b": {
+    bpmRange: [66, 100],
+    grooves: ["half-time", "syncopated", "broken"],
+    harmonics: ["Jazz extensions", "Minor-key introspection", "Modal ambiguity"],
+    textures: ["Airy & weightless", "Foggy & diffused", "Velvety & plush"],
+    mixes: ["Heavy reverb cathedral", "Dark subterranean sub", "Wide cinematic"],
+    energies: ["Tension without full release", "Intimate & bare throughout", "Slow burn to explosion"],
+    moods: ["Smoldering", "Haunted", "Dreamlike", "Sensual", "Pensive"],
+    instrumentKeywords: ["ambient", "pad", "rhodes", "808 sub", "vocal chop"],
+  },
+  // ── LATIN ────────────────────────────────────────────────────────
+  "reggaeton": {
+    bpmRange: [90, 100],
+    grooves: ["syncopated", "syncopated", "straight"],
+    harmonics: ["Minor-key introspection", "Phrygian exotic tension", "Major-key lift"],
+    textures: ["Thick & saturated", "Warm & sun-baked", "Crystalline & brittle"],
+    mixes: ["Punchy & compressed", "Ultra clean & polished", "Wide cinematic"],
+    energies: ["Steady groove throughout", "Euphoric continuous build", "Fever-pitch final third"],
+    moods: ["Playful", "Confident", "Sensual", "Summery", "Euphoric"],
+    instrumentKeywords: ["dembow", "808", "clap", "synth bass"],
+  },
+  "latin trap": {
+    bpmRange: [80, 100],
+    grooves: ["half-time", "syncopated"],
+    harmonics: ["Minor-key introspection", "Phrygian exotic tension"],
+    textures: ["Velvety & plush", "Thick & saturated"],
+    mixes: ["Wide cinematic", "Punchy & compressed"],
+    energies: ["Slow burn to explosion", "Steady groove throughout"],
+    moods: ["Smoldering", "Confident", "Sensual", "Defiant"],
+    instrumentKeywords: ["808", "nylon", "sub bass", "hi-hat"],
+  },
+  // ── AFRO / GLOBAL ────────────────────────────────────────────────
+  "afrobeats": {
+    bpmRange: [100, 118],
+    grooves: ["syncopated", "syncopated", "swing"],
+    harmonics: ["Major-key lift", "Minor-key introspection", "Pentatonic folk simplicity"],
+    textures: ["Warm & sun-baked", "Organic & breathing", "Smooth & liquid"],
+    mixes: ["Ultra clean & polished", "Wide cinematic", "Punchy & compressed"],
+    energies: ["Steady groove throughout", "Euphoric continuous build"],
+    moods: ["Playful", "Euphoric", "Summery", "Confident", "Romantic"],
+    instrumentKeywords: ["log drum", "marimba", "afro", "brass", "percussion"],
+  },
+  // ── ELECTRONIC ───────────────────────────────────────────────────
+  "house": {
+    bpmRange: [118, 128],
+    grooves: ["straight", "motorik", "straight"],
+    harmonics: ["Major-key lift", "Minor-key introspection", "Modal ambiguity"],
+    textures: ["Crystalline & brittle", "Glassy & transparent", "Thick & saturated"],
+    mixes: ["Punchy & compressed", "Slick radio master", "Stadium bus compression"],
+    energies: ["Euphoric continuous build", "Pulse waves — swells every 8 bars", "Cascading drops throughout"],
+    moods: ["Euphoric", "Confident", "Dreamlike", "Ecstatic"],
+    instrumentKeywords: ["4-on-the-floor", "synth lead", "bass synth", "pad"],
+  },
+  "techno": {
+    bpmRange: [125, 140],
+    grooves: ["motorik", "straight", "motorik"],
+    harmonics: ["Modal ambiguity", "Drone-based static harmony", "Minor-key introspection"],
+    textures: ["Metallic & reflective", "Icy & sharp", "Gritty & sandy"],
+    mixes: ["Dark subterranean sub", "Punchy & compressed", "Futuristic digital"],
+    energies: ["Locked intensity, no dynamics", "Driving & relentless", "Pulse waves — swells every 8 bars"],
+    moods: ["Dark & brooding", "Hypnotic", "Unbothered", "Defiant"],
+    instrumentKeywords: ["4-on-the-floor", "kick", "synth", "modular"],
+  },
+  // ── ROCK ─────────────────────────────────────────────────────────
+  "pop punk": {
+    bpmRange: [150, 180],
+    grooves: ["straight", "straight"],
+    harmonics: ["Major-key lift", "Minor-key introspection"],
+    textures: ["Thick & saturated", "Gritty & sandy"],
+    mixes: ["Punchy & compressed", "Stadium bus compression"],
+    energies: ["Driving & relentless", "Euphoric continuous build"],
+    moods: ["Defiant", "Nostalgic", "Bittersweet", "Anxious", "Furious"],
+    instrumentKeywords: ["distorted guitar", "power chord", "rock kit", "bass guitar"],
+  },
+  "indie rock": {
+    bpmRange: [110, 160],
+    grooves: ["straight", "swing", "syncopated"],
+    harmonics: ["Minor-key introspection", "Major-key lift", "Modal ambiguity"],
+    textures: ["Gritty & sandy", "Warm & sun-baked", "Thick & saturated"],
+    mixes: ["Lo-fi tape warmth", "Vintage analog", "Raw & uncompressed"],
+    energies: ["Steady groove throughout", "Slow burn to explosion"],
+    moods: ["Nostalgic", "Bittersweet", "Defiant", "Pensive"],
+    instrumentKeywords: ["clean electric", "rock kit", "bass guitar", "tambourine"],
+  },
+  // ── ISRAELI / MEDITERRANEAN ──────────────────────────────────────
+  "modern mizrahi pop": {
+    bpmRange: [92, 118],
+    grooves: ["syncopated", "syncopated", "straight"],
+    harmonics: ["Phrygian exotic tension", "Phrygian exotic tension", "Minor-key introspection"],
+    textures: ["Velvety & plush", "Warm & sun-baked", "Smooth & liquid"],
+    mixes: ["Ultra clean & polished", "Wide cinematic", "Heavy reverb cathedral"],
+    energies: ["Slow burn to explosion", "Steady groove throughout", "Fever-pitch final third"],
+    moods: ["Bittersweet", "Romantic", "Nostalgic", "Tender", "Euphoric"],
+    instrumentKeywords: ["oud", "darbuka", "mediterranean", "kanoun", "ney"],
+  },
+  "oriental-pop crossover": {
+    bpmRange: [98, 120],
+    grooves: ["syncopated", "straight"],
+    harmonics: ["Phrygian exotic tension", "Minor-key introspection", "Major-key lift"],
+    textures: ["Warm & sun-baked", "Crystalline & brittle"],
+    mixes: ["Punchy & compressed", "Ultra clean & polished"],
+    energies: ["Steady groove throughout", "Euphoric continuous build"],
+    moods: ["Playful", "Euphoric", "Summery", "Confident"],
+    instrumentKeywords: ["bouzouki", "oud", "mediterranean pluck", "darbuka"],
+  },
+  "israeli trap": {
+    bpmRange: [130, 150],
+    grooves: ["half-time"],
+    harmonics: ["Minor-key introspection", "Phrygian exotic tension"],
+    textures: ["Thick & saturated", "Dark subterranean sub"],
+    mixes: ["Punchy & compressed", "Wide cinematic"],
+    energies: ["Fever-pitch final third", "Steady groove throughout"],
+    moods: ["Defiant", "Dark & brooding", "Confident"],
+    instrumentKeywords: ["808", "hi-hat", "oud", "sub bass"],
+  },
+  "mediterranean-trap fusion": {
+    bpmRange: [120, 140],
+    grooves: ["half-time", "syncopated"],
+    harmonics: ["Phrygian exotic tension", "Minor-key introspection"],
+    textures: ["Thick & saturated", "Velvety & plush"],
+    mixes: ["Wide cinematic", "Punchy & compressed"],
+    energies: ["Steady groove throughout", "Slow burn to explosion"],
+    moods: ["Defiant", "Smoldering", "Confident"],
+    instrumentKeywords: ["oud", "808", "darbuka", "ney"],
+  },
+  "hebrew dance-pop": {
+    bpmRange: [110, 126],
+    grooves: ["straight", "syncopated"],
+    harmonics: ["Major-key lift", "Minor-key introspection"],
+    textures: ["Crystalline & brittle", "Velvety & plush"],
+    mixes: ["Ultra clean & polished", "Punchy & compressed", "Slick radio master"],
+    energies: ["Euphoric continuous build", "Steady groove throughout"],
+    moods: ["Euphoric", "Playful", "Confident", "Romantic"],
+    instrumentKeywords: ["synth", "808", "mediterranean pluck", "snap", "clap"],
+  },
+  "hebrew house": {
+    bpmRange: [120, 128],
+    grooves: ["straight", "motorik"],
+    harmonics: ["Major-key lift", "Minor-key introspection"],
+    textures: ["Crystalline & brittle", "Glassy & transparent"],
+    mixes: ["Punchy & compressed", "Stadium bus compression"],
+    energies: ["Euphoric continuous build", "Pulse waves — swells every 8 bars"],
+    moods: ["Euphoric", "Ecstatic", "Defiant"],
+    instrumentKeywords: ["4-on-the-floor", "synth lead", "bass synth", "vocal chop"],
+  },
+  "pop emuni (faith-pop)": {
+    bpmRange: [68, 118],
+    grooves: ["straight", "straight", "syncopated"],
+    harmonics: ["Major-key lift", "Minor-key introspection", "Phrygian exotic tension"],
+    textures: ["Smooth & liquid", "Warm & sun-baked", "Airy & weightless"],
+    mixes: ["Heavy reverb cathedral", "Ultra clean & polished", "Wide cinematic"],
+    energies: ["Slow burn to explosion", "Slow burn to explosion", "Fever-pitch final third"],
+    moods: ["Tender", "Hopeful", "Reverent", "Spiritual", "Nostalgic"],
+    instrumentKeywords: ["acoustic", "piano", "mediterranean pluck", "soft strings", "ney"],
+  },
+  "israeli indie pop": {
+    bpmRange: [82, 118],
+    grooves: ["straight", "swing"],
+    harmonics: ["Minor-key introspection", "Major-key lift"],
+    textures: ["Warm & sun-baked", "Smooth & liquid", "Airy & weightless"],
+    mixes: ["Ultra clean & polished", "Bedroom DIY aesthetic", "Heavy reverb cathedral"],
+    energies: ["Slow burn to explosion", "Steady groove throughout"],
+    moods: ["Bittersweet", "Hopeful", "Tender", "Nostalgic"],
+    instrumentKeywords: ["acoustic", "piano", "clean electric", "soft drums"],
+  },
+  // ── DEFAULT ──────────────────────────────────────────────────────
+  // Fallback when no sub-genre matches. Slightly favors pop-centrist
+  // values so surprise picks still lean hit-shaped.
+  default: {
+    bpmRange: [90, 128],
+    grooves: ["straight", "syncopated", "half-time"],
+    harmonics: ["Major-key lift", "Minor-key introspection", "Modal ambiguity"],
+    textures: ["Smooth & liquid", "Warm & sun-baked", "Crystalline & brittle"],
+    mixes: ["Ultra clean & polished", "Punchy & compressed", "Wide cinematic"],
+    energies: ["Steady groove throughout", "Slow burn to explosion", "Euphoric continuous build"],
+    moods: ["Confident", "Euphoric", "Romantic", "Bittersweet", "Nostalgic"],
+    instrumentKeywords: ["synth", "808", "piano", "clean electric"],
+  },
+};
+
+// Resolver: given a genre slot, return the intuition entry that best
+// matches. Searches slot.sub first (case-insensitive substring), then
+// slot.genre, then falls back to "default". Used by the randomizer to
+// pick genre-coherent values for every field.
+function getGenreIntuition(slot) {
+  if (!slot) return GENRE_INTUITION.default;
+  const keys = Object.keys(GENRE_INTUITION).filter(k => k !== "default");
+  const candidates = [slot.sub, slot.genre].filter(Boolean).map(s => String(s).toLowerCase());
+  for (const cand of candidates) {
+    // Exact match first
+    const exact = keys.find(k => k === cand);
+    if (exact) return GENRE_INTUITION[exact];
+    // Then substring match (shortest key wins to avoid "pop" matching "synth-pop")
+    const matches = keys.filter(k => cand.includes(k)).sort((a, b) => b.length - a.length);
+    if (matches.length > 0) return GENRE_INTUITION[matches[0]];
+  }
+  return GENRE_INTUITION.default;
+}
+
+// Weighted picker. Given a weighted pool (array with repeated entries)
+// and the catalog pool, prefer weighted entries that exist in the
+// catalog. Falls through to uniform random across the full catalog if
+// no weighted entries are available. The surpriseChance (0-1) defines
+// the probability of ignoring weights and picking freely — keeps the
+// randomizer from feeling sterile. Default 0.12 = 12% surprise rate.
+function intuitivePick(weightedPool, catalogPool, surpriseChance = 0.12) {
+  if (!catalogPool || catalogPool.length === 0) return null;
+  // Surprise roll: ignore weights, pick uniformly from catalog
+  if (Math.random() < surpriseChance) {
+    return catalogPool[Math.floor(Math.random() * catalogPool.length)];
+  }
+  // Filter weighted entries to only those that exist in the catalog
+  const validWeighted = (weightedPool || []).filter(v => catalogPool.includes(v));
+  if (validWeighted.length === 0) {
+    return catalogPool[Math.floor(Math.random() * catalogPool.length)];
+  }
+  return validWeighted[Math.floor(Math.random() * validWeighted.length)];
+}
+
+// BPM picker using genre intuition. Rounds to even numbers (matches
+// current behavior). Surprise probability applies — 12% chance to
+// pick anywhere in 60-180 range for creative jolts.
+function intuitiveBpm(intuition, surpriseChance = 0.1) {
+  if (Math.random() < surpriseChance) {
+    return 60 + Math.floor(Math.random() * 61) * 2; // 60-180 even
+  }
+  const [lo, hi] = intuition.bpmRange || [90, 128];
+  const span = Math.max(2, hi - lo);
+  const steps = Math.floor(span / 2) + 1;
+  return lo + Math.floor(Math.random() * steps) * 2;
+}
 
 // ────────────────────────────────────────────────────────────────────────────
 // TOP_5 curated shortlists — Each section collapses to these 5 entries by
@@ -3303,7 +3767,2259 @@ const PRESETS = [
   },
 ];
 
+// ═══════════════════════════════════════════════════════════════════════
+// SECTION STRUCTURES — producer-grade arrangement templates
+// ═══════════════════════════════════════════════════════════════════════
+// Each structure is an array of square-bracket section tags describing a
+// typical hit arrangement for that genre. Suno/Udio interpret these as
+// structural directives — turning a vague sonic prompt into an actual
+// song with defined sections. The tags follow the common AI-music
+// convention: [Intro], [Verse], [Pre-chorus], [Chorus], [Bridge],
+// [Outro]. Additional descriptors inside a tag (e.g. [Verse: sparse])
+// further guide the model's arrangement choices.
+//
+// These are consumed by compressDetailedPrompt, which appends the tags
+// as a separate block at the end of the detailed prompt text.
+// ═══════════════════════════════════════════════════════════════════════
+
+const SECTION_STRUCTURES = {
+  // ── POP ──────────────────────────────────────────────────────────
+  dancePop: [
+    "Intro: 4-bar synth hook alone",
+    "Verse: sparse drums, vocal close-mic",
+    "Pre-chorus: build with risers, filter sweep up",
+    "Chorus: full drums, wide synths, belted vocal, octave-up layer",
+    "Verse 2: add arpeggiated synth",
+    "Chorus: same as before with ad-libs",
+    "Bridge: strip to vocal + piano for 8 bars",
+    "Final chorus: double-drop, all layers, outro tag",
+  ],
+  synthPop: [
+    "Intro: arpeggiated analog synth 4 bars",
+    "Verse: gated snare, dry vocal, pulse bass",
+    "Pre-chorus: strings swell, tempo anticipation",
+    "Chorus: full kit, octave-up lead synth, wide reverb on vocal",
+    "Verse 2: layered synth pads enter",
+    "Chorus",
+    "Bridge: filter-sweep breakdown, vocoder",
+    "Final chorus: key-change lift, sustained outro",
+  ],
+  indiePop: [
+    "Intro: fingerpicked acoustic guitar 8 bars",
+    "Verse: quiet vocal, brushed drums enter",
+    "Pre-chorus: subtle strings",
+    "Chorus: full band, harmonized vocals",
+    "Verse 2: add electric guitar texture",
+    "Chorus",
+    "Bridge: stripped to piano + vocal",
+    "Final chorus: big build, outro fade",
+  ],
+  altPop: [
+    "Intro: ambient synth pad + sparse vocal",
+    "Verse: tight close-mic vocal, sub bass, finger snaps",
+    "Pre-chorus: tension riser",
+    "Chorus: contrast explosion, layered vocals",
+    "Verse 2: whispered delivery",
+    "Chorus",
+    "Bridge: dark atmosphere, vocal-only moment",
+    "Outro: fade on pad swell",
+  ],
+  // ── HIP-HOP ──────────────────────────────────────────────────────
+  trap: [
+    "Intro: 808 + hi-hat alone 4 bars",
+    "Verse: rapped delivery, sliding 808s",
+    "Hook: melodic auto-tuned chorus, full drums",
+    "Verse 2: double-time hi-hat roll",
+    "Hook",
+    "Bridge: drop drums, ambient synth moment",
+    "Hook: energetic final with ad-libs",
+    "Outro: 808 tail fade",
+  ],
+  melodicRap: [
+    "Intro: moody piano loop 4 bars",
+    "Verse: sung-rap hybrid delivery, half-time drums",
+    "Pre-hook: vocal chop sample",
+    "Hook: melodic auto-tuned chorus",
+    "Verse 2: more emotional delivery",
+    "Hook",
+    "Bridge: vocal alone + pad",
+    "Hook: ad-libs layered",
+  ],
+  // ── R&B ──────────────────────────────────────────────────────────
+  rnb: [
+    "Intro: Rhodes piano + vocal ad-libs",
+    "Verse: slow burn, soft drums, close-mic vocal",
+    "Pre-chorus: layered harmonies",
+    "Chorus: big reverb, belted moments, full arrangement",
+    "Verse 2: vulnerable delivery",
+    "Chorus",
+    "Bridge: gospel ensemble moment, key change",
+    "Outro: vocal runs over pad",
+  ],
+  // ── LATIN ────────────────────────────────────────────────────────
+  reggaeton: [
+    "Intro: dembow loop + vocal shout",
+    "Verse: rapped delivery over dembow",
+    "Pre-hook: tension build with risers",
+    "Chorus: full production, perreo groove",
+    "Verse 2",
+    "Chorus",
+    "Bridge: beat switch, minor-key moment",
+    "Chorus: fever-pitch final with ad-libs",
+  ],
+  latinTrap: [
+    "Intro: nylon guitar + sub bass",
+    "Verse: melodic auto-tuned Spanish delivery",
+    "Hook: emotional sung chorus, full trap drums",
+    "Verse 2: more intense flow",
+    "Hook",
+    "Bridge: stripped, piano + vocal",
+    "Hook: final with ad-libs and harmonies",
+  ],
+  // ── OTHER ────────────────────────────────────────────────────────
+  afrobeats: [
+    "Intro: log drum + marimba groove 4 bars",
+    "Verse: relaxed vocal, syncopated drums",
+    "Pre-hook: call-and-response ad-libs",
+    "Chorus: full band, brass punches, danceable groove",
+    "Verse 2: percussion layers enter",
+    "Chorus",
+    "Bridge: percussion breakdown",
+    "Chorus: party outro with crowd ad-libs",
+  ],
+  house: [
+    "Intro: 4-on-floor kick + pad 16 bars",
+    "Build: filter sweep up, snare roll",
+    "Drop: full synth lead, sidechained bass, vocal hook",
+    "Breakdown: strip to pad + vocal",
+    "Second build: claps layer in",
+    "Drop: bigger, with percussion layer",
+    "Outro: filter fade",
+  ],
+  popPunk: [
+    "Intro: palm-muted guitar + drum fill",
+    "Verse: driving drums, distorted guitar",
+    "Pre-chorus: bass slide build",
+    "Chorus: power chords, gang vocals, big energy",
+    "Verse 2",
+    "Chorus",
+    "Bridge: half-time moment with clean guitar",
+    "Final chorus: extra-loud with outro slam",
+  ],
+  // ── ISRAELI ──────────────────────────────────────────────────────
+  mizrahiPop: [
+    "Intro: oud solo 8 bars over darbuka groove",
+    "Verse: melismatic vocal, traditional percussion",
+    "Pre-chorus: string swell with kanoun ornamentation",
+    "Chorus: full arrangement, gospel-style backing vocals, big emotional lift",
+    "Verse 2: call-and-response with backing singers",
+    "Chorus",
+    "Bridge: oud solo reprise, tempo slightly slower",
+    "Final chorus: key-change lift, outro ululations",
+  ],
+  israeliTrap: [
+    "Intro: dark piano + 808 alone",
+    "Verse: rapped Hebrew delivery, hi-hat triplet roll",
+    "Hook: melodic auto-tuned chorus",
+    "Verse 2: faster flow, more aggressive",
+    "Hook",
+    "Bridge: oud sample for Mediterranean flavor",
+    "Hook: fever-pitch final with ad-libs",
+  ],
+  hebrewDancePop: [
+    "Intro: synth hook + vocal chop 4 bars",
+    "Verse: bouncy groove, close-mic vocal",
+    "Pre-chorus: build with snap layers and riser",
+    "Chorus: euphoric full production, wide synths",
+    "Verse 2: added percussion layer",
+    "Chorus",
+    "Bridge: stripped moment with piano",
+    "Final chorus: double-drop with ad-libs and outro",
+  ],
+  medTrapFusion: [
+    "Intro: oud + darbuka groove 4 bars",
+    "Verse: rapped Hebrew over trap drums",
+    "Hook: melodic chorus, wide Mediterranean synth",
+    "Verse 2: more intensity",
+    "Hook",
+    "Bridge: traditional instrument solo (oud or ney)",
+    "Hook: final with layered vocals",
+  ],
+  orientalPop: [
+    "Intro: bouzouki + Mediterranean pluck 8 bars",
+    "Verse: syncopated groove, melismatic vocal",
+    "Pre-chorus: darbuka fills",
+    "Chorus: full modern production with traditional colors",
+    "Verse 2",
+    "Chorus",
+    "Bridge: percussion breakdown",
+    "Final chorus: celebration outro",
+  ],
+  hebrewHouse: [
+    "Intro: 4-on-floor + vocal sample 16 bars",
+    "Build: filter sweep, Hebrew vocal hook",
+    "Drop: big synth lead, full bass",
+    "Breakdown: vocal alone with pad",
+    "Second build",
+    "Drop: added percussion",
+    "Outro: filter fade",
+  ],
+  hebrewTrapSoul: [
+    "Intro: Rhodes + 808 sub",
+    "Verse: emotional Hebrew delivery, half-time drums",
+    "Pre-hook: vocal ad-libs",
+    "Chorus: big reverb, belted moments",
+    "Verse 2: vulnerable tone",
+    "Chorus",
+    "Bridge: gospel-style backing enters",
+    "Outro: vocal runs fade",
+  ],
+  hebrewHyperpop: [
+    "Intro: pitched vocal chop + glitch",
+    "Verse: compressed vocal, distorted bass",
+    "Drop: maximalist everything, sidechained",
+    "Verse 2: even faster cuts",
+    "Drop",
+    "Bridge: stripped vocal moment",
+    "Drop: chaotic final with glitch outro",
+  ],
+  // ── ISRAELI INDIE / FOLK / SINGER-SONGWRITER ─────────────────────
+  israeliIndie: [
+    "Intro: acoustic guitar fingerpicked 8 bars",
+    "Verse: intimate vocal close-mic, soft brushed drums",
+    "Pre-chorus: subtle synth pad enters",
+    "Chorus: full band, harmonized vocals, warmth",
+    "Verse 2: added clean electric guitar",
+    "Chorus",
+    "Bridge: stripped to piano + vocal",
+    "Final chorus: big uplift, outro fingerpicking fade",
+  ],
+  folkAcoustic: [
+    "Intro: fingerpicked acoustic 4 bars",
+    "Verse: intimate vocal, minimal arrangement",
+    "Chorus: band joins with soft drums and harmonies",
+    "Verse 2",
+    "Chorus",
+    "Bridge: instrumental break with acoustic solo",
+    "Final chorus: warm outro",
+  ],
+  // Pop Emuni (Israeli faith-pop) — acoustic-forward production
+  // blending modern Mediterranean pop with prayer-like emotional
+  // content. Arrangements build from intimate guitar/piano to big
+  // communal-singalong choruses with gospel-style backing, often
+  // including a rubato breakdown that feels like a prayer moment.
+  popEmuni: [
+    "Intro: acoustic guitar fingerpicked + soft piano 8 bars",
+    "Verse: emotional close-mic vocal, sparse arrangement, brushed drums",
+    "Pre-chorus: strings enter, building emotional lift",
+    "Chorus: full arrangement, gospel-style backing vocals, uplifted key",
+    "Verse 2: add subtle Mediterranean pluck, more urgency",
+    "Chorus",
+    "Bridge: rubato prayer moment, vocal alone with soft piano",
+    "Final chorus: huge communal energy with ad-libs, emotional outro",
+  ],
+};
+
+// Helper: pick a structure by genre sub-name (fuzzy match). Returns
+// array of tag strings, or empty array if no match found. Used by the
+// admin apply functions to attach structures to recipe states.
+function getStructureForGenre(subName) {
+  if (!subName) return [];
+  const key = subName.toLowerCase();
+  if (key.includes("pop emuni") || key.includes("faith-pop") || key.includes("faith pop")) return SECTION_STRUCTURES.popEmuni;
+  if (key.includes("dance-pop") || key.includes("dance pop")) return SECTION_STRUCTURES.dancePop;
+  if (key.includes("synth-pop") || key.includes("synth pop")) return SECTION_STRUCTURES.synthPop;
+  if (key.includes("indie pop") || key.includes("alt pop")) return key.includes("alt") ? SECTION_STRUCTURES.altPop : SECTION_STRUCTURES.indiePop;
+  if (key.includes("trap") && key.includes("israeli")) return SECTION_STRUCTURES.israeliTrap;
+  if (key.includes("trap") && key.includes("mediterranean")) return SECTION_STRUCTURES.medTrapFusion;
+  if (key.includes("trap") && key.includes("latin")) return SECTION_STRUCTURES.latinTrap;
+  if (key.includes("trap") && key.includes("oud")) return SECTION_STRUCTURES.medTrapFusion;
+  if (key.includes("trap")) return SECTION_STRUCTURES.trap;
+  if (key.includes("melodic rap")) return SECTION_STRUCTURES.melodicRap;
+  if (key.includes("mizrahi")) return SECTION_STRUCTURES.mizrahiPop;
+  if (key.includes("hebrew dance")) return SECTION_STRUCTURES.hebrewDancePop;
+  if (key.includes("oriental")) return SECTION_STRUCTURES.orientalPop;
+  if (key.includes("hebrew house")) return SECTION_STRUCTURES.hebrewHouse;
+  if (key.includes("trap-soul")) return SECTION_STRUCTURES.hebrewTrapSoul;
+  if (key.includes("hyperpop")) return SECTION_STRUCTURES.hebrewHyperpop;
+  if (key.includes("k-pop")) return SECTION_STRUCTURES.hebrewDancePop;
+  if (key.includes("israeli indie")) return SECTION_STRUCTURES.israeliIndie;
+  if (key.includes("singer-songwriter") || key.includes("folk")) return SECTION_STRUCTURES.folkAcoustic;
+  if (key.includes("reggaeton")) return SECTION_STRUCTURES.reggaeton;
+  if (key.includes("afrobeats")) return SECTION_STRUCTURES.afrobeats;
+  if (key.includes("house")) return SECTION_STRUCTURES.house;
+  if (key.includes("pop punk")) return SECTION_STRUCTURES.popPunk;
+  if (key.includes("contemporary r&b") || key.includes("alt r&b") || key.includes("r&b")) return SECTION_STRUCTURES.rnb;
+  // Default: generic pop structure
+  return SECTION_STRUCTURES.dancePop;
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// ARTIST MIMIC PACKS — admin-only curated prompt collections
+// ═══════════════════════════════════════════════════════════════════════
+// 8 artists × 5 prompts each = 40 unique configurations tuned to capture
+// each artist's distinct sonic signature. IMPORTANT: artist names are
+// used ONLY in the UI labels (packId, label, artistName) for Bubble +
+// partner's internal reference. The prompt state itself contains only
+// sonic descriptors — genre, mood, instruments, BPM, texture, etc. —
+// with NO artist names injected into the generated prompt output, so
+// AI music models (Suno/Udio/etc.) won't filter or reject the prompts.
+//
+// Pack structure:
+//   { artistId, artistName, region, packs: [{ id, name, emoji, state }] }
+// ═══════════════════════════════════════════════════════════════════════
+
+const MIMIC_PACKS = [
+  // ══════════════ INTERNATIONAL ══════════════
+  {
+    artistId: "drake",
+    artistName: "Drake",
+    region: "international",
+    packs: [
+      { id: "drk-1", name: "Late night OVO", emoji: "🌙", vibe: "moody", state: {
+          slots: [{ genre: "Hip-Hop", sub: "Melodic Rap", micro: null }, { genre: "R&B / Soul", sub: "Contemporary R&B", micro: null }, null],
+          mood: "Nostalgic", energy: "Steady groove throughout", groove: "half-time",
+          vocalist: "Spoken rap over sung hook", language: "en",
+          lyricalVibe: "Confessional diary",
+          specificInstruments: ["Moody piano", "808 sub", "Hi-hat triplet roll", "Rhodes electric piano"],
+          specificArticulations: {}, bpm: 70,
+          harmonic: "Minor-key introspection", texture: "Velvety & plush", mix: "Wide cinematic",
+        } },
+      { id: "drk-2", name: "Toronto cold", emoji: "❄️", vibe: "heartbreak", state: {
+          slots: [{ genre: "Hip-Hop", sub: "Trap", micro: null }, null, null],
+          mood: "Bittersweet", energy: "Slow burn to explosion", groove: "half-time",
+          vocalist: "Auto-tuned melodic delivery", language: "en",
+          lyricalVibe: "Heartbreak elegy",
+          specificInstruments: ["808 drum machine", "Synth pad", "Sparse piano"],
+          specificArticulations: {}, bpm: 78,
+          harmonic: "Minor-key introspection", texture: "Velvety & plush", mix: "Wide cinematic",
+        } },
+      { id: "drk-3", name: "Summer flex", emoji: "🌴", vibe: "confident", state: {
+          slots: [{ genre: "Hip-Hop", sub: "Melodic Rap", micro: null }, { genre: "World / Global", sub: "Afrobeats", micro: null }, null],
+          mood: "Confident", energy: "Euphoric continuous build", groove: "syncopated",
+          vocalist: "Smooth tenor", language: "en",
+          lyricalVibe: "Braggadocio flex",
+          specificInstruments: ["Log drum bass", "Marimba", "Afrobeats kit"],
+          specificArticulations: {}, bpm: 104,
+          harmonic: "Major-key lift", texture: "Warm & sun-baked", mix: "Punchy & compressed",
+        } },
+      { id: "drk-4", name: "Billboard hook", emoji: "📈", vibe: "anthemic", state: {
+          slots: [{ genre: "Pop", sub: "Dance-Pop", micro: null }, { genre: "Hip-Hop", sub: "Melodic Rap", micro: null }, null],
+          mood: "Catchy", energy: "Euphoric continuous build", groove: "straight",
+          vocalist: "Auto-tuned melodic delivery", language: "en",
+          lyricalVibe: "Romantic devotion",
+          specificInstruments: ["808 drum machine", "Synth pad", "Clean electric guitar", "Snap / clap layer"],
+          specificArticulations: {}, bpm: 98,
+          harmonic: "Major-key lift", texture: "Smooth & liquid", mix: "Ultra clean & polished",
+        } },
+      { id: "drk-5", name: "6 God ambient", emoji: "🕯️", vibe: "moody", state: {
+          slots: [{ genre: "R&B / Soul", sub: "Alt R&B", micro: null }, null, null],
+          mood: "Pensive", energy: "Slow burn to explosion", groove: "half-time",
+          vocalist: "Whisper to full belt", language: "en",
+          lyricalVibe: "Confessional diary",
+          specificInstruments: ["Ambient synth wash", "808 sub", "Reverb piano"],
+          specificArticulations: {}, bpm: 72,
+          harmonic: "Minor-key introspection", texture: "Airy & weightless", mix: "Heavy reverb cathedral",
+        } },
+      { id: "drk-6", name: "Certified Lover", emoji: "💔", vibe: "romantic", state: {
+          slots: [{ genre: "Hip-Hop", sub: "Melodic Rap", micro: null }, null, null],
+          mood: "Romantic", energy: "Slow burn to explosion", groove: "half-time",
+          vocalist: "Auto-tuned melodic delivery", language: "en",
+          lyricalVibe: "Romantic devotion",
+          specificInstruments: ["Rhodes electric piano", "808 sub", "Vocal chop", "Snap / clap layer"],
+          specificArticulations: {}, bpm: 82,
+          harmonic: "Minor-key introspection", texture: "Velvety & plush", mix: "Heavy reverb cathedral",
+        } },
+      { id: "drk-7", name: "UK drill visit", emoji: "🇬🇧", vibe: "anthemic", state: {
+          slots: [{ genre: "Hip-Hop", sub: "Trap", micro: null }, null, null],
+          mood: "Defiant", energy: "Fever-pitch final third", groove: "half-time",
+          vocalist: "Spoken rap over sung hook", language: "en",
+          lyricalVibe: "Braggadocio flex",
+          specificInstruments: ["Sliding 808", "Hi-hat triplet roll", "Synth pad", "Dark piano"],
+          specificArticulations: {}, bpm: 140,
+          harmonic: "Minor-key introspection", texture: "Thick & saturated", mix: "Punchy & compressed",
+        } },
+      { id: "drk-8", name: "Dancehall crossover", emoji: "🏝️", vibe: "playful", state: {
+          slots: [{ genre: "Latin", sub: "Reggaeton", micro: null }, { genre: "World / Global", sub: "Afrobeats", micro: null }, null],
+          mood: "Playful", energy: "Euphoric continuous build", groove: "syncopated",
+          vocalist: "Spoken rap over sung hook", language: "en",
+          lyricalVibe: "Party celebration",
+          specificInstruments: ["Dembow rhythm", "Marimba", "808 drum machine", "Synth lead"],
+          specificArticulations: {}, bpm: 96,
+          harmonic: "Minor-key modal", texture: "Warm & sun-baked", mix: "Punchy & compressed",
+        } },
+      { id: "drk-9", name: "Views rooftop", emoji: "🏙️", vibe: "moody", state: {
+          slots: [{ genre: "Hip-Hop", sub: "Melodic Rap", micro: null }, null, null],
+          mood: "Nostalgic", energy: "Steady groove throughout", groove: "half-time",
+          vocalist: "Smooth tenor", language: "en",
+          lyricalVibe: "Ode to a place",
+          specificInstruments: ["Piano", "Ambient synth wash", "808 sub", "Soft strings"],
+          specificArticulations: {}, bpm: 88,
+          harmonic: "Major-key lift", texture: "Smooth & liquid", mix: "Wide cinematic",
+        } },
+      { id: "drk-10", name: "Scorpion dark", emoji: "🦂", vibe: "confident", state: {
+          slots: [{ genre: "Hip-Hop", sub: "Melodic Rap", micro: null }, null, null],
+          mood: "Smoldering", energy: "Steady groove throughout", groove: "half-time",
+          vocalist: "Auto-tuned melodic delivery", language: "en",
+          lyricalVibe: "Braggadocio flex",
+          specificInstruments: ["Dark piano", "808 sub", "Hi-hat triplet roll", "Vocal chop"],
+          specificArticulations: {}, bpm: 75,
+          harmonic: "Minor-key introspection", texture: "Thick & saturated", mix: "Wide cinematic",
+        } },
+    ],
+  },
+  {
+    artistId: "billie-eilish",
+    artistName: "Billie Eilish",
+    region: "international",
+    packs: [
+      { id: "bil-1", name: "Whisper horror", emoji: "🖤", vibe: "moody", state: {
+          slots: [{ genre: "Pop", sub: "Alt Pop", micro: null }, null, null],
+          mood: "Smoldering", energy: "Slow burn to explosion", groove: "straight",
+          vocalist: "Whisper to full belt", language: "en",
+          lyricalVibe: "Confessional diary",
+          specificInstruments: ["Sub bass", "Finger snaps", "Sparse piano", "Vocal chop"],
+          specificArticulations: {}, bpm: 88,
+          harmonic: "Minor-key introspection", texture: "Crystalline & brittle", mix: "Wide cinematic",
+        } },
+      { id: "bil-2", name: "Bedroom pop teen", emoji: "🛏️", vibe: "moody", state: {
+          slots: [{ genre: "Pop", sub: "Indie Pop", micro: null }, null, null],
+          mood: "Dreamy", energy: "Steady groove throughout", groove: "straight",
+          vocalist: "Breathy female lead", language: "en",
+          lyricalVibe: "Coming-of-age narrative",
+          specificInstruments: ["Acoustic guitar fingerpick", "Soft synth pad", "Minimal drums"],
+          specificArticulations: {}, bpm: 84,
+          harmonic: "Major-key lift", texture: "Airy & weightless", mix: "Ultra clean & polished",
+        } },
+      { id: "bil-3", name: "Bad Guy bassline", emoji: "😈", vibe: "playful", state: {
+          slots: [{ genre: "Pop", sub: "Alt Pop", micro: null }, { genre: "Electronic", sub: "Electro", micro: null }, null],
+          mood: "Playful", energy: "Steady groove throughout", groove: "straight",
+          vocalist: "Whisper to full belt", language: "en",
+          lyricalVibe: "Braggadocio flex",
+          specificInstruments: ["Distorted sub bass", "Snap / clap layer", "Synth stab", "808 drum machine"],
+          specificArticulations: {}, bpm: 135,
+          harmonic: "Minor-key introspection", texture: "Thick & saturated", mix: "Punchy & compressed",
+        } },
+      { id: "bil-4", name: "Ocean Eyes ballad", emoji: "💧", vibe: "moody", state: {
+          slots: [{ genre: "Pop", sub: "Indie Pop", micro: null }, null, null],
+          mood: "Romantic", energy: "Slow burn to explosion", groove: "straight",
+          vocalist: "Breathy female lead", language: "en",
+          lyricalVibe: "Romantic devotion",
+          specificInstruments: ["Piano", "Ambient synth wash", "Soft strings"],
+          specificArticulations: {}, bpm: 70,
+          harmonic: "Major-key lift", texture: "Smooth & liquid", mix: "Heavy reverb cathedral",
+        } },
+      { id: "bil-5", name: "Dark cinematic", emoji: "🎬", vibe: "moody", state: {
+          slots: [{ genre: "Pop", sub: "Alt Pop", micro: null }, { genre: "Ambient / Drone", sub: "Dark Ambient", micro: null }, null],
+          mood: "Smoldering", energy: "Fever-pitch final third", groove: "straight",
+          vocalist: "Whisper to full belt", language: "en",
+          lyricalVibe: "Heartbreak elegy",
+          specificInstruments: ["Cinematic strings", "Sub bass drone", "Finger snaps", "Piano"],
+          specificArticulations: {}, bpm: 76,
+          harmonic: "Minor-key introspection", texture: "Crystalline & brittle", mix: "Wide cinematic",
+        } },
+      { id: "bil-6", name: "Happier Than Ever", emoji: "🌊", vibe: "anthemic", state: {
+          slots: [{ genre: "Pop", sub: "Indie Pop", micro: null }, { genre: "Rock / Metal", sub: "Pop Punk", micro: null }, null],
+          mood: "Defiant", energy: "Fever-pitch final third", groove: "straight",
+          vocalist: "Whisper to full belt", language: "en",
+          lyricalVibe: "Heartbreak elegy",
+          specificInstruments: ["Acoustic guitar fingerpick", "Distorted electric guitar", "Rock kit", "Piano"],
+          specificArticulations: {}, bpm: 80,
+          harmonic: "Minor-key introspection", texture: "Thick & saturated", mix: "Wide cinematic",
+        } },
+      { id: "bil-7", name: "Lovely minor", emoji: "🌑", vibe: "heartbreak", state: {
+          slots: [{ genre: "Pop", sub: "Alt Pop", micro: null }, null, null],
+          mood: "Pensive", energy: "Slow burn to explosion", groove: "straight",
+          vocalist: "Breathy female lead", language: "en",
+          lyricalVibe: "Heartbreak elegy",
+          specificInstruments: ["Piano", "Soft strings", "Ambient synth wash"],
+          specificArticulations: {}, bpm: 88,
+          harmonic: "Minor-key introspection", texture: "Smooth & liquid", mix: "Heavy reverb cathedral",
+        } },
+      { id: "bil-8", name: "Therefore I Am", emoji: "🤨", vibe: "confident", state: {
+          slots: [{ genre: "Pop", sub: "Alt Pop", micro: null }, null, null],
+          mood: "Confident", energy: "Steady groove throughout", groove: "straight",
+          vocalist: "Whisper to full belt", language: "en",
+          lyricalVibe: "Braggadocio flex",
+          specificInstruments: ["Minimal drums", "Sub bass", "Synth stab", "Finger snaps"],
+          specificArticulations: {}, bpm: 94,
+          harmonic: "Minor-key modal", texture: "Crystalline & brittle", mix: "Wide cinematic",
+        } },
+      { id: "bil-9", name: "When the Party's Over", emoji: "🕯️", vibe: "heartbreak", state: {
+          slots: [{ genre: "Pop", sub: "Indie Pop", micro: null }, null, null],
+          mood: "Bittersweet", energy: "Slow burn to explosion", groove: "straight",
+          vocalist: "Whisper to full belt", language: "en",
+          lyricalVibe: "Heartbreak elegy",
+          specificInstruments: ["Piano", "Ambient synth wash", "Soft strings"],
+          specificArticulations: {}, bpm: 62,
+          harmonic: "Minor-key introspection", texture: "Airy & weightless", mix: "Heavy reverb cathedral",
+        } },
+      { id: "bil-10", name: "Birds of a Feather", emoji: "🕊️", vibe: "romantic", state: {
+          slots: [{ genre: "Pop", sub: "Indie Pop", micro: null }, null, null],
+          mood: "Romantic", energy: "Euphoric continuous build", groove: "straight",
+          vocalist: "Breathy female lead", language: "en",
+          lyricalVibe: "Romantic devotion",
+          specificInstruments: ["Piano", "Soft synth pad", "Clean electric guitar", "Minimal drums"],
+          specificArticulations: {}, bpm: 108,
+          harmonic: "Major-key lift", texture: "Smooth & liquid", mix: "Ultra clean & polished",
+        } },
+    ],
+  },
+  {
+    artistId: "the-weeknd",
+    artistName: "The Weeknd",
+    region: "international",
+    packs: [
+      { id: "wkd-1", name: "80s synth noir", emoji: "🌆", vibe: "heartbreak", state: {
+          slots: [{ genre: "Pop", sub: "Synth-Pop", micro: null }, { genre: "R&B / Soul", sub: "Alt R&B", micro: null }, null],
+          mood: "Nostalgic", energy: "Euphoric continuous build", groove: "straight",
+          vocalist: "Falsetto-led", language: "en",
+          lyricalVibe: "Romantic devotion",
+          specificInstruments: ["Analog synth lead", "Gated reverb snare", "Juno-60 pads", "Bass synth"],
+          specificArticulations: {}, bpm: 120,
+          harmonic: "Major-key lift", texture: "Velvety & plush", mix: "80s gated reverb drums",
+        } },
+      { id: "wkd-2", name: "After Hours neon", emoji: "💜", vibe: "moody", state: {
+          slots: [{ genre: "Pop", sub: "Synth-Pop", micro: null }, null, null],
+          mood: "Smoldering", energy: "Steady groove throughout", groove: "straight",
+          vocalist: "Falsetto-led", language: "en",
+          lyricalVibe: "Heartbreak elegy",
+          specificInstruments: ["Analog synth lead", "FM bass", "Drum machine", "Arpeggiated synth"],
+          specificArticulations: {}, bpm: 171,
+          harmonic: "Minor-key introspection", texture: "Thick & saturated", mix: "Wide cinematic",
+        } },
+      { id: "wkd-3", name: "Trilogy haze", emoji: "🌫️", vibe: "moody", state: {
+          slots: [{ genre: "R&B / Soul", sub: "Alt R&B", micro: null }, null, null],
+          mood: "Pensive", energy: "Slow burn to explosion", groove: "half-time",
+          vocalist: "Falsetto-led", language: "en",
+          lyricalVibe: "Confessional diary",
+          specificInstruments: ["Reverb-drenched synth", "808 sub", "Moody piano"],
+          specificArticulations: {}, bpm: 66,
+          harmonic: "Minor-key introspection", texture: "Airy & weightless", mix: "Heavy reverb cathedral",
+        } },
+      { id: "wkd-4", name: "Blinding anthem", emoji: "✨", vibe: "anthemic", state: {
+          slots: [{ genre: "Pop", sub: "Dance-Pop", micro: null }, { genre: "Pop", sub: "Synth-Pop", micro: null }, null],
+          mood: "Euphoric", energy: "Euphoric continuous build", groove: "straight",
+          vocalist: "Falsetto-led", language: "en",
+          lyricalVibe: "Romantic devotion",
+          specificInstruments: ["Analog synth lead", "Drum machine", "Bass synth", "Synth pad"],
+          specificArticulations: {}, bpm: 171,
+          harmonic: "Major-key lift", texture: "Crystalline & brittle", mix: "Ultra clean & polished",
+        } },
+      { id: "wkd-5", name: "Dawn FM trance", emoji: "📻", vibe: "moody", state: {
+          slots: [{ genre: "Pop", sub: "Dance-Pop", micro: null }, { genre: "Electronic", sub: "House", micro: null }, null],
+          mood: "Dreamy", energy: "Steady groove throughout", groove: "straight",
+          vocalist: "Falsetto-led", language: "en",
+          lyricalVibe: "Nostalgic storytelling",
+          specificInstruments: ["Arpeggiated synth", "4-on-the-floor kick", "Analog synth lead", "Bass synth"],
+          specificArticulations: {}, bpm: 124,
+          harmonic: "Major-key lift", texture: "Velvety & plush", mix: "Wide cinematic",
+        } },
+      { id: "wkd-6", name: "Starboy cruise", emoji: "🏎️", vibe: "moody", state: {
+          slots: [{ genre: "Pop", sub: "Dance-Pop", micro: null }, null, null],
+          mood: "Confident", energy: "Euphoric continuous build", groove: "straight",
+          vocalist: "Falsetto-led", language: "en",
+          lyricalVibe: "Braggadocio flex",
+          specificInstruments: ["Analog synth lead", "Drum machine", "Bass synth", "Synth stab"],
+          specificArticulations: {}, bpm: 186,
+          harmonic: "Minor-key modal", texture: "Thick & saturated", mix: "Punchy & compressed",
+        } },
+      { id: "wkd-7", name: "Feel It Coming", emoji: "🌉", vibe: "romantic", state: {
+          slots: [{ genre: "Pop", sub: "Dance-Pop", micro: null }, null, null],
+          mood: "Dreamy", energy: "Steady groove throughout", groove: "straight",
+          vocalist: "Falsetto-led", language: "en",
+          lyricalVibe: "Romantic devotion",
+          specificInstruments: ["Arpeggiated synth", "Drum machine", "Bass synth", "Rhodes electric piano"],
+          specificArticulations: {}, bpm: 93,
+          harmonic: "Major-key lift", texture: "Smooth & liquid", mix: "Ultra clean & polished",
+        } },
+      { id: "wkd-8", name: "Die For You", emoji: "🩸", vibe: "romantic", state: {
+          slots: [{ genre: "R&B / Soul", sub: "Alt R&B", micro: null }, null, null],
+          mood: "Romantic", energy: "Slow burn to explosion", groove: "half-time",
+          vocalist: "Falsetto-led", language: "en",
+          lyricalVibe: "Romantic devotion",
+          specificInstruments: ["Synth pad", "808 sub", "Clean electric guitar", "Ambient synth wash"],
+          specificArticulations: {}, bpm: 82,
+          harmonic: "Minor-key introspection", texture: "Velvety & plush", mix: "Wide cinematic",
+        } },
+      { id: "wkd-9", name: "Heartless night", emoji: "🖤", vibe: "moody", state: {
+          slots: [{ genre: "Hip-Hop", sub: "Trap", micro: null }, null, null],
+          mood: "Smoldering", energy: "Slow burn to explosion", groove: "half-time",
+          vocalist: "Falsetto-led", language: "en",
+          lyricalVibe: "Heartbreak elegy",
+          specificInstruments: ["808 sub", "Dark piano", "Vocal chop", "Hi-hat triplet roll"],
+          specificArticulations: {}, bpm: 85,
+          harmonic: "Minor-key introspection", texture: "Thick & saturated", mix: "Wide cinematic",
+        } },
+      { id: "wkd-10", name: "Save Your Tears", emoji: "😢", vibe: "heartbreak", state: {
+          slots: [{ genre: "Pop", sub: "Synth-Pop", micro: null }, null, null],
+          mood: "Bittersweet", energy: "Euphoric continuous build", groove: "straight",
+          vocalist: "Falsetto-led", language: "en",
+          lyricalVibe: "Heartbreak elegy",
+          specificInstruments: ["Analog synth lead", "Gated reverb snare", "Juno-60 pads", "Bass synth"],
+          specificArticulations: {}, bpm: 118,
+          harmonic: "Major-key lift", texture: "Velvety & plush", mix: "80s gated reverb drums",
+        } },
+    ],
+  },
+  {
+    artistId: "olivia-rodrigo",
+    artistName: "Olivia Rodrigo",
+    region: "international",
+    packs: [
+      { id: "olv-1", name: "Piano breakup", emoji: "💔", vibe: "heartbreak", state: {
+          slots: [{ genre: "Pop", sub: "Indie Pop", micro: null }, null, null],
+          mood: "Bittersweet", energy: "Slow burn to explosion", groove: "straight",
+          vocalist: "Whisper to full belt", language: "en",
+          lyricalVibe: "Heartbreak elegy",
+          specificInstruments: ["Piano", "Acoustic guitar fingerpick", "Strings", "Soft drums"],
+          specificArticulations: {}, bpm: 68,
+          harmonic: "Minor-key introspection", texture: "Smooth & liquid", mix: "Ultra clean & polished",
+        } },
+      { id: "olv-2", name: "Pop punk fury", emoji: "🎸", vibe: "anthemic", state: {
+          slots: [{ genre: "Rock / Metal", sub: "Pop Punk", micro: null }, { genre: "Pop", sub: "Alt Pop", micro: null }, null],
+          mood: "Defiant", energy: "Fever-pitch final third", groove: "straight",
+          vocalist: "Whisper to full belt", language: "en",
+          lyricalVibe: "Heartbreak elegy",
+          specificInstruments: ["Distorted electric guitar", "Rock kit", "Bass guitar", "Power chord layer"],
+          specificArticulations: {}, bpm: 152,
+          harmonic: "Minor-key introspection", texture: "Thick & saturated", mix: "Punchy & compressed",
+        } },
+      { id: "olv-3", name: "Drivers License drive", emoji: "🚗", vibe: "heartbreak", state: {
+          slots: [{ genre: "Pop", sub: "Indie Pop", micro: null }, null, null],
+          mood: "Pensive", energy: "Slow burn to explosion", groove: "straight",
+          vocalist: "Breathy female lead", language: "en",
+          lyricalVibe: "Confessional diary",
+          specificInstruments: ["Piano", "Synth pad", "Soft drums", "Strings"],
+          specificArticulations: {}, bpm: 73,
+          harmonic: "Major-key lift", texture: "Airy & weightless", mix: "Wide cinematic",
+        } },
+      { id: "olv-4", name: "Teen anthem", emoji: "💋", vibe: "anthemic", state: {
+          slots: [{ genre: "Pop", sub: "Alt Pop", micro: null }, { genre: "Rock / Metal", sub: "Pop Punk", micro: null }, null],
+          mood: "Playful", energy: "Euphoric continuous build", groove: "straight",
+          vocalist: "Breathy female lead", language: "en",
+          lyricalVibe: "Coming-of-age narrative",
+          specificInstruments: ["Clean electric guitar", "Synth pad", "Rock kit", "Bass guitar"],
+          specificArticulations: {}, bpm: 128,
+          harmonic: "Major-key lift", texture: "Crystalline & brittle", mix: "Punchy & compressed",
+        } },
+      { id: "olv-5", name: "Sour confession", emoji: "🍋", vibe: "moody", state: {
+          slots: [{ genre: "Pop", sub: "Indie Pop", micro: null }, null, null],
+          mood: "Bittersweet", energy: "Starts huge then strips back", groove: "straight",
+          vocalist: "Whisper to full belt", language: "en",
+          lyricalVibe: "Confessional diary",
+          specificInstruments: ["Acoustic guitar fingerpick", "Piano", "Strings", "Soft drums"],
+          specificArticulations: {}, bpm: 80,
+          harmonic: "Minor-key introspection", texture: "Smooth & liquid", mix: "Ultra clean & polished",
+        } },
+      { id: "olv-6", name: "Good 4 U rage", emoji: "🔥", vibe: "anthemic", state: {
+          slots: [{ genre: "Rock / Metal", sub: "Pop Punk", micro: null }, null, null],
+          mood: "Defiant", energy: "Fever-pitch final third", groove: "straight",
+          vocalist: "Whisper to full belt", language: "en",
+          lyricalVibe: "Heartbreak elegy",
+          specificInstruments: ["Distorted electric guitar", "Rock kit", "Bass guitar", "Power chord layer"],
+          specificArticulations: {}, bpm: 166,
+          harmonic: "Minor-key introspection", texture: "Thick & saturated", mix: "Punchy & compressed",
+        } },
+      { id: "olv-7", name: "Deja Vu haze", emoji: "♻️", vibe: "romantic", state: {
+          slots: [{ genre: "Pop", sub: "Alt Pop", micro: null }, null, null],
+          mood: "Bittersweet", energy: "Steady groove throughout", groove: "straight",
+          vocalist: "Breathy female lead", language: "en",
+          lyricalVibe: "Heartbreak elegy",
+          specificInstruments: ["Clean electric guitar", "Synth pad", "Piano", "Soft drums"],
+          specificArticulations: {}, bpm: 100,
+          harmonic: "Minor-key introspection", texture: "Airy & weightless", mix: "Wide cinematic",
+        } },
+      { id: "olv-8", name: "Vampire theatrical", emoji: "🧛", vibe: "anthemic", state: {
+          slots: [{ genre: "Pop", sub: "Alt Pop", micro: null }, { genre: "Rock / Metal", sub: "Pop Punk", micro: null }, null],
+          mood: "Defiant", energy: "Fever-pitch final third", groove: "straight",
+          vocalist: "Whisper to full belt", language: "en",
+          lyricalVibe: "Heartbreak elegy",
+          specificInstruments: ["Piano", "Distorted electric guitar", "Rock kit", "Strings"],
+          specificArticulations: {}, bpm: 138,
+          harmonic: "Minor-key introspection", texture: "Thick & saturated", mix: "Wide cinematic",
+        } },
+      { id: "olv-9", name: "Brutal punk", emoji: "⚡", vibe: "anthemic", state: {
+          slots: [{ genre: "Rock / Metal", sub: "Pop Punk", micro: null }, null, null],
+          mood: "Defiant", energy: "Fever-pitch final third", groove: "straight",
+          vocalist: "Whisper to full belt", language: "en",
+          lyricalVibe: "Coming-of-age narrative",
+          specificInstruments: ["Distorted electric guitar", "Rock kit", "Bass guitar", "Synth stab"],
+          specificArticulations: {}, bpm: 158,
+          harmonic: "Minor-key introspection", texture: "Thick & saturated", mix: "Punchy & compressed",
+        } },
+      { id: "olv-10", name: "Get Him Back revenge", emoji: "🎯", vibe: "playful", state: {
+          slots: [{ genre: "Rock / Metal", sub: "Pop Punk", micro: null }, null, null],
+          mood: "Playful", energy: "Euphoric continuous build", groove: "straight",
+          vocalist: "Whisper to full belt", language: "en",
+          lyricalVibe: "Braggadocio flex",
+          specificInstruments: ["Clean electric guitar", "Rock kit", "Bass guitar", "Snap / clap layer"],
+          specificArticulations: {}, bpm: 120,
+          harmonic: "Minor-key modal", texture: "Thick & saturated", mix: "Ultra clean & polished",
+        } },
+    ],
+  },
+  {
+    artistId: "bad-bunny",
+    artistName: "Bad Bunny",
+    region: "international",
+    packs: [
+      { id: "bby-1", name: "Reggaeton party", emoji: "🔥", vibe: "playful", state: {
+          slots: [{ genre: "Latin", sub: "Reggaeton", micro: null }, null, null],
+          mood: "Euphoric", energy: "Euphoric continuous build", groove: "syncopated",
+          vocalist: "Spoken rap over sung hook", language: "es",
+          lyricalVibe: "Party celebration",
+          specificInstruments: ["Dembow rhythm", "808 drum machine", "Synth lead", "Bass synth"],
+          specificArticulations: {}, bpm: 95,
+          harmonic: "Minor-key modal", texture: "Warm & sun-baked", mix: "Punchy & compressed",
+        } },
+      { id: "bby-2", name: "Latin trap lean", emoji: "💊", vibe: "confident", state: {
+          slots: [{ genre: "Latin", sub: "Latin Trap", micro: null }, null, null],
+          mood: "Smoldering", energy: "Slow burn to explosion", groove: "half-time",
+          vocalist: "Auto-tuned melodic delivery", language: "es",
+          lyricalVibe: "Braggadocio flex",
+          specificInstruments: ["808 sub", "Hi-hat triplet roll", "Synth pad", "Trap kit"],
+          specificArticulations: {}, bpm: 75,
+          harmonic: "Minor-key introspection", texture: "Thick & saturated", mix: "Wide cinematic",
+        } },
+      { id: "bby-3", name: "Un Verano tropical", emoji: "🏝️", vibe: "romantic", state: {
+          slots: [{ genre: "Latin", sub: "Reggaeton", micro: null }, { genre: "World / Global", sub: "Afrobeats", micro: null }, null],
+          mood: "Romantic", energy: "Steady groove throughout", groove: "syncopated",
+          vocalist: "Smooth tenor", language: "es",
+          lyricalVibe: "Romantic devotion",
+          specificInstruments: ["Marimba", "Dembow rhythm", "Synth pad", "Log drum bass"],
+          specificArticulations: {}, bpm: 100,
+          harmonic: "Major-key lift", texture: "Warm & sun-baked", mix: "Ultra clean & polished",
+        } },
+      { id: "bby-4", name: "Perreo intenso", emoji: "🌶️", vibe: "confident", state: {
+          slots: [{ genre: "Latin", sub: "Reggaeton", micro: null }, { genre: "Electronic", sub: "House", micro: null }, null],
+          mood: "Confident", energy: "Fever-pitch final third", groove: "syncopated",
+          vocalist: "Spoken rap over sung hook", language: "es",
+          lyricalVibe: "Party celebration",
+          specificInstruments: ["Dembow rhythm", "808 drum machine", "Synth lead", "FM bass"],
+          specificArticulations: {}, bpm: 102,
+          harmonic: "Minor-key modal", texture: "Thick & saturated", mix: "Punchy & compressed",
+        } },
+      { id: "bby-5", name: "Melancolía romantica", emoji: "🌹", vibe: "heartbreak", state: {
+          slots: [{ genre: "Latin", sub: "Latin Trap", micro: null }, null, null],
+          mood: "Bittersweet", energy: "Slow burn to explosion", groove: "half-time",
+          vocalist: "Auto-tuned melodic delivery", language: "es",
+          lyricalVibe: "Heartbreak elegy",
+          specificInstruments: ["Nylon string guitar", "808 sub", "Synth pad", "Soft strings"],
+          specificArticulations: {}, bpm: 82,
+          harmonic: "Minor-key introspection", texture: "Velvety & plush", mix: "Heavy reverb cathedral",
+        } },
+      { id: "bby-6", name: "Puerto Rico pride", emoji: "🇵🇷", vibe: "confident", state: {
+          slots: [{ genre: "Latin", sub: "Reggaeton", micro: null }, null, null],
+          mood: "Confident", energy: "Euphoric continuous build", groove: "syncopated",
+          vocalist: "Spoken rap over sung hook", language: "es",
+          lyricalVibe: "Ode to a place",
+          specificInstruments: ["Dembow rhythm", "Brass section", "Marimba", "Bass synth"],
+          specificArticulations: {}, bpm: 98,
+          harmonic: "Major-key lift", texture: "Warm & sun-baked", mix: "Punchy & compressed",
+        } },
+      { id: "bby-7", name: "Dakiti neon", emoji: "💎", vibe: "playful", state: {
+          slots: [{ genre: "Latin", sub: "Reggaeton", micro: null }, null, null],
+          mood: "Confident", energy: "Euphoric continuous build", groove: "syncopated",
+          vocalist: "Auto-tuned melodic delivery", language: "es",
+          lyricalVibe: "Party celebration",
+          specificInstruments: ["Dembow rhythm", "Synth stab", "808 sub", "Arpeggiated synth"],
+          specificArticulations: {}, bpm: 110,
+          harmonic: "Minor-key modal", texture: "Crystalline & brittle", mix: "Wide cinematic",
+        } },
+      { id: "bby-8", name: "Moscow Mule chill", emoji: "🍹", vibe: "romantic", state: {
+          slots: [{ genre: "Latin", sub: "Reggaeton", micro: null }, null, null],
+          mood: "Romantic", energy: "Steady groove throughout", groove: "syncopated",
+          vocalist: "Smooth tenor", language: "es",
+          lyricalVibe: "Romantic devotion",
+          specificInstruments: ["Dembow rhythm", "Clean electric guitar", "Synth pad", "Bass synth"],
+          specificArticulations: {}, bpm: 88,
+          harmonic: "Major-key lift", texture: "Smooth & liquid", mix: "Ultra clean & polished",
+        } },
+      { id: "bby-9", name: "Yonaguni wistful", emoji: "🗾", vibe: "heartbreak", state: {
+          slots: [{ genre: "Latin", sub: "Latin Trap", micro: null }, null, null],
+          mood: "Nostalgic", energy: "Slow burn to explosion", groove: "half-time",
+          vocalist: "Auto-tuned melodic delivery", language: "es",
+          lyricalVibe: "Romantic devotion",
+          specificInstruments: ["Acoustic guitar fingerpick", "808 sub", "Synth pad", "Snap / clap layer"],
+          specificArticulations: {}, bpm: 80,
+          harmonic: "Major-key lift", texture: "Airy & weightless", mix: "Wide cinematic",
+        } },
+      { id: "bby-10", name: "Monaco luxe", emoji: "💰", vibe: "confident", state: {
+          slots: [{ genre: "Latin", sub: "Latin Trap", micro: null }, null, null],
+          mood: "Confident", energy: "Fever-pitch final third", groove: "half-time",
+          vocalist: "Spoken rap over sung hook", language: "es",
+          lyricalVibe: "Braggadocio flex",
+          specificInstruments: ["808 sub", "Hi-hat triplet roll", "Synth stab", "Brass section"],
+          specificArticulations: {}, bpm: 145,
+          harmonic: "Minor-key modal", texture: "Thick & saturated", mix: "Wide cinematic",
+        } },
+    ],
+  },
+{
+    artistId: "sabrina-carpenter",
+    artistName: "Sabrina Carpenter",
+    region: "international",
+    packs: [
+      { id: "sbc-1", name: "Espresso flirt", emoji: "☕", vibe: "playful", state: {
+          slots: [{ genre: "Pop", sub: "Dance-Pop", micro: null }, null, null],
+          mood: "Playful", energy: "Steady groove throughout", groove: "straight",
+          vocalist: "Breathy female lead", language: "en",
+          lyricalVibe: "Braggadocio flex",
+          specificInstruments: ["Synth bass", "Disco hi-hat", "Clean electric guitar", "Snap / clap layer"],
+          specificArticulations: {}, bpm: 104,
+          harmonic: "Major-key lift", texture: "Crystalline & brittle", mix: "Ultra clean & polished",
+        } },
+      { id: "sbc-2", name: "Please Please Please", emoji: "🙏", vibe: "romantic", state: {
+          slots: [{ genre: "Pop", sub: "Dance-Pop", micro: null }, null, null],
+          mood: "Romantic", energy: "Slow burn to explosion", groove: "straight",
+          vocalist: "Breathy female lead", language: "en",
+          lyricalVibe: "Romantic devotion",
+          specificInstruments: ["Synth pad", "808 drum machine", "Clean electric guitar", "Soft strings"],
+          specificArticulations: {}, bpm: 116,
+          harmonic: "Major-key lift", texture: "Velvety & plush", mix: "Wide cinematic",
+        } },
+      { id: "sbc-3", name: "Bed Chem groove", emoji: "🛏️", vibe: "romantic", state: {
+          slots: [{ genre: "Pop", sub: "Dance-Pop", micro: null }, null, null],
+          mood: "Smoldering", energy: "Steady groove throughout", groove: "syncopated",
+          vocalist: "Breathy female lead", language: "en",
+          lyricalVibe: "Romantic devotion",
+          specificInstruments: ["Synth bass", "Rhodes electric piano", "Snap / clap layer", "Synth pad"],
+          specificArticulations: {}, bpm: 102,
+          harmonic: "Jazz extensions", texture: "Velvety & plush", mix: "Ultra clean & polished",
+        } },
+      { id: "sbc-4", name: "Taste pop", emoji: "👅", vibe: "playful", state: {
+          slots: [{ genre: "Pop", sub: "Dance-Pop", micro: null }, null, null],
+          mood: "Playful", energy: "Euphoric continuous build", groove: "straight",
+          vocalist: "Breathy female lead", language: "en",
+          lyricalVibe: "Party celebration",
+          specificInstruments: ["Synth lead", "808 drum machine", "Disco hi-hat", "Bass synth"],
+          specificArticulations: {}, bpm: 120,
+          harmonic: "Major-key lift", texture: "Crystalline & brittle", mix: "Punchy & compressed",
+        } },
+      { id: "sbc-5", name: "Nonsense fun", emoji: "🎀", vibe: "playful", state: {
+          slots: [{ genre: "Pop", sub: "Dance-Pop", micro: null }, null, null],
+          mood: "Playful", energy: "Steady groove throughout", groove: "straight",
+          vocalist: "Whisper to full belt", language: "en",
+          lyricalVibe: "Romantic devotion",
+          specificInstruments: ["Synth pad", "Clean electric guitar", "Snap / clap layer", "Bass synth"],
+          specificArticulations: {}, bpm: 110,
+          harmonic: "Major-key lift", texture: "Crystalline & brittle", mix: "Ultra clean & polished",
+        } },
+      { id: "sbc-6", name: "Disco revival", emoji: "🪩", vibe: "anthemic", state: {
+          slots: [{ genre: "Pop", sub: "Dance-Pop", micro: null }, { genre: "Electronic", sub: "House", micro: null }, null],
+          mood: "Euphoric", energy: "Euphoric continuous build", groove: "straight",
+          vocalist: "Breathy female lead", language: "en",
+          lyricalVibe: "Party celebration",
+          specificInstruments: ["Disco hi-hat", "Synth bass", "Clean electric guitar", "String section"],
+          specificArticulations: {}, bpm: 124,
+          harmonic: "Major-key lift", texture: "Smooth & liquid", mix: "Punchy & compressed",
+        } },
+      { id: "sbc-7", name: "Vulnerable ballad", emoji: "💧", vibe: "heartbreak", state: {
+          slots: [{ genre: "Pop", sub: "Indie Pop", micro: null }, null, null],
+          mood: "Bittersweet", energy: "Slow burn to explosion", groove: "straight",
+          vocalist: "Breathy female lead", language: "en",
+          lyricalVibe: "Heartbreak elegy",
+          specificInstruments: ["Piano", "Acoustic guitar fingerpick", "Strings", "Soft drums"],
+          specificArticulations: {}, bpm: 72,
+          harmonic: "Minor-key introspection", texture: "Airy & weightless", mix: "Heavy reverb cathedral",
+        } },
+      { id: "sbc-8", name: "Emails I Can't Send", emoji: "📧", vibe: "moody", state: {
+          slots: [{ genre: "Pop", sub: "Indie Pop", micro: null }, null, null],
+          mood: "Pensive", energy: "Slow burn to explosion", groove: "straight",
+          vocalist: "Breathy female lead", language: "en",
+          lyricalVibe: "Confessional diary",
+          specificInstruments: ["Acoustic guitar fingerpick", "Piano", "Synth pad", "Soft drums"],
+          specificArticulations: {}, bpm: 88,
+          harmonic: "Major-key lift", texture: "Smooth & liquid", mix: "Ultra clean & polished",
+        } },
+      { id: "sbc-9", name: "Short n' Sweet anthem", emoji: "🍯", vibe: "anthemic", state: {
+          slots: [{ genre: "Pop", sub: "Dance-Pop", micro: null }, null, null],
+          mood: "Playful", energy: "Steady groove throughout", groove: "straight",
+          vocalist: "Breathy female lead", language: "en",
+          lyricalVibe: "Party celebration",
+          specificInstruments: ["Synth lead", "Drum machine", "Bass synth", "Synth pad"],
+          specificArticulations: {}, bpm: 118,
+          harmonic: "Major-key lift", texture: "Crystalline & brittle", mix: "Ultra clean & polished",
+        } },
+      { id: "sbc-10", name: "Witty flirt pop", emoji: "😏", vibe: "playful", state: {
+          slots: [{ genre: "Pop", sub: "Dance-Pop", micro: null }, null, null],
+          mood: "Playful", energy: "Steady groove throughout", groove: "syncopated",
+          vocalist: "Breathy female lead", language: "en",
+          lyricalVibe: "Braggadocio flex",
+          specificInstruments: ["Rhodes electric piano", "Disco hi-hat", "Synth bass", "Snap / clap layer"],
+          specificArticulations: {}, bpm: 108,
+          harmonic: "Jazz extensions", texture: "Velvety & plush", mix: "Ultra clean & polished",
+        } },
+    ],
+  },
+  {
+
+    artistId: "tate-mcrae",
+    artistName: "Tate McRae",
+    region: "international",
+    packs: [
+      { id: "tat-1", name: "Greedy sass", emoji: "💋", vibe: "confident", state: {
+          slots: [{ genre: "Pop", sub: "Dance-Pop", micro: null }, null, null],
+          mood: "Confident", energy: "Steady groove throughout", groove: "straight",
+          vocalist: "Breathy female lead", language: "en",
+          lyricalVibe: "Braggadocio flex",
+          specificInstruments: ["Synth bass", "Trap kit", "Snap / clap layer", "Synth stab"],
+          specificArticulations: {}, bpm: 110,
+          harmonic: "Minor-key modal", texture: "Crystalline & brittle", mix: "Punchy & compressed",
+        } },
+      { id: "tat-2", name: "exes dark pop", emoji: "🖤", vibe: "moody", state: {
+          slots: [{ genre: "Pop", sub: "Dance-Pop", micro: null }, null, null],
+          mood: "Smoldering", energy: "Fever-pitch final third", groove: "straight",
+          vocalist: "Breathy female lead", language: "en",
+          lyricalVibe: "Heartbreak elegy",
+          specificInstruments: ["808 drum machine", "Synth bass", "Arpeggiated synth", "Snap / clap layer"],
+          specificArticulations: {}, bpm: 124,
+          harmonic: "Minor-key introspection", texture: "Thick & saturated", mix: "Wide cinematic",
+        } },
+      { id: "tat-3", name: "Sports Car sensual", emoji: "🏎️", vibe: "romantic", state: {
+          slots: [{ genre: "Pop", sub: "Alt Pop", micro: null }, null, null],
+          mood: "Smoldering", energy: "Steady groove throughout", groove: "syncopated",
+          vocalist: "Breathy female lead", language: "en",
+          lyricalVibe: "Romantic devotion",
+          specificInstruments: ["Synth bass", "808 drum machine", "Synth pad", "Vocal chop"],
+          specificArticulations: {}, bpm: 118,
+          harmonic: "Minor-key introspection", texture: "Velvety & plush", mix: "Wide cinematic",
+        } },
+      { id: "tat-4", name: "10:35 dancefloor", emoji: "⏰", vibe: "playful", state: {
+          slots: [{ genre: "Electronic", sub: "House", micro: null }, null, null],
+          mood: "Euphoric", energy: "Euphoric continuous build", groove: "straight",
+          vocalist: "Breathy female lead", language: "en",
+          lyricalVibe: "Party celebration",
+          specificInstruments: ["4-on-the-floor kick", "Synth lead", "Bass synth", "Synth pad"],
+          specificArticulations: {}, bpm: 122,
+          harmonic: "Major-key lift", texture: "Crystalline & brittle", mix: "Punchy & compressed",
+        } },
+      { id: "tat-5", name: "you broke me first", emoji: "💔", vibe: "heartbreak", state: {
+          slots: [{ genre: "Pop", sub: "Indie Pop", micro: null }, null, null],
+          mood: "Bittersweet", energy: "Slow burn to explosion", groove: "straight",
+          vocalist: "Breathy female lead", language: "en",
+          lyricalVibe: "Heartbreak elegy",
+          specificInstruments: ["Piano", "Soft drums", "Synth pad", "Strings"],
+          specificArticulations: {}, bpm: 80,
+          harmonic: "Minor-key introspection", texture: "Airy & weightless", mix: "Heavy reverb cathedral",
+        } },
+      { id: "tat-6", name: "Think Later punch", emoji: "👊", vibe: "anthemic", state: {
+          slots: [{ genre: "Pop", sub: "Dance-Pop", micro: null }, { genre: "Hip-Hop", sub: "Trap", micro: null }, null],
+          mood: "Defiant", energy: "Steady groove throughout", groove: "straight",
+          vocalist: "Breathy female lead", language: "en",
+          lyricalVibe: "Braggadocio flex",
+          specificInstruments: ["808 drum machine", "Synth bass", "Hi-hat triplet roll", "Synth stab"],
+          specificArticulations: {}, bpm: 128,
+          harmonic: "Minor-key modal", texture: "Thick & saturated", mix: "Punchy & compressed",
+        } },
+      { id: "tat-7", name: "Trust Issues", emoji: "🔒", vibe: "moody", state: {
+          slots: [{ genre: "Pop", sub: "Alt Pop", micro: null }, null, null],
+          mood: "Pensive", energy: "Slow burn to explosion", groove: "straight",
+          vocalist: "Whisper to full belt", language: "en",
+          lyricalVibe: "Heartbreak elegy",
+          specificInstruments: ["Piano", "808 sub", "Ambient synth wash", "Finger snaps"],
+          specificArticulations: {}, bpm: 90,
+          harmonic: "Minor-key introspection", texture: "Smooth & liquid", mix: "Wide cinematic",
+        } },
+      { id: "tat-8", name: "Bloodonmyhands dark", emoji: "🩸", vibe: "moody", state: {
+          slots: [{ genre: "Pop", sub: "Alt Pop", micro: null }, null, null],
+          mood: "Smoldering", energy: "Fever-pitch final third", groove: "straight",
+          vocalist: "Whisper to full belt", language: "en",
+          lyricalVibe: "Braggadocio flex",
+          specificInstruments: ["Sub bass", "Vocal chop", "Finger snaps", "Dark piano"],
+          specificArticulations: {}, bpm: 96,
+          harmonic: "Minor-key introspection", texture: "Thick & saturated", mix: "Wide cinematic",
+        } },
+      { id: "tat-9", name: "She's All I Wanna Be", emoji: "🌀", vibe: "moody", state: {
+          slots: [{ genre: "Pop", sub: "Indie Pop", micro: null }, null, null],
+          mood: "Bittersweet", energy: "Steady groove throughout", groove: "straight",
+          vocalist: "Breathy female lead", language: "en",
+          lyricalVibe: "Confessional diary",
+          specificInstruments: ["Clean electric guitar", "Soft drums", "Synth pad", "Piano"],
+          specificArticulations: {}, bpm: 106,
+          harmonic: "Minor-key introspection", texture: "Airy & weightless", mix: "Ultra clean & polished",
+        } },
+      { id: "tat-10", name: "Dance break showcase", emoji: "💃", vibe: "anthemic", state: {
+          slots: [{ genre: "Pop", sub: "Dance-Pop", micro: null }, null, null],
+          mood: "Confident", energy: "Euphoric continuous build", groove: "straight",
+          vocalist: "Breathy female lead", language: "en",
+          lyricalVibe: "Party celebration",
+          specificInstruments: ["Synth lead", "Trap kit", "Snap / clap layer", "Synth stab"],
+          specificArticulations: {}, bpm: 120,
+          harmonic: "Minor-key modal", texture: "Crystalline & brittle", mix: "Punchy & compressed",
+        } },
+    ],
+  },
+  {
+
+    artistId: "don-toliver",
+    artistName: "Don Toliver",
+    region: "international",
+    packs: [
+      { id: "dnt-1", name: "No Idea hazy", emoji: "🌫️", vibe: "romantic", state: {
+          slots: [{ genre: "Hip-Hop", sub: "Melodic Rap", micro: null }, null, null],
+          mood: "Smoldering", energy: "Slow burn to explosion", groove: "half-time",
+          vocalist: "Auto-tuned melodic delivery", language: "en",
+          lyricalVibe: "Romantic devotion",
+          specificInstruments: ["808 sub", "Ambient synth wash", "Hi-hat triplet roll", "Moody piano"],
+          specificArticulations: {}, bpm: 76,
+          harmonic: "Minor-key introspection", texture: "Velvety & plush", mix: "Heavy reverb cathedral",
+        } },
+      { id: "dnt-2", name: "After Party vibes", emoji: "🌌", vibe: "playful", state: {
+          slots: [{ genre: "Hip-Hop", sub: "Melodic Rap", micro: null }, null, null],
+          mood: "Dreamy", energy: "Steady groove throughout", groove: "half-time",
+          vocalist: "Auto-tuned melodic delivery", language: "en",
+          lyricalVibe: "Braggadocio flex",
+          specificInstruments: ["808 drum machine", "Synth pad", "Hi-hat triplet roll", "Vocal chop"],
+          specificArticulations: {}, bpm: 88,
+          harmonic: "Minor-key modal", texture: "Airy & weightless", mix: "Wide cinematic",
+        } },
+      { id: "dnt-3", name: "Cactus Jack rage", emoji: "🌵", vibe: "anthemic", state: {
+          slots: [{ genre: "Hip-Hop", sub: "Trap", micro: null }, null, null],
+          mood: "Defiant", energy: "Fever-pitch final third", groove: "half-time",
+          vocalist: "Auto-tuned melodic delivery", language: "en",
+          lyricalVibe: "Braggadocio flex",
+          specificInstruments: ["Distorted sub bass", "Hi-hat triplet roll", "Synth stab", "Dark piano"],
+          specificArticulations: {}, bpm: 132,
+          harmonic: "Minor-key introspection", texture: "Thick & saturated", mix: "Punchy & compressed",
+        } },
+      { id: "dnt-4", name: "Melodic hook master", emoji: "🎵", vibe: "romantic", state: {
+          slots: [{ genre: "Hip-Hop", sub: "Melodic Rap", micro: null }, null, null],
+          mood: "Nostalgic", energy: "Slow burn to explosion", groove: "half-time",
+          vocalist: "Auto-tuned melodic delivery", language: "en",
+          lyricalVibe: "Romantic devotion",
+          specificInstruments: ["Rhodes electric piano", "808 sub", "Synth pad", "Hi-hat triplet roll"],
+          specificArticulations: {}, bpm: 92,
+          harmonic: "Minor-key introspection", texture: "Smooth & liquid", mix: "Wide cinematic",
+        } },
+      { id: "dnt-5", name: "Psychedelic trap", emoji: "🌀", vibe: "moody", state: {
+          slots: [{ genre: "Hip-Hop", sub: "Trap", micro: null }, null, null],
+          mood: "Smoldering", energy: "Slow burn to explosion", groove: "half-time",
+          vocalist: "Auto-tuned melodic delivery", language: "en",
+          lyricalVibe: "Confessional diary",
+          specificInstruments: ["Ambient synth wash", "808 sub", "Vocal chop", "Arpeggiated synth"],
+          specificArticulations: {}, bpm: 80,
+          harmonic: "Minor-key introspection", texture: "Airy & weightless", mix: "Heavy reverb cathedral",
+        } },
+      { id: "dnt-6", name: "Life of a Don bop", emoji: "💎", vibe: "confident", state: {
+          slots: [{ genre: "Hip-Hop", sub: "Melodic Rap", micro: null }, null, null],
+          mood: "Confident", energy: "Euphoric continuous build", groove: "half-time",
+          vocalist: "Auto-tuned melodic delivery", language: "en",
+          lyricalVibe: "Braggadocio flex",
+          specificInstruments: ["808 drum machine", "Synth lead", "Hi-hat triplet roll", "Synth pad"],
+          specificArticulations: {}, bpm: 100,
+          harmonic: "Minor-key modal", texture: "Thick & saturated", mix: "Wide cinematic",
+        } },
+      { id: "dnt-7", name: "Drugs N Hella Melodies", emoji: "🌙", vibe: "moody", state: {
+          slots: [{ genre: "Hip-Hop", sub: "Melodic Rap", micro: null }, null, null],
+          mood: "Smoldering", energy: "Slow burn to explosion", groove: "half-time",
+          vocalist: "Auto-tuned melodic delivery", language: "en",
+          lyricalVibe: "Confessional diary",
+          specificInstruments: ["808 sub", "Synth pad", "Dark piano", "Vocal chop"],
+          specificArticulations: {}, bpm: 78,
+          harmonic: "Minor-key introspection", texture: "Velvety & plush", mix: "Heavy reverb cathedral",
+        } },
+      { id: "dnt-8", name: "Ethereal intro", emoji: "✨", vibe: "moody", state: {
+          slots: [{ genre: "R&B / Soul", sub: "Alt R&B", micro: null }, null, null],
+          mood: "Dreamy", energy: "Slow burn to explosion", groove: "half-time",
+          vocalist: "Falsetto-led", language: "en",
+          lyricalVibe: "Romantic devotion",
+          specificInstruments: ["Ambient synth wash", "808 sub", "Moody piano", "Vocal chop"],
+          specificArticulations: {}, bpm: 72,
+          harmonic: "Jazz extensions", texture: "Airy & weightless", mix: "Heavy reverb cathedral",
+        } },
+      { id: "dnt-9", name: "Travis Scott collab", emoji: "🔥", vibe: "anthemic", state: {
+          slots: [{ genre: "Hip-Hop", sub: "Trap", micro: null }, { genre: "Hip-Hop", sub: "Melodic Rap", micro: null }, null],
+          mood: "Defiant", energy: "Fever-pitch final third", groove: "half-time",
+          vocalist: "Auto-tuned melodic delivery", language: "en",
+          lyricalVibe: "Braggadocio flex",
+          specificInstruments: ["Hi-hat triplet roll", "Distorted sub bass", "Synth stab", "Synth pad"],
+          specificArticulations: {}, bpm: 140,
+          harmonic: "Minor-key introspection", texture: "Thick & saturated", mix: "Punchy & compressed",
+        } },
+      { id: "dnt-10", name: "Hardstone Psycho", emoji: "🏔️", vibe: "anthemic", state: {
+          slots: [{ genre: "Hip-Hop", sub: "Melodic Rap", micro: null }, null, null],
+          mood: "Defiant", energy: "Steady groove throughout", groove: "half-time",
+          vocalist: "Auto-tuned melodic delivery", language: "en",
+          lyricalVibe: "Braggadocio flex",
+          specificInstruments: ["808 drum machine", "Hi-hat triplet roll", "Synth lead", "Synth pad"],
+          specificArticulations: {}, bpm: 110,
+          harmonic: "Minor-key modal", texture: "Thick & saturated", mix: "Wide cinematic",
+        } },
+    ],
+  },
+  // ══════════════ ISRAELI ══════════════
+  {
+    artistId: "noa-kirel",
+    artistName: "Noa Kirel",
+    region: "israeli",
+    packs: [
+      { id: "nkl-1", name: "Unicorn Eurovision", emoji: "🦄", vibe: "anthemic", state: {
+          slots: [{ genre: "Pop", sub: "Hebrew dance-pop", micro: null }, null, null],
+          mood: "Euphoric", energy: "Euphoric continuous build", groove: "straight",
+          vocalist: "Breathy female lead", language: "he",
+          lyricalVibe: "Braggadocio flex",
+          specificInstruments: ["Synth lead", "808 drum machine", "Snap / clap layer", "Bass synth"],
+          specificArticulations: {}, bpm: 122,
+          harmonic: "Major-key lift", texture: "Crystalline & brittle", mix: "Ultra clean & polished",
+        } },
+      { id: "nkl-2", name: "Tel Aviv club anthem", emoji: "🌃", vibe: "anthemic", state: {
+          slots: [{ genre: "Pop", sub: "Hebrew dance-pop", micro: null }, { genre: "Electronic", sub: "House", micro: null }, null],
+          mood: "Confident", energy: "Euphoric continuous build", groove: "straight",
+          vocalist: "Breathy female lead", language: "he",
+          lyricalVibe: "Party celebration",
+          specificInstruments: ["4-on-the-floor kick", "Synth lead", "Bass synth", "Synth pad"],
+          specificArticulations: {}, bpm: 126,
+          harmonic: "Major-key lift", texture: "Crystalline & brittle", mix: "Punchy & compressed",
+        } },
+      { id: "nkl-3", name: "K-pop Hebrew hook", emoji: "💫", vibe: "playful", state: {
+          slots: [{ genre: "Pop", sub: "K-pop-structured Hebrew hook", micro: null }, null, null],
+          mood: "Playful", energy: "Fever-pitch final third", groove: "syncopated",
+          vocalist: "Breathy female lead", language: "he",
+          lyricalVibe: "Party celebration",
+          specificInstruments: ["Synth lead", "Trap kit", "Snap / clap layer", "Synth pad"],
+          specificArticulations: {}, bpm: 118,
+          harmonic: "Major-key lift", texture: "Smooth & liquid", mix: "Ultra clean & polished",
+        } },
+      { id: "nkl-4", name: "Summer Mediterranean", emoji: "☀️", vibe: "playful", state: {
+          slots: [{ genre: "World / Global", sub: "Oriental-pop crossover", micro: null }, { genre: "Pop", sub: "Hebrew dance-pop", micro: null }, null],
+          mood: "Playful", energy: "Steady groove throughout", groove: "syncopated",
+          vocalist: "Breathy female lead", language: "he",
+          lyricalVibe: "Party celebration",
+          specificInstruments: ["Mediterranean pluck synth", "Darbuka", "Synth pad", "Bass synth"],
+          specificArticulations: {}, bpm: 112,
+          harmonic: "Phrygian exotic tension", texture: "Warm & sun-baked", mix: "Ultra clean & polished",
+        } },
+      { id: "nkl-5", name: "Empowerment belt", emoji: "👑", vibe: "anthemic", state: {
+          slots: [{ genre: "Pop", sub: "Hebrew dance-pop", micro: null }, null, null],
+          mood: "Defiant", energy: "Euphoric continuous build", groove: "straight",
+          vocalist: "Whisper to full belt", language: "he",
+          lyricalVibe: "Braggadocio flex",
+          specificInstruments: ["Synth lead", "808 drum machine", "Piano", "Synth pad"],
+          specificArticulations: {}, bpm: 120,
+          harmonic: "Major-key lift", texture: "Thick & saturated", mix: "Wide cinematic",
+        } },
+      { id: "nkl-6", name: "Please Don't Suck", emoji: "⚡", vibe: "playful", state: {
+          slots: [{ genre: "Pop", sub: "Hebrew dance-pop", micro: null }, null, null],
+          mood: "Playful", energy: "Euphoric continuous build", groove: "straight",
+          vocalist: "Breathy female lead", language: "he",
+          lyricalVibe: "Braggadocio flex",
+          specificInstruments: ["Synth stab", "808 drum machine", "Snap / clap layer", "Bass synth"],
+          specificArticulations: {}, bpm: 128,
+          harmonic: "Major-key lift", texture: "Crystalline & brittle", mix: "Punchy & compressed",
+        } },
+      { id: "nkl-7", name: "Trendi youth", emoji: "📱", vibe: "playful", state: {
+          slots: [{ genre: "Pop", sub: "Hebrew dance-pop", micro: null }, null, null],
+          mood: "Playful", energy: "Steady groove throughout", groove: "syncopated",
+          vocalist: "Breathy female lead", language: "he",
+          lyricalVibe: "Coming-of-age narrative",
+          specificInstruments: ["Synth lead", "Trap kit", "Vocal chop", "Snap / clap layer"],
+          specificArticulations: {}, bpm: 115,
+          harmonic: "Major-key lift", texture: "Crystalline & brittle", mix: "Ultra clean & polished",
+        } },
+      { id: "nkl-8", name: "Bada Boom pop", emoji: "💥", vibe: "playful", state: {
+          slots: [{ genre: "Pop", sub: "Hebrew dance-pop", micro: null }, null, null],
+          mood: "Playful", energy: "Euphoric continuous build", groove: "straight",
+          vocalist: "Breathy female lead", language: "he",
+          lyricalVibe: "Party celebration",
+          specificInstruments: ["Synth stab", "808 drum machine", "Snap / clap layer", "Brass section"],
+          specificArticulations: {}, bpm: 124,
+          harmonic: "Major-key lift", texture: "Crystalline & brittle", mix: "Ultra clean & polished",
+        } },
+      { id: "nkl-9", name: "Princess fairytale", emoji: "🏰", vibe: "romantic", state: {
+          slots: [{ genre: "Pop", sub: "Dance-Pop", micro: null }, null, null],
+          mood: "Dreamy", energy: "Euphoric continuous build", groove: "straight",
+          vocalist: "Breathy female lead", language: "he",
+          lyricalVibe: "Romantic devotion",
+          specificInstruments: ["Piano", "Synth pad", "Soft strings", "Synth lead"],
+          specificArticulations: {}, bpm: 110,
+          harmonic: "Major-key lift", texture: "Smooth & liquid", mix: "Ultra clean & polished",
+        } },
+      { id: "nkl-10", name: "Eurovision belt", emoji: "🎤", vibe: "anthemic", state: {
+          slots: [{ genre: "Pop", sub: "Hebrew dance-pop", micro: null }, null, null],
+          mood: "Euphoric", energy: "Fever-pitch final third", groove: "straight",
+          vocalist: "Whisper to full belt", language: "he",
+          lyricalVibe: "Braggadocio flex",
+          specificInstruments: ["Orchestral hit", "808 drum machine", "Synth lead", "Synth stab"],
+          specificArticulations: {}, bpm: 132,
+          harmonic: "Major-key lift", texture: "Thick & saturated", mix: "Wide cinematic",
+        } },
+    ],
+  },
+  {
+    artistId: "omer-adam",
+    artistName: "Omer Adam",
+    region: "israeli",
+    packs: [
+      { id: "oad-1", name: "Mizrahi wedding", emoji: "💍", vibe: "playful", state: {
+          slots: [{ genre: "World / Global", sub: "Modern Mizrahi pop", micro: null }, null, null],
+          mood: "Euphoric", energy: "Euphoric continuous build", groove: "syncopated",
+          vocalist: "Melismatic soprano", language: "he",
+          lyricalVibe: "Generational family story",
+          specificInstruments: ["Oud", "Darbuka", "Kanoun", "Synth pad"],
+          specificArticulations: {}, bpm: 108,
+          harmonic: "Phrygian exotic tension", texture: "Warm & sun-baked", mix: "Ultra clean & polished",
+        } },
+      { id: "oad-2", name: "Tel Aviv rooftop", emoji: "🌆", vibe: "romantic", state: {
+          slots: [{ genre: "World / Global", sub: "Modern Mizrahi pop", micro: null }, { genre: "Pop", sub: "Hebrew dance-pop", micro: null }, null],
+          mood: "Romantic", energy: "Slow burn to explosion", groove: "syncopated",
+          vocalist: "Smooth tenor", language: "he",
+          lyricalVibe: "Romantic devotion",
+          specificInstruments: ["Bouzouki", "Synth pad", "Darbuka", "Piano"],
+          specificArticulations: {}, bpm: 104,
+          harmonic: "Phrygian exotic tension", texture: "Velvety & plush", mix: "Wide cinematic",
+        } },
+      { id: "oad-3", name: "Longing ballad", emoji: "💫", vibe: "heartbreak", state: {
+          slots: [{ genre: "World / Global", sub: "Modern Mizrahi pop", micro: null }, null, null],
+          mood: "Nostalgic", energy: "Slow burn to explosion", groove: "straight",
+          vocalist: "Melismatic soprano", language: "he",
+          lyricalVibe: "Heartbreak elegy",
+          specificInstruments: ["Oud", "Ney flute", "Kanoun", "Soft strings"],
+          specificArticulations: {}, bpm: 72,
+          harmonic: "Minor-key introspection", texture: "Smooth & liquid", mix: "Heavy reverb cathedral",
+        } },
+      { id: "oad-4", name: "Celebration groove", emoji: "🎉", vibe: "playful", state: {
+          slots: [{ genre: "World / Global", sub: "Oriental-pop crossover", micro: null }, null, null],
+          mood: "Playful", energy: "Euphoric continuous build", groove: "syncopated",
+          vocalist: "Smooth tenor", language: "he",
+          lyricalVibe: "Party celebration",
+          specificInstruments: ["Darbuka", "Oud", "Mediterranean pluck synth", "Bass synth"],
+          specificArticulations: {}, bpm: 112,
+          harmonic: "Phrygian exotic tension", texture: "Warm & sun-baked", mix: "Punchy & compressed",
+        } },
+      { id: "oad-5", name: "Modern fusion", emoji: "🌊", vibe: "confident", state: {
+          slots: [{ genre: "World / Global", sub: "Modern Mizrahi pop", micro: null }, { genre: "Hip-Hop", sub: "Mediterranean-trap fusion", micro: null }, null],
+          mood: "Confident", energy: "Steady groove throughout", groove: "half-time",
+          vocalist: "Smooth tenor", language: "he",
+          lyricalVibe: "Ode to a place",
+          specificInstruments: ["Oud", "808 drum machine", "Darbuka", "Synth pad"],
+          specificArticulations: {}, bpm: 108,
+          harmonic: "Phrygian exotic tension", texture: "Thick & saturated", mix: "Wide cinematic",
+        } },
+      { id: "oad-6", name: "Tahiti dreams", emoji: "🏝️", vibe: "romantic", state: {
+          slots: [{ genre: "World / Global", sub: "Modern Mizrahi pop", micro: null }, null, null],
+          mood: "Romantic", energy: "Steady groove throughout", groove: "syncopated",
+          vocalist: "Smooth tenor", language: "he",
+          lyricalVibe: "Romantic devotion",
+          specificInstruments: ["Oud", "Synth pad", "Soft strings", "Darbuka"],
+          specificArticulations: {}, bpm: 98,
+          harmonic: "Major-key lift", texture: "Warm & sun-baked", mix: "Ultra clean & polished",
+        } },
+      { id: "oad-7", name: "Shabechi anthem", emoji: "🙏", vibe: "anthemic", state: {
+          slots: [{ genre: "World / Global", sub: "Modern Mizrahi pop", micro: null }, null, null],
+          mood: "Tender", energy: "Euphoric continuous build", groove: "straight",
+          vocalist: "Melismatic soprano", language: "he",
+          lyricalVibe: "Generational family story",
+          specificInstruments: ["Oud", "Ney flute", "Piano", "Soft strings"],
+          specificArticulations: {}, bpm: 88,
+          harmonic: "Minor-key introspection", texture: "Smooth & liquid", mix: "Heavy reverb cathedral",
+        } },
+      { id: "oad-8", name: "Dance floor Mizrahi", emoji: "🪩", vibe: "playful", state: {
+          slots: [{ genre: "World / Global", sub: "Modern Mizrahi pop", micro: null }, null, null],
+          mood: "Euphoric", energy: "Euphoric continuous build", groove: "syncopated",
+          vocalist: "Melismatic soprano", language: "he",
+          lyricalVibe: "Party celebration",
+          specificInstruments: ["Darbuka", "Synth lead", "Oud", "808 drum machine"],
+          specificArticulations: {}, bpm: 116,
+          harmonic: "Phrygian exotic tension", texture: "Thick & saturated", mix: "Punchy & compressed",
+        } },
+      { id: "oad-9", name: "Yeminite groove", emoji: "🕌", vibe: "confident", state: {
+          slots: [{ genre: "World / Global", sub: "Modern Mizrahi pop", micro: null }, null, null],
+          mood: "Confident", energy: "Euphoric continuous build", groove: "syncopated",
+          vocalist: "Melismatic soprano", language: "he",
+          lyricalVibe: "Generational family story",
+          specificInstruments: ["Oud", "Darbuka", "Kanoun", "Ney flute"],
+          specificArticulations: {}, bpm: 100,
+          harmonic: "Phrygian exotic tension", texture: "Warm & sun-baked", mix: "Ultra clean & polished",
+        } },
+      { id: "oad-10", name: "Summer Mediterranean", emoji: "🌅", vibe: "playful", state: {
+          slots: [{ genre: "World / Global", sub: "Oriental-pop crossover", micro: null }, null, null],
+          mood: "Playful", energy: "Euphoric continuous build", groove: "syncopated",
+          vocalist: "Smooth tenor", language: "he",
+          lyricalVibe: "Party celebration",
+          specificInstruments: ["Mediterranean pluck synth", "Darbuka", "Bouzouki", "Bass synth"],
+          specificArticulations: {}, bpm: 110,
+          harmonic: "Major-key lift", texture: "Warm & sun-baked", mix: "Ultra clean & polished",
+        } },
+    ],
+  },
+  {
+    artistId: "static-ben-el",
+    artistName: "Static & Ben El",
+    region: "israeli",
+    packs: [
+      { id: "sbe-1", name: "Tu Tu Tu earworm", emoji: "🎵", vibe: "moody", state: {
+          slots: [{ genre: "Pop", sub: "Hebrew dance-pop", micro: null }, null, null],
+          mood: "Catchy", energy: "Euphoric continuous build", groove: "syncopated",
+          vocalist: "Spoken rap over sung hook", language: "he",
+          lyricalVibe: "Party celebration",
+          specificInstruments: ["Synth lead", "808 drum machine", "Snap / clap layer", "Bass synth"],
+          specificArticulations: {}, bpm: 118,
+          harmonic: "Major-key lift", texture: "Crystalline & brittle", mix: "Punchy & compressed",
+        } },
+      { id: "sbe-2", name: "Caribbean crossover", emoji: "🏖️", vibe: "playful", state: {
+          slots: [{ genre: "Pop", sub: "Hebrew dance-pop", micro: null }, { genre: "Latin", sub: "Reggaeton", micro: null }, null],
+          mood: "Playful", energy: "Steady groove throughout", groove: "syncopated",
+          vocalist: "Spoken rap over sung hook", language: "he",
+          lyricalVibe: "Romantic devotion",
+          specificInstruments: ["Dembow rhythm", "Synth lead", "Marimba", "Bass synth"],
+          specificArticulations: {}, bpm: 102,
+          harmonic: "Major-key lift", texture: "Warm & sun-baked", mix: "Ultra clean & polished",
+        } },
+      { id: "sbe-3", name: "Weekend house party", emoji: "🍾", vibe: "playful", state: {
+          slots: [{ genre: "Electronic", sub: "Hebrew house", micro: null }, null, null],
+          mood: "Euphoric", energy: "Euphoric continuous build", groove: "straight",
+          vocalist: "Spoken rap over sung hook", language: "he",
+          lyricalVibe: "Party celebration",
+          specificInstruments: ["4-on-the-floor kick", "Synth lead", "Bass synth", "Synth pad"],
+          specificArticulations: {}, bpm: 124,
+          harmonic: "Major-key lift", texture: "Smooth & liquid", mix: "Punchy & compressed",
+        } },
+      { id: "sbe-4", name: "Afro-Israeli fusion", emoji: "🌍", vibe: "confident", state: {
+          slots: [{ genre: "Pop", sub: "Hebrew dance-pop", micro: null }, { genre: "World / Global", sub: "Afrobeats", micro: null }, null],
+          mood: "Confident", energy: "Steady groove throughout", groove: "syncopated",
+          vocalist: "Spoken rap over sung hook", language: "he",
+          lyricalVibe: "Braggadocio flex",
+          specificInstruments: ["Log drum bass", "Afrobeats kit", "Synth lead", "Marimba"],
+          specificArticulations: {}, bpm: 106,
+          harmonic: "Major-key lift", texture: "Warm & sun-baked", mix: "Wide cinematic",
+        } },
+      { id: "sbe-5", name: "Radio anthem", emoji: "📻", vibe: "anthemic", state: {
+          slots: [{ genre: "Pop", sub: "Hebrew dance-pop", micro: null }, null, null],
+          mood: "Catchy", energy: "Euphoric continuous build", groove: "straight",
+          vocalist: "Spoken rap over sung hook", language: "he",
+          lyricalVibe: "Romantic devotion",
+          specificInstruments: ["Synth lead", "808 drum machine", "Piano", "Bass synth"],
+          specificArticulations: {}, bpm: 120,
+          harmonic: "Major-key lift", texture: "Crystalline & brittle", mix: "Ultra clean & polished",
+        } },
+      { id: "sbe-6", name: "Summer hit 2025", emoji: "🌞", vibe: "playful", state: {
+          slots: [{ genre: "Pop", sub: "Hebrew dance-pop", micro: null }, null, null],
+          mood: "Euphoric", energy: "Euphoric continuous build", groove: "straight",
+          vocalist: "Spoken rap over sung hook", language: "he",
+          lyricalVibe: "Party celebration",
+          specificInstruments: ["Synth lead", "Marimba", "Snap / clap layer", "Bass synth"],
+          specificArticulations: {}, bpm: 114,
+          harmonic: "Major-key lift", texture: "Warm & sun-baked", mix: "Ultra clean & polished",
+        } },
+      { id: "sbe-7", name: "Trap duo flex", emoji: "💸", vibe: "confident", state: {
+          slots: [{ genre: "Hip-Hop", sub: "Mediterranean-trap fusion", micro: null }, null, null],
+          mood: "Confident", energy: "Fever-pitch final third", groove: "half-time",
+          vocalist: "Spoken rap over sung hook", language: "he",
+          lyricalVibe: "Braggadocio flex",
+          specificInstruments: ["808 drum machine", "Hi-hat triplet roll", "Synth pad", "Bass synth"],
+          specificArticulations: {}, bpm: 140,
+          harmonic: "Minor-key introspection", texture: "Thick & saturated", mix: "Wide cinematic",
+        } },
+      { id: "sbe-8", name: "Romantic duet", emoji: "💕", vibe: "romantic", state: {
+          slots: [{ genre: "Pop", sub: "Hebrew dance-pop", micro: null }, null, null],
+          mood: "Romantic", energy: "Slow burn to explosion", groove: "straight",
+          vocalist: "Smooth tenor", language: "he",
+          lyricalVibe: "Romantic devotion",
+          specificInstruments: ["Piano", "Synth pad", "Clean electric guitar", "Soft strings"],
+          specificArticulations: {}, bpm: 96,
+          harmonic: "Major-key lift", texture: "Smooth & liquid", mix: "Ultra clean & polished",
+        } },
+      { id: "sbe-9", name: "Mediterranean vibes", emoji: "🌊", vibe: "playful", state: {
+          slots: [{ genre: "World / Global", sub: "Oriental-pop crossover", micro: null }, null, null],
+          mood: "Playful", energy: "Steady groove throughout", groove: "syncopated",
+          vocalist: "Spoken rap over sung hook", language: "he",
+          lyricalVibe: "Party celebration",
+          specificInstruments: ["Mediterranean pluck synth", "Darbuka", "Bouzouki", "808 drum machine"],
+          specificArticulations: {}, bpm: 108,
+          harmonic: "Major-key lift", texture: "Warm & sun-baked", mix: "Ultra clean & polished",
+        } },
+      { id: "sbe-10", name: "Club banger", emoji: "🔊", vibe: "anthemic", state: {
+          slots: [{ genre: "Electronic", sub: "Hebrew house", micro: null }, { genre: "Pop", sub: "Hebrew dance-pop", micro: null }, null],
+          mood: "Euphoric", energy: "Fever-pitch final third", groove: "straight",
+          vocalist: "Spoken rap over sung hook", language: "he",
+          lyricalVibe: "Party celebration",
+          specificInstruments: ["4-on-the-floor kick", "Synth lead", "Bass synth", "Snap / clap layer"],
+          specificArticulations: {}, bpm: 128,
+          harmonic: "Major-key lift", texture: "Crystalline & brittle", mix: "Punchy & compressed",
+        } },
+    ],
+  },
+  {
+    artistId: "stephane-legar",
+    artistName: "Stéphane Legar",
+    region: "israeli",
+    packs: [
+      { id: "slg-1", name: "Afro-pop crossover", emoji: "🌍", vibe: "playful", state: {
+          slots: [{ genre: "Pop", sub: "Hebrew dance-pop", micro: null }, { genre: "World / Global", sub: "Afrobeats", micro: null }, null],
+          mood: "Playful", energy: "Euphoric continuous build", groove: "syncopated",
+          vocalist: "Spoken rap over sung hook", language: "he",
+          lyricalVibe: "Party celebration",
+          specificInstruments: ["Log drum bass", "Afrobeats kit", "Marimba", "Synth lead"],
+          specificArticulations: {}, bpm: 108,
+          harmonic: "Major-key lift", texture: "Warm & sun-baked", mix: "Punchy & compressed",
+        } },
+      { id: "slg-2", name: "French Israeli charm", emoji: "🇫🇷", vibe: "romantic", state: {
+          slots: [{ genre: "Pop", sub: "Hebrew dance-pop", micro: null }, null, null],
+          mood: "Romantic", energy: "Euphoric continuous build", groove: "syncopated",
+          vocalist: "Smooth tenor", language: "he",
+          lyricalVibe: "Romantic devotion",
+          specificInstruments: ["Nylon string guitar", "Synth pad", "Snap / clap layer", "Bass synth"],
+          specificArticulations: {}, bpm: 102,
+          harmonic: "Major-key lift", texture: "Warm & sun-baked", mix: "Ultra clean & polished",
+        } },
+      { id: "slg-3", name: "Afroswing hype", emoji: "🔥", vibe: "confident", state: {
+          slots: [{ genre: "Pop", sub: "Hebrew dance-pop", micro: null }, { genre: "World / Global", sub: "Afrobeats", micro: null }, null],
+          mood: "Confident", energy: "Euphoric continuous build", groove: "syncopated",
+          vocalist: "Spoken rap over sung hook", language: "he",
+          lyricalVibe: "Braggadocio flex",
+          specificInstruments: ["Log drum bass", "Afrobeats kit", "808 drum machine", "Marimba"],
+          specificArticulations: {}, bpm: 98,
+          harmonic: "Major-key lift", texture: "Crystalline & brittle", mix: "Wide cinematic",
+        } },
+      { id: "slg-4", name: "Dance floor fire", emoji: "💃", vibe: "playful", state: {
+          slots: [{ genre: "Pop", sub: "Hebrew dance-pop", micro: null }, null, null],
+          mood: "Playful", energy: "Euphoric continuous build", groove: "syncopated",
+          vocalist: "Spoken rap over sung hook", language: "he",
+          lyricalVibe: "Party celebration",
+          specificInstruments: ["Synth lead", "808 drum machine", "Snap / clap layer", "Marimba"],
+          specificArticulations: {}, bpm: 116,
+          harmonic: "Major-key lift", texture: "Crystalline & brittle", mix: "Ultra clean & polished",
+        } },
+      { id: "slg-5", name: "Summer anthem", emoji: "☀️", vibe: "anthemic", state: {
+          slots: [{ genre: "Pop", sub: "Hebrew dance-pop", micro: null }, null, null],
+          mood: "Euphoric", energy: "Euphoric continuous build", groove: "syncopated",
+          vocalist: "Spoken rap over sung hook", language: "he",
+          lyricalVibe: "Party celebration",
+          specificInstruments: ["Marimba", "Log drum bass", "Synth lead", "Bass synth"],
+          specificArticulations: {}, bpm: 106,
+          harmonic: "Major-key lift", texture: "Warm & sun-baked", mix: "Ultra clean & polished",
+        } },
+      { id: "slg-6", name: "Caribbean heat", emoji: "🏝️", vibe: "playful", state: {
+          slots: [{ genre: "Latin", sub: "Reggaeton", micro: null }, null, null],
+          mood: "Playful", energy: "Euphoric continuous build", groove: "syncopated",
+          vocalist: "Spoken rap over sung hook", language: "he",
+          lyricalVibe: "Romantic devotion",
+          specificInstruments: ["Dembow rhythm", "Marimba", "Synth lead", "Log drum bass"],
+          specificArticulations: {}, bpm: 96,
+          harmonic: "Minor-key modal", texture: "Warm & sun-baked", mix: "Punchy & compressed",
+        } },
+      { id: "slg-7", name: "Zouk groove", emoji: "🌴", vibe: "romantic", state: {
+          slots: [{ genre: "Pop", sub: "Hebrew dance-pop", micro: null }, null, null],
+          mood: "Romantic", energy: "Steady groove throughout", groove: "syncopated",
+          vocalist: "Smooth tenor", language: "he",
+          lyricalVibe: "Romantic devotion",
+          specificInstruments: ["Nylon string guitar", "Synth pad", "Log drum bass", "Marimba"],
+          specificArticulations: {}, bpm: 92,
+          harmonic: "Major-key lift", texture: "Velvety & plush", mix: "Ultra clean & polished",
+        } },
+      { id: "slg-8", name: "Club Paris TLV", emoji: "🗼", vibe: "confident", state: {
+          slots: [{ genre: "Pop", sub: "Hebrew dance-pop", micro: null }, { genre: "Electronic", sub: "House", micro: null }, null],
+          mood: "Confident", energy: "Euphoric continuous build", groove: "straight",
+          vocalist: "Spoken rap over sung hook", language: "he",
+          lyricalVibe: "Party celebration",
+          specificInstruments: ["Synth lead", "808 drum machine", "4-on-the-floor kick", "Bass synth"],
+          specificArticulations: {}, bpm: 122,
+          harmonic: "Major-key lift", texture: "Crystalline & brittle", mix: "Ultra clean & polished",
+        } },
+      { id: "slg-9", name: "Melodic crooner", emoji: "🎤", vibe: "romantic", state: {
+          slots: [{ genre: "Pop", sub: "Hebrew dance-pop", micro: null }, null, null],
+          mood: "Romantic", energy: "Slow burn to explosion", groove: "straight",
+          vocalist: "Smooth tenor", language: "he",
+          lyricalVibe: "Romantic devotion",
+          specificInstruments: ["Piano", "Clean electric guitar", "Synth pad", "Soft strings"],
+          specificArticulations: {}, bpm: 90,
+          harmonic: "Major-key lift", texture: "Smooth & liquid", mix: "Wide cinematic",
+        } },
+      { id: "slg-10", name: "Afrobeats ambassador", emoji: "🎺", vibe: "playful", state: {
+          slots: [{ genre: "World / Global", sub: "Afrobeats", micro: null }, null, null],
+          mood: "Euphoric", energy: "Euphoric continuous build", groove: "syncopated",
+          vocalist: "Spoken rap over sung hook", language: "he",
+          lyricalVibe: "Party celebration",
+          specificInstruments: ["Log drum bass", "Afrobeats kit", "Marimba", "Brass section"],
+          specificArticulations: {}, bpm: 104,
+          harmonic: "Major-key lift", texture: "Warm & sun-baked", mix: "Ultra clean & polished",
+        } },
+    ],
+  },
+  {
+    artistId: "agam-buhbut",
+    artistName: "Agam Buhbut",
+    region: "israeli",
+    packs: [
+      { id: "agm-1", name: "Mizrahi pop diva", emoji: "👑", vibe: "confident", state: {
+          slots: [{ genre: "World / Global", sub: "Modern Mizrahi pop", micro: null }, null, null],
+          mood: "Confident", energy: "Euphoric continuous build", groove: "syncopated",
+          vocalist: "Melismatic soprano", language: "he",
+          lyricalVibe: "Braggadocio flex",
+          specificInstruments: ["Oud", "Darbuka", "Synth pad", "Bass synth"],
+          specificArticulations: {}, bpm: 106,
+          harmonic: "Phrygian exotic tension", texture: "Warm & sun-baked", mix: "Ultra clean & polished",
+        } },
+      { id: "agm-2", name: "Heartbreak Mizrahi", emoji: "💔", vibe: "heartbreak", state: {
+          slots: [{ genre: "World / Global", sub: "Modern Mizrahi pop", micro: null }, null, null],
+          mood: "Bittersweet", energy: "Slow burn to explosion", groove: "straight",
+          vocalist: "Melismatic soprano", language: "he",
+          lyricalVibe: "Heartbreak elegy",
+          specificInstruments: ["Oud", "Ney flute", "Soft strings", "Piano"],
+          specificArticulations: {}, bpm: 80,
+          harmonic: "Minor-key introspection", texture: "Smooth & liquid", mix: "Heavy reverb cathedral",
+        } },
+      { id: "agm-3", name: "Modern mizrahi dance", emoji: "🕺", vibe: "confident", state: {
+          slots: [{ genre: "World / Global", sub: "Oriental-pop crossover", micro: null }, null, null],
+          mood: "Euphoric", energy: "Euphoric continuous build", groove: "syncopated",
+          vocalist: "Melismatic soprano", language: "he",
+          lyricalVibe: "Party celebration",
+          specificInstruments: ["Darbuka", "Synth lead", "Oud", "808 drum machine"],
+          specificArticulations: {}, bpm: 118,
+          harmonic: "Phrygian exotic tension", texture: "Thick & saturated", mix: "Punchy & compressed",
+        } },
+      { id: "agm-4", name: "Summer Eilat", emoji: "🌴", vibe: "playful", state: {
+          slots: [{ genre: "World / Global", sub: "Oriental-pop crossover", micro: null }, null, null],
+          mood: "Playful", energy: "Euphoric continuous build", groove: "syncopated",
+          vocalist: "Melismatic soprano", language: "he",
+          lyricalVibe: "Party celebration",
+          specificInstruments: ["Mediterranean pluck synth", "Darbuka", "Kanoun", "Bass synth"],
+          specificArticulations: {}, bpm: 104,
+          harmonic: "Major-key lift", texture: "Warm & sun-baked", mix: "Ultra clean & polished",
+        } },
+      { id: "agm-5", name: "Belt vocal anthem", emoji: "🎤", vibe: "anthemic", state: {
+          slots: [{ genre: "World / Global", sub: "Modern Mizrahi pop", micro: null }, null, null],
+          mood: "Defiant", energy: "Fever-pitch final third", groove: "syncopated",
+          vocalist: "Melismatic soprano", language: "he",
+          lyricalVibe: "Braggadocio flex",
+          specificInstruments: ["Oud", "Darbuka", "Brass section", "Synth lead"],
+          specificArticulations: {}, bpm: 108,
+          harmonic: "Phrygian exotic tension", texture: "Thick & saturated", mix: "Wide cinematic",
+        } },
+      { id: "agm-6", name: "Romantic ballad", emoji: "💫", vibe: "romantic", state: {
+          slots: [{ genre: "World / Global", sub: "Modern Mizrahi pop", micro: null }, null, null],
+          mood: "Romantic", energy: "Slow burn to explosion", groove: "straight",
+          vocalist: "Melismatic soprano", language: "he",
+          lyricalVibe: "Romantic devotion",
+          specificInstruments: ["Piano", "Oud", "Soft strings", "Ney flute"],
+          specificArticulations: {}, bpm: 72,
+          harmonic: "Major-key lift", texture: "Smooth & liquid", mix: "Heavy reverb cathedral",
+        } },
+      { id: "agm-7", name: "Club mizrahi fusion", emoji: "🪩", vibe: "playful", state: {
+          slots: [{ genre: "World / Global", sub: "Modern Mizrahi pop", micro: null }, { genre: "Electronic", sub: "Hebrew house", micro: null }, null],
+          mood: "Euphoric", energy: "Euphoric continuous build", groove: "straight",
+          vocalist: "Melismatic soprano", language: "he",
+          lyricalVibe: "Party celebration",
+          specificInstruments: ["Darbuka", "4-on-the-floor kick", "Synth lead", "Oud"],
+          specificArticulations: {}, bpm: 124,
+          harmonic: "Phrygian exotic tension", texture: "Crystalline & brittle", mix: "Punchy & compressed",
+        } },
+      { id: "agm-8", name: "Wedding hora", emoji: "💍", vibe: "playful", state: {
+          slots: [{ genre: "World / Global", sub: "Modern Mizrahi pop", micro: null }, null, null],
+          mood: "Euphoric", energy: "Euphoric continuous build", groove: "syncopated",
+          vocalist: "Melismatic soprano", language: "he",
+          lyricalVibe: "Generational family story",
+          specificInstruments: ["Oud", "Darbuka", "Brass section", "Kanoun"],
+          specificArticulations: {}, bpm: 112,
+          harmonic: "Phrygian exotic tension", texture: "Warm & sun-baked", mix: "Ultra clean & polished",
+        } },
+      { id: "agm-9", name: "Sensual Mediterranean", emoji: "🌹", vibe: "romantic", state: {
+          slots: [{ genre: "World / Global", sub: "Modern Mizrahi pop", micro: null }, null, null],
+          mood: "Sensual", energy: "Slow burn to explosion", groove: "syncopated",
+          vocalist: "Melismatic soprano", language: "he",
+          lyricalVibe: "Romantic devotion",
+          specificInstruments: ["Oud", "Synth pad", "Soft strings", "Darbuka"],
+          specificArticulations: {}, bpm: 96,
+          harmonic: "Phrygian exotic tension", texture: "Velvety & plush", mix: "Wide cinematic",
+        } },
+      { id: "agm-10", name: "Trap fusion diva", emoji: "💎", vibe: "confident", state: {
+          slots: [{ genre: "Hip-Hop", sub: "Mediterranean-trap fusion", micro: null }, null, null],
+          mood: "Confident", energy: "Steady groove throughout", groove: "half-time",
+          vocalist: "Melismatic soprano", language: "he",
+          lyricalVibe: "Braggadocio flex",
+          specificInstruments: ["Oud", "808 drum machine", "Hi-hat triplet roll", "Darbuka"],
+          specificArticulations: {}, bpm: 128,
+          harmonic: "Phrygian exotic tension", texture: "Thick & saturated", mix: "Wide cinematic",
+        } },
+    ],
+  },
+  {
+    artistId: "anna-zak",
+    artistName: "Anna Zak",
+    region: "israeli",
+    packs: [
+      { id: "anz-1", name: "Russian-Israeli pop", emoji: "💋", vibe: "playful", state: {
+          slots: [{ genre: "Pop", sub: "Hebrew dance-pop", micro: null }, null, null],
+          mood: "Playful", energy: "Euphoric continuous build", groove: "straight",
+          vocalist: "Breathy female lead", language: "he",
+          lyricalVibe: "Party celebration",
+          specificInstruments: ["Synth lead", "808 drum machine", "Snap / clap layer", "Bass synth"],
+          specificArticulations: {}, bpm: 116,
+          harmonic: "Major-key lift", texture: "Crystalline & brittle", mix: "Ultra clean & polished",
+        } },
+      { id: "anz-2", name: "Dance floor seduction", emoji: "🔥", vibe: "romantic", state: {
+          slots: [{ genre: "Pop", sub: "Hebrew dance-pop", micro: null }, null, null],
+          mood: "Smoldering", energy: "Euphoric continuous build", groove: "straight",
+          vocalist: "Breathy female lead", language: "he",
+          lyricalVibe: "Romantic devotion",
+          specificInstruments: ["Synth stab", "808 drum machine", "Bass synth", "Synth pad"],
+          specificArticulations: {}, bpm: 122,
+          harmonic: "Major-key lift", texture: "Thick & saturated", mix: "Wide cinematic",
+        } },
+      { id: "anz-3", name: "Summer teen hit", emoji: "☀️", vibe: "playful", state: {
+          slots: [{ genre: "Pop", sub: "Hebrew dance-pop", micro: null }, null, null],
+          mood: "Playful", energy: "Euphoric continuous build", groove: "straight",
+          vocalist: "Breathy female lead", language: "he",
+          lyricalVibe: "Coming-of-age narrative",
+          specificInstruments: ["Synth lead", "Marimba", "Snap / clap layer", "Bass synth"],
+          specificArticulations: {}, bpm: 118,
+          harmonic: "Major-key lift", texture: "Warm & sun-baked", mix: "Ultra clean & polished",
+        } },
+      { id: "anz-4", name: "Club banger", emoji: "💎", vibe: "confident", state: {
+          slots: [{ genre: "Pop", sub: "Hebrew dance-pop", micro: null }, { genre: "Electronic", sub: "Hebrew house", micro: null }, null],
+          mood: "Confident", energy: "Euphoric continuous build", groove: "straight",
+          vocalist: "Breathy female lead", language: "he",
+          lyricalVibe: "Braggadocio flex",
+          specificInstruments: ["4-on-the-floor kick", "Synth lead", "Bass synth", "Synth pad"],
+          specificArticulations: {}, bpm: 126,
+          harmonic: "Major-key lift", texture: "Crystalline & brittle", mix: "Punchy & compressed",
+        } },
+      { id: "anz-5", name: "Romantic crooner", emoji: "🌹", vibe: "romantic", state: {
+          slots: [{ genre: "Pop", sub: "Hebrew dance-pop", micro: null }, null, null],
+          mood: "Romantic", energy: "Slow burn to explosion", groove: "straight",
+          vocalist: "Breathy female lead", language: "he",
+          lyricalVibe: "Romantic devotion",
+          specificInstruments: ["Piano", "Synth pad", "Clean electric guitar", "Soft strings"],
+          specificArticulations: {}, bpm: 94,
+          harmonic: "Major-key lift", texture: "Smooth & liquid", mix: "Ultra clean & polished",
+        } },
+      { id: "anz-6", name: "Mediterranean mix", emoji: "🌊", vibe: "playful", state: {
+          slots: [{ genre: "World / Global", sub: "Oriental-pop crossover", micro: null }, null, null],
+          mood: "Playful", energy: "Euphoric continuous build", groove: "syncopated",
+          vocalist: "Breathy female lead", language: "he",
+          lyricalVibe: "Party celebration",
+          specificInstruments: ["Mediterranean pluck synth", "Darbuka", "Synth pad", "Bass synth"],
+          specificArticulations: {}, bpm: 108,
+          harmonic: "Phrygian exotic tension", texture: "Warm & sun-baked", mix: "Ultra clean & polished",
+        } },
+      { id: "anz-7", name: "Pop princess flex", emoji: "👸", vibe: "confident", state: {
+          slots: [{ genre: "Pop", sub: "Hebrew dance-pop", micro: null }, null, null],
+          mood: "Confident", energy: "Euphoric continuous build", groove: "straight",
+          vocalist: "Breathy female lead", language: "he",
+          lyricalVibe: "Braggadocio flex",
+          specificInstruments: ["Synth stab", "808 drum machine", "Snap / clap layer", "Piano"],
+          specificArticulations: {}, bpm: 120,
+          harmonic: "Major-key lift", texture: "Crystalline & brittle", mix: "Ultra clean & polished",
+        } },
+      { id: "anz-8", name: "TikTok anthem", emoji: "📱", vibe: "anthemic", state: {
+          slots: [{ genre: "Pop", sub: "Hebrew dance-pop", micro: null }, null, null],
+          mood: "Playful", energy: "Steady groove throughout", groove: "syncopated",
+          vocalist: "Breathy female lead", language: "he",
+          lyricalVibe: "Party celebration",
+          specificInstruments: ["Synth lead", "Trap kit", "Vocal chop", "Snap / clap layer"],
+          specificArticulations: {}, bpm: 128,
+          harmonic: "Major-key lift", texture: "Crystalline & brittle", mix: "Ultra clean & polished",
+        } },
+      { id: "anz-9", name: "Heartbreak bubblegum", emoji: "🎀", vibe: "heartbreak", state: {
+          slots: [{ genre: "Pop", sub: "Hebrew dance-pop", micro: null }, null, null],
+          mood: "Bittersweet", energy: "Slow burn to explosion", groove: "straight",
+          vocalist: "Breathy female lead", language: "he",
+          lyricalVibe: "Heartbreak elegy",
+          specificInstruments: ["Piano", "Synth pad", "Soft drums", "Synth lead"],
+          specificArticulations: {}, bpm: 100,
+          harmonic: "Minor-key introspection", texture: "Airy & weightless", mix: "Ultra clean & polished",
+        } },
+      { id: "anz-10", name: "Eurodance fusion", emoji: "⚡", vibe: "anthemic", state: {
+          slots: [{ genre: "Pop", sub: "Hebrew dance-pop", micro: null }, { genre: "Electronic", sub: "House", micro: null }, null],
+          mood: "Euphoric", energy: "Fever-pitch final third", groove: "straight",
+          vocalist: "Breathy female lead", language: "he",
+          lyricalVibe: "Party celebration",
+          specificInstruments: ["4-on-the-floor kick", "Synth stab", "Synth lead", "Bass synth"],
+          specificArticulations: {}, bpm: 132,
+          harmonic: "Major-key lift", texture: "Crystalline & brittle", mix: "Punchy & compressed",
+        } },
+    ],
+  },
+  {
+    artistId: "ben-zur",
+    artistName: "Ben Zur",
+    region: "israeli",
+    packs: [
+      { id: "bzr-1", name: "Abba-style faith anthem", emoji: "🕊️", vibe: "reverent", state: {
+          slots: [{ genre: "World / Global", sub: "Pop Emuni (faith-pop)", micro: null }, null, null],
+          mood: "Tender", energy: "Slow burn to explosion", groove: "straight",
+          vocalist: "Smooth tenor", language: "he",
+          lyricalVibe: "Generational family story",
+          specificInstruments: ["Acoustic guitar fingerpick", "Piano", "Soft strings", "Mediterranean pluck synth"],
+          specificArticulations: {}, bpm: 76,
+          harmonic: "Major-key lift", texture: "Smooth & liquid", mix: "Heavy reverb cathedral",
+        } },
+      { id: "bzr-2", name: "Latin-faith duet", emoji: "💞", vibe: "reverent", state: {
+          slots: [{ genre: "World / Global", sub: "Pop Emuni (faith-pop)", micro: null }, { genre: "Latin", sub: "Reggaeton", micro: null }, null],
+          mood: "Hopeful", energy: "Steady groove throughout", groove: "syncopated",
+          vocalist: "Smooth tenor", language: "he",
+          lyricalVibe: "Romantic devotion",
+          specificInstruments: ["Nylon string guitar", "Mediterranean pluck synth", "Soft drums", "Synth pad"],
+          specificArticulations: {}, bpm: 102,
+          harmonic: "Major-key lift", texture: "Warm & sun-baked", mix: "Ultra clean & polished",
+        } },
+      { id: "bzr-3", name: "Acoustic prayer duet", emoji: "🤲", vibe: "reverent", state: {
+          slots: [{ genre: "World / Global", sub: "Pop Emuni (faith-pop)", micro: null }, null, null],
+          mood: "Tender", energy: "Slow burn to explosion", groove: "straight",
+          vocalist: "Smooth tenor", language: "he",
+          lyricalVibe: "Confessional diary",
+          specificInstruments: ["Acoustic guitar fingerpick", "Piano", "Soft strings", "Finger snaps"],
+          specificArticulations: {}, bpm: 72,
+          harmonic: "Minor-key introspection", texture: "Smooth & liquid", mix: "Heavy reverb cathedral",
+        } },
+      { id: "bzr-4", name: "Uplifting faith ballad", emoji: "✨", vibe: "reverent", state: {
+          slots: [{ genre: "World / Global", sub: "Pop Emuni (faith-pop)", micro: null }, null, null],
+          mood: "Hopeful", energy: "Slow burn to explosion", groove: "straight",
+          vocalist: "Smooth tenor", language: "he",
+          lyricalVibe: "Romantic devotion",
+          specificInstruments: ["Piano", "Acoustic guitar fingerpick", "Soft strings", "Synth pad"],
+          specificArticulations: {}, bpm: 82,
+          harmonic: "Major-key lift", texture: "Airy & weightless", mix: "Ultra clean & polished",
+        } },
+      { id: "bzr-5", name: "Simcha celebration", emoji: "🎉", vibe: "playful", state: {
+          slots: [{ genre: "World / Global", sub: "Pop Emuni (faith-pop)", micro: null }, null, null],
+          mood: "Euphoric", energy: "Euphoric continuous build", groove: "syncopated",
+          vocalist: "Gospel ensemble", language: "he",
+          lyricalVibe: "Generational family story",
+          specificInstruments: ["Acoustic guitar fingerpick", "Mediterranean pluck synth", "Darbuka", "Piano"],
+          specificArticulations: {}, bpm: 118,
+          harmonic: "Major-key lift", texture: "Warm & sun-baked", mix: "Punchy & compressed",
+        } },
+      { id: "bzr-6", name: "Tzadikim storytelling", emoji: "📖", vibe: "reverent", state: {
+          slots: [{ genre: "World / Global", sub: "Pop Emuni (faith-pop)", micro: null }, null, null],
+          mood: "Nostalgic", energy: "Steady groove throughout", groove: "straight",
+          vocalist: "Smooth tenor", language: "he",
+          lyricalVibe: "Nostalgic storytelling",
+          specificInstruments: ["Acoustic guitar fingerpick", "Piano", "Mediterranean pluck synth", "Soft strings"],
+          specificArticulations: {}, bpm: 88,
+          harmonic: "Minor-key introspection", texture: "Smooth & liquid", mix: "Ultra clean & polished",
+        } },
+      { id: "bzr-7", name: "Tefila prayer moment", emoji: "🕯️", vibe: "reverent", state: {
+          slots: [{ genre: "World / Global", sub: "Pop Emuni (faith-pop)", micro: null }, null, null],
+          mood: "Tender", energy: "Slow burn to explosion", groove: "straight",
+          vocalist: "Smooth tenor", language: "he",
+          lyricalVibe: "Romantic devotion",
+          specificInstruments: ["Piano", "Soft strings", "Acoustic guitar fingerpick", "Ney flute"],
+          specificArticulations: {}, bpm: 68,
+          harmonic: "Minor-key introspection", texture: "Airy & weightless", mix: "Heavy reverb cathedral",
+        } },
+      { id: "bzr-8", name: "Modern faith-pop hit", emoji: "🌟", vibe: "reverent", state: {
+          slots: [{ genre: "World / Global", sub: "Pop Emuni (faith-pop)", micro: null }, null, null],
+          mood: "Hopeful", energy: "Euphoric continuous build", groove: "straight",
+          vocalist: "Smooth tenor", language: "he",
+          lyricalVibe: "Romantic devotion",
+          specificInstruments: ["Piano", "Synth pad", "Mediterranean pluck synth", "Soft drums"],
+          specificArticulations: {}, bpm: 104,
+          harmonic: "Major-key lift", texture: "Warm & sun-baked", mix: "Ultra clean & polished",
+        } },
+      { id: "bzr-9", name: "Tzfat mystic ballad", emoji: "🏔️", vibe: "reverent", state: {
+          slots: [{ genre: "World / Global", sub: "Pop Emuni (faith-pop)", micro: null }, null, null],
+          mood: "Pensive", energy: "Slow burn to explosion", groove: "straight",
+          vocalist: "Smooth tenor", language: "he",
+          lyricalVibe: "Ode to a place",
+          specificInstruments: ["Acoustic guitar fingerpick", "Ney flute", "Soft strings", "Piano"],
+          specificArticulations: {}, bpm: 74,
+          harmonic: "Phrygian exotic tension", texture: "Smooth & liquid", mix: "Heavy reverb cathedral",
+        } },
+      { id: "bzr-10", name: "Caesarea amphitheater", emoji: "🏟️", vibe: "anthemic", state: {
+          slots: [{ genre: "World / Global", sub: "Pop Emuni (faith-pop)", micro: null }, null, null],
+          mood: "Euphoric", energy: "Fever-pitch final third", groove: "straight",
+          vocalist: "Gospel ensemble", language: "he",
+          lyricalVibe: "Generational family story",
+          specificInstruments: ["Piano", "Acoustic guitar fingerpick", "Soft strings", "Brass section"],
+          specificArticulations: {}, bpm: 96,
+          harmonic: "Major-key lift", texture: "Thick & saturated", mix: "Wide cinematic",
+        } },
+    ],
+  },
+  {
+    artistId: "nadav-hanzis",
+    artistName: "Nadav Hanzis",
+    region: "israeli",
+    packs: [
+      { id: "ndv-1", name: "Im At Kvar (signature)", emoji: "💔", vibe: "heartbreak", state: {
+          slots: [{ genre: "World / Global", sub: "Modern Mizrahi pop", micro: null }, null, null],
+          mood: "Bittersweet", energy: "Slow burn to explosion", groove: "syncopated",
+          vocalist: "Smooth tenor", language: "he",
+          lyricalVibe: "Heartbreak elegy",
+          specificInstruments: ["Mediterranean pluck synth", "Piano", "Darbuka", "Synth pad"],
+          specificArticulations: {}, bpm: 108,
+          harmonic: "Phrygian exotic tension", texture: "Velvety & plush", mix: "Ultra clean & polished",
+        } },
+      { id: "ndv-2", name: "Teen heartbreak ballad", emoji: "😢", vibe: "heartbreak", state: {
+          slots: [{ genre: "World / Global", sub: "Modern Mizrahi pop", micro: null }, null, null],
+          mood: "Bittersweet", energy: "Slow burn to explosion", groove: "straight",
+          vocalist: "Smooth tenor", language: "he",
+          lyricalVibe: "Heartbreak elegy",
+          specificInstruments: ["Piano", "Mediterranean pluck synth", "Soft strings", "Darbuka"],
+          specificArticulations: {}, bpm: 88,
+          harmonic: "Minor-key introspection", texture: "Smooth & liquid", mix: "Heavy reverb cathedral",
+        } },
+      { id: "ndv-3", name: "Modern Mizrahi groove", emoji: "🌀", vibe: "moody", state: {
+          slots: [{ genre: "World / Global", sub: "Modern Mizrahi pop", micro: null }, null, null],
+          mood: "Nostalgic", energy: "Steady groove throughout", groove: "syncopated",
+          vocalist: "Smooth tenor", language: "he",
+          lyricalVibe: "Heartbreak elegy",
+          specificInstruments: ["Mediterranean pluck synth", "Darbuka", "Synth pad", "808 drum machine"],
+          specificArticulations: {}, bpm: 112,
+          harmonic: "Phrygian exotic tension", texture: "Warm & sun-baked", mix: "Punchy & compressed",
+        } },
+      { id: "ndv-4", name: "Bitter rhetorical", emoji: "🥀", vibe: "heartbreak", state: {
+          slots: [{ genre: "World / Global", sub: "Modern Mizrahi pop", micro: null }, null, null],
+          mood: "Bittersweet", energy: "Slow burn to explosion", groove: "syncopated",
+          vocalist: "Smooth tenor", language: "he",
+          lyricalVibe: "Heartbreak elegy",
+          specificInstruments: ["Piano", "Mediterranean pluck synth", "Darbuka", "Soft strings"],
+          specificArticulations: {}, bpm: 100,
+          harmonic: "Minor-key introspection", texture: "Velvety & plush", mix: "Wide cinematic",
+        } },
+      { id: "ndv-5", name: "Glance romance", emoji: "👀", vibe: "romantic", state: {
+          slots: [{ genre: "World / Global", sub: "Modern Mizrahi pop", micro: null }, null, null],
+          mood: "Romantic", energy: "Steady groove throughout", groove: "syncopated",
+          vocalist: "Smooth tenor", language: "he",
+          lyricalVibe: "Romantic devotion",
+          specificInstruments: ["Mediterranean pluck synth", "Piano", "Soft strings", "Darbuka"],
+          specificArticulations: {}, bpm: 104,
+          harmonic: "Major-key lift", texture: "Warm & sun-baked", mix: "Ultra clean & polished",
+        } },
+      { id: "ndv-6", name: "Afraid to get over", emoji: "🫠", vibe: "heartbreak", state: {
+          slots: [{ genre: "World / Global", sub: "Modern Mizrahi pop", micro: null }, null, null],
+          mood: "Bittersweet", energy: "Slow burn to explosion", groove: "straight",
+          vocalist: "Smooth tenor", language: "he",
+          lyricalVibe: "Confessional diary",
+          specificInstruments: ["Piano", "Acoustic guitar fingerpick", "Soft strings", "Mediterranean pluck synth"],
+          specificArticulations: {}, bpm: 82,
+          harmonic: "Minor-key introspection", texture: "Airy & weightless", mix: "Heavy reverb cathedral",
+        } },
+      { id: "ndv-7", name: "First love acoustic", emoji: "💗", vibe: "romantic", state: {
+          slots: [{ genre: "World / Global", sub: "Modern Mizrahi pop", micro: null }, null, null],
+          mood: "Tender", energy: "Slow burn to explosion", groove: "straight",
+          vocalist: "Smooth tenor", language: "he",
+          lyricalVibe: "Coming-of-age narrative",
+          specificInstruments: ["Acoustic guitar fingerpick", "Piano", "Mediterranean pluck synth", "Soft strings"],
+          specificArticulations: {}, bpm: 92,
+          harmonic: "Major-key lift", texture: "Smooth & liquid", mix: "Ultra clean & polished",
+        } },
+      { id: "ndv-8", name: "Mizrahi dancefloor", emoji: "🕺", vibe: "playful", state: {
+          slots: [{ genre: "World / Global", sub: "Oriental-pop crossover", micro: null }, null, null],
+          mood: "Confident", energy: "Euphoric continuous build", groove: "syncopated",
+          vocalist: "Smooth tenor", language: "he",
+          lyricalVibe: "Party celebration",
+          specificInstruments: ["Darbuka", "Mediterranean pluck synth", "Synth lead", "Bass synth"],
+          specificArticulations: {}, bpm: 118,
+          harmonic: "Phrygian exotic tension", texture: "Thick & saturated", mix: "Punchy & compressed",
+        } },
+      { id: "ndv-9", name: "Pastigal showstopper", emoji: "🎪", vibe: "anthemic", state: {
+          slots: [{ genre: "World / Global", sub: "Modern Mizrahi pop", micro: null }, null, null],
+          mood: "Euphoric", energy: "Fever-pitch final third", groove: "syncopated",
+          vocalist: "Smooth tenor", language: "he",
+          lyricalVibe: "Party celebration",
+          specificInstruments: ["Mediterranean pluck synth", "Darbuka", "Synth lead", "Brass section"],
+          specificArticulations: {}, bpm: 110,
+          harmonic: "Major-key lift", texture: "Warm & sun-baked", mix: "Wide cinematic",
+        } },
+      { id: "ndv-10", name: "TikTok acoustic notes", emoji: "📝", vibe: "moody", state: {
+          slots: [{ genre: "World / Global", sub: "Modern Mizrahi pop", micro: null }, null, null],
+          mood: "Pensive", energy: "Slow burn to explosion", groove: "straight",
+          vocalist: "Smooth tenor", language: "he",
+          lyricalVibe: "Confessional diary",
+          specificInstruments: ["Acoustic guitar fingerpick", "Piano", "Soft strings", "Mediterranean pluck synth"],
+          specificArticulations: {}, bpm: 78,
+          harmonic: "Minor-key introspection", texture: "Airy & weightless", mix: "Heavy reverb cathedral",
+        } },
+    ],
+  },
+  {
+
+    artistId: "sasson-shaulov",
+    artistName: "Sasson Ifram Shaulov",
+    region: "israeli",
+    packs: [
+      { id: "ssl-1", name: "Tamid Ohev Oti", emoji: "♾️", vibe: "romantic", state: {
+          slots: [{ genre: "World / Global", sub: "Modern Mizrahi pop", micro: null }, null, null],
+          mood: "Tender", energy: "Slow burn to explosion", groove: "syncopated",
+          vocalist: "Melismatic soprano", language: "he",
+          lyricalVibe: "Romantic devotion",
+          specificInstruments: ["Oud", "Piano", "Mediterranean pluck synth", "Soft strings"],
+          specificArticulations: {}, bpm: 96,
+          harmonic: "Phrygian exotic tension", texture: "Smooth & liquid", mix: "Heavy reverb cathedral",
+        } },
+      { id: "ssl-2", name: "Misheu Amiti", emoji: "👁️", vibe: "moody", state: {
+          slots: [{ genre: "World / Global", sub: "Modern Mizrahi pop", micro: null }, null, null],
+          mood: "Bittersweet", energy: "Slow burn to explosion", groove: "syncopated",
+          vocalist: "Melismatic soprano", language: "he",
+          lyricalVibe: "Confessional diary",
+          specificInstruments: ["Oud", "Darbuka", "Piano", "Mediterranean pluck synth"],
+          specificArticulations: {}, bpm: 108,
+          harmonic: "Phrygian exotic tension", texture: "Velvety & plush", mix: "Ultra clean & polished",
+        } },
+      { id: "ssl-3", name: "Bo'i Nedaber", emoji: "💬", vibe: "heartbreak", state: {
+          slots: [{ genre: "World / Global", sub: "Modern Mizrahi pop", micro: null }, null, null],
+          mood: "Bittersweet", energy: "Slow burn to explosion", groove: "syncopated",
+          vocalist: "Melismatic soprano", language: "he",
+          lyricalVibe: "Heartbreak elegy",
+          specificInstruments: ["Piano", "Oud", "Mediterranean pluck synth", "Soft strings"],
+          specificArticulations: {}, bpm: 100,
+          harmonic: "Phrygian exotic tension", texture: "Smooth & liquid", mix: "Wide cinematic",
+        } },
+      { id: "ssl-4", name: "Turkish influence ballad", emoji: "🇹🇷", vibe: "heartbreak", state: {
+          slots: [{ genre: "World / Global", sub: "Modern Mizrahi pop", micro: null }, null, null],
+          mood: "Nostalgic", energy: "Slow burn to explosion", groove: "straight",
+          vocalist: "Melismatic soprano", language: "he",
+          lyricalVibe: "Heartbreak elegy",
+          specificInstruments: ["Oud", "Ney flute", "Kanoun", "Soft strings"],
+          specificArticulations: {}, bpm: 88,
+          harmonic: "Phrygian exotic tension", texture: "Warm & sun-baked", mix: "Heavy reverb cathedral",
+        } },
+      { id: "ssl-5", name: "Olam B'Shnei Tzvaim", emoji: "🎨", vibe: "moody", state: {
+          slots: [{ genre: "World / Global", sub: "Modern Mizrahi pop", micro: null }, null, null],
+          mood: "Pensive", energy: "Slow burn to explosion", groove: "syncopated",
+          vocalist: "Melismatic soprano", language: "he",
+          lyricalVibe: "Confessional diary",
+          specificInstruments: ["Piano", "Oud", "Mediterranean pluck synth", "Darbuka"],
+          specificArticulations: {}, bpm: 104,
+          harmonic: "Minor-key introspection", texture: "Velvety & plush", mix: "Wide cinematic",
+        } },
+      { id: "ssl-6", name: "Mizrahi emotional peak", emoji: "🌋", vibe: "heartbreak", state: {
+          slots: [{ genre: "World / Global", sub: "Modern Mizrahi pop", micro: null }, null, null],
+          mood: "Bittersweet", energy: "Fever-pitch final third", groove: "straight",
+          vocalist: "Melismatic soprano", language: "he",
+          lyricalVibe: "Heartbreak elegy",
+          specificInstruments: ["Oud", "Piano", "Ney flute", "Strings"],
+          specificArticulations: {}, bpm: 82,
+          harmonic: "Phrygian exotic tension", texture: "Smooth & liquid", mix: "Heavy reverb cathedral",
+        } },
+      { id: "ssl-7", name: "Tatlises tribute", emoji: "🎭", vibe: "heartbreak", state: {
+          slots: [{ genre: "World / Global", sub: "Modern Mizrahi pop", micro: null }, null, null],
+          mood: "Nostalgic", energy: "Steady groove throughout", groove: "syncopated",
+          vocalist: "Melismatic soprano", language: "he",
+          lyricalVibe: "Ode to a place",
+          specificInstruments: ["Oud", "Bouzouki", "Kanoun", "Darbuka"],
+          specificArticulations: {}, bpm: 92,
+          harmonic: "Phrygian exotic tension", texture: "Warm & sun-baked", mix: "Ultra clean & polished",
+        } },
+      { id: "ssl-8", name: "Sold out Hangar", emoji: "🏟️", vibe: "anthemic", state: {
+          slots: [{ genre: "World / Global", sub: "Modern Mizrahi pop", micro: null }, { genre: "World / Global", sub: "Oriental-pop crossover", micro: null }, null],
+          mood: "Euphoric", energy: "Euphoric continuous build", groove: "syncopated",
+          vocalist: "Melismatic soprano", language: "he",
+          lyricalVibe: "Party celebration",
+          specificInstruments: ["Oud", "Darbuka", "Synth pad", "808 drum machine"],
+          specificArticulations: {}, bpm: 112,
+          harmonic: "Phrygian exotic tension", texture: "Thick & saturated", mix: "Punchy & compressed",
+        } },
+      { id: "ssl-9", name: "Chazara duet", emoji: "🕊️", vibe: "reverent", state: {
+          slots: [{ genre: "World / Global", sub: "Pop Emuni (faith-pop)", micro: null }, null, null],
+          mood: "Tender", energy: "Slow burn to explosion", groove: "straight",
+          vocalist: "Melismatic soprano", language: "he",
+          lyricalVibe: "Romantic devotion",
+          specificInstruments: ["Oud", "Piano", "Acoustic guitar fingerpick", "Soft strings"],
+          specificArticulations: {}, bpm: 80,
+          harmonic: "Phrygian exotic tension", texture: "Smooth & liquid", mix: "Heavy reverb cathedral",
+        } },
+      { id: "ssl-10", name: "Italian-Mizrahi fusion", emoji: "🍋", vibe: "romantic", state: {
+          slots: [{ genre: "World / Global", sub: "Oriental-pop crossover", micro: null }, null, null],
+          mood: "Romantic", energy: "Steady groove throughout", groove: "syncopated",
+          vocalist: "Melismatic soprano", language: "he",
+          lyricalVibe: "Romantic devotion",
+          specificInstruments: ["Nylon string guitar", "Oud", "Mediterranean pluck synth", "Soft strings"],
+          specificArticulations: {}, bpm: 100,
+          harmonic: "Major-key lift", texture: "Warm & sun-baked", mix: "Wide cinematic",
+        } },
+    ],
+  },
+  {
+
+    artistId: "odeya",
+    artistName: "Odeya",
+    region: "israeli",
+    packs: [
+      { id: "ody-1", name: "Or breakthrough", emoji: "💡", vibe: "anthemic", state: {
+          slots: [{ genre: "Pop", sub: "Hebrew dance-pop", micro: null }, null, null],
+          mood: "Hopeful", energy: "Slow burn to explosion", groove: "straight",
+          vocalist: "Breathy female lead", language: "he",
+          lyricalVibe: "Confessional diary",
+          specificInstruments: ["Synth pad", "Piano", "Mediterranean pluck synth", "Snap / clap layer"],
+          specificArticulations: {}, bpm: 110,
+          harmonic: "Major-key lift", texture: "Smooth & liquid", mix: "Ultra clean & polished",
+        } },
+      { id: "ody-2", name: "Ben Adam EDM prayer", emoji: "🙏", vibe: "reverent", state: {
+          slots: [{ genre: "Electronic", sub: "Hebrew house", micro: null }, null, null],
+          mood: "Pensive", energy: "Euphoric continuous build", groove: "straight",
+          vocalist: "Whisper to full belt", language: "he",
+          lyricalVibe: "Confessional diary",
+          specificInstruments: ["4-on-the-floor kick", "Synth lead", "Synth pad", "Vocal chop"],
+          specificArticulations: {}, bpm: 126,
+          harmonic: "Minor-key introspection", texture: "Crystalline & brittle", mix: "Punchy & compressed",
+        } },
+      { id: "ody-3", name: "Alice dark fantasy", emoji: "🐰", vibe: "moody", state: {
+          slots: [{ genre: "Pop", sub: "Alt Pop", micro: null }, null, null],
+          mood: "Smoldering", energy: "Slow burn to explosion", groove: "straight",
+          vocalist: "Breathy female lead", language: "he",
+          lyricalVibe: "Confessional diary",
+          specificInstruments: ["Piano", "Synth bass", "Dark piano", "Vocal chop"],
+          specificArticulations: {}, bpm: 96,
+          harmonic: "Minor-key introspection", texture: "Thick & saturated", mix: "Wide cinematic",
+        } },
+      { id: "ody-4", name: "Papi attitude", emoji: "😎", vibe: "confident", state: {
+          slots: [{ genre: "Pop", sub: "Hebrew dance-pop", micro: null }, null, null],
+          mood: "Confident", energy: "Steady groove throughout", groove: "syncopated",
+          vocalist: "Spoken rap over sung hook", language: "he",
+          lyricalVibe: "Braggadocio flex",
+          specificInstruments: ["808 drum machine", "Synth bass", "Snap / clap layer", "Mediterranean pluck synth"],
+          specificArticulations: {}, bpm: 104,
+          harmonic: "Minor-key modal", texture: "Crystalline & brittle", mix: "Punchy & compressed",
+        } },
+      { id: "ody-5", name: "Intelektuartsit", emoji: "💅", vibe: "confident", state: {
+          slots: [{ genre: "Pop", sub: "Hebrew dance-pop", micro: null }, null, null],
+          mood: "Playful", energy: "Steady groove throughout", groove: "syncopated",
+          vocalist: "Spoken rap over sung hook", language: "he",
+          lyricalVibe: "Braggadocio flex",
+          specificInstruments: ["Synth lead", "808 drum machine", "Snap / clap layer", "Mediterranean pluck synth"],
+          specificArticulations: {}, bpm: 108,
+          harmonic: "Major-key lift", texture: "Warm & sun-baked", mix: "Punchy & compressed",
+        } },
+      { id: "ody-6", name: "Yalda Shel Emuna", emoji: "👧", vibe: "reverent", state: {
+          slots: [{ genre: "World / Global", sub: "Pop Emuni (faith-pop)", micro: null }, null, null],
+          mood: "Tender", energy: "Slow burn to explosion", groove: "straight",
+          vocalist: "Breathy female lead", language: "he",
+          lyricalVibe: "Confessional diary",
+          specificInstruments: ["Piano", "Acoustic guitar fingerpick", "Soft strings", "Mediterranean pluck synth"],
+          specificArticulations: {}, bpm: 88,
+          harmonic: "Major-key lift", texture: "Smooth & liquid", mix: "Heavy reverb cathedral",
+        } },
+      { id: "ody-7", name: "Toxic love confession", emoji: "💊", vibe: "heartbreak", state: {
+          slots: [{ genre: "Pop", sub: "Alt Pop", micro: null }, null, null],
+          mood: "Bittersweet", energy: "Fever-pitch final third", groove: "straight",
+          vocalist: "Breathy female lead", language: "he",
+          lyricalVibe: "Heartbreak elegy",
+          specificInstruments: ["Piano", "Dark piano", "808 sub", "Synth pad"],
+          specificArticulations: {}, bpm: 92,
+          harmonic: "Minor-key introspection", texture: "Velvety & plush", mix: "Wide cinematic",
+        } },
+      { id: "ody-8", name: "Rap + Mizrahi fusion", emoji: "🎤", vibe: "moody", state: {
+          slots: [{ genre: "Hip-Hop", sub: "Mediterranean-trap fusion", micro: null }, null, null],
+          mood: "Confident", energy: "Steady groove throughout", groove: "half-time",
+          vocalist: "Spoken rap over sung hook", language: "he",
+          lyricalVibe: "Confessional diary",
+          specificInstruments: ["Oud", "808 drum machine", "Mediterranean pluck synth", "Darbuka"],
+          specificArticulations: {}, bpm: 100,
+          harmonic: "Phrygian exotic tension", texture: "Thick & saturated", mix: "Punchy & compressed",
+        } },
+      { id: "ody-9", name: "Menorah white show", emoji: "🤍", vibe: "anthemic", state: {
+          slots: [{ genre: "Pop", sub: "Hebrew dance-pop", micro: null }, null, null],
+          mood: "Euphoric", energy: "Fever-pitch final third", groove: "straight",
+          vocalist: "Whisper to full belt", language: "he",
+          lyricalVibe: "Party celebration",
+          specificInstruments: ["Synth lead", "808 drum machine", "Mediterranean pluck synth", "String section"],
+          specificArticulations: {}, bpm: 118,
+          harmonic: "Major-key lift", texture: "Crystalline & brittle", mix: "Wide cinematic",
+        } },
+      { id: "ody-10", name: "Selichot EDM rave", emoji: "🕯️", vibe: "reverent", state: {
+          slots: [{ genre: "Electronic", sub: "Hebrew house", micro: null }, null, null],
+          mood: "Defiant", energy: "Fever-pitch final third", groove: "straight",
+          vocalist: "Whisper to full belt", language: "he",
+          lyricalVibe: "Confessional diary",
+          specificInstruments: ["4-on-the-floor kick", "Synth lead", "Bass synth", "Vocal chop"],
+          specificArticulations: {}, bpm: 128,
+          harmonic: "Minor-key introspection", texture: "Thick & saturated", mix: "Punchy & compressed",
+        } },
+    ],
+  },
+  {
+    artistId: "yasmin-mualem",
+    artistName: "Yasmin Mualem",
+    region: "israeli",
+    packs: [
+      { id: "ysm-1", name: "Mizrahi electronica", emoji: "💎", vibe: "confident", state: {
+          slots: [{ genre: "World / Global", sub: "Oriental-pop crossover", micro: null }, null, null],
+          mood: "Confident", energy: "Euphoric continuous build", groove: "syncopated",
+          vocalist: "Melismatic soprano", language: "he",
+          lyricalVibe: "Braggadocio flex",
+          specificInstruments: ["Oud", "Synth lead", "Darbuka", "808 drum machine"],
+          specificArticulations: {}, bpm: 112,
+          harmonic: "Phrygian exotic tension", texture: "Thick & saturated", mix: "Punchy & compressed",
+        } },
+      { id: "ysm-2", name: "Emotional belt", emoji: "🔥", vibe: "heartbreak", state: {
+          slots: [{ genre: "World / Global", sub: "Modern Mizrahi pop", micro: null }, null, null],
+          mood: "Defiant", energy: "Fever-pitch final third", groove: "syncopated",
+          vocalist: "Melismatic soprano", language: "he",
+          lyricalVibe: "Heartbreak elegy",
+          specificInstruments: ["Oud", "Darbuka", "Brass section", "Synth pad"],
+          specificArticulations: {}, bpm: 100,
+          harmonic: "Phrygian exotic tension", texture: "Thick & saturated", mix: "Wide cinematic",
+        } },
+      { id: "ysm-3", name: "Dance floor Mizrahi", emoji: "🪩", vibe: "playful", state: {
+          slots: [{ genre: "World / Global", sub: "Oriental-pop crossover", micro: null }, null, null],
+          mood: "Euphoric", energy: "Euphoric continuous build", groove: "straight",
+          vocalist: "Melismatic soprano", language: "he",
+          lyricalVibe: "Party celebration",
+          specificInstruments: ["Darbuka", "4-on-the-floor kick", "Synth lead", "Oud"],
+          specificArticulations: {}, bpm: 120,
+          harmonic: "Phrygian exotic tension", texture: "Crystalline & brittle", mix: "Punchy & compressed",
+        } },
+      { id: "ysm-4", name: "Romantic ballad", emoji: "🌹", vibe: "romantic", state: {
+          slots: [{ genre: "World / Global", sub: "Modern Mizrahi pop", micro: null }, null, null],
+          mood: "Romantic", energy: "Slow burn to explosion", groove: "straight",
+          vocalist: "Melismatic soprano", language: "he",
+          lyricalVibe: "Romantic devotion",
+          specificInstruments: ["Piano", "Oud", "Ney flute", "Soft strings"],
+          specificArticulations: {}, bpm: 78,
+          harmonic: "Major-key lift", texture: "Smooth & liquid", mix: "Heavy reverb cathedral",
+        } },
+      { id: "ysm-5", name: "Summer Mediterranean", emoji: "☀️", vibe: "playful", state: {
+          slots: [{ genre: "World / Global", sub: "Oriental-pop crossover", micro: null }, null, null],
+          mood: "Playful", energy: "Euphoric continuous build", groove: "syncopated",
+          vocalist: "Melismatic soprano", language: "he",
+          lyricalVibe: "Ode to a place",
+          specificInstruments: ["Mediterranean pluck synth", "Darbuka", "Bouzouki", "Bass synth"],
+          specificArticulations: {}, bpm: 108,
+          harmonic: "Major-key lift", texture: "Warm & sun-baked", mix: "Ultra clean & polished",
+        } },
+      { id: "ysm-6", name: "Trap-Mizrahi fusion", emoji: "💥", vibe: "confident", state: {
+          slots: [{ genre: "Hip-Hop", sub: "Mediterranean-trap fusion", micro: null }, null, null],
+          mood: "Confident", energy: "Steady groove throughout", groove: "half-time",
+          vocalist: "Melismatic soprano", language: "he",
+          lyricalVibe: "Braggadocio flex",
+          specificInstruments: ["Oud", "808 drum machine", "Hi-hat triplet roll", "Darbuka"],
+          specificArticulations: {}, bpm: 128,
+          harmonic: "Phrygian exotic tension", texture: "Thick & saturated", mix: "Wide cinematic",
+        } },
+      { id: "ysm-7", name: "Longing desert", emoji: "🏜️", vibe: "heartbreak", state: {
+          slots: [{ genre: "World / Global", sub: "Modern Mizrahi pop", micro: null }, null, null],
+          mood: "Nostalgic", energy: "Slow burn to explosion", groove: "straight",
+          vocalist: "Melismatic soprano", language: "he",
+          lyricalVibe: "Heartbreak elegy",
+          specificInstruments: ["Oud", "Ney flute", "Kanoun", "Soft strings"],
+          specificArticulations: {}, bpm: 88,
+          harmonic: "Minor-key introspection", texture: "Warm & sun-baked", mix: "Ultra clean & polished",
+        } },
+      { id: "ysm-8", name: "Club anthem", emoji: "🔊", vibe: "anthemic", state: {
+          slots: [{ genre: "World / Global", sub: "Modern Mizrahi pop", micro: null }, { genre: "Electronic", sub: "Hebrew house", micro: null }, null],
+          mood: "Euphoric", energy: "Euphoric continuous build", groove: "straight",
+          vocalist: "Melismatic soprano", language: "he",
+          lyricalVibe: "Party celebration",
+          specificInstruments: ["Synth lead", "Darbuka", "Oud", "4-on-the-floor kick"],
+          specificArticulations: {}, bpm: 124,
+          harmonic: "Phrygian exotic tension", texture: "Crystalline & brittle", mix: "Punchy & compressed",
+        } },
+      { id: "ysm-9", name: "Sensual Mediterranean", emoji: "🌹", vibe: "romantic", state: {
+          slots: [{ genre: "World / Global", sub: "Modern Mizrahi pop", micro: null }, null, null],
+          mood: "Smoldering", energy: "Slow burn to explosion", groove: "syncopated",
+          vocalist: "Melismatic soprano", language: "he",
+          lyricalVibe: "Romantic devotion",
+          specificInstruments: ["Oud", "Synth pad", "Soft strings", "Darbuka"],
+          specificArticulations: {}, bpm: 96,
+          harmonic: "Phrygian exotic tension", texture: "Velvety & plush", mix: "Wide cinematic",
+        } },
+      { id: "ysm-10", name: "Mizrahi pop diva", emoji: "👑", vibe: "confident", state: {
+          slots: [{ genre: "World / Global", sub: "Modern Mizrahi pop", micro: null }, null, null],
+          mood: "Confident", energy: "Euphoric continuous build", groove: "syncopated",
+          vocalist: "Melismatic soprano", language: "he",
+          lyricalVibe: "Braggadocio flex",
+          specificInstruments: ["Oud", "Darbuka", "Synth pad", "Bass synth"],
+          specificArticulations: {}, bpm: 106,
+          harmonic: "Phrygian exotic tension", texture: "Warm & sun-baked", mix: "Ultra clean & polished",
+        } },
+    ],
+  },
+  {
+    artistId: "eden-golan",
+    artistName: "Eden Golan",
+    region: "israeli",
+    packs: [
+      { id: "edg-1", name: "Eurovision belt", emoji: "🎤", vibe: "anthemic", state: {
+          slots: [{ genre: "Pop", sub: "Hebrew dance-pop", micro: null }, null, null],
+          mood: "Defiant", energy: "Fever-pitch final third", groove: "straight",
+          vocalist: "Whisper to full belt", language: "he",
+          lyricalVibe: "Braggadocio flex",
+          specificInstruments: ["Orchestral hit", "808 drum machine", "Synth lead", "Brass section"],
+          specificArticulations: {}, bpm: 124,
+          harmonic: "Major-key lift", texture: "Thick & saturated", mix: "Wide cinematic",
+        } },
+      { id: "edg-2", name: "Anthemic ballad", emoji: "🌟", vibe: "heartbreak", state: {
+          slots: [{ genre: "Pop", sub: "Indie Pop", micro: null }, null, null],
+          mood: "Hopeful", energy: "Slow burn to explosion", groove: "straight",
+          vocalist: "Whisper to full belt", language: "he",
+          lyricalVibe: "Confessional diary",
+          specificInstruments: ["Piano", "Soft strings", "Synth pad", "Soft drums"],
+          specificArticulations: {}, bpm: 74,
+          harmonic: "Major-key lift", texture: "Smooth & liquid", mix: "Heavy reverb cathedral",
+        } },
+      { id: "edg-3", name: "Pop princess", emoji: "👸", vibe: "playful", state: {
+          slots: [{ genre: "Pop", sub: "Hebrew dance-pop", micro: null }, null, null],
+          mood: "Playful", energy: "Euphoric continuous build", groove: "straight",
+          vocalist: "Breathy female lead", language: "he",
+          lyricalVibe: "Romantic devotion",
+          specificInstruments: ["Synth lead", "808 drum machine", "Snap / clap layer", "Piano"],
+          specificArticulations: {}, bpm: 118,
+          harmonic: "Major-key lift", texture: "Crystalline & brittle", mix: "Ultra clean & polished",
+        } },
+      { id: "edg-4", name: "Emotional crescendo", emoji: "💫", vibe: "heartbreak", state: {
+          slots: [{ genre: "Pop", sub: "Indie Pop", micro: null }, null, null],
+          mood: "Bittersweet", energy: "Fever-pitch final third", groove: "straight",
+          vocalist: "Whisper to full belt", language: "he",
+          lyricalVibe: "Heartbreak elegy",
+          specificInstruments: ["Piano", "Strings", "Synth pad", "Soft drums"],
+          specificArticulations: {}, bpm: 80,
+          harmonic: "Minor-key introspection", texture: "Airy & weightless", mix: "Wide cinematic",
+        } },
+      { id: "edg-5", name: "Dance floor triumph", emoji: "💎", vibe: "anthemic", state: {
+          slots: [{ genre: "Pop", sub: "Hebrew dance-pop", micro: null }, { genre: "Electronic", sub: "Hebrew house", micro: null }, null],
+          mood: "Euphoric", energy: "Euphoric continuous build", groove: "straight",
+          vocalist: "Whisper to full belt", language: "he",
+          lyricalVibe: "Party celebration",
+          specificInstruments: ["4-on-the-floor kick", "Synth lead", "Bass synth", "Orchestral hit"],
+          specificArticulations: {}, bpm: 126,
+          harmonic: "Major-key lift", texture: "Crystalline & brittle", mix: "Ultra clean & polished",
+        } },
+      { id: "edg-6", name: "Empowerment anthem", emoji: "👑", vibe: "anthemic", state: {
+          slots: [{ genre: "Pop", sub: "Hebrew dance-pop", micro: null }, null, null],
+          mood: "Defiant", energy: "Euphoric continuous build", groove: "straight",
+          vocalist: "Whisper to full belt", language: "he",
+          lyricalVibe: "Braggadocio flex",
+          specificInstruments: ["Synth lead", "808 drum machine", "Piano", "Brass section"],
+          specificArticulations: {}, bpm: 120,
+          harmonic: "Major-key lift", texture: "Thick & saturated", mix: "Wide cinematic",
+        } },
+      { id: "edg-7", name: "Romantic pop", emoji: "💖", vibe: "romantic", state: {
+          slots: [{ genre: "Pop", sub: "Hebrew dance-pop", micro: null }, null, null],
+          mood: "Romantic", energy: "Slow burn to explosion", groove: "straight",
+          vocalist: "Breathy female lead", language: "he",
+          lyricalVibe: "Romantic devotion",
+          specificInstruments: ["Piano", "Synth pad", "Clean electric guitar", "Soft strings"],
+          specificArticulations: {}, bpm: 100,
+          harmonic: "Major-key lift", texture: "Smooth & liquid", mix: "Ultra clean & polished",
+        } },
+      { id: "edg-8", name: "Cinematic pop", emoji: "🎬", vibe: "moody", state: {
+          slots: [{ genre: "Pop", sub: "Indie Pop", micro: null }, null, null],
+          mood: "Smoldering", energy: "Steady groove throughout", groove: "straight",
+          vocalist: "Whisper to full belt", language: "he",
+          lyricalVibe: "Heartbreak elegy",
+          specificInstruments: ["Orchestral hit", "Strings", "Synth pad", "Soft drums"],
+          specificArticulations: {}, bpm: 92,
+          harmonic: "Minor-key introspection", texture: "Thick & saturated", mix: "Wide cinematic",
+        } },
+      { id: "edg-9", name: "Eurovision staging", emoji: "⚡", vibe: "anthemic", state: {
+          slots: [{ genre: "Pop", sub: "Hebrew dance-pop", micro: null }, null, null],
+          mood: "Confident", energy: "Fever-pitch final third", groove: "straight",
+          vocalist: "Whisper to full belt", language: "he",
+          lyricalVibe: "Party celebration",
+          specificInstruments: ["Orchestral hit", "Synth lead", "808 drum machine", "Bass synth"],
+          specificArticulations: {}, bpm: 128,
+          harmonic: "Major-key lift", texture: "Crystalline & brittle", mix: "Punchy & compressed",
+        } },
+      { id: "edg-10", name: "Soft vulnerability", emoji: "🕊️", vibe: "heartbreak", state: {
+          slots: [{ genre: "Pop", sub: "Indie Pop", micro: null }, null, null],
+          mood: "Tender", energy: "Slow burn to explosion", groove: "straight",
+          vocalist: "Whisper to full belt", language: "he",
+          lyricalVibe: "Confessional diary",
+          specificInstruments: ["Piano", "Soft strings", "Acoustic guitar fingerpick", "Synth pad"],
+          specificArticulations: {}, bpm: 68,
+          harmonic: "Major-key lift", texture: "Airy & weightless", mix: "Heavy reverb cathedral",
+        } },
+    ],
+  },
+];
+
 function getModeById(id) { return MODES.find(m => m.id === id) || MODES[1]; }
+
 
 // ────────────────────────────────────────────────────────────────────────────
 // PROMPT ENGINE
@@ -3729,6 +6445,10 @@ function sunoSanitize(text, lyricsOn = true) {
     .replace(/,\s*$/g, "")              // trailing comma at end
     .replace(/\.\s*\./g, ".")           // double period
     .trim();
+  // Banned-words guard: words Bubble has banned from prompts. Case-
+  // insensitive removal — keeps surrounding context clean. Currently
+  // just "heirloom"; extend as needed.
+  out = out.replace(/\bheirloom\b/gi, "family");
   // When vocals are requested, strip words that would cause Suno to
   // generate an instrumental by mistake.
   if (lyricsOn) out = sanitizeVocalKillers(out);
@@ -3738,7 +6458,23 @@ function sunoSanitize(text, lyricsOn = true) {
 function compressDetailedPrompt(state, lyricsOn, limit, mode) {
   const sentences = buildDetailedSentences(state, lyricsOn, mode);
   const packed = packSentencesToLimit(sentences, limit);
-  const raw = packed.length > limit ? safeTruncate(packed, limit) : packed;
+  // ── STRUCTURE INJECTION ──────────────────────────────────────────
+  // If the state carries a structure array (from a recipe, mimic pack,
+  // or admin tool), append it as square-bracket section tags. Suno &
+  // Udio respond strongly to these arrangement markers — they turn a
+  // vague sonic prompt into a producer-grade roadmap with intro /
+  // verse / pre-chorus / chorus / bridge / outro beats.
+  // Structure tags bypass sunoSanitize's em-dash replacement because
+  // they're purely bracketed metadata, not prose. We assemble before
+  // truncation so structure has priority if the limit bites.
+  let withStructure = packed;
+  if (Array.isArray(state.structure) && state.structure.length > 0) {
+    const tags = state.structure.map(s => `[${s}]`).join(" ");
+    // Prefer newline separator so the model reads structure as a
+    // distinct block from the sonic prose above it.
+    withStructure = packed ? `${packed}\n\n${tags}` : tags;
+  }
+  const raw = withStructure.length > limit ? safeTruncate(withStructure, limit) : withStructure;
   const finalText = sunoSanitize(raw, lyricsOn);
   return {
     text: finalText, length: finalText.length,
@@ -6383,11 +9119,17 @@ function Nav({ page, onNavigate }) {
   };
 
   // Tier gearshift — DIRECT SELECT (only callable when dev mode is ON).
-  // Click a specific slot to jump straight to that tier. No cycling.
+  // NEW FLOW: clicking a tier slot commits that tier as the user's
+  // active subscription AND exits dev mode in one atomic action. The
+  // user then experiences that tier exactly as a real subscriber of
+  // that tier would — strictly locked to its features. Dev button
+  // flips to OFF automatically (setDevTier sets devModeActive = false).
   const handleTierSelect = (nextTier) => {
     if (!devModeActive) return;
     if (!["free", "pro", "vip", "admin"].includes(nextTier)) return;
-    if (nextTier === tier) return;
+    // Allow selecting the current tier — that's the explicit "commit
+    // to this tier and exit dev mode" action. Only skip if we're
+    // already in that tier AND dev mode is already off (no-op).
     setDevTier(nextTier);
     refillForTier(nextTier);
   };
@@ -6401,7 +9143,11 @@ function Nav({ page, onNavigate }) {
 
   return (
     <nav style={{
-      padding: isMobile ? `${T.s2}px ${T.s4}px` : `${T.s3}px ${T.s6}px`,
+      // Desktop: left padding T.s9 matches the left pane's content
+      // anchor so nav links + HIT wordmark share the same left edge
+      // vertically. Right padding T.s6 gives the dev/layout/tier
+      // cluster breathing room from the edge.
+      padding: isMobile ? `${T.s2}px ${T.s4}px` : `${T.s3}px ${T.s6}px ${T.s3}px ${T.s9}px`,
       borderBottom: `1px solid ${T.border}`,
       background: T.bgTranslucent,
       backdropFilter: "blur(20px) saturate(150%)",
@@ -9021,10 +11767,8 @@ function TipsManual() {
 
   return (
     <div style={{
-      marginBottom: T.s4,
       position: "relative",
-      display: "flex",
-      justifyContent: "center",
+      display: "inline-flex",
     }}>
       {/* Compact trigger: small pill, now centered under the hero. When
           clicked, opens a fullscreen modal (not an inline popover) so
@@ -9257,6 +12001,10 @@ const ENGINE_DEF = {
   specificInstruments: [], specificArticulations: {}, specificCount: 3,
   mix: "", harmonic: "", texture: "",
   bpm: 0,  // 0 = unset (prompt omits BPM)
+  // structure: array of section tags ([Intro], [Verse], etc.) that get
+  // appended to the detailed prompt as producer-grade arrangement
+  // markers. Empty by default; populated by recipes / mimic packs.
+  structure: [],
   favorites: [],
   // sectionLocks: if a section key is locked, its current value is preserved by randomize
   sectionLocks: {
@@ -9978,6 +12726,15 @@ function EnginePage({ onNavigate }) {
   const [toast, setToast] = useState(null); // { kind: "warn" | "info", text }
   const rollTimersRef = useRef([]);
   const shortPromptRef = useRef(null);
+  // Detailed (long) prompt ref — viewport anchor target. Any action
+  // that changes the compressed detailed prompt text triggers a scroll
+  // to this element, keeping the user's eye on the final output.
+  const detailedPromptRef = useRef(null);
+  // Tracks the last detailed text we scrolled for, so the initial
+  // render (first non-empty text) doesn't jump the viewport before the
+  // user has interacted. Set after first render pass via the effect
+  // guard below.
+  const lastScrolledDetailedRef = useRef(null);
 
   // ── COLLAPSIBLE SECTIONS ────────────────────────────────────────────
   // Each chip-list section collapses to its TOP_5 curated shortlist by
@@ -10293,32 +13050,31 @@ function EnginePage({ onNavigate }) {
   // Gate: Free/Pro see the same fixed 5 curated starting points. Only VIP
   // (and Admin) can shuffle through the full 50-preset catalog. This makes
   // the catalog a concrete upgrade reason rather than a volume brag.
-  const canShufflePresets = tier === "vip" || tier === "admin";
-  // Fixed 5 curated presets — a balanced sampler across genre families.
-  const PRO_PRESET_IDS = [
-    "modern-trap",
-    "moody-rnb",
-    "afrobeats-summer",
-    "dark-pop",
-    "lofi-study",
-  ];
-  const shuffle5Presets = () => {
-    if (!canShufflePresets) {
-      return PRO_PRESET_IDS.slice();
-    }
-    const ids = PRESETS.map(p => p.id);
-    // Fisher-Yates partial shuffle — pick 5 unique IDs
-    const copy = [...ids];
-    for (let i = copy.length - 1; i > copy.length - 6 && i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [copy[i], copy[j]] = [copy[j], copy[i]];
-    }
-    return copy.slice(-5);
-  };
-  const [visiblePresetIds, setVisiblePresetIds] = useState(shuffle5Presets);
-  const visiblePresets = visiblePresetIds
-    .map(id => PRESETS.find(p => p.id === id))
-    .filter(Boolean);
+  // ── PAGINATED PRESETS ──────────────────────────────────────────────
+  // Replaces the prior "shuffle 5 random" model with a paginated browse
+  // of all 50 curated presets (5 per page = 10 pages total).
+  //   Free tier → no presets section at all (gated by features.presets)
+  //   Pro tier  → page 1 only (indices 0-4), pagination controls hidden
+  //   VIP+      → full pagination access (pages 1-10)
+  // Admin is VIP-equivalent here — full access. No Randomizer button;
+  // users pick a specific preset from a specific page.
+  const PRESETS_PER_PAGE = 5;
+  const totalPresetPages = Math.max(1, Math.ceil(PRESETS.length / PRESETS_PER_PAGE));
+  // Can the current tier navigate between pages?
+  const canPaginatePresets = tier === "vip" || tier === "admin";
+  // canShufflePresets retained as an alias for historical call sites
+  // (e.g. the "presetShuffle" sales modal lookup). Now maps to the
+  // paginate capability since shuffling is deprecated.
+  const canShufflePresets = canPaginatePresets;
+  const [presetPage, setPresetPage] = useState(0);
+  // Clamp the page back to 0 if the tier loses access mid-session.
+  useEffect(() => {
+    if (!canPaginatePresets && presetPage !== 0) setPresetPage(0);
+  }, [canPaginatePresets, presetPage]);
+  const visiblePresets = PRESETS.slice(
+    presetPage * PRESETS_PER_PAGE,
+    presetPage * PRESETS_PER_PAGE + PRESETS_PER_PAGE
+  );
 
   // Sales modal — opens when a tier-gated feature is clicked.
   const [salesModalFeature, setSalesModalFeature] = useState(null);
@@ -10329,42 +13085,62 @@ function EnginePage({ onNavigate }) {
     setTimeout(() => setToast(null), 3400);
   };
 
-  // ── EFFECTIVE LIMITS — combines tier features + active fuel constraints ──
-  // Fuel behaves as a "session upgrade" — using Pro/VIP fuel gives expanded
-  // depth for that roll even if base tier is Free. Fuel TIGHTENS only when
-  // more restrictive than tier (Pro user on Free fuel gets Free-fuel output).
+  // ── EFFECTIVE LIMITS — what the USER SEES in the UI ──────────────
+  // UI-visible capabilities are driven by TIER ONLY. A Free user who
+  // selects Pro fuel still sees the Free UI chrome (3 chips per
+  // section, no locks, no favorites, no subgenre expansion). They
+  // don't pay for the Pro UI, so they don't see it.
+  //
+  // The OUTPUT quality still upgrades when they spend Pro fuel — see
+  // outputLimits below. This split is the core of the "taste-test"
+  // rule: Free user gets 1 Pro-quality prompt per day via the Pro-
+  // fuel coin, but the configuration UI stays Free-visible so they
+  // don't get the ergonomics of a paying Pro subscriber.
   const effectiveLimits = useMemo(() => {
-    const isFreeFuel = activeFuel === "free";
-
-    // Mode access rules (tier is the SOLE authority on depth modes):
-    //   Free tier     → simple, moderated
-    //   Pro/VIP/Bubble → simple, moderated, expanded, vast, chaos
-    // Fuel type does NOT affect mode availability. Previously Free Fuel
-    // artificially restricted Pro/VIP users to {simple, moderated, chaos}
-    // by default, which contradicted the "Pro/VIP always default to
-    // expanded" product rule. Fuel still controls option/instrument
-    // depth restrictions below, just not the depth-mode selector.
-    const allowedModes = [...features.modes];
-
     return {
-      // SLOTS — tier entitlement is the floor. Free fuel only caps slots
-      // for users whose tier is already 1-slot (free tier). Pro/VIP tier
-      // users keep their full slot count regardless of active fuel —
-      // they paid for 3 slots; using free fuel for a cheap roll doesn't
-      // strip that away.
       maxSlots: features.maxSlots,
-      modes: allowedModes,
-      maxInstruments: isFreeFuel ? Math.min(5, features.maxInstruments) : features.maxInstruments,
+      modes: [...features.modes],
+      maxInstruments: features.maxInstruments,
+      maxOptionsPerSection: features.maxOptionsPerSection,
+      restrictSubgenres: !features.maxOptionsPerSection || features.maxOptionsPerSection < 10,
+      locksAvailable: features.locks,
+      favoritesAvailable: features.favorites,
+    };
+  }, [features]);
+
+  // ── OUTPUT LIMITS — what the ENGINE uses to generate prompts ─────
+  // Fuel behaves as a session upgrade on the OUTPUT pipeline only.
+  // When non-Free fuel is selected, the randomizer can draw from the
+  // full catalog pools (999+ options) regardless of what the UI shows.
+  // Free user spending Pro fuel → engine uses Pro-tier pool sizes →
+  // prompt matches Pro-quality output. Free user on Free fuel →
+  // engine respects Free-tier pool sizes → basic prompt.
+  //
+  // Pro-fuel output quality matches the PRO TIER's dailyFuel baseline.
+  // That means a Free user spending their 1 daily Pro coin gets an
+  // engine run that's indistinguishable from a Pro subscriber's Pro-
+  // fueled roll: full catalog, full instrument range, all locks +
+  // favorites honored, all subgenres unlocked.
+  const outputLimits = useMemo(() => {
+    const isFreeFuel = activeFuel === "free";
+    // The tier whose output capabilities to match. Free fuel → current
+    // tier. Pro fuel → Pro or better (cap at user's tier if they're
+    // already VIP/Admin so we don't accidentally weaken their output).
+    const outputTier = isFreeFuel ? tier :
+      (TIER_RANK[tier] >= TIER_RANK[activeFuel] ? tier : activeFuel);
+    const outputFeatures = TIER_FEATURES[outputTier] || TIER_FEATURES.free;
+    return {
+      maxSlots: Math.max(features.maxSlots, outputFeatures.maxSlots || 1),
+      modes: [...features.modes],
+      maxInstruments: isFreeFuel ? features.maxInstruments : outputFeatures.maxInstruments,
       maxOptionsPerSection: isFreeFuel
-        ? Math.min(5, features.maxOptionsPerSection)
-        : Math.max(features.maxOptionsPerSection, 999),
-      restrictSubgenres: isFreeFuel,
-      // LOCKS — available to Pro+ tiers always, OR when user bought Pro/VIP fuel
-      // (even for Free tier users). Matches the "fuel as session upgrade" model.
+        ? features.maxOptionsPerSection
+        : (outputFeatures.maxOptionsPerSection === Infinity ? 999 : Math.max(features.maxOptionsPerSection, outputFeatures.maxOptionsPerSection || 999)),
+      restrictSubgenres: isFreeFuel ? effectiveLimits.restrictSubgenres : false,
       locksAvailable: features.locks || !isFreeFuel,
       favoritesAvailable: features.favorites || !isFreeFuel,
     };
-  }, [activeFuel, features]);
+  }, [activeFuel, features, effectiveLimits, tier]);
 
   // isOptionLocked: returns true when option at index is beyond the tier's
   // allowed count for this section. Used to blur + fully disable locked chips.
@@ -11014,16 +13790,23 @@ function EnginePage({ onNavigate }) {
   const doRandomize = () => {
     const [minSec, maxSec] = MODE_SECTION_LIMITS[mode] || [5, 6];
     const targetSections = minSec + Math.floor(Math.random() * (maxSec - minSec + 1));
-    // Free users cannot lock: when locksAvailable is false for the active fuel,
-    // all lock state is ignored during randomize so every HIT produces a fully
-    // fresh result. Paid tiers (and free users spending Pro/VIP fuel) keep locks.
-    const locksActive = effectiveLimits.locksAvailable;
+    // ── OUTPUT LIMITS (not UI limits) ─────────────────────────────
+    // doRandomize reads outputLimits, which EXPANDS when non-Free
+    // fuel is active (even for Free-tier users). This is the core of
+    // the "Pro fuel = Pro output" rule: a Free user spending their 1
+    // daily Pro coin gets access to the full catalog during the roll,
+    // even though their UI only displays the Free-tier 3 chips per
+    // section. The rolled value may be from a chip the user never saw,
+    // and that's intentional — they paid the coin for access, not for
+    // the ergonomic preview.
+    const locksActive = outputLimits.locksAvailable;
     const slotLocks = locksActive ? (state.slotLocks || [false, false, false]) : [false, false, false];
     const secLocks  = locksActive ? (state.sectionLocks || {}) : {};
 
-    // clipPool — respects tier maxOptionsPerSection (floor 3) so tier-locked
-    // options are never chosen by randomizer.
-    const poolCap = Math.max(3, effectiveLimits.maxOptionsPerSection);
+    // clipPool — uses OUTPUT limits so Pro fuel expands the pool even
+    // when the UI is showing only 3 chips. Free + Free fuel = 3 chips,
+    // Free + Pro fuel = full catalog accessible by the randomizer.
+    const poolCap = Math.max(3, outputLimits.maxOptionsPerSection);
     const clipPool = (pool) => pool.slice(0, poolCap);
 
     const eligible = RANDOMIZER_SECTIONS.filter(s => {
@@ -11046,7 +13829,16 @@ function EnginePage({ onNavigate }) {
 
     // Picker that prefers locked options, then favorites, then random.
     // Option locks are only honored for paid tiers (free users cannot lock).
-    const favPick = (sectionKey, pool) => {
+    // ── POP INTUITION v2 ──────────────────────────────────────────
+    // Optional 3rd param `intuitionPool` — a weighted array (repeated
+    // entries = higher probability) derived from GENRE_INTUITION for
+    // the primary genre slot. User locks and favorites still win; when
+    // the picker falls through to "pick random from full pool", that's
+    // where intuition kicks in. Coherent genre-appropriate values
+    // 88% of the time, creative-surprise freely-random 12% of the
+    // time. Net effect: every fresh roll sounds like a real hit in
+    // that genre's lane, not a nonsense Frankenstein combination.
+    const favPick = (sectionKey, pool, intuitionPool) => {
       if (locksActive) {
         const locked = (state.optionLocks || [])
           .filter(f => f.startsWith(sectionKey + ":"))
@@ -11059,6 +13851,11 @@ function EnginePage({ onNavigate }) {
         .map(f => f.slice(sectionKey.length + 1))
         .filter(v => pool.includes(v));
       if (favs.length > 0 && Math.random() < 0.7) return pickOne(favs);
+      // Intuition fallback: when provided, bias the pick toward
+      // genre-coherent values. Without it, uniform random pick.
+      if (intuitionPool && intuitionPool.length > 0) {
+        return intuitivePick(intuitionPool, pool);
+      }
       return pickOne(pool);
     };
 
@@ -11066,13 +13863,15 @@ function EnginePage({ onNavigate }) {
     // for a given section AND boosts their priority. 60% chance to pick from
     // custom entries if any exist; otherwise falls through to normal favPick.
     // Custom entries are always present in the pool even outside the priority roll.
-    const withCustom = (sectionKey, pool) => {
+    // Optional 3rd param `intuitionPool` threads through to favPick for
+    // genre-coherent bias on the fallback path.
+    const withCustom = (sectionKey, pool, intuitionPool) => {
       const customs = customOptions[sectionKey] || [];
-      if (customs.length === 0) return favPick(sectionKey, pool);
+      if (customs.length === 0) return favPick(sectionKey, pool, intuitionPool);
       // 60% chance: pick from custom entries (the "prioritized" behavior)
       if (Math.random() < 0.6) return pickOne(customs);
       // Otherwise: merge customs into pool and let favPick handle
-      return favPick(sectionKey, [...customs, ...pool]);
+      return favPick(sectionKey, [...customs, ...pool], intuitionPool);
     };
 
     // Helper: either preserve existing or randomize, depending on sectionLock
@@ -11154,13 +13953,27 @@ function EnginePage({ onNavigate }) {
       specInsts = []; specCount = state.specificCount; specArts = {};
     }
 
+    // ── GENRE INTUITION ──────────────────────────────────────────
+    // Derive the coherence DNA from the PRIMARY slot — the first
+    // non-null slot in order. Every picker below uses this to bias
+    // field choices toward genre-coherent values.
+    const primarySlot = nextSlots.find(s => s != null) || null;
+    const genreIntuition = getGenreIntuition(primarySlot);
+
     setState({
       slots: nextSlots,
       slotLocks,
       toggles: { ...state.toggles },
-      mood:      maybe("mood",     () => withCustom("mood", clipPool(MOODS))),
-      energy:    maybe("energy",   () => withCustom("energy", clipPool(ENERGIES))),
-      groove:    maybe("groove",   () => withCustom("groove", clipPool(GROOVES.slice(1).map(g => g.id))), "default"),
+      // ── INTUITION-BIASED PICKS ──────────────────────────────────
+      // Each section uses intuitivePick against the primary slot's
+      // genre DNA. User customs/locks/favorites still win (they come
+      // first in withCustom/favPick); intuition only fires for
+      // unclaimed picks — the "clean slate" case. This is where the
+      // quality jump comes from: every fresh roll biases toward
+      // coherent genre conventions.
+      mood:      maybe("mood",     () => withCustom("mood", clipPool(MOODS), genreIntuition.moods)),
+      energy:    maybe("energy",   () => withCustom("energy", clipPool(ENERGIES), genreIntuition.energies)),
+      groove:    maybe("groove",   () => withCustom("groove", clipPool(GROOVES.slice(1).map(g => g.id)), genreIntuition.grooves), "default"),
       vocalist:  (() => {
         const picked = maybe("vocalist", () => withCustom("vocalist", clipPool(VOCALISTS)));
         // Enforce: if a language will be set post-randomize AND vocalist ended up empty,
@@ -11185,12 +13998,23 @@ function EnginePage({ onNavigate }) {
       specificInstruments:   specInsts,
       specificArticulations: specArts,
       specificCount:         specCount,
-      mix:       maybe("mix",      () => withCustom("mix", clipPool(MIX_CHARS))),
-      harmonic:  maybe("harmonic", () => withCustom("harmonic", clipPool(HARMONIC_STYLES))),
-      texture:   maybe("texture",  () => withCustom("texture", clipPool(SOUND_TEXTURES))),
+      mix:       maybe("mix",      () => withCustom("mix", clipPool(MIX_CHARS), genreIntuition.mixes)),
+      harmonic:  maybe("harmonic", () => withCustom("harmonic", clipPool(HARMONIC_STYLES), genreIntuition.harmonics)),
+      texture:   maybe("texture",  () => withCustom("texture", clipPool(SOUND_TEXTURES), genreIntuition.textures)),
+      // ── INTUITIVE BPM ─────────────────────────────────────────
+      // BPM lives in the genre's valid range instead of uniform
+      // 60-180. A Dance-Pop roll lands at 110-128, not 74. 10%
+      // surprise probability keeps the occasional creative jolt.
       bpm: secLocks.bpm
              ? state.bpm
-             : (chosen.has("bpm") ? (60 + Math.floor(Math.random() * 61) * 2) : 0),
+             : (chosen.has("bpm") ? intuitiveBpm(genreIntuition) : 0),
+      // Producer-grade structure derived from the primary genre slot
+      // that just got picked. Auto-attaches to every main HIT roll so
+      // every user (not just admin) gets arrangement tags in their
+      // detailed prompt — biggest single quality upgrade for everyone.
+      structure: nextSlots[0]?.sub
+        ? getStructureForGenre(nextSlots[0].sub)
+        : [],
       favorites: state.favorites || [],
       sectionLocks: state.sectionLocks,
       optionLocks:  state.optionLocks,
@@ -11249,10 +14073,12 @@ function EnginePage({ onNavigate }) {
       // is memoized against the post-randomize state. Skipped for free
       // tier inside the effect itself.
       autoCopyPendingRef.current = true;
-      // Smooth-scroll to the short prompt so the user sees the result.
-      // Small delay lets React commit the prompt update before we scroll.
+      // Smooth-scroll to the DETAILED prompt — that's the auto-copied
+      // one, and the scroll effect below also anchors there. Unifying
+      // the scroll target prevents a double-jump (HIT → short, then
+      // effect → detailed). Small delay lets React commit first.
       setTimeout(() => {
-        shortPromptRef.current?.scrollIntoView({
+        detailedPromptRef.current?.scrollIntoView({
           behavior: "smooth",
           block: "start",
         });
@@ -11265,15 +14091,30 @@ function EnginePage({ onNavigate }) {
     setState(ENGINE_DEF);
   };
 
+  // ── AUTO-COPY FLAG ───────────────────────────────────────────────
+  // Shared ref flagged by any "apply" path that commits a config the
+  // user clearly wants to use (main HIT roll, preset, mimic pack, Extra
+  // Poppy, Instant Pop, Israeli Mode). When true, the useEffect below
+  // fires once detailedResult updates post-state-commit, copying the
+  // long prompt to clipboard + toast. Free tier skipped inside effect.
+  const autoCopyPendingRef = useRef(false);
+
   // Apply a preset config to the engine state — updates mode, lyricsOn, and
   // merges the preset's state snapshot over the defaults.
   const applyPreset = (preset) => {
     if (!preset) return;
     setMode(preset.mode || "moderated");
     setLyricsOn(preset.lyricsOn !== false);
+    // Derive structure from the preset's primary genre slot if the
+    // preset doesn't define its own — gives every preset a
+    // producer-grade arrangement automatically.
+    const primarySlot = preset.state?.slots?.[0];
+    const derivedStructure = preset.state?.structure
+      || (primarySlot ? getStructureForGenre(primarySlot.sub) : []);
     setState({
       ...ENGINE_DEF,
       ...preset.state,
+      structure: derivedStructure,
       // Reset all locks/favorites so the preset feels fresh
       slotLocks: [false, false, false],
       sectionLocks: { ...ENGINE_DEF.sectionLocks },
@@ -11281,6 +14122,8 @@ function EnginePage({ onNavigate }) {
       favorites: [],
       toggles: { ...ENGINE_DEF.toggles },
     });
+    // Flag auto-copy: user clicked a preset, commit + copy the long prompt
+    autoCopyPendingRef.current = true;
   };
 
   // ── EXTRA POPPY — VIP/Bubble pop-maximizer ────────────────────────
@@ -11367,12 +14210,574 @@ function EnginePage({ onNavigate }) {
       bpm:         pick(POP_BPMS),
       specificInstruments: POP_INSTRUMENTS.slice(0, 3 + Math.floor(Math.random() * 2)),
       specificArticulations: {},
+      // Producer-grade structure tags based on the primary genre slot
+      structure: getStructureForGenre(primary.sub),
       // Clear locks so the next HIT can re-roll without friction
       slotLocks: [false, false, false],
       sectionLocks: { ...ENGINE_DEF.sectionLocks },
       optionLocks: [],
     }));
     showToast("Extra Poppy: config maxed for pop appeal", "info");
+    // Auto-copy long prompt once the state commits
+    autoCopyPendingRef.current = true;
+  };
+
+  // ══════════════════════════════════════════════════════════════════
+  // BUBBLE TOOLS — admin-only internal shortcuts
+  // ══════════════════════════════════════════════════════════════════
+  // These live on the Engine page but are ONLY visible to tier === "admin"
+  // (the "Bubble" tier in the UI). No fuel cost, no gating — internal
+  // hack tools for Bubble + partner. Not exposed to paying tiers.
+
+  // ── INSTANT POP ────────────────────────────────────────────────────
+  // Same config generator as Extra Poppy, but zero-cost and
+  // immediately followed by a HIT roll (auto-generates the prompt).
+  // Admin clicks once, gets a finished high-pop-score prompt in clipboard.
+  const applyInstantPop = () => {
+    // ── RULE-BASED POP RECIPES ─────────────────────────────────────
+    // Each genre has its own recipe: moods, BPMs, vocalists, mix, and
+    // instruments that actually work TOGETHER for that genre. Instead
+    // of randomly picking from a shared pop pool, we pick a recipe
+    // first, then fill each field from that recipe's tight subset.
+    // This pushes consistent 92-98% Pop Match scores instead of the
+    // variable 85-100% the old random-pick model produced.
+    //
+    // Real hit-making rule: genre dictates groove/BPM/harmonic. You
+    // don't pick dance-pop then assign it half-time + minor-key.
+    const RECIPES = [
+      {
+        label: "Dance-Pop anthem",
+        slot: { genre: "Pop", sub: "Dance-Pop", micro: null },
+        bpms: [116, 120, 122, 124, 128],
+        moods: ["Euphoric", "Catchy", "Confident", "Playful"],
+        vocalists: ["Breathy female lead", "Falsetto-led", "Whisper to full belt"],
+        langs: ["en", "ko", "es"],
+        vibes: ["Party celebration", "Romantic devotion", "Braggadocio flex"],
+        groove: "straight",
+        harmonic: "Major-key lift",
+        texture: "Crystalline & brittle",
+        mix: "Ultra clean & polished",
+        energy: "Euphoric continuous build",
+        instruments: ["808 drum machine", "Synth pad", "Clean electric guitar", "Snap / clap layer"],
+      },
+      {
+        label: "Synth-Pop nostalgia",
+        slot: { genre: "Pop", sub: "Synth-Pop", micro: null },
+        bpms: [110, 116, 120, 124, 128],
+        moods: ["Nostalgic", "Dreamy", "Romantic", "Euphoric"],
+        vocalists: ["Falsetto-led", "Smooth tenor", "Breathy female lead"],
+        langs: ["en"],
+        vibes: ["Romantic devotion", "Nostalgic storytelling", "Coming-of-age narrative"],
+        groove: "straight",
+        harmonic: "Major-key lift",
+        texture: "Velvety & plush",
+        mix: "80s gated reverb drums",
+        energy: "Euphoric continuous build",
+        instruments: ["Analog synth lead", "Juno-60 pads", "Bass synth", "Gated reverb snare"],
+      },
+      {
+        label: "Melodic Rap crossover",
+        slot: { genre: "Hip-Hop", sub: "Melodic Rap", micro: null },
+        bpms: [78, 82, 88, 92, 98],
+        moods: ["Confident", "Nostalgic", "Romantic", "Smoldering"],
+        vocalists: ["Auto-tuned melodic delivery", "Spoken rap over sung hook", "Smooth tenor"],
+        langs: ["en"],
+        vibes: ["Romantic devotion", "Braggadocio flex", "Confessional diary"],
+        groove: "half-time",
+        harmonic: "Minor-key introspection",
+        texture: "Velvety & plush",
+        mix: "Wide cinematic",
+        energy: "Slow burn to explosion",
+        instruments: ["808 sub", "Hi-hat triplet roll", "Rhodes electric piano", "Synth pad"],
+      },
+      {
+        label: "Trap flex",
+        slot: { genre: "Hip-Hop", sub: "Trap", micro: null },
+        bpms: [128, 132, 138, 142],
+        moods: ["Confident", "Defiant", "Smoldering"],
+        vocalists: ["Spoken rap over sung hook", "Auto-tuned melodic delivery"],
+        langs: ["en"],
+        vibes: ["Braggadocio flex", "Party celebration"],
+        groove: "half-time",
+        harmonic: "Minor-key introspection",
+        texture: "Thick & saturated",
+        mix: "Punchy & compressed",
+        energy: "Fever-pitch final third",
+        instruments: ["808 drum machine", "Hi-hat triplet roll", "Synth pad", "Bass synth"],
+      },
+      {
+        label: "Contemporary R&B slow burn",
+        slot: { genre: "R&B / Soul", sub: "Contemporary R&B", micro: null },
+        bpms: [70, 74, 82, 90, 96],
+        moods: ["Romantic", "Smoldering", "Pensive", "Bittersweet"],
+        vocalists: ["Falsetto-led", "Breathy female lead", "Smooth tenor", "Whisper to full belt"],
+        langs: ["en"],
+        vibes: ["Romantic devotion", "Confessional diary", "Heartbreak elegy"],
+        groove: "half-time",
+        harmonic: "Jazz extensions",
+        texture: "Smooth & liquid",
+        mix: "Heavy reverb cathedral",
+        energy: "Slow burn to explosion",
+        instruments: ["Rhodes electric piano", "808 sub", "Ambient synth wash", "Soft strings"],
+      },
+      {
+        label: "Reggaeton summer",
+        slot: { genre: "Latin", sub: "Reggaeton", micro: null },
+        bpms: [92, 96, 98, 100, 102],
+        moods: ["Euphoric", "Playful", "Romantic", "Confident"],
+        vocalists: ["Spoken rap over sung hook", "Smooth tenor", "Breathy female lead"],
+        langs: ["es"],
+        vibes: ["Party celebration", "Romantic devotion"],
+        groove: "syncopated",
+        harmonic: "Minor-key modal",
+        texture: "Warm & sun-baked",
+        mix: "Punchy & compressed",
+        energy: "Euphoric continuous build",
+        instruments: ["Dembow rhythm", "808 drum machine", "Synth lead", "Marimba"],
+      },
+      {
+        label: "Afrobeats groove",
+        slot: { genre: "World / Global", sub: "Afrobeats", micro: null },
+        bpms: [98, 102, 106, 110],
+        moods: ["Playful", "Confident", "Romantic", "Euphoric"],
+        vocalists: ["Smooth tenor", "Auto-tuned melodic delivery", "Breathy female lead"],
+        langs: ["en"],
+        vibes: ["Party celebration", "Romantic devotion", "Ode to a place"],
+        groove: "syncopated",
+        harmonic: "Major-key lift",
+        texture: "Warm & sun-baked",
+        mix: "Wide cinematic",
+        energy: "Steady groove throughout",
+        instruments: ["Log drum bass", "Afrobeats kit", "Marimba", "Brass section"],
+      },
+      {
+        label: "House euphoria",
+        slot: { genre: "Electronic", sub: "House", micro: null },
+        bpms: [120, 122, 124, 126, 128],
+        moods: ["Euphoric", "Confident", "Dreamy"],
+        vocalists: ["Breathy female lead", "Falsetto-led"],
+        langs: ["en"],
+        vibes: ["Party celebration", "Romantic devotion"],
+        groove: "straight",
+        harmonic: "Major-key lift",
+        texture: "Crystalline & brittle",
+        mix: "Punchy & compressed",
+        energy: "Euphoric continuous build",
+        instruments: ["4-on-the-floor kick", "Synth lead", "Bass synth", "Arpeggiated synth"],
+      },
+    ];
+    const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
+    const recipe = pick(RECIPES);
+    // Hybrid second slot 45% of the time — picked from a DIFFERENT
+    // recipe so the fusion actually creates something interesting.
+    const hybrid = Math.random() < 0.45
+      ? pick(RECIPES.filter(r => r.slot.sub !== recipe.slot.sub)).slot
+      : null;
+    playSwitchSound();
+    setLyricsOn(true);
+    setState(prev => ({
+      ...prev,
+      slots: [recipe.slot, hybrid, null],
+      mood:        pick(recipe.moods),
+      energy:      recipe.energy,
+      groove:      recipe.groove,
+      vocalist:    pick(recipe.vocalists),
+      language:    pick(recipe.langs),
+      lyricalVibe: pick(recipe.vibes),
+      mix:         recipe.mix,
+      harmonic:    recipe.harmonic,
+      texture:     recipe.texture,
+      bpm:         pick(recipe.bpms),
+      specificInstruments: recipe.instruments,
+      specificArticulations: {},
+      // Producer-grade structure tags for this genre family
+      structure: getStructureForGenre(recipe.slot.sub),
+      slotLocks: [false, false, false],
+      sectionLocks: { ...ENGINE_DEF.sectionLocks },
+      optionLocks: [],
+    }));
+    showToast(`⚡ Instant Pop · ${recipe.label}`, "info");
+    // Auto-copy long prompt once the state commits
+    autoCopyPendingRef.current = true;
+  };
+
+  // ── ISRAELI MODE — v2 recipe-based engine ──────────────────────────
+  // Upgraded from v1 random-pick pools to v2 rule-based recipes. Each
+  // Israeli sub-genre has its own coherent BPM/groove/harmonic/mix
+  // recipe — you don't mix Mizrahi pop with trap drums, etc. Weighted
+  // tier pick preserved (60/30/10 A/B/C). Hebrew is locked.
+  const applyIsraeliMode = () => {
+    const IL_RECIPES = [
+      // ── TIER A (60% weight — guaranteed hits today) ──
+      {
+        tier: "A", label: "Modern Mizrahi pop",
+        slot: { genre: "World / Global", sub: "Modern Mizrahi pop", micro: null },
+        bpms: [96, 102, 104, 108, 112],
+        moods: ["Euphoric", "Romantic", "Nostalgic", "Tender", "Playful"],
+        vocalists: ["Melismatic soprano", "Smooth tenor", "Gospel ensemble"],
+        vibes: ["Romantic devotion", "Generational family story", "Party celebration", "Ode to a place"],
+        groove: "syncopated",
+        harmonic: "Phrygian exotic tension",
+        texture: "Warm & sun-baked",
+        mix: "Ultra clean & polished",
+        energy: "Euphoric continuous build",
+        instruments: ["Oud", "Darbuka", "Kanoun", "Synth pad"],
+      },
+      {
+        tier: "A", label: "Israeli trap",
+        slot: { genre: "Hip-Hop", sub: "Israeli trap", micro: null },
+        bpms: [128, 132, 136, 138, 140],
+        moods: ["Confident", "Defiant", "Smoldering", "Bittersweet"],
+        vocalists: ["Spoken rap over sung hook", "Auto-tuned melodic delivery"],
+        vibes: ["Braggadocio flex", "Heartbreak elegy", "Coming-of-age narrative"],
+        groove: "half-time",
+        harmonic: "Minor-key introspection",
+        texture: "Thick & saturated",
+        mix: "Punchy & compressed",
+        energy: "Fever-pitch final third",
+        instruments: ["808 drum machine", "Hi-hat triplet roll", "Synth pad", "Bass synth"],
+      },
+      {
+        tier: "A", label: "Hebrew dance-pop",
+        slot: { genre: "Pop", sub: "Hebrew dance-pop", micro: null },
+        bpms: [116, 118, 120, 122, 124, 126],
+        moods: ["Euphoric", "Catchy", "Playful", "Confident"],
+        vocalists: ["Breathy female lead", "Spoken rap over sung hook", "Whisper to full belt"],
+        vibes: ["Party celebration", "Romantic devotion", "Braggadocio flex"],
+        groove: "straight",
+        harmonic: "Major-key lift",
+        texture: "Crystalline & brittle",
+        mix: "Ultra clean & polished",
+        energy: "Euphoric continuous build",
+        instruments: ["Synth lead", "808 drum machine", "Snap / clap layer", "Bass synth"],
+      },
+      {
+        tier: "A", label: "Mediterranean-trap fusion",
+        slot: { genre: "Hip-Hop", sub: "Mediterranean-trap fusion", micro: null },
+        bpms: [100, 108, 114, 118, 122],
+        moods: ["Confident", "Smoldering", "Nostalgic", "Romantic"],
+        vocalists: ["Auto-tuned melodic delivery", "Spoken rap over sung hook", "Smooth tenor"],
+        vibes: ["Ode to a place", "Braggadocio flex", "Romantic devotion"],
+        groove: "half-time",
+        harmonic: "Phrygian exotic tension",
+        texture: "Thick & saturated",
+        mix: "Wide cinematic",
+        energy: "Steady groove throughout",
+        instruments: ["Oud", "808 drum machine", "Darbuka", "Synth pad"],
+      },
+      // ── TIER B (30% weight — reliable mid-market) ──
+      {
+        tier: "B", label: "Israeli indie pop",
+        slot: { genre: "Pop", sub: "Israeli indie pop", micro: null },
+        bpms: [88, 96, 104, 108, 116],
+        moods: ["Pensive", "Romantic", "Bittersweet", "Tender"],
+        vocalists: ["Breathy female lead", "Smooth tenor", "Whisper to full belt"],
+        vibes: ["Confessional diary", "Heartbreak elegy", "Ode to a place"],
+        groove: "straight",
+        harmonic: "Minor-key introspection",
+        texture: "Airy & weightless",
+        mix: "Wide cinematic",
+        energy: "Slow burn to explosion",
+        instruments: ["Acoustic guitar fingerpick", "Piano", "Synth pad", "Soft drums"],
+      },
+      {
+        tier: "B", label: "Oriental-pop crossover",
+        slot: { genre: "World / Global", sub: "Oriental-pop crossover", micro: null },
+        bpms: [96, 104, 108, 112, 116],
+        moods: ["Playful", "Romantic", "Confident", "Euphoric"],
+        vocalists: ["Melismatic soprano", "Breathy female lead", "Smooth tenor"],
+        vibes: ["Party celebration", "Romantic devotion", "Ode to a place"],
+        groove: "syncopated",
+        harmonic: "Phrygian exotic tension",
+        texture: "Warm & sun-baked",
+        mix: "Punchy & compressed",
+        energy: "Euphoric continuous build",
+        instruments: ["Mediterranean pluck synth", "Darbuka", "Bouzouki", "Bass synth"],
+      },
+      {
+        tier: "B", label: "Hebrew house",
+        slot: { genre: "Electronic", sub: "Hebrew house", micro: null },
+        bpms: [120, 122, 124, 126, 128],
+        moods: ["Euphoric", "Confident", "Playful"],
+        vocalists: ["Breathy female lead", "Spoken rap over sung hook"],
+        vibes: ["Party celebration", "Braggadocio flex"],
+        groove: "straight",
+        harmonic: "Major-key lift",
+        texture: "Smooth & liquid",
+        mix: "Punchy & compressed",
+        energy: "Euphoric continuous build",
+        instruments: ["4-on-the-floor kick", "Synth lead", "Bass synth", "Arpeggiated synth"],
+      },
+      {
+        tier: "B", label: "Hebrew trap-soul ballad",
+        slot: { genre: "R&B / Soul", sub: "Hebrew trap-soul ballad", micro: null },
+        bpms: [70, 76, 80, 84, 88],
+        moods: ["Bittersweet", "Pensive", "Romantic", "Smoldering"],
+        vocalists: ["Smooth tenor", "Melismatic soprano", "Whisper to full belt"],
+        vibes: ["Heartbreak elegy", "Confessional diary", "Romantic devotion"],
+        groove: "half-time",
+        harmonic: "Minor-key introspection",
+        texture: "Velvety & plush",
+        mix: "Heavy reverb cathedral",
+        energy: "Slow burn to explosion",
+        instruments: ["Piano", "808 sub", "Soft strings", "Rhodes electric piano"],
+      },
+      // ── TIER C (10% weight — rising / future bet) ──
+      {
+        tier: "C", label: "Hebrew hyperpop",
+        slot: { genre: "Pop", sub: "Hebrew hyperpop", micro: null },
+        bpms: [140, 148, 155, 160],
+        moods: ["Playful", "Euphoric", "Defiant"],
+        vocalists: ["Whisper to full belt", "Breathy female lead"],
+        vibes: ["Party celebration", "Coming-of-age narrative"],
+        groove: "straight",
+        harmonic: "Major-key lift",
+        texture: "Crystalline & brittle",
+        mix: "Punchy & compressed",
+        energy: "Fever-pitch final third",
+        instruments: ["Synth stab", "808 drum machine", "Pitched vocal chop", "Distorted sub bass"],
+      },
+      {
+        tier: "C", label: "Mizrahi-trap with oud solo",
+        slot: { genre: "Hip-Hop", sub: "Mizrahi-trap with oud solo", micro: null },
+        bpms: [128, 132, 136],
+        moods: ["Smoldering", "Defiant", "Confident"],
+        vocalists: ["Spoken rap over sung hook", "Melismatic soprano"],
+        vibes: ["Braggadocio flex", "Ode to a place", "Generational family story"],
+        groove: "half-time",
+        harmonic: "Phrygian exotic tension",
+        texture: "Thick & saturated",
+        mix: "Wide cinematic",
+        energy: "Steady groove throughout",
+        instruments: ["Oud", "Hi-hat triplet roll", "808 drum machine", "Darbuka"],
+      },
+      {
+        tier: "C", label: "K-pop-structured Hebrew hook",
+        slot: { genre: "Pop", sub: "K-pop-structured Hebrew hook", micro: null },
+        bpms: [110, 115, 118, 122, 124],
+        moods: ["Playful", "Confident", "Euphoric", "Catchy"],
+        vocalists: ["Breathy female lead", "Whisper to full belt"],
+        vibes: ["Party celebration", "Coming-of-age narrative"],
+        groove: "syncopated",
+        harmonic: "Major-key lift",
+        texture: "Smooth & liquid",
+        mix: "Ultra clean & polished",
+        energy: "Fever-pitch final third",
+        instruments: ["Synth lead", "Trap kit", "Snap / clap layer", "Synth pad"],
+      },
+    ];
+
+    // Weighted tier roll: 60/30/10 A/B/C
+    const tierRoll = Math.random();
+    const targetTier = tierRoll < 0.6 ? "A" : tierRoll < 0.9 ? "B" : "C";
+    const poolByTier = IL_RECIPES.filter(r => r.tier === targetTier);
+    const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
+    const recipe = pick(poolByTier);
+
+    // 45% chance of a hybrid second slot — pulled from adjacent tier
+    // so the fusion feels natural (A+B or B+C, never A+C)
+    const adjacentTier = targetTier === "A" ? "B" : targetTier === "B" ? "A" : "B";
+    const adjacentRecipes = IL_RECIPES.filter(r => r.tier === adjacentTier && r.slot.sub !== recipe.slot.sub);
+    const hybrid = Math.random() < 0.45 && adjacentRecipes.length
+      ? pick(adjacentRecipes).slot
+      : null;
+
+    playSwitchSound();
+    setLyricsOn(true);
+    setState(prev => ({
+      ...prev,
+      slots: [recipe.slot, hybrid, null],
+      mood:        pick(recipe.moods),
+      energy:      recipe.energy,
+      groove:      recipe.groove,
+      vocalist:    pick(recipe.vocalists),
+      language:    "he",  // Hebrew-locked by design
+      lyricalVibe: pick(recipe.vibes),
+      mix:         recipe.mix,
+      harmonic:    recipe.harmonic,
+      texture:     recipe.texture,
+      bpm:         pick(recipe.bpms),
+      specificInstruments: recipe.instruments,
+      specificArticulations: {},
+      // Producer-grade structure tags tailored to this Israeli recipe
+      structure: getStructureForGenre(recipe.slot.sub),
+      slotLocks: [false, false, false],
+      sectionLocks: { ...ENGINE_DEF.sectionLocks },
+      optionLocks: [],
+    }));
+    const tierLabel = targetTier === "A" ? "Tier A · hit now"
+                    : targetTier === "B" ? "Tier B · mid-market"
+                    : "Tier C · future bet";
+    showToast(`🇮🇱 ${recipe.label} · ${tierLabel}`, "info");
+    // Auto-copy long prompt once the state commits
+    autoCopyPendingRef.current = true;
+  };
+
+  // ── MIMIC PACK APPLY ──────────────────────────────────────────────
+  // Clicking a pack card in BUBBLE TOOLS fires this. Mirrors the
+  // applyPreset pattern: wipes locks/favorites and commits the pack's
+  // curated state. Artist names are in UI labels only — never in the
+  // generated prompt. Admin-only; no fuel cost.
+  const applyMimicPack = (artist, pack) => {
+    if (!pack) return;
+    playSwitchSound();
+    setMode("expanded");
+    setLyricsOn(true);
+    // Derive structure from the pack's primary genre slot if the pack
+    // doesn't specify its own. This gives every mimic pack a
+    // producer-grade arrangement automatically.
+    const primarySlot = pack.state?.slots?.[0];
+    const derivedStructure = pack.state?.structure
+      || (primarySlot ? getStructureForGenre(primarySlot.sub) : []);
+    // ── MIXED-VIBE BLEND ────────────────────────────────────────────
+    // When mimicBlendVibe is set (Bubble only), we nudge the mood +
+    // lyricalVibe fields toward that secondary vibe's signature. The
+    // pack's primary configuration (genre, BPM, groove, instruments,
+    // mix, harmonic, texture) stays intact — the blend just shifts
+    // the emotional surface. This lets Bubble do things like take a
+    // Drake Heartbreak pack and dial in "Anthemic" emotional scale,
+    // producing big-ballad territory.
+    let blendOverrides = {};
+    if (mimicBlendVibe && mimicBlendVibe !== pack.vibe) {
+      blendOverrides = getVibeBlendOverrides(mimicBlendVibe, pack);
+    }
+    setState({
+      ...ENGINE_DEF,
+      ...pack.state,
+      ...blendOverrides,
+      structure: derivedStructure,
+      slotLocks: [false, false, false],
+      sectionLocks: { ...ENGINE_DEF.sectionLocks },
+      optionLocks: [],
+      favorites: [],
+      toggles: { ...ENGINE_DEF.toggles },
+    });
+    const blendSuffix = mimicBlendVibe && mimicBlendVibe !== pack.vibe
+      ? ` × ${mimicBlendVibe}`
+      : "";
+    showToast(`🎤 Mimic · ${artist.artistName}: ${pack.name}${blendSuffix}`, "info");
+    // Auto-copy long prompt once the state commits
+    autoCopyPendingRef.current = true;
+    // Track vibe use for the session-level "most used" badge
+    trackVibeUse(pack.vibe);
+  };
+
+  // Currently-selected artist in the Bubble Tools mimic UI. Admin-only.
+  const [mimicArtistId, setMimicArtistId] = useState(MIMIC_PACKS[0].artistId);
+  // View mode: "artist" (artist-first, 20 pills × 10 packs) or "vibe"
+  // (vibe-first, 7 buckets showing all packs across the entire roster
+  // attributed with artist name). Both are admin-only. Each answers a
+  // different creative workflow: artist = "make me a Drake track",
+  // vibe = "I need heartbreak material, surprise me."
+  const [mimicViewMode, setMimicViewMode] = useState("artist");
+  // Active vibe in vibe-first mode. Mirrors mimicVibeFilter semantics
+  // but used at the cross-roster level rather than within one artist.
+  // "all" shows every pack grouped by vibe.
+  const [crossVibeActive, setCrossVibeActive] = useState("anthemic");
+  // Usage tracker — per-session counter of how many times each vibe
+  // has been applied (mimic pack click in either view mode). Not
+  // persisted; resets on page reload. Displayed as a subtle "most
+  // used this session: 💔" badge when at least one pack has been
+  // applied. Helps Bubble self-reflect on creative patterns.
+  const [vibeUsageCounts, setVibeUsageCounts] = useState({});
+  // Mixed-vibe blend — optional second vibe to layer with the active
+  // one. When set, applying a pack also nudges the state's mood/
+  // lyricalVibe toward the blend vibe's signature. null = no blend.
+  const [mimicBlendVibe, setMimicBlendVibe] = useState(null);
+  // Region filter: 'all' | 'international' | 'israeli' — lets admin
+  // quickly scope the artist list to one market.
+  const [mimicRegionFilter, setMimicRegionFilter] = useState("all");
+  // Text search — case-insensitive substring match against artistName.
+  // Makes the growing roster manageable.
+  const [mimicSearch, setMimicSearch] = useState("");
+  // Vibe filter — refines the selected artist's packs by emotional
+  // bucket. "all" shows every pack. Resets to "all" whenever the
+  // selected artist changes (see useEffect below) so the admin is
+  // never stuck on an empty filter.
+  const [mimicVibeFilter, setMimicVibeFilter] = useState("all");
+  const filteredMimicArtists = MIMIC_PACKS.filter(a => {
+    if (mimicRegionFilter !== "all" && a.region !== mimicRegionFilter) return false;
+    if (mimicSearch.trim()) {
+      const q = mimicSearch.trim().toLowerCase();
+      if (!a.artistName.toLowerCase().includes(q)) return false;
+    }
+    return true;
+  });
+  const activeMimicArtist = MIMIC_PACKS.find(a => a.artistId === mimicArtistId) || MIMIC_PACKS[0];
+  // Reset vibe filter when artist changes — prevents the "no packs
+  // found" empty state when switching to an artist who doesn't have
+  // the currently-selected vibe.
+  useEffect(() => { setMimicVibeFilter("all"); }, [mimicArtistId]);
+  // Filter the active artist's packs by vibe. Packs without a vibe
+  // field (shouldn't happen after the tagging pass, but defensively)
+  // pass through on "all" and are excluded from every other filter.
+  const filteredPacks = activeMimicArtist.packs.filter(p => {
+    if (mimicVibeFilter === "all") return true;
+    return p.vibe === mimicVibeFilter;
+  });
+
+  // ── CROSS-VIBE DATA DERIVATIONS ──────────────────────────────────
+  // Flat list of every pack with its artist attribution. Used by
+  // vibe-first view to group by emotional bucket and show "[Artist]
+  // Pack name" cards across the whole roster.
+  const allPacksFlat = useMemo(() => {
+    const out = [];
+    MIMIC_PACKS.forEach(artist => {
+      artist.packs.forEach(pack => {
+        out.push({ artist, pack });
+      });
+    });
+    return out;
+  }, []);
+  // Group packs by vibe for the vibe-first grid. Map: vibeId → array.
+  const packsByVibe = useMemo(() => {
+    const map = {};
+    VIBE_META.forEach(v => { map[v.id] = []; });
+    allPacksFlat.forEach(({ artist, pack }) => {
+      const v = pack.vibe || "moody";
+      if (!map[v]) map[v] = [];
+      map[v].push({ artist, pack });
+    });
+    return map;
+  }, [allPacksFlat]);
+  // Most-used vibe this session. Null if no clicks yet.
+  const mostUsedVibe = useMemo(() => {
+    const entries = Object.entries(vibeUsageCounts);
+    if (entries.length === 0) return null;
+    entries.sort((a, b) => b[1] - a[1]);
+    return entries[0][0];
+  }, [vibeUsageCounts]);
+  // Track a vibe application — called whenever applyMimicPack fires.
+  // Increments the vibe's counter in the usage map.
+  const trackVibeUse = (vibeId) => {
+    if (!vibeId) return;
+    setVibeUsageCounts(prev => ({
+      ...prev,
+      [vibeId]: (prev[vibeId] || 0) + 1,
+    }));
+  };
+
+  // ── SHUFFLE VIBE — pick a random vibe + a random pack from it ────
+  // Emotional dice roll. Bubble clicks → random vibe chosen (weighted
+  // by how many packs it has, so Playful gets picked more than
+  // Reverent simply because more packs exist there) → random pack
+  // from that vibe is applied via applyMimicPack. Also sets the
+  // crossVibeActive to the rolled vibe so the UI highlights it.
+  const shuffleVibe = () => {
+    // Weighted by bucket size — larger buckets more likely
+    const weightedVibes = [];
+    VIBE_META.forEach(v => {
+      const count = (packsByVibe[v.id] || []).length;
+      for (let i = 0; i < count; i++) weightedVibes.push(v.id);
+    });
+    if (weightedVibes.length === 0) return;
+    const rolledVibe = weightedVibes[Math.floor(Math.random() * weightedVibes.length)];
+    const bucket = packsByVibe[rolledVibe] || [];
+    if (bucket.length === 0) return;
+    const pick = bucket[Math.floor(Math.random() * bucket.length)];
+    setCrossVibeActive(rolledVibe);
+    setMimicViewMode("vibe"); // jump to vibe view so the user sees the context
+    applyMimicPack(pick.artist, pick.pack);
   };
 
   // ─────────────────────────────────────────────────────────────────────
@@ -11387,13 +14792,13 @@ function EnginePage({ onNavigate }) {
     setTimeout(() => setCopyState(s => ({ ...s, [key]: "idle" })), 2000);
   };
 
-  // ── Auto-copy detailed (long) prompt for Pro/VIP/Bubble after a HIT
-  // ── roll finishes. Free tier excluded per product rule. A ref flag
-  // ── is set inside triggerHit when the roll completes, and this effect
-  // ── fires once `detailedResult.text` updates as a result of the new
-  // ── randomized state. Using a flag avoids copying on every state
-  // ── change — only the one immediately after a HIT.
-  const autoCopyPendingRef = useRef(false);
+  // ── Auto-copy detailed (long) prompt for Pro/VIP/Bubble after any
+  // ── apply path (main HIT roll, preset, mimic pack, Extra Poppy,
+  // ── Instant Pop, Israeli Mode). Free tier excluded. The ref flag
+  // ── is set inside the apply handler; this effect fires once
+  // ── `detailedResult.text` updates as a result of the new state.
+  // ── Using a flag avoids copying on every incidental state change —
+  // ── only the one immediately following a deliberate apply.
   useEffect(() => {
     if (!autoCopyPendingRef.current) return;
     if (tier === "free") {
@@ -11406,6 +14811,44 @@ function EnginePage({ onNavigate }) {
     doCopy("detailed", text);
     showToast("Long prompt auto-copied to clipboard", "info");
   }, [detailedResult?.text, tier]);
+
+  // ── SCROLL TO DETAILED PROMPT ────────────────────────────────────
+  // After any action that changes the detailed prompt text (chip clicks,
+  // toggle flips, slot edits, preset/mimic/instant-pop applies, HIT roll,
+  // etc.), smooth-scroll the viewport so the detailed producer prompt
+  // sits in a consistent position. This is the "same height" behavior:
+  // the user's eye always returns to the final output after any edit.
+  //
+  // Guards:
+  //   · Skip the initial render (when the first text arrives) — we don't
+  //     want to jump the viewport before the user has interacted.
+  //   · Skip while the casino roll animation is running — the HIT roll
+  //     has its own end-of-animation scroll, and scrolling mid-roll
+  //     would fight with the outline flash effect.
+  //   · Use block: "start" + scrollMarginTop (72px for the sticky nav)
+  //     so the detailed prompt card's top edge aligns just below nav.
+  useEffect(() => {
+    const text = detailedResult?.text || "";
+    // First meaningful text: seed the tracker without scrolling.
+    if (lastScrolledDetailedRef.current === null) {
+      lastScrolledDetailedRef.current = text;
+      return;
+    }
+    // No change: nothing to do.
+    if (text === lastScrolledDetailedRef.current) return;
+    // Text changed — remember it and scroll.
+    lastScrolledDetailedRef.current = text;
+    if (isRolling) return; // casino roll owns scroll during animation
+    // Defer one microtask so React has committed the new text height
+    // before we scroll. Prevents scrolling to a stale position.
+    const t = setTimeout(() => {
+      const el = detailedPromptRef.current;
+      if (!el) return;
+      if (typeof el.scrollIntoView !== "function") return;
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 40);
+    return () => clearTimeout(t);
+  }, [detailedResult?.text, isRolling]);
 
   return (
     <div className={isRolling ? "engine-shake" : ""} style={{
@@ -11498,28 +14941,32 @@ function EnginePage({ onNavigate }) {
           // becomes a top border rather than a bottom one.
           borderTop: isMobile ? `1px solid ${T.border}` : "none",
           order: isMobile ? 1 : 0,
+          // Desktop: left padding T.s9 (96px) shifts the whole content
+          // anchor rightward from the viewport edge, giving the hero +
+          // controls a more "centered-on-screen" feel rather than
+          // hugging the left. Nav uses a matching padding so nav links
+          // + HIT wordmark share the same vertical left edge.
           padding: isMobile
             ? `${T.s5}px ${T.s4}px ${T.s6}px`
-            : `${T.s8}px ${T.s6}px ${T.s10}px ${T.s6}px`,
+            : `${T.s8}px ${T.s6}px ${T.s10}px ${T.s9}px`,
         }}>
         {/* ── INNER CENTERED COLUMN ──────────────────────────────
-            All left-pane content shares one centered column (max
-            760px on desktop, full width on mobile). This establishes
-            a single left edge for the hero, tips pill, randomizer,
-            genre card, and cubicles — so the composition reads as
-            an optically-centered tool panel rather than a top-left-
-            anchored wall of controls. */}
+            All left-pane content shares one left-aligned column (max
+            700px on desktop). Starts at the pane's left padding (the
+            same X as nav links) so the composition reads top-down as
+            a single clean vertical rhythm. */}
         <div style={{
-          maxWidth: isMobile ? "100%" : 760,
-          margin: "0 auto",
+          maxWidth: isMobile ? "100%" : 700,
         }}>
-          {/* HERO — compact workspace header with wordmark-pierce notes.
-              Banner now sized for focus (96px desktop / 56px mobile).
-              Sits at the top of the centered column, so its natural
-              left-align reads as the pane's starting line. Musical
-              notes travel HORIZONTALLY THROUGH the wordmark. */}
+          {/* ── HERO ─────────────────────────────────────────────────
+              Architectural composition: banner at left anchor, tagline
+              indented 56px from the banner's left edge with a small
+              gold leading mark for an asymmetric editorial feel.
+              Banner owns its own vertical space; tagline reads as
+              subtitle pulling FROM the banner rather than weighing
+              the same as it. */}
           <div style={{
-            marginBottom: isMobile ? T.s5 : T.s6,
+            marginBottom: isMobile ? T.s5 : T.s7,
           }}>
             {/* Banner + notes container. Position relative so the
                 absolute-positioned notes strip can anchor to this box. */}
@@ -11555,180 +15002,1094 @@ function EnginePage({ onNavigate }) {
                 <AnimatedBanner size={isMobile ? 56 : 96} />
               </h1>
             </div>
-            {/* Single italic serif tagline — identifies the tool, nothing more */}
+            {/* Tagline — indented on desktop for asymmetric editorial
+                rhythm with a small gold leading mark (magazine style).
+                On mobile the narrow screen keeps everything left-flush. */}
             <p style={{
               color: T.textSec,
               fontSize: isMobile ? T.fs_md : T.fs_lg,
-              lineHeight: 1.3,
-              maxWidth: 560, margin: 0,
+              lineHeight: 1.35,
+              maxWidth: 520, margin: 0,
+              paddingLeft: isMobile ? 0 : 56,
               fontFamily: "'Instrument Serif', Georgia, serif",
               fontStyle: "italic",
               fontWeight: 400,
               letterSpacing: "-0.005em",
+              position: "relative",
             }}>
+              {!isMobile && (
+                <span style={{
+                  position: "absolute",
+                  left: 20, top: "0.6em",
+                  width: 24, height: 1,
+                  background: `linear-gradient(90deg, ${V.neonGold}aa 0%, ${V.neonGold}22 100%)`,
+                }} aria-hidden="true" />
+              )}
               Prompts engineered to speak the language every AI music model already listens for.
             </p>
           </div>
 
-          <TipsManual />
-
-          {/* ── RANDOMIZER — standalone centered CTA, gold palette ──────
-              Extracted from the Presets row so it reads as a primary
-              action button, not a utility control. Design follows site
-              palette: deep black pill, metallic gold gradient interior,
-              thin gold hairline, warm amber glow. No rainbow. Matches
-              the HIT button's chrome/gold language. */}
-          {features.presets && (
+          {/* ── BUBBLE TOOLS — admin-only internal shortcuts ──────────
+              Visible only when tier === "admin". Holds the fast-path
+              buttons used by Bubble + partner: Instant Pop (zero-cost
+              pop-maxed config) and Israeli Mode (curated Israeli-hit
+              config with tiered probability). Not shown to any paying
+              tier — this card doesn't even render for free/pro/vip. */}
+          {tier === "admin" && (
             <div style={{
-              display: "flex", justifyContent: "center",
-              marginBottom: T.s5,
+              marginBottom: isMobile ? T.s5 : T.s6,
+              padding: isMobile ? T.s4 : `${T.s5}px ${T.s5}px`,
+              background: `
+                linear-gradient(180deg,
+                  rgba(255, 62, 157, 0.06) 0%,
+                  rgba(255, 215, 0, 0.03) 50%,
+                  ${T.surface} 100%)
+              `,
+              border: `1px solid #FF3E9D66`,
+              borderRadius: T.r_lg,
+              boxShadow: `
+                inset 0 1px 0 rgba(255, 62, 157, 0.12),
+                inset 0 0 32px rgba(255, 62, 157, 0.04),
+                0 0 24px rgba(255, 62, 157, 0.08),
+                0 1px 0 rgba(0, 0, 0, 0.25)
+              `,
+              position: "relative",
+              overflow: "hidden",
             }}>
-              <button type="button"
-                onClick={() => {
-                  playSwitchSound();
-                  if (canShufflePresets) {
-                    setVisiblePresetIds(shuffle5Presets());
-                  } else {
-                    setSalesModalFeature("presetShuffle");
-                  }
-                }}
-                title={canShufflePresets
-                  ? "Randomizer — reshuffle the preset pool"
-                  : "VIP only — click to learn more"}
-                className={canShufflePresets ? "randomizer-live" : ""}
-                style={{
-                  position: "relative", overflow: "hidden",
-                  display: "inline-flex", alignItems: "center", gap: 10,
-                  padding: isMobile ? `10px 22px` : `11px 28px`,
-                  minHeight: isMobile ? 40 : 42,
-                  // Palette-aligned: black pill with metallic gold interior
-                  // gradient. Matches the HIT button family rather than
-                  // fighting the site with tri-color rainbow.
-                  background: canShufflePresets
-                    ? `radial-gradient(ellipse at 50% -20%,
-                        rgba(255, 228, 138, 0.22) 0%,
-                        rgba(255, 215, 0, 0.08) 35%,
-                        rgba(0, 0, 0, 0) 70%),
-                      linear-gradient(180deg,
-                        rgba(18, 12, 4, 0.92) 0%,
-                        rgba(8, 6, 3, 0.96) 100%)`
-                    : "transparent",
-                  border: `1px solid ${canShufflePresets
-                    ? `${V.neonGold}88`
-                    : `${V.neonGold}55`}`,
-                  borderRadius: 999,
-                  color: V.neonGold,
-                  fontFamily: T.font_mono,
-                  fontSize: isMobile ? T.fs_sm : T.fs_md,
-                  fontWeight: 800,
-                  letterSpacing: "0.24em",
-                  cursor: "pointer",
-                  textShadow: canShufflePresets
-                    ? `0 0 6px ${V.neonGold}77, 0 0 14px ${V.neonGold}33`
-                    : "none",
-                  boxShadow: canShufflePresets
-                    ? `inset 0 1px 0 rgba(255, 228, 138, 0.18),
-                       inset 0 -1px 0 rgba(0, 0, 0, 0.5),
-                       inset 0 0 22px rgba(0, 0, 0, 0.4),
-                       0 0 18px ${V.neonGold}33,
-                       0 4px 14px rgba(0, 0, 0, 0.45)`
-                    : "none",
-                  transition: `transform 180ms ${T.ease}, box-shadow 240ms ${T.ease}, border-color 240ms ${T.ease}`,
-                }}
-                onMouseEnter={e => {
-                  if (canShufflePresets) {
+              {/* Subtle top shimmer line — mirrors the HIT button frame */}
+              <span style={{
+                position: "absolute", top: 0, left: "15%", right: "15%", height: 1,
+                background: `linear-gradient(90deg, transparent 0%, #FF3E9D99 50%, transparent 100%)`,
+                pointerEvents: "none",
+              }} aria-hidden="true" />
+              {/* ── HEADER: proper title hierarchy, not just a tiny chip ──
+                  Small label chip on top · big Hollywood-style title below
+                  · muted internal-only disclaimer on the right. Reads as a
+                  true section banner rather than a tab marker. */}
+              <div style={{
+                display: "flex", alignItems: "flex-start", justifyContent: "space-between",
+                gap: T.s3, flexWrap: "wrap",
+                marginBottom: T.s5,
+              }}>
+                <div>
+                  <div style={{
+                    display: "inline-flex", alignItems: "center", gap: 8,
+                    padding: "3px 9px",
+                    background: "#FF3E9D18",
+                    border: `1px solid #FF3E9D66`,
+                    borderRadius: T.r_sm,
+                    color: "#FF3E9D",
+                    fontFamily: T.font_mono, fontSize: 9, fontWeight: 800,
+                    letterSpacing: "0.24em",
+                    textShadow: `0 0 6px #FF3E9D55`,
+                    marginBottom: 10,
+                  }}>
+                    <span style={{ fontSize: 10, lineHeight: 1 }}>◆</span>
+                    ADMIN CONSOLE
+                  </div>
+                  <div style={{
+                    fontSize: isMobile ? 22 : 26,
+                    fontWeight: 800,
+                    fontFamily: T.font_sans,
+                    letterSpacing: "-0.01em",
+                    color: T.text,
+                    lineHeight: 1.1,
+                    marginBottom: 4,
+                    background: `linear-gradient(90deg, #FF3E9D 0%, #FFD700 100%)`,
+                    WebkitBackgroundClip: "text",
+                    WebkitTextFillColor: "transparent",
+                    backgroundClip: "text",
+                  }}>
+                    Bubble Tools
+                  </div>
+                  <div style={{
+                    fontSize: T.fs_xs,
+                    color: T.textTer,
+                    fontFamily: T.font_mono,
+                    letterSpacing: "0.06em",
+                  }}>
+                    {MIMIC_PACKS.length} artists · {MIMIC_PACKS.reduce((n, a) => n + a.packs.length, 0)} curated prompts · recipe-based engine
+                  </div>
+                </div>
+                <span style={{
+                  fontSize: 9, color: T.textMuted,
+                  fontFamily: T.font_mono, fontStyle: "italic",
+                  letterSpacing: "0.05em",
+                  textAlign: "right",
+                  padding: "4px 8px",
+                  background: "#00000044",
+                  border: `1px dashed ${T.border}`,
+                  borderRadius: T.r_sm,
+                  whiteSpace: "nowrap",
+                }}>
+                  internal only
+                </span>
+              </div>
+
+              {/* ── SECTION 1: QUICK SHORTCUTS ── */}
+              <div style={{
+                fontSize: 10, color: T.textTer,
+                fontFamily: T.font_mono, fontWeight: 800,
+                letterSpacing: "0.2em",
+                marginBottom: T.s3,
+                display: "flex", alignItems: "center", gap: T.s2,
+              }}>
+                <span>① QUICK SHORTCUTS</span>
+                <span style={{ flex: 1, height: 1, background: T.border }} />
+              </div>
+              {/* Two-button row */}
+              <div style={{
+                display: "grid",
+                gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr",
+                gap: T.s3,
+              }}>
+                {/* INSTANT POP button */}
+                <button
+                  type="button"
+                  onClick={applyInstantPop}
+                  title="Zero-cost pop-maxed config, 85-100% Pop Match"
+                  style={{
+                    position: "relative",
+                    padding: isMobile ? `${T.s3}px ${T.s4}px` : `${T.s4}px ${T.s5}px`,
+                    background: `linear-gradient(180deg,
+                      rgba(24, 16, 6, 0.92) 0%,
+                      rgba(10, 6, 3, 0.96) 100%)`,
+                    border: `1px solid ${V.neonGold}88`,
+                    borderRadius: T.r_md,
+                    color: V.neonGold,
+                    fontFamily: T.font_mono,
+                    fontSize: T.fs_sm, fontWeight: 800,
+                    letterSpacing: "0.14em",
+                    cursor: "pointer",
+                    textAlign: "left",
+                    textShadow: `0 0 6px ${V.neonGold}66`,
+                    boxShadow: `
+                      inset 0 1px 0 rgba(255, 228, 138, 0.12),
+                      inset 0 0 22px rgba(0, 0, 0, 0.4),
+                      0 0 14px ${V.neonGold}22
+                    `,
+                    transition: `transform 180ms ${T.ease}, box-shadow 240ms ${T.ease}, border-color 240ms ${T.ease}`,
+                  }}
+                  onMouseEnter={e => {
                     e.currentTarget.style.transform = "translateY(-1px)";
                     e.currentTarget.style.borderColor = V.neonGold;
                     e.currentTarget.style.boxShadow = `
-                      inset 0 1px 0 rgba(255, 228, 138, 0.24),
-                      inset 0 -1px 0 rgba(0, 0, 0, 0.55),
-                      inset 0 0 28px rgba(0, 0, 0, 0.35),
-                      0 0 26px ${V.neonGold}55,
-                      0 6px 18px rgba(0, 0, 0, 0.5)`;
-                  } else {
-                    e.currentTarget.style.borderColor = V.neonGold;
-                    e.currentTarget.style.background = `${V.neonGold}10`;
-                  }
-                }}
-                onMouseLeave={e => {
-                  if (canShufflePresets) {
+                      inset 0 1px 0 rgba(255, 228, 138, 0.18),
+                      inset 0 0 28px rgba(0, 0, 0, 0.3),
+                      0 0 22px ${V.neonGold}44
+                    `;
+                  }}
+                  onMouseLeave={e => {
                     e.currentTarget.style.transform = "translateY(0)";
                     e.currentTarget.style.borderColor = `${V.neonGold}88`;
                     e.currentTarget.style.boxShadow = `
-                      inset 0 1px 0 rgba(255, 228, 138, 0.18),
-                      inset 0 -1px 0 rgba(0, 0, 0, 0.5),
+                      inset 0 1px 0 rgba(255, 228, 138, 0.12),
                       inset 0 0 22px rgba(0, 0, 0, 0.4),
-                      0 0 18px ${V.neonGold}33,
-                      0 4px 14px rgba(0, 0, 0, 0.45)`;
-                  } else {
-                    e.currentTarget.style.borderColor = `${V.neonGold}55`;
-                    e.currentTarget.style.background = "transparent";
-                  }
+                      0 0 14px ${V.neonGold}22
+                    `;
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
+                    <span style={{
+                      fontSize: 18, lineHeight: 1,
+                      filter: `drop-shadow(0 0 6px ${V.neonGold}88)`,
+                    }}>⚡</span>
+                    <span>INSTANT POP</span>
+                  </div>
+                  <div style={{
+                    fontSize: 10, color: T.textTer,
+                    fontFamily: T.font_sans, fontWeight: 500,
+                    letterSpacing: "0.04em", textShadow: "none",
+                    textTransform: "none",
+                  }}>
+                    Pop-maxed config · 85-100% match · press HIT to generate
+                  </div>
+                </button>
+
+                {/* ISRAELI MODE button */}
+                <button
+                  type="button"
+                  onClick={applyIsraeliMode}
+                  title="Israeli-hit curated config · Tier A (60%) / Tier B (30%) / Tier C future (10%)"
+                  style={{
+                    position: "relative",
+                    padding: isMobile ? `${T.s3}px ${T.s4}px` : `${T.s4}px ${T.s5}px`,
+                    background: `linear-gradient(180deg,
+                      rgba(8, 14, 28, 0.92) 0%,
+                      rgba(4, 8, 16, 0.96) 100%)`,
+                    border: `1px solid #3E8CFF88`,
+                    borderRadius: T.r_md,
+                    color: "#7FB2FF",
+                    fontFamily: T.font_mono,
+                    fontSize: T.fs_sm, fontWeight: 800,
+                    letterSpacing: "0.14em",
+                    cursor: "pointer",
+                    textAlign: "left",
+                    textShadow: `0 0 6px #3E8CFF66`,
+                    boxShadow: `
+                      inset 0 1px 0 rgba(138, 180, 255, 0.12),
+                      inset 0 0 22px rgba(0, 0, 0, 0.4),
+                      0 0 14px #3E8CFF22
+                    `,
+                    transition: `transform 180ms ${T.ease}, box-shadow 240ms ${T.ease}, border-color 240ms ${T.ease}`,
+                  }}
+                  onMouseEnter={e => {
+                    e.currentTarget.style.transform = "translateY(-1px)";
+                    e.currentTarget.style.borderColor = "#3E8CFF";
+                    e.currentTarget.style.boxShadow = `
+                      inset 0 1px 0 rgba(138, 180, 255, 0.18),
+                      inset 0 0 28px rgba(0, 0, 0, 0.3),
+                      0 0 22px #3E8CFF44
+                    `;
+                  }}
+                  onMouseLeave={e => {
+                    e.currentTarget.style.transform = "translateY(0)";
+                    e.currentTarget.style.borderColor = "#3E8CFF88";
+                    e.currentTarget.style.boxShadow = `
+                      inset 0 1px 0 rgba(138, 180, 255, 0.12),
+                      inset 0 0 22px rgba(0, 0, 0, 0.4),
+                      0 0 14px #3E8CFF22
+                    `;
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
+                    <span style={{ fontSize: 18, lineHeight: 1 }}>🇮🇱</span>
+                    <span>ISRAELI MODE</span>
+                  </div>
+                  <div style={{
+                    fontSize: 10, color: T.textTer,
+                    fontFamily: T.font_sans, fontWeight: 500,
+                    letterSpacing: "0.04em", textShadow: "none",
+                    textTransform: "none",
+                  }}>
+                    Mizrahi · trap · Hebrew-pop · weighted tiers · future bets
+                  </div>
+                </button>
+              </div>
+
+              {/* ── SECTION 2: ARTIST MIMIC PACKS ── */}
+              <div style={{
+                marginTop: T.s5, paddingTop: T.s4,
+                borderTop: `1px solid ${T.border}`,
+              }}>
+                <div style={{
+                  fontSize: 10, color: T.textTer,
+                  fontFamily: T.font_mono, fontWeight: 800,
+                  letterSpacing: "0.2em",
+                  marginBottom: T.s3,
+                  display: "flex", alignItems: "center", gap: T.s2,
                 }}>
-                {/* Subtle amber shimmer sweep — single thin warm band,
-                    same language as the HIT button's gold frame edge */}
-                {canShufflePresets && (
+                  <span>② ARTIST MIMIC PACKS</span>
+                  <span style={{ flex: 1, height: 1, background: T.border }} />
+                  <span style={{
+                    color: "#C084FC", fontSize: 9,
+                    padding: "2px 6px",
+                    background: "#A855F720",
+                    border: `1px solid #A855F744`,
+                    borderRadius: 3,
+                    letterSpacing: "0.1em",
+                  }}>
+                    {MIMIC_PACKS.length} × 10
+                  </span>
+                </div>
+
+                {/* ── VIEW MODE + SHUFFLE + USAGE + BLEND ROW ────────
+                    Top-of-section control strip. Left: BY ARTIST /
+                    BY VIBE view toggle. Middle: Shuffle Vibe button.
+                    Right: most-used vibe badge (appears only after
+                    first click). Blend-vibe dropdown appears on its
+                    own line below when BY VIBE mode is active. */}
+                <div style={{
+                  display: "flex", alignItems: "center",
+                  gap: T.s2, flexWrap: "wrap",
+                  marginBottom: T.s3,
+                }}>
+                  {/* View mode toggle — segmented pill */}
+                  <div style={{
+                    display: "inline-flex",
+                    background: "#00000044",
+                    border: `1px solid ${T.border}`,
+                    borderRadius: T.r_sm,
+                    padding: 2,
+                  }}>
+                    {[
+                      { id: "artist", label: "By Artist" },
+                      { id: "vibe",   label: "By Vibe"   },
+                    ].map(m => {
+                      const active = mimicViewMode === m.id;
+                      return (
+                        <button key={m.id} type="button"
+                          onClick={() => { playSwitchSound(); setMimicViewMode(m.id); }}
+                          style={{
+                            padding: "5px 12px",
+                            background: active
+                              ? "linear-gradient(180deg, #A855F733 0%, #A855F71A 100%)"
+                              : "transparent",
+                            border: `1px solid ${active ? "#A855F7" : "transparent"}`,
+                            borderRadius: T.r_sm - 1,
+                            color: active ? "#E9D5FF" : T.textSec,
+                            fontFamily: T.font_mono, fontSize: 10, fontWeight: 700,
+                            letterSpacing: "0.1em",
+                            cursor: "pointer",
+                            transition: `all ${T.dur_fast} ${T.ease}`,
+                            textShadow: active ? "0 0 6px #A855F788" : "none",
+                          }}
+                        >
+                          {m.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {/* Shuffle vibe — rolls a random vibe + applies random pack */}
+                  <button type="button"
+                    onClick={shuffleVibe}
+                    title="Shuffle: pick a random vibe and apply a random pack from it"
+                    style={{
+                      display: "inline-flex", alignItems: "center", gap: 5,
+                      padding: "6px 12px",
+                      background: "linear-gradient(180deg, rgba(236,72,153,0.18) 0%, rgba(168,85,247,0.14) 100%)",
+                      border: `1px solid #EC489988`,
+                      borderRadius: T.r_sm,
+                      color: "#F9A8D4",
+                      fontFamily: T.font_mono, fontSize: 10, fontWeight: 700,
+                      letterSpacing: "0.1em",
+                      cursor: "pointer",
+                      transition: `all ${T.dur_fast} ${T.ease}`,
+                    }}
+                    onMouseEnter={e => {
+                      e.currentTarget.style.borderColor = "#EC4899";
+                      e.currentTarget.style.boxShadow = "0 0 12px #EC489966";
+                    }}
+                    onMouseLeave={e => {
+                      e.currentTarget.style.borderColor = "#EC489988";
+                      e.currentTarget.style.boxShadow = "none";
+                    }}
+                  >
+                    🎲 Shuffle Vibe
+                  </button>
+
+                  <span style={{ flex: 1 }} />
+
+                  {/* Usage tracker — shows most-used vibe this session */}
+                  {mostUsedVibe && (() => {
+                    const meta = VIBE_META.find(v => v.id === mostUsedVibe);
+                    if (!meta) return null;
+                    const total = vibeUsageCounts[mostUsedVibe] || 0;
+                    return (
+                      <span
+                        title={`You've applied ${meta.label} packs ${total} time${total === 1 ? "" : "s"} this session`}
+                        style={{
+                          display: "inline-flex", alignItems: "center", gap: 5,
+                          padding: "4px 9px",
+                          background: `${meta.color}14`,
+                          border: `1px dashed ${meta.color}66`,
+                          borderRadius: T.r_sm,
+                          color: meta.color,
+                          fontFamily: T.font_mono, fontSize: 9, fontWeight: 700,
+                          letterSpacing: "0.08em",
+                        }}
+                      >
+                        <span style={{ fontSize: 11 }}>{meta.icon}</span>
+                        <span style={{ opacity: 0.7 }}>MOST USED ·</span>
+                        <span>{meta.label.toUpperCase()}</span>
+                        <span style={{
+                          fontSize: 8,
+                          padding: "1px 4px",
+                          background: `${meta.color}22`,
+                          borderRadius: 2,
+                        }}>{total}×</span>
+                      </span>
+                    );
+                  })()}
+                </div>
+
+                {/* Blend-vibe dropdown — shown in both modes. Lets Bubble
+                    layer a secondary vibe onto any pack. "None" means
+                    apply packs as-is. Pure Bubble-Tools feature. */}
+                <div style={{
+                  display: "flex", alignItems: "center",
+                  gap: T.s2,
+                  marginBottom: T.s3,
+                  padding: `${T.s2}px ${T.s3}px`,
+                  background: "rgba(168, 85, 247, 0.04)",
+                  border: `1px dashed #A855F744`,
+                  borderRadius: T.r_sm,
+                }}>
+                  <span style={{
+                    fontFamily: T.font_mono, fontSize: 9, fontWeight: 700,
+                    color: "#A855F7",
+                    letterSpacing: "0.1em",
+                  }}>BLEND ×</span>
+                  <select
+                    value={mimicBlendVibe || ""}
+                    onChange={e => setMimicBlendVibe(e.target.value || null)}
+                    style={{
+                      padding: "4px 8px",
+                      background: "#00000066",
+                      border: `1px solid ${mimicBlendVibe ? "#A855F7" : T.border}`,
+                      borderRadius: T.r_sm,
+                      color: T.text,
+                      fontFamily: T.font_mono, fontSize: isMobile ? 16 : 10, fontWeight: 700,
+                      letterSpacing: "0.08em",
+                      cursor: "pointer",
+                      outline: "none",
+                    }}
+                  >
+                    <option value="">— None (pure pack) —</option>
+                    {VIBE_META.map(v => (
+                      <option key={v.id} value={v.id}>
+                        {v.icon} {v.label} blend
+                      </option>
+                    ))}
+                  </select>
+                  {mimicBlendVibe && (
+                    <span style={{
+                      fontFamily: T.font_sans, fontSize: 10,
+                      color: T.textSec, fontStyle: "italic",
+                      flex: 1,
+                    }}>
+                      Pack's sonics stay; mood + energy shift toward {mimicBlendVibe}
+                    </span>
+                  )}
+                </div>
+
+                {/* ══ BY-VIBE VIEW (cross-roster) ══════════════════
+                    Shows a horizontal pill row of all 7 vibes with
+                    global counts, plus a grid of all packs in the
+                    active vibe with [Artist] attribution. */}
+                {mimicViewMode === "vibe" && (
                   <>
-                    <style>{`
-                      @keyframes randomizerShimmer {
-                        0%, 100% { transform: translateX(-120%) skewX(-18deg); opacity: 0; }
-                        10%      { opacity: 1; }
-                        60%      { opacity: 1; }
-                        70%,100% { transform: translateX(320%)  skewX(-18deg); opacity: 0; }
-                      }
-                      @keyframes randomizerIconSpin {
-                        0%   { transform: rotate(0deg); }
-                        100% { transform: rotate(360deg); }
-                      }
-                      .randomizer-live .rand-icon {
-                        display: inline-block;
-                        animation: randomizerIconSpin 10s linear infinite;
-                      }
-                      .randomizer-live:hover .rand-icon {
-                        animation: randomizerIconSpin 1.2s linear infinite;
-                      }
-                      .randomizer-live .rand-shimmer {
-                        position: absolute; top: 0; bottom: 0; left: 0;
-                        width: 30%;
-                        background: linear-gradient(
-                          90deg,
-                          transparent 0%,
-                          rgba(255, 228, 138, 0.28) 50%,
-                          transparent 100%
+                    {/* Vibe selector pills — global counts across roster */}
+                    <div style={{
+                      display: "flex", flexWrap: "wrap", gap: 4,
+                      marginBottom: T.s3,
+                      padding: `${T.s2}px 0`,
+                    }}>
+                      {VIBE_META.map(v => {
+                        const count = (packsByVibe[v.id] || []).length;
+                        const active = crossVibeActive === v.id;
+                        return (
+                          <button key={v.id} type="button"
+                            onClick={() => { playSwitchSound(); setCrossVibeActive(v.id); }}
+                            title={`${v.label} — ${v.tagline}`}
+                            style={{
+                              display: "inline-flex", alignItems: "center", gap: 5,
+                              padding: "6px 11px",
+                              background: active ? `${v.color}1F` : "transparent",
+                              border: `1px solid ${active ? v.color : T.border}`,
+                              borderRadius: T.r_sm,
+                              color: active ? v.color : T.textSec,
+                              fontFamily: T.font_mono, fontSize: 10, fontWeight: 700,
+                              letterSpacing: "0.08em",
+                              cursor: "pointer",
+                              transition: `all ${T.dur_fast} ${T.ease}`,
+                              boxShadow: active ? `0 0 10px ${v.color}44` : "none",
+                            }}
+                            onMouseEnter={e => { if (!active) { e.currentTarget.style.borderColor = `${v.color}88`; e.currentTarget.style.color = T.text; } }}
+                            onMouseLeave={e => { if (!active) { e.currentTarget.style.borderColor = T.border; e.currentTarget.style.color = T.textSec; } }}
+                          >
+                            <span>{v.icon}</span>
+                            <span>{v.label}</span>
+                            <span style={{
+                              fontSize: 8, color: active ? v.color : T.textTer,
+                              padding: "1px 4px",
+                              background: active ? `${v.color}22` : "#00000033",
+                              borderRadius: 2,
+                            }}>{count}</span>
+                          </button>
                         );
-                        animation: randomizerShimmer 5s ease-in-out infinite;
-                        pointer-events: none;
-                      }
-                    `}</style>
-                    <span className="rand-shimmer" aria-hidden="true" />
+                      })}
+                    </div>
+
+                    {/* Pack grid — attributed across roster */}
+                    <div style={{
+                      display: "grid",
+                      gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(5, 1fr)",
+                      gap: T.s2,
+                    }}>
+                      {(packsByVibe[crossVibeActive] || []).length === 0 ? (
+                        <div style={{
+                          gridColumn: "1 / -1",
+                          textAlign: "center",
+                          padding: `${T.s5}px ${T.s3}px`,
+                          color: T.textMuted, fontFamily: T.font_mono, fontSize: T.fs_sm,
+                          border: `1px dashed ${T.border}`,
+                          borderRadius: T.r_md,
+                        }}>
+                          No packs tagged {crossVibeActive}.
+                        </div>
+                      ) : (packsByVibe[crossVibeActive] || []).map(({ artist, pack }) => {
+                        const vm = VIBE_META.find(v => v.id === pack.vibe);
+                        const glow = vm?.color || "#A855F7";
+                        return (
+                          <button key={`${artist.artistId}-${pack.id}`} type="button"
+                            onClick={() => applyMimicPack(artist, pack)}
+                            title={`${artist.artistName} · ${pack.name}${pack.vibe ? ` · ${pack.vibe}` : ""}`}
+                            style={{
+                              display: "flex", flexDirection: "column",
+                              alignItems: "flex-start", justifyContent: "space-between",
+                              gap: 6,
+                              padding: isMobile ? T.s3 : T.s3,
+                              minHeight: isMobile ? 76 : 92,
+                              background: `linear-gradient(180deg, ${glow}0F 0%, ${T.surface} 100%)`,
+                              border: `1px solid ${T.border}`,
+                              borderRadius: T.r_md,
+                              color: T.text,
+                              fontFamily: T.font_sans,
+                              fontSize: T.fs_sm,
+                              cursor: "pointer",
+                              textAlign: "left",
+                              transition: `border-color ${T.dur_fast} ${T.ease}, transform ${T.dur_fast} ${T.ease}`,
+                            }}
+                            onMouseEnter={e => {
+                              e.currentTarget.style.borderColor = glow;
+                              e.currentTarget.style.transform = "translateY(-1px)";
+                            }}
+                            onMouseLeave={e => {
+                              e.currentTarget.style.borderColor = T.border;
+                              e.currentTarget.style.transform = "translateY(0)";
+                            }}
+                          >
+                            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                              <span style={{ fontSize: 20, lineHeight: 1 }}>{pack.emoji}</span>
+                            </div>
+                            <div style={{
+                              fontSize: 11, fontWeight: 700, color: T.text,
+                              lineHeight: 1.2,
+                            }}>
+                              {pack.name}
+                            </div>
+                            <div style={{
+                              fontSize: 9, color: T.textTer,
+                              fontFamily: T.font_mono, fontWeight: 700,
+                              letterSpacing: "0.08em",
+                              display: "flex", alignItems: "center", gap: 4,
+                            }}>
+                              <span>{artist.artistName}</span>
+                              <span style={{
+                                fontSize: 7,
+                                padding: "1px 3px",
+                                background: artist.region === "israeli" ? "#3E8CFF22" : "#9CA3AF22",
+                                color: artist.region === "israeli" ? "#7FB2FF" : "#9CA3AF",
+                                borderRadius: 2,
+                                lineHeight: 1,
+                              }}>{artist.region === "israeli" ? "IL" : "INT"}</span>
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
                   </>
                 )}
-                <span className="rand-icon" style={{
-                  fontSize: isMobile ? 14 : 16, lineHeight: 1,
-                  filter: canShufflePresets
-                    ? `drop-shadow(0 0 6px ${V.neonGold}88)`
-                    : "none",
+
+                {/* ══ BY-ARTIST VIEW (original) ══════════════════ */}
+                {mimicViewMode === "artist" && (<>
+
+                {/* ── FILTER BAR — region chip + text search ─────────────
+                    Makes the 20-artist roster navigable: filter by
+                    region (all / international / israeli) + search by
+                    name. Empty results state handled below. */}
+                <div style={{
+                  display: "flex", alignItems: "center",
+                  gap: T.s3, flexWrap: "wrap",
+                  marginBottom: T.s3,
+                  padding: `${T.s2}px 0`,
                 }}>
-                  {canShufflePresets ? "⟳" : "🔒"}
-                </span>
-                <span style={{ position: "relative" }}>
-                  RANDOMIZER
-                </span>
-              </button>
+                  <div style={{ display: "inline-flex", gap: 4 }}>
+                    {[
+                      { id: "all",           label: "All",   count: MIMIC_PACKS.length },
+                      { id: "international", label: "INT",   count: MIMIC_PACKS.filter(a => a.region === "international").length },
+                      { id: "israeli",       label: "IL",    count: MIMIC_PACKS.filter(a => a.region === "israeli").length },
+                    ].map(f => {
+                      const active = mimicRegionFilter === f.id;
+                      return (
+                        <button key={f.id} type="button"
+                          onClick={() => { playSwitchSound(); setMimicRegionFilter(f.id); }}
+                          style={{
+                            display: "inline-flex", alignItems: "center", gap: 5,
+                            padding: "5px 10px",
+                            background: active ? "#A855F718" : "transparent",
+                            border: `1px solid ${active ? "#A855F788" : T.border}`,
+                            borderRadius: T.r_sm,
+                            color: active ? "#C084FC" : T.textSec,
+                            fontFamily: T.font_mono, fontSize: 10, fontWeight: 700,
+                            letterSpacing: "0.08em",
+                            cursor: "pointer",
+                            transition: `all ${T.dur_fast} ${T.ease}`,
+                          }}
+                          onMouseEnter={e => { if (!active) { e.currentTarget.style.borderColor = "#A855F766"; e.currentTarget.style.color = T.text; } }}
+                          onMouseLeave={e => { if (!active) { e.currentTarget.style.borderColor = T.border; e.currentTarget.style.color = T.textSec; } }}
+                        >
+                          {f.label}
+                          <span style={{
+                            fontSize: 8, color: active ? "#C084FC" : T.textTer,
+                            padding: "1px 4px",
+                            background: active ? "#A855F722" : "#00000033",
+                            borderRadius: 2,
+                          }}>{f.count}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <div style={{
+                    flex: 1, minWidth: 180, maxWidth: 320,
+                    position: "relative",
+                  }}>
+                    <input type="text"
+                      value={mimicSearch}
+                      onChange={e => setMimicSearch(e.target.value)}
+                      placeholder="Search artists..."
+                      style={{
+                        width: "100%",
+                        padding: "6px 28px 6px 10px",
+                        background: "#00000044",
+                        border: `1px solid ${mimicSearch ? "#A855F766" : T.border}`,
+                        borderRadius: T.r_sm,
+                        color: T.text,
+                        fontFamily: T.font_sans,
+                        fontSize: isMobile ? 16 : T.fs_sm,  // 16px on mobile = no iOS zoom
+                        outline: "none",
+                        transition: `border-color ${T.dur_fast} ${T.ease}`,
+                      }}
+                      onFocus={e => { e.currentTarget.style.borderColor = "#A855F7"; }}
+                      onBlur={e => { e.currentTarget.style.borderColor = mimicSearch ? "#A855F766" : T.border; }}
+                    />
+                    {mimicSearch && (
+                      <button type="button"
+                        onClick={() => { setMimicSearch(""); }}
+                        aria-label="Clear search"
+                        style={{
+                          position: "absolute", right: 6, top: "50%",
+                          transform: "translateY(-50%)",
+                          width: 20, height: 20,
+                          display: "grid", placeItems: "center",
+                          background: "transparent", border: "none",
+                          color: T.textTer,
+                          cursor: "pointer", fontSize: 14, lineHeight: 1,
+                          padding: 0,
+                        }}
+                      >×</button>
+                    )}
+                  </div>
+                  <span style={{
+                    fontSize: 10, color: T.textMuted,
+                    fontFamily: T.font_mono, letterSpacing: "0.08em",
+                    whiteSpace: "nowrap",
+                  }}>
+                    {filteredMimicArtists.length} shown
+                  </span>
+                </div>
+
+                {/* Artist selector — horizontal pill row, scrollable on
+                    narrow screens. Active pill glows purple. Region
+                    labels (INT/IL) are shown as small suffix chips. */}
+                <div style={{
+                  display: "flex", flexWrap: "wrap", gap: T.s2,
+                  marginBottom: T.s4,
+                }}>
+                  {filteredMimicArtists.length === 0 ? (
+                    <div style={{
+                      flex: 1, textAlign: "center",
+                      padding: `${T.s5}px ${T.s3}px`,
+                      color: T.textMuted, fontFamily: T.font_mono, fontSize: T.fs_sm,
+                      border: `1px dashed ${T.border}`,
+                      borderRadius: T.r_md,
+                    }}>
+                      No artists match your filter.
+                    </div>
+                  ) : filteredMimicArtists.map(artist => {
+                    const active = artist.artistId === mimicArtistId;
+                    const isIL = artist.region === "israeli";
+                    return (
+                      <button key={artist.artistId} type="button"
+                        onClick={() => { playSwitchSound(); setMimicArtistId(artist.artistId); }}
+                        style={{
+                          display: "inline-flex", alignItems: "center", gap: 6,
+                          padding: isMobile ? "8px 12px" : "6px 12px",
+                          minHeight: isMobile ? 38 : "auto",
+                          background: active
+                            ? `linear-gradient(180deg, rgba(168, 85, 247, 0.22) 0%, rgba(168, 85, 247, 0.1) 100%)`
+                            : "transparent",
+                          border: `1px solid ${active ? "#A855F7" : T.border}`,
+                          borderRadius: 999,
+                          color: active ? "#E9D5FF" : T.textSec,
+                          fontFamily: T.font_sans,
+                          fontSize: T.fs_sm, fontWeight: active ? 700 : 500,
+                          letterSpacing: "0.01em",
+                          cursor: "pointer",
+                          boxShadow: active
+                            ? `0 0 12px rgba(168, 85, 247, 0.35), inset 0 1px 0 rgba(233, 213, 255, 0.18)`
+                            : "none",
+                          transition: `all ${T.dur_fast} ${T.ease}`,
+                        }}
+                        onMouseEnter={e => {
+                          if (!active) {
+                            e.currentTarget.style.borderColor = "#A855F788";
+                            e.currentTarget.style.color = T.text;
+                          }
+                        }}
+                        onMouseLeave={e => {
+                          if (!active) {
+                            e.currentTarget.style.borderColor = T.border;
+                            e.currentTarget.style.color = T.textSec;
+                          }
+                        }}
+                      >
+                        {artist.artistName}
+                        <span style={{
+                          fontSize: 8, fontFamily: T.font_mono, fontWeight: 700,
+                          letterSpacing: "0.1em",
+                          padding: "2px 5px",
+                          background: isIL ? "#3E8CFF22" : "#9CA3AF22",
+                          color: isIL ? "#7FB2FF" : "#9CA3AF",
+                          borderRadius: 3,
+                          lineHeight: 1,
+                        }}>{isIL ? "IL" : "INT"}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* ── VIBE FILTER — emotional-bucket refinement for the
+                    selected artist's packs. 8 pills: All + 7 vibes.
+                    Count shown per pill reflects ONLY the current
+                    artist's packs matching that vibe (not global). ── */}
+                <div style={{
+                  display: "flex", flexWrap: "wrap", gap: 4,
+                  marginBottom: T.s3,
+                  padding: `${T.s2}px 0`,
+                }}>
+                  {(() => {
+                    const allCount = activeMimicArtist.packs.length;
+                    const active = mimicVibeFilter === "all";
+                    return (
+                      <button type="button"
+                        onClick={() => { playSwitchSound(); setMimicVibeFilter("all"); }}
+                        title="Show all packs"
+                        style={{
+                          display: "inline-flex", alignItems: "center", gap: 5,
+                          padding: "5px 10px",
+                          background: active ? "#A855F718" : "transparent",
+                          border: `1px solid ${active ? "#A855F788" : T.border}`,
+                          borderRadius: T.r_sm,
+                          color: active ? "#C084FC" : T.textSec,
+                          fontFamily: T.font_mono, fontSize: 10, fontWeight: 700,
+                          letterSpacing: "0.08em",
+                          cursor: "pointer",
+                          transition: `all ${T.dur_fast} ${T.ease}`,
+                        }}
+                        onMouseEnter={e => { if (!active) { e.currentTarget.style.borderColor = "#A855F766"; e.currentTarget.style.color = T.text; } }}
+                        onMouseLeave={e => { if (!active) { e.currentTarget.style.borderColor = T.border; e.currentTarget.style.color = T.textSec; } }}
+                      >
+                        All
+                        <span style={{
+                          fontSize: 8, color: active ? "#C084FC" : T.textTer,
+                          padding: "1px 4px",
+                          background: active ? "#A855F722" : "#00000033",
+                          borderRadius: 2,
+                        }}>{allCount}</span>
+                      </button>
+                    );
+                  })()}
+                  {VIBE_META.map(v => {
+                    const count = activeMimicArtist.packs.filter(p => p.vibe === v.id).length;
+                    if (count === 0) return null; // hide vibes with no matches for this artist
+                    const active = mimicVibeFilter === v.id;
+                    return (
+                      <button key={v.id} type="button"
+                        onClick={() => { playSwitchSound(); setMimicVibeFilter(v.id); }}
+                        title={`${v.label} — ${v.tagline}`}
+                        style={{
+                          display: "inline-flex", alignItems: "center", gap: 5,
+                          padding: "5px 10px",
+                          background: active ? `${v.color}18` : "transparent",
+                          border: `1px solid ${active ? `${v.color}AA` : T.border}`,
+                          borderRadius: T.r_sm,
+                          color: active ? v.color : T.textSec,
+                          fontFamily: T.font_mono, fontSize: 10, fontWeight: 700,
+                          letterSpacing: "0.08em",
+                          cursor: "pointer",
+                          transition: `all ${T.dur_fast} ${T.ease}`,
+                        }}
+                        onMouseEnter={e => { if (!active) { e.currentTarget.style.borderColor = `${v.color}66`; e.currentTarget.style.color = T.text; } }}
+                        onMouseLeave={e => { if (!active) { e.currentTarget.style.borderColor = T.border; e.currentTarget.style.color = T.textSec; } }}
+                      >
+                        <span>{v.icon}</span>
+                        <span>{v.label}</span>
+                        <span style={{
+                          fontSize: 8, color: active ? v.color : T.textTer,
+                          padding: "1px 4px",
+                          background: active ? `${v.color}22` : "#00000033",
+                          borderRadius: 2,
+                        }}>{count}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Prompt cards for the selected artist, filtered by vibe */}
+                <div style={{
+                  display: "grid",
+                  gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(5, 1fr)",
+                  gap: T.s2,
+                }}>
+                  {filteredPacks.length === 0 ? (
+                    <div style={{
+                      gridColumn: "1 / -1",
+                      textAlign: "center",
+                      padding: `${T.s5}px ${T.s3}px`,
+                      color: T.textMuted, fontFamily: T.font_mono, fontSize: T.fs_sm,
+                      border: `1px dashed ${T.border}`,
+                      borderRadius: T.r_md,
+                    }}>
+                      No {mimicVibeFilter !== "all" ? `"${mimicVibeFilter}"` : ""} packs for {activeMimicArtist.artistName}.
+                    </div>
+                  ) : filteredPacks.map(pack => (
+                    <button key={pack.id} type="button"
+                      onClick={() => applyMimicPack(activeMimicArtist, pack)}
+                      title={`${activeMimicArtist.artistName} · ${pack.name}${pack.vibe ? ` · ${pack.vibe}` : ""}`}
+                      style={{
+                        display: "flex", flexDirection: "column",
+                        alignItems: "flex-start", justifyContent: "space-between",
+                        gap: 6,
+                        padding: isMobile ? T.s3 : T.s3,
+                        minHeight: isMobile ? 72 : 84,
+                        background: `linear-gradient(180deg, rgba(168, 85, 247, 0.04) 0%, ${T.surface} 100%)`,
+                        border: `1px solid ${T.border}`,
+                        borderRadius: T.r_md,
+                        color: T.text,
+                        fontFamily: T.font_sans,
+                        cursor: "pointer",
+                        textAlign: "left",
+                        transition: `all ${T.dur_fast} ${T.ease}`,
+                      }}
+                      onMouseEnter={e => {
+                        e.currentTarget.style.borderColor = "#A855F788";
+                        e.currentTarget.style.background = `linear-gradient(180deg, rgba(168, 85, 247, 0.12) 0%, rgba(168, 85, 247, 0.04) 100%)`;
+                        e.currentTarget.style.transform = "translateY(-1px)";
+                        e.currentTarget.style.boxShadow = `0 0 16px rgba(168, 85, 247, 0.22)`;
+                      }}
+                      onMouseLeave={e => {
+                        e.currentTarget.style.borderColor = T.border;
+                        e.currentTarget.style.background = `linear-gradient(180deg, rgba(168, 85, 247, 0.04) 0%, ${T.surface} 100%)`;
+                        e.currentTarget.style.transform = "translateY(0)";
+                        e.currentTarget.style.boxShadow = "none";
+                      }}
+                    >
+                      <span style={{
+                        fontSize: 20, lineHeight: 1,
+                      }}>{pack.emoji}</span>
+                      <span style={{
+                        fontSize: T.fs_sm, fontWeight: 600,
+                        color: T.text, lineHeight: 1.25,
+                      }}>{pack.name}</span>
+                      <span style={{
+                        fontSize: 9, fontFamily: T.font_mono,
+                        color: T.textMuted, letterSpacing: "0.08em",
+                      }}>
+                        {pack.state.bpm ? `${pack.state.bpm} BPM` : ""}
+                        {pack.state.slots && pack.state.slots[0]?.sub ? ` · ${pack.state.slots[0].sub}` : ""}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+                </>)}
+              </div>
+
+              {/* Small footer note — version tag so we know when the
+                  spec was last updated (manual refresh needed) */}
+              <div style={{
+                marginTop: T.s3, paddingTop: T.s3,
+                borderTop: `1px solid ${T.border}`,
+                fontSize: 9, color: T.textMuted,
+                fontFamily: T.font_mono,
+                letterSpacing: "0.08em",
+                display: "flex", justifyContent: "space-between", gap: T.s2,
+                flexWrap: "wrap",
+              }}>
+                <span>v1 · spec: best-guess baseline</span>
+                <span>refresh tiers as Israeli scene evolves</span>
+              </div>
             </div>
           )}
 
-          {/* ── PRESETS ─ quick-start configurations (5 random out of 50) ───── */}
+          {/* ── ACTION ROW ──────────────────────────────────────────
+              Tips + Randomizer side by side, left-aligned to the pane
+              anchor (no centering). Gold diamond separator between
+              them gives the row a ledger feel. One horizontal band of
+              controls between the hero and the content config below. */}
+          <div style={{
+            display: "flex",
+            alignItems: "center",
+            gap: isMobile ? T.s2 : T.s3,
+            flexWrap: "wrap",
+            marginBottom: isMobile ? T.s5 : T.s7,
+          }}>
+            <TipsManual />
+          </div>
+
+          {/* ── PRESETS ─ quick-start configurations, paginated ───── */}
           {features.presets ? (
             <div style={{ marginBottom: T.s6 }}>
+              {/* Header row: label on left, pagination controls on right
+                  (only for VIP+ who can navigate between pages). Pro
+                  users see just "Presets · Starter 5" — they're stuck
+                  on page 1 so no arrows are shown. */}
               <div style={{
                 display: "flex", justifyContent: "space-between", alignItems: "center",
-                marginBottom: T.s3,
+                marginBottom: T.s3, gap: T.s3, flexWrap: "wrap",
               }}>
-                <Label color={T.textSec}>
-                  Presets
-                </Label>
+                <div style={{ display: "flex", alignItems: "center", gap: T.s3 }}>
+                  <Label color={T.textSec}>Presets</Label>
+                  {canPaginatePresets ? (
+                    <span style={{
+                      fontFamily: T.font_mono, fontSize: T.fs_xs,
+                      color: T.textTer, letterSpacing: "0.08em",
+                    }}>
+                      page {presetPage + 1} of {totalPresetPages}
+                    </span>
+                  ) : (
+                    <span style={{
+                      fontFamily: T.font_mono, fontSize: T.fs_xs,
+                      color: T.textTer, letterSpacing: "0.08em",
+                    }}>
+                      starter 5 · VIP unlocks {PRESETS.length}
+                    </span>
+                  )}
+                </div>
+                {/* Pagination arrows — VIP+ only */}
+                {canPaginatePresets && (
+                  <div style={{
+                    display: "inline-flex", alignItems: "center",
+                    gap: T.s1,
+                  }}>
+                    <button type="button"
+                      onClick={() => {
+                        playSwitchSound();
+                        setPresetPage(p => Math.max(0, p - 1));
+                      }}
+                      disabled={presetPage === 0}
+                      aria-label="Previous page"
+                      title="Previous page"
+                      style={{
+                        width: 32, height: 32,
+                        display: "grid", placeItems: "center",
+                        background: "transparent",
+                        border: `1px solid ${T.border}`,
+                        borderRadius: T.r_sm,
+                        color: presetPage === 0 ? T.textMuted : T.textSec,
+                        fontFamily: T.font_mono, fontSize: 14, fontWeight: 700,
+                        cursor: presetPage === 0 ? "not-allowed" : "pointer",
+                        opacity: presetPage === 0 ? 0.45 : 1,
+                        transition: `all ${T.dur_fast} ${T.ease}`,
+                      }}
+                      onMouseEnter={e => {
+                        if (presetPage !== 0) {
+                          e.currentTarget.style.borderColor = V.neonGold + "88";
+                          e.currentTarget.style.color = V.neonGold;
+                        }
+                      }}
+                      onMouseLeave={e => {
+                        if (presetPage !== 0) {
+                          e.currentTarget.style.borderColor = T.border;
+                          e.currentTarget.style.color = T.textSec;
+                        }
+                      }}
+                    >←</button>
+                    {/* Page dots — compact visual index */}
+                    <div style={{
+                      display: "inline-flex", alignItems: "center", gap: 4,
+                      padding: "0 6px",
+                    }}>
+                      {Array.from({ length: totalPresetPages }).map((_, i) => {
+                        const active = i === presetPage;
+                        return (
+                          <button key={i} type="button"
+                            onClick={() => { playSwitchSound(); setPresetPage(i); }}
+                            aria-label={`Go to page ${i + 1}`}
+                            title={`Page ${i + 1}`}
+                            style={{
+                              width: active ? 14 : 6,
+                              height: 6,
+                              padding: 0,
+                              border: "none",
+                              background: active
+                                ? V.neonGold
+                                : T.textMuted,
+                              borderRadius: 999,
+                              cursor: "pointer",
+                              transition: `width 200ms ${T.ease}, background 200ms ${T.ease}`,
+                              boxShadow: active
+                                ? `0 0 6px ${V.neonGold}88`
+                                : "none",
+                            }}
+                          />
+                        );
+                      })}
+                    </div>
+                    <button type="button"
+                      onClick={() => {
+                        playSwitchSound();
+                        setPresetPage(p => Math.min(totalPresetPages - 1, p + 1));
+                      }}
+                      disabled={presetPage >= totalPresetPages - 1}
+                      aria-label="Next page"
+                      title="Next page"
+                      style={{
+                        width: 32, height: 32,
+                        display: "grid", placeItems: "center",
+                        background: "transparent",
+                        border: `1px solid ${T.border}`,
+                        borderRadius: T.r_sm,
+                        color: presetPage >= totalPresetPages - 1 ? T.textMuted : T.textSec,
+                        fontFamily: T.font_mono, fontSize: 14, fontWeight: 700,
+                        cursor: presetPage >= totalPresetPages - 1 ? "not-allowed" : "pointer",
+                        opacity: presetPage >= totalPresetPages - 1 ? 0.45 : 1,
+                        transition: `all ${T.dur_fast} ${T.ease}`,
+                      }}
+                      onMouseEnter={e => {
+                        if (presetPage < totalPresetPages - 1) {
+                          e.currentTarget.style.borderColor = V.neonGold + "88";
+                          e.currentTarget.style.color = V.neonGold;
+                        }
+                      }}
+                      onMouseLeave={e => {
+                        if (presetPage < totalPresetPages - 1) {
+                          e.currentTarget.style.borderColor = T.border;
+                          e.currentTarget.style.color = T.textSec;
+                        }
+                      }}
+                    >→</button>
+                  </div>
+                )}
+                {/* Pro-tier nudge to upgrade */}
+                {!canPaginatePresets && (
+                  <button type="button"
+                    onClick={() => { playSwitchSound(); setSalesModalFeature("presetShuffle"); }}
+                    style={{
+                      padding: "4px 10px",
+                      background: `${V.neonGold}12`,
+                      border: `1px solid ${V.neonGold}55`,
+                      borderRadius: 999,
+                      color: V.neonGold,
+                      fontFamily: T.font_mono, fontSize: T.fs_xs, fontWeight: 700,
+                      letterSpacing: "0.1em",
+                      cursor: "pointer",
+                      transition: `all ${T.dur_fast} ${T.ease}`,
+                    }}
+                    onMouseEnter={e => {
+                      e.currentTarget.style.background = `${V.neonGold}22`;
+                      e.currentTarget.style.borderColor = V.neonGold;
+                    }}
+                    onMouseLeave={e => {
+                      e.currentTarget.style.background = `${V.neonGold}12`;
+                      e.currentTarget.style.borderColor = `${V.neonGold}55`;
+                    }}
+                  >🔒 UNLOCK ALL</button>
+                )}
               </div>
+              {/* Preset chips — 5 per page */}
               <div style={{ display: "flex", flexWrap: "wrap", gap: T.s2 }}>
                 {visiblePresets.map(p => (
                   <button key={p.id} type="button"
@@ -11761,9 +16122,7 @@ function EnginePage({ onNavigate }) {
                 ))}
               </div>
             </div>
-          ) : (
-            <TierLock feature="Quick-start presets" requiredTier="pro" />
-          )}
+          ) : null}
 
           <Section>
             <LyricalSwitch value={lyricsOn} onChange={setLyricsOn} />
@@ -12701,10 +17060,12 @@ function EnginePage({ onNavigate }) {
                   onCopy={() => doCopy("short", shortResult.text)} copyState={copyState.short} />
               </div>
 
-              <OutputBlock title="Detailed producer prompt" subtitle="Natural language. For description fields."
-                text={detailedResult.text} length={detailedResult.text.length} limit={maxLen}
-                compressed={detailedResult.compressed} compressionLevel={detailedResult.level}
-                onCopy={() => doCopy("detailed", detailedResult.text)} copyState={copyState.detailed} multiline />
+              <div ref={detailedPromptRef} style={{ scrollMarginTop: 72 }}>
+                <OutputBlock title="Detailed producer prompt" subtitle="Natural language. For description fields."
+                  text={detailedResult.text} length={detailedResult.text.length} limit={maxLen}
+                  compressed={detailedResult.compressed} compressionLevel={detailedResult.level}
+                  onCopy={() => doCopy("detailed", detailedResult.text)} copyState={copyState.detailed} multiline />
+              </div>
             </div>
           ) : (
             <WorkflowGuide />
