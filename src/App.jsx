@@ -23604,15 +23604,15 @@ function playButtonSound() {
 // available to start a roll. Uses the same pool pattern as the other
 // sound helpers so rapid successive HITs don't cut off.
 //
-// Asset path: /hit%20button%20sound.mp3 (the file in public/ is named
-// "hit button sound.mp3" with spaces). Spaces in URLs must be encoded
-// as %20 for the browser to request the right asset. Do NOT rename
-// the space-separated filename without updating this path.
+// Asset path: /hit-button-sound.mp3 (the file in public/ is named
+// "hit-button-sound.mp3" with hyphens). Confirmed via dir listing on
+// 2026-04-19. If the file is ever renamed in public/, update this URL
+// to match exactly or the asset will 404.
 //
 // DIAGNOSTICS: set window.__HE_DEBUG_AUDIO = true in DevTools console
 // to see verbose logs explaining exactly why the sound might not fire.
 // Covers: path 404, autoplay policy block, load errors, pool exhaustion.
-const HIT_SOUND_URL = "/hit%20button%20sound.mp3";
+const HIT_SOUND_URL = "/hit-button-sound.mp3";
 let _hitAudioPool = null;
 let _hitAudioIdx = 0;
 let _hitAudioLoadError = null;
@@ -23636,7 +23636,7 @@ function playHitSound() {
           _hitAudioLoadError = a.error ? a.error.code : "unknown";
           if (debug) {
             console.error("[HIT sound] load error code:", _hitAudioLoadError,
-              `— expected asset at ${HIT_SOUND_URL} (decoded: "hit button sound.mp3")`);
+              `— expected asset at ${HIT_SOUND_URL} in public/`);
           }
         });
         if (debug) {
