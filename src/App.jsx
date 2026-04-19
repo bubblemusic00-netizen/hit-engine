@@ -1885,10 +1885,18 @@ const ARTICULATIONS_BY_INSTRUMENT = Object.entries(SPECIFIC_INSTRUMENTS).reduce(
 // OTHER OPTION SETS
 // ────────────────────────────────────────────────────────────────────────────
 const MOODS = [
+  // Existing (20) — unchanged for preset and scoring compatibility
   "Dark & brooding","Euphoric","Nostalgic","Defiant","Tender",
   "Desperate","Triumphant","Sensual","Melancholic","Spiritual",
   "Bittersweet","Unbothered","Haunted","Ecstatic","Anxious",
   "Serene","Electric","Lonely","Dreamlike","Furious",
+  // New (+10) — chosen to widen emotional range AND fill the gaps
+  // referenced by POP_HIT_SCORE (Uplifting/Catchy/Summery/Romantic/
+  // Confident/Playful/Hopeful/Dreamy/Pensive/Mysterious/Moody were
+  // scored but weren't in the catalog). Picking the five that fit
+  // natural fills plus five new ones outside the pop scoring axis.
+  "Uplifting","Catchy","Summery","Romantic","Confident",
+  "Playful","Hopeful","Pensive","Smoldering","Reverent",
 ];
 
 const GROOVES = [
@@ -1906,18 +1914,31 @@ const GROOVES = [
 ];
 
 const ENERGIES = [
+  // Existing (8)
   "Slow burn to explosion","Steady groove throughout",
   "Intimate & bare throughout","Euphoric continuous build",
   "Sparse to wall of sound","Driving & relentless",
   "Starts huge then strips back","Tension without full release",
+  // New (+10) — distinct arc shapes across time, not synonyms
+  "Crescendo to abrupt cut","Gradual decay into silence",
+  "Pulse waves — swells every 8 bars","Punch-and-dissipate phrasing",
+  "Floors then slams back in","Locked intensity, no dynamics",
+  "Quiet-loud-quiet loop","Cascading drops throughout",
+  "Breath cycles — inhale then release","Fever-pitch final third",
 ];
 
 const VOCALISTS = [
+  // Existing (12)
   "Breathy female lead","Raw male baritone","Androgynous voice",
   "Melismatic soprano","Smooth tenor","Gospel ensemble",
   "Screamed verse / melodic chorus","Whisper to full belt",
   "Spoken word over melody","Layered harmonies no lead",
   "Auto-tuned melodic delivery","Falsetto-led",
+  // New (+8) — distinct vocal characters not covered above
+  "Gruff growler","Husky alto","Choirboy clarity",
+  "Vocoder & robotic treatment","Pitched-down bass mumble",
+  "Call-and-response duet","Spoken rap over sung hook",
+  "Child chorus accents",
 ];
 
 const LANGUAGES = [
@@ -1936,25 +1957,42 @@ const LANGUAGES = [
 ];
 
 const MIX_CHARS = [
+  // Existing (10)
   "Intimate close-mic","Wide cinematic","Lo-fi tape warmth",
   "Ultra clean & polished","Raw & uncompressed",
   "Heavy reverb cathedral","Punchy & compressed",
   "Vintage analog","Futuristic digital","Dry & direct",
+  // New (+8) — each targets a different mix-color or era
+  "Bedroom DIY aesthetic","80s gated reverb drums",
+  "Slick radio master","Underwater / muffled filter",
+  "Stadium bus compression","Bone-dry boom-bap drums",
+  "Dark subterranean sub","Hi-fi audiophile clarity",
 ];
 
 const HARMONIC_STYLES = [
+  // Existing (9)
   "Minor-key introspection","Major-key lift","Modal ambiguity",
   "Dissonant tension","Jazz extensions","Drone-based static harmony",
   "Classical voice-leading","Bluesy dominant","Microtonal",
+  // New (+9) — distinct harmonic languages, not overlapping
+  "Dorian mode mystery","Lydian dreamy wonder","Phrygian exotic tension",
+  "Suspended chord hang","Parallel motion harmonies","Chromatic bass line walks",
+  "Pentatonic folk simplicity","Augmented / whole-tone shimmer","Quartal stacked fourths",
 ];
 
 const SOUND_TEXTURES = [
+  // Existing (9)
   "Granular & particulate","Smooth & liquid","Crystalline & brittle",
   "Thick & saturated","Airy & weightless","Metallic & reflective",
   "Organic & breathing","Digital & precise","Distressed & decayed",
+  // New (+9) — distinct surface qualities, not synonyms
+  "Velvety & plush","Gritty & sandy","Waxy & pliable",
+  "Foggy & diffused","Glassy & transparent","Rubbery & elastic",
+  "Woolly & muffled","Icy & sharp","Warm & sun-baked",
 ];
 
 const LYRICAL_VIBES = [
+  // Existing (20)
   "Confessional diary","Nostalgic storytelling","Defiant anthem",
   "Abstract poetry","Braggadocio flex","Heartbreak elegy",
   "Political protest","Surreal dreamscape","Romantic devotion",
@@ -1962,6 +2000,11 @@ const LYRICAL_VIBES = [
   "Coming-of-age narrative","Cinematic scene-setting","Stream-of-consciousness",
   "Mythic / allegorical","Hedonistic escapism","Social commentary",
   "Letter to self","Ode to a place",
+  // New (+10) — distinct narrative modes, not synonyms of existing
+  "Inside-joke wink","Dance-floor chant","Late-night drive monologue",
+  "Revenge fantasy","Family heirloom memory","Grief held at distance",
+  "Manifesto / call to action","Character study / third-person","Imagined letter to ex",
+  "City at 3AM portrait",
 ];
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -4664,27 +4707,34 @@ function CubicleHeader({ id, icon, title, description, valuePreview, filled, isO
     <div
       onClick={onClick}
       style={{
-        display: "flex", alignItems: "center", justifyContent: "space-between",
+        display: "flex", alignItems: "flex-start", justifyContent: "space-between",
         gap: T.s2, padding: `${T.s3}px ${T.s3}px`,
         cursor: disabled ? "not-allowed" : (headerClickable ? "pointer" : "default"),
         userSelect: "none",
-        minHeight: 64,
+        minHeight: 68,
         transition: `background 200ms ${T.ease}`,
       }}
     >
-      <div style={{ display: "flex", alignItems: "center", gap: T.s3, flex: 1, minWidth: 0 }}>
+      <div style={{ display: "flex", alignItems: "flex-start", gap: T.s2, flex: 1, minWidth: 0 }}>
         {icon && (
           <span style={{
             fontSize: 20, lineHeight: 1, flexShrink: 0,
+            // Small top-nudge so icon aligns with the first line of the
+            // title when the title wraps to 2 lines (flex-start layout).
+            marginTop: 1,
             filter: disabled ? "grayscale(100%) opacity(0.5)" : "none",
           }}>{icon}</span>
         )}
         <div style={{ display: "flex", flexDirection: "column", gap: 2, minWidth: 0, flex: 1 }}>
           <div style={{
-            display: "flex", alignItems: "center", gap: T.s2,
+            display: "flex", alignItems: "flex-start", gap: T.s2,
             fontSize: T.fs_md, fontFamily: T.font_sans,
             fontWeight: 600, color: disabled ? T.textMuted : T.text,
             lineHeight: 1.2,
+            // Titles allowed to wrap to 2 lines in narrow grid cells
+            // (5-col × ~150px). Prior nowrap caused truncation ellipses
+            // on longer labels like "Harmonic style".
+            wordBreak: "break-word",
           }}>
             {title}
             {showLed && (
@@ -4703,8 +4753,13 @@ function CubicleHeader({ id, icon, title, description, valuePreview, filled, isO
             <div style={{
               fontSize: T.fs_xs, color: disabled ? T.textMuted : T.textTer,
               fontFamily: T.font_sans, lineHeight: 1.3,
-              overflow: "hidden", textOverflow: "ellipsis",
-              whiteSpace: "nowrap",
+              // Allow 2-line wrap so longer descriptions aren't chopped
+              // with a single-line ellipsis in narrow 5-col cells.
+              display: "-webkit-box",
+              WebkitLineClamp: 2,
+              WebkitBoxOrient: "vertical",
+              overflow: "hidden",
+              wordBreak: "break-word",
             }}>{description}</div>
           )}
           {valuePreview && !isOpen && (
@@ -4740,7 +4795,10 @@ function CubicleGrid({ children, isMobile }) {
   return (
     <div style={{
       display: "grid",
-      gridTemplateColumns: isMobile ? "repeat(3, minmax(0, 1fr))" : "repeat(5, minmax(0, 1fr))",
+      // Fewer columns = wider cells = readable titles/descriptions without
+      // wrap truncation. Desktop goes from 5 to 3 columns (tiles 1.67x
+      // wider), mobile from 3 to 2 (tiles 1.5x wider).
+      gridTemplateColumns: isMobile ? "repeat(2, minmax(0, 1fr))" : "repeat(3, minmax(0, 1fr))",
       gap: T.s2,
       marginTop: T.s3, marginBottom: T.s3,
     }}>{children}</div>
@@ -4888,6 +4946,18 @@ const SALES_COPY = {
       "Plus: custom tags, option locks, 100 daily Pro hits",
     ],
     cta: "Upgrade to Pro",
+  },
+  extraPoppy: {
+    tier: "vip",
+    headline: "Extra Poppy — pop-maximize in one press",
+    subline: "Instantly configures the engine with chart-ready genre, mood, BPM, key, and mix — aimed at 90%+ Pop Match. Each press costs 20 Pro credits.",
+    bullet: [
+      "Curated high-score pools (top-streaming genres, hit moods)",
+      "BPM locked to the 95-130 pop sweet spot, major-key harmonic lift",
+      "Clean mix + chart-friendly vocal + hit-lyrical-vibe pairing",
+      "Costs 20 Pro credits per press, VIP-exclusive",
+    ],
+    cta: "Upgrade to VIP",
   },
   slotLock: {
     tier: "pro",
@@ -5092,33 +5162,41 @@ function SalesModal({ open, onClose, onUpgrade, feature }) {
 // delays, creating a "dancing" feel rather than a rigid conveyor belt.
 // Clicking the strip refreshes the page via window.location.reload().
 // ────────────────────────────────────────────────────────────────────────────
-function MusicalNotesMarquee({ compact = false }) {
+function MusicalNotesMarquee({ compact = false, spanStyle = "aligned-to-engine" }) {
   const { layout } = useLayout();
   const isMobile = layout === "mobile";
   // 14 notes — doubled below for the seamless scroll effect.
   const notes = ["♪", "♫", "♬", "♩", "♪", "♭", "♫", "♯", "♩", "♬", "𝄞", "♪", "♫", "♩"];
-  // Thin, short decorative strip sitting above the banner, terminating
-  // at the left edge of the ENGINE word.
-  const stripHeight = isMobile ? 14 : 20;
-  const noteFontSize = isMobile ? 10 : 14;
-  // Left pane padding to escape: T.s8 desktop (64) / T.s4 mobile (16).
-  const leftPaneGutter = isMobile ? 16 : 64;
-  // Width measured dynamically from the .anbn-engine span in the banner,
-  // so the strip always ends exactly at the left edge of ENGINE.
+  // ── Rendering modes ─────────────────────────────────────────────
+  // "through-wordmark"  — notes travel THROUGH the HIT⚡ENGINE banner.
+  //                       Parent is absolutely positioned; this strip
+  //                       fills it 100% with fades on both sides so
+  //                       notes enter mid-H and exit past the final E
+  //                       cleanly. No DOM measurement needed.
+  // "aligned-to-engine" — legacy: measures ENGINE left edge and sizes
+  //                       itself to span from viewport-left to there.
+  const throughMode = spanStyle === "through-wordmark";
+
+  const stripHeight = throughMode
+    ? "100%"
+    : (isMobile ? 14 : 20);
+  const noteFontSize = throughMode
+    ? (isMobile ? 18 : 26)     // bigger notes when piercing the wordmark
+    : (isMobile ? 10 : 14);
+
+  // Legacy mode: measure ENGINE left edge
+  const leftPaneGutter = isMobile ? 16 : 160;
   const [width, setWidth] = useState(isMobile ? 180 : 260);
   useEffect(() => {
+    if (throughMode) return;
     const measure = () => {
       const el = document.querySelector(".anbn-engine");
       if (!el) return;
       const rect = el.getBoundingClientRect();
-      // rect.left is the viewport X of ENGINE's left edge.
-      // Strip spans from viewport X=0 to that X (minus a small padding
-      // so the fade doesn't overlap the ENGINE glyph).
       const next = Math.max(80, rect.left - 4);
       setWidth(next);
     };
     measure();
-    // Measure again after paint + after fonts load
     const raf = requestAnimationFrame(measure);
     const onResize = () => measure();
     window.addEventListener("resize", onResize);
@@ -5127,25 +5205,41 @@ function MusicalNotesMarquee({ compact = false }) {
       cancelAnimationFrame(raf);
       window.removeEventListener("resize", onResize);
     };
-  }, [isMobile]);
+  }, [isMobile, throughMode]);
+
+  // Mask strategy differs per mode.
+  // through-wordmark: soft fades on both sides + dim internal opacity
+  //                   so notes read as ambient sub-layer, not competing
+  //                   visually with the letters above.
+  // aligned-to-engine: single right-edge fade only.
+  const maskImage = throughMode
+    ? "linear-gradient(90deg, rgba(0,0,0,0) 0%, rgba(0,0,0,1) 12%, rgba(0,0,0,1) 88%, rgba(0,0,0,0) 100%)"
+    : "linear-gradient(90deg, rgba(0,0,0,1) 0%, rgba(0,0,0,1) 90%, rgba(0,0,0,0) 100%)";
+
   return (
     <div
       onClick={() => { playSwitchSound(); window.location.reload(); }}
       role="button"
       aria-label="Refresh page"
       title="Click to refresh"
-      style={{
+      style={throughMode ? {
+        width: "100%",
+        height: "100%",
+        overflow: "hidden",
+        position: "relative",
+        cursor: "pointer",
+        WebkitMaskImage: maskImage,
+        maskImage,
+        userSelect: "none",
+      } : {
         width: `${width}px`,
         height: stripHeight,
         overflow: "hidden",
         position: "relative",
         cursor: "pointer",
-        // Pull left by the parent's left-padding to hit the true screen edge.
         marginLeft: `-${leftPaneGutter}px`,
-        // Very soft right-edge fade so the strip terminates cleanly
-        // against ENGINE without a harsh cut.
-        WebkitMaskImage: "linear-gradient(90deg, rgba(0,0,0,1) 0%, rgba(0,0,0,1) 90%, rgba(0,0,0,0) 100%)",
-        maskImage: "linear-gradient(90deg, rgba(0,0,0,1) 0%, rgba(0,0,0,1) 90%, rgba(0,0,0,0) 100%)",
+        WebkitMaskImage: maskImage,
+        maskImage,
         marginBottom: isMobile ? 4 : 6,
         userSelect: "none",
       }}
@@ -5210,7 +5304,9 @@ function MusicalNotesMarquee({ compact = false }) {
             0 0 1px #FFFFFF88;
         }
       `}</style>
-      <div className="musical-notes-track">
+      <div className="musical-notes-track" style={
+        throughMode ? { opacity: 0.5 } : undefined
+      }>
         {[...notes, ...notes].map((n, i) => (
           <span
             key={i}
@@ -8571,7 +8667,7 @@ function SpecificInstrumentsPicker({
 // POP-HIT METER — probability of current selection becoming a modern pop hit
 // ════════════════════════════════════════════════════════════════════════════
 
-function PopHitMeter({ score, verdict, notes, showDebug, state, lyricsOn }) {
+function PopHitMeter({ score, verdict, notes, showDebug, state, lyricsOn, onExtraPoppy, canExtraPoppy, extraPoppyCost, extraPoppyLocked }) {
   const color = score >= 70 ? T.success : score >= 40 ? T.warning : T.danger;
   return (
     <div style={{
@@ -8651,6 +8747,63 @@ function PopHitMeter({ score, verdict, notes, showDebug, state, lyricsOn }) {
       }}>
         Heuristic score based on genre / BPM / vocal / mood rules. Not a prediction of actual chart performance.
       </div>
+
+      {/* ── EXTRA POPPY (VIP/Bubble) ────────────────────────────────
+          One-press pop-maximizer. Pulls an optimal config from the
+          curated high-score pool (top-streaming genres, chart-friendly
+          moods, sweet-spot BPM, major-key, clean mix). Costs 20 Pro
+          credits per press. Locked for Free/Pro users with upsell. */}
+      {onExtraPoppy && (
+        <button
+          type="button"
+          onClick={onExtraPoppy}
+          disabled={extraPoppyLocked && !canExtraPoppy}
+          title={extraPoppyLocked
+            ? "VIP exclusive — upgrade to unlock"
+            : canExtraPoppy
+                ? `Pop-maximize this config — costs ${extraPoppyCost} Pro credits`
+                : `Needs ${extraPoppyCost} Pro credits`}
+          style={{
+            marginTop: T.s3,
+            width: "100%",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            gap: 10,
+            padding: "10px 14px",
+            background: extraPoppyLocked
+              ? `linear-gradient(180deg, ${T.elevated} 0%, ${T.surface} 100%)`
+              : canExtraPoppy
+                  ? `linear-gradient(180deg, #FFD70022 0%, #FFB10015 50%, #FFA50018 100%)`
+                  : T.elevated,
+            border: `1px ${extraPoppyLocked ? "dashed" : "solid"} ${
+              extraPoppyLocked ? T.border :
+              canExtraPoppy ? "#FFD70099" : `${V.neonGold}33`
+            }`,
+            borderRadius: T.r_md,
+            color: extraPoppyLocked
+              ? T.textMuted
+              : canExtraPoppy ? "#FFD700" : T.textTer,
+            fontFamily: T.font_mono, fontSize: 11, fontWeight: 800,
+            letterSpacing: "0.16em",
+            cursor: (extraPoppyLocked || !canExtraPoppy) ? "not-allowed" : "pointer",
+            boxShadow: canExtraPoppy
+              ? `inset 0 1px 0 #FFF2, 0 0 14px #FFD70022`
+              : "none",
+            transition: `all ${T.dur_fast} ${T.ease}`,
+          }}
+        >
+          <span style={{ fontSize: 14, lineHeight: 1 }}>✦</span>
+          <span>EXTRA POPPY</span>
+          <span style={{
+            fontSize: 9, letterSpacing: "0.12em",
+            color: extraPoppyLocked
+              ? T.textMuted
+              : canExtraPoppy ? "#FFE48A" : T.textTer,
+            fontWeight: 700,
+          }}>
+            {extraPoppyLocked ? "· VIP" : `· ${extraPoppyCost} PRO`}
+          </span>
+        </button>
+      )}
 
       {/* ADMIN DEBUG — raw scoring math exposed */}
       {showDebug && state && (
@@ -8803,8 +8956,8 @@ function TipsManual() {
   const tips = [
     {
       icon: "⟐",
-      title: "Double-click to favorite",
-      body: "Double-click any chip (mood, vocalist, instrument, etc.) to mark it as a favorite. Favorites are 70% more likely to be picked during randomize — use them to bias rolls toward your taste.",
+      title: "Favorites bias the roll",
+      body: "Favorite any chip to make it 70% more likely to be picked during randomize. Favorites let you bias the engine toward your taste without pinning everything.",
     },
     {
       icon: "◉",
@@ -8819,17 +8972,17 @@ function TipsManual() {
     {
       icon: "⟳",
       title: "Preset shuffle",
-      body: "The ⟳ SHUFFLE button on the Presets row picks a fresh set of starter configurations. Click a preset to apply its complete state snapshot — genres, mood, instruments, everything.",
+      body: "The ⟳ RANDOMIZER button on the Presets row picks a fresh set of starter configurations. Click a preset to apply its complete state snapshot — genres, mood, instruments, everything.",
     },
     {
       icon: "+",
       title: "Add your own options (Pro/VIP)",
-      body: "The + custom button at the end of each chip row lets you add your own entries. Type, press Enter to save. Custom chips are always included during randomize. Right-click a custom chip to delete it.",
+      body: "The + custom button at the end of each chip row lets you add your own entries. Type, press Enter to save. Custom chips are always included during randomize.",
     },
     {
       icon: "🕹",
       title: "Joystick fuel selector (VIP)",
-      body: "VIPs get a retro joystick with three LCD screens — FREE, PRO, TREND. Click any screen to switch fuel. Moving to TREND navigates to the Trend Setter page with a smoke-and-engine transition.",
+      body: "VIPs get a retro joystick with three LCD screens — FREE, PRO, TREND. Click any screen to switch fuel. Moving to TREND navigates to the Trend Setter page.",
     },
     {
       icon: "⚡",
@@ -8849,120 +9002,173 @@ function TipsManual() {
     {
       icon: "★",
       title: "Trend Setter page (VIP)",
-      body: "Move the joystick to TREND to visit a curated list of currently-viral tracks per region (US/Israel/UK). Click any card to generate a trend-biased prompt.",
+      body: "Move the joystick to TREND to visit a curated list of currently-viral tracks per region. Click any card to generate a trend-biased prompt.",
     },
     {
       icon: "✓",
       title: "Vocal-killer protection",
-      body: "When Song mode is on, the engine automatically strips words that would make Suno/Udio accidentally generate an instrumental — like 'instrumental', 'no vocals', 'wordless', 'a cappella'. Switch to Instrumental mode if you actually want those words included.",
+      body: "When Song mode is on, the engine automatically strips words that would make AI music models accidentally generate an instrumental — like 'instrumental', 'no vocals', 'wordless', 'a cappella'.",
     },
   ];
 
   return (
     <div style={{
-      marginBottom: T.s5,
+      marginBottom: T.s4,
       position: "relative",
+      display: "flex",
+      justifyContent: "center",
     }}>
-      {/* Pulsing glow behind the button to catch the eye when collapsed */}
-      {!open && (
-        <style>{`
-          @keyframes tipsGoldPulse {
-            0%, 100% { box-shadow: 0 0 0 1px ${V.neonGold}88, 0 0 0px ${V.neonGold}00; }
-            50%      { box-shadow: 0 0 0 1px ${V.neonGold}, 0 0 18px ${V.neonGold}66; }
-          }
-          @keyframes tipsShimmer {
-            0%   { background-position: -120% 0; }
-            100% { background-position: 220% 0; }
-          }
-          .tips-manual-trigger {
-            animation: tipsGoldPulse 2.4s ease-in-out infinite;
-          }
-          .tips-manual-shimmer {
-            position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
-            background: linear-gradient(110deg,
-              transparent 0%, transparent 40%,
-              ${V.neonGold}33 50%, transparent 60%,
-              transparent 100%);
-            background-size: 220% 100%;
-            animation: tipsShimmer 3.6s linear infinite;
-          }
-        `}</style>
-      )}
-
+      {/* Compact trigger: small pill, now centered under the hero. When
+          clicked, opens a fullscreen modal (not an inline popover) so
+          the tips never leak over other content below. */}
       <button
         type="button"
         onClick={() => { playSwitchSound(); setOpen(o => !o); }}
-        className={!open ? "tips-manual-trigger" : ""}
+        title="How to use — quick tips"
         style={{
-          position: "relative", overflow: "hidden",
-          width: "100%", textAlign: "left",
-          display: "flex", alignItems: "center", justifyContent: "space-between",
-          gap: T.s3,
-          padding: isMobile ? `${T.s3}px ${T.s4}px` : `${T.s3}px ${T.s5}px`,
-          background: `linear-gradient(135deg, ${V.neonGold}0a 0%, transparent 100%)`,
-          border: `1px solid ${V.neonGold}`,
-          borderRadius: T.r_lg,
-          color: T.text,
+          display: "inline-flex", alignItems: "center", gap: 6,
+          padding: "6px 14px 6px 12px",
+          background: open ? `${V.neonGold}18` : "transparent",
+          border: `1px solid ${open ? V.neonGold + "88" : T.border}`,
+          borderRadius: 999,
+          color: open ? V.neonGold : T.textSec,
           fontFamily: T.font_sans,
+          fontSize: T.fs_sm, fontWeight: 600,
+          letterSpacing: "0.04em",
           cursor: "pointer",
           transition: `all ${T.dur_fast} ${T.ease}`,
-        }}>
-        {!open && <span className="tips-manual-shimmer" />}
-        <div style={{ display: "flex", alignItems: "center", gap: T.s3, position: "relative" }}>
-          <span style={{
-            fontSize: 18, color: V.neonGold,
-            filter: `drop-shadow(0 0 4px ${V.neonGold}88)`,
-          }}>✦</span>
-          <div>
-            <div style={{
-              fontSize: T.fs_md, fontWeight: 700, color: T.text,
-              letterSpacing: "0.01em",
-            }}>
-              How to use — 11 quick tips
-            </div>
-            <div style={{
-              fontSize: T.fs_xs, color: T.textMuted,
-              marginTop: 2,
-            }}>
-              Double-click, right-click, the joystick, and everything else you might miss
-            </div>
-          </div>
-        </div>
-        <span style={{
-          color: V.neonGold,
-          fontSize: 14, fontFamily: T.font_mono, fontWeight: 700,
-          letterSpacing: "0.2em",
-          position: "relative",
-          transition: `transform ${T.dur_fast} ${T.ease}`,
-          transform: open ? "rotate(180deg)" : "rotate(0deg)",
-        }}>
-          ▾
-        </span>
+        }}
+        onMouseEnter={e => {
+          if (!open) {
+            e.currentTarget.style.borderColor = V.neonGold + "66";
+            e.currentTarget.style.color = T.text;
+          }
+        }}
+        onMouseLeave={e => {
+          if (!open) {
+            e.currentTarget.style.borderColor = T.border;
+            e.currentTarget.style.color = T.textSec;
+          }
+        }}
+      >
+        <span style={{ fontSize: 12, color: V.neonGold, lineHeight: 1 }}>✦</span>
+        Quick tips
       </button>
 
+      {/* ── FULLSCREEN MODAL ──────────────────────────────────────────
+          When open, the tips are rendered as a centered fullscreen
+          modal with a dark scrim. Prevents word/emoji tails from
+          bleeding through from content below. Click scrim or ✕ to
+          close. Tips themselves remain a clean vertical list. */}
       {open && (
-        <div style={{
-          marginTop: T.s2,
-          padding: isMobile ? T.s4 : T.s5,
-          background: T.surface,
-          border: `1px solid ${V.neonGold}55`,
-          borderRadius: T.r_lg,
-          boxShadow: `0 0 0 1px ${V.neonGold}22, 0 4px 20px rgba(0,0,0,0.3)`,
-        }}>
-          <div style={{
-            display: "grid",
-            gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr",
-            gap: T.s3,
-          }}>
-            {tips.map((tip, i) => (
-              <div key={i} style={TIP_CARD_WRAPPER_STYLE}>
-                <span style={TIP_CARD_ICON_STYLE}>{tip.icon}</span>
-                <div style={TIP_CARD_BODY_STYLE}>
-                  <div style={TIP_CARD_TITLE_STYLE}>{tip.title}</div>
-                  <div style={TIP_CARD_TEXT_STYLE}>{tip.body}</div>
+        <div
+          onClick={() => { playSwitchSound(); setOpen(false); }}
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 120,
+            background: "rgba(6, 8, 16, 0.88)",
+            backdropFilter: "blur(12px) saturate(120%)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            padding: isMobile ? T.s3 : T.s6,
+            animation: "pageFadeIn 200ms cubic-bezier(0.16, 1, 0.3, 1)",
+          }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              width: "min(720px, 100%)",
+              maxHeight: "calc(100vh - 48px)",
+              display: "flex", flexDirection: "column",
+              background: `linear-gradient(180deg, ${T.surface} 0%, ${T.elevated}F0 100%)`,
+              border: `1px solid ${V.neonGold}66`,
+              borderTop: `2px solid ${V.neonGold}`,
+              borderRadius: T.r_lg,
+              boxShadow: `
+                0 0 0 1px ${V.neonGold}22,
+                0 24px 64px rgba(0,0,0,0.7),
+                0 0 48px ${V.neonGold}18,
+                inset 0 1px 0 rgba(255,255,255,0.05)
+              `,
+              overflow: "hidden",
+            }}
+          >
+            {/* Header — sticky within modal */}
+            <div style={{
+              display: "flex", alignItems: "center", justifyContent: "space-between",
+              padding: `${T.s4}px ${T.s5}px`,
+              borderBottom: `1px solid ${T.border}`,
+              background: `linear-gradient(180deg, ${T.elevated} 0%, ${T.surface} 100%)`,
+              flexShrink: 0,
+            }}>
+              <div style={{ display: "flex", alignItems: "center", gap: T.s3 }}>
+                <span style={{
+                  fontSize: 22, color: V.neonGold,
+                  filter: `drop-shadow(0 0 8px ${V.neonGold}88)`, lineHeight: 1,
+                }}>✦</span>
+                <div>
+                  <div style={{
+                    fontSize: T.fs_lg, fontWeight: 700, color: T.text,
+                    letterSpacing: "0.01em", lineHeight: 1.2,
+                  }}>How to use the Engine</div>
+                  <div style={{
+                    fontSize: T.fs_xs, color: T.textTer,
+                    fontFamily: T.font_mono, letterSpacing: "0.1em",
+                    marginTop: 2,
+                  }}>{tips.length} TIPS</div>
                 </div>
               </div>
-            ))}
+              <button
+                type="button"
+                onClick={() => { playSwitchSound(); setOpen(false); }}
+                aria-label="Close tips"
+                style={{
+                  background: "transparent",
+                  border: `1px solid ${T.border}`,
+                  color: T.textSec,
+                  width: 36, height: 36,
+                  borderRadius: T.r_sm,
+                  cursor: "pointer", fontSize: 18, lineHeight: 1,
+                  display: "grid", placeItems: "center",
+                  fontFamily: T.font_mono,
+                }}
+              >×</button>
+            </div>
+            {/* Scrollable body */}
+            <div style={{
+              flex: 1,
+              overflowY: "auto",
+              padding: `${T.s4}px ${T.s5}px`,
+              display: "flex", flexDirection: "column", gap: T.s3,
+            }}>
+              {tips.map((tip, i) => (
+                <div key={i} style={{
+                  display: "flex", alignItems: "flex-start", gap: T.s4,
+                  padding: T.s3,
+                  background: i % 2 === 0 ? "transparent" : `${V.neonGold}05`,
+                  border: `1px solid ${T.border}`,
+                  borderLeft: `3px solid ${V.neonGold}77`,
+                  borderRadius: T.r_md,
+                }}>
+                  <span style={{
+                    fontSize: 20, color: V.neonGold,
+                    flexShrink: 0, lineHeight: 1.2,
+                    width: 28, textAlign: "center",
+                    filter: `drop-shadow(0 0 6px ${V.neonGold}66)`,
+                  }}>{tip.icon}</span>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{
+                      fontSize: T.fs_md, fontWeight: 700, color: T.text,
+                      marginBottom: 4,
+                    }}>{tip.title}</div>
+                    <div style={{
+                      fontSize: T.fs_sm, color: T.textSec,
+                      lineHeight: 1.55,
+                    }}>{tip.body}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       )}
@@ -9747,7 +9953,7 @@ function CosmicVFX({ intensity = "light", active = true, wipeOriginX = "50%", wi
 function EnginePage({ onNavigate }) {
   const { tier, features } = useTier();
   const { layout } = useLayout();
-  const { fuels, activeFuel, consumeFuel } = useFuel();
+  const { fuels, activeFuel, consumeFuel, setFuel } = useFuel();
   const { customOptions, removeCustomOption } = useCustomOptions();
   const isMobile = layout === "mobile";
   const [state, setState] = useState(ENGINE_DEF);
@@ -11031,6 +11237,10 @@ function EnginePage({ onNavigate }) {
       setCasinoOutlines(new Map());
       doRandomize();
       setIsRolling(false);
+      // Flag the auto-copy effect to fire once the new detailedResult
+      // is memoized against the post-randomize state. Skipped for free
+      // tier inside the effect itself.
+      autoCopyPendingRef.current = true;
       // Smooth-scroll to the short prompt so the user sees the result.
       // Small delay lets React commit the prompt update before we scroll.
       setTimeout(() => {
@@ -11065,6 +11275,98 @@ function EnginePage({ onNavigate }) {
     });
   };
 
+  // ── EXTRA POPPY — VIP/Bubble pop-maximizer ────────────────────────
+  // Costs 20 Pro credits per press. Applies a guaranteed-high-score
+  // config drawn from the POP_HIT_SCORE top-scoring pools, so the
+  // resulting match lands in the 85-100% range. Doesn't just boost the
+  // visible number — actually changes the config so the downstream
+  // prompt is genuinely pop-optimized.
+  //
+  // Scoring math target (per calcPopHitScore):
+  //   genre TOP × slot           → +10
+  //   BPM 95-130                 → +10
+  //   mood from MOOD_HIT         → +8
+  //   major key (harmonic lift)  → +5
+  //   language from LANG_HIGH    → +6
+  //   vibe from VIBE_HIT         → +2
+  //   polished mix               → +3
+  //   = ~+44 over the 50 baseline = 94%
+  const EXTRA_POPPY_COST = 20;
+  const canAffordExtraPoppy = (fuels.pro ?? 0) >= EXTRA_POPPY_COST || !Number.isFinite(fuels.pro);
+  const extraPoppyLocked = !(tier === "vip" || tier === "admin");
+  const applyMaxPoppy = () => {
+    // Gate 1: tier check
+    if (extraPoppyLocked) {
+      setSalesModalFeature("extraPoppy");
+      return;
+    }
+    // Gate 2: credit check
+    if (!canAffordExtraPoppy) {
+      showToast(`Needs ${EXTRA_POPPY_COST} Pro credits — you have ${fuels.pro}`, "warn");
+      return;
+    }
+    // Charge 20 Pro credits (unless infinite, in which case no-op cost)
+    if (Number.isFinite(fuels.pro)) {
+      setFuel("pro", Math.max(0, fuels.pro - EXTRA_POPPY_COST));
+    }
+    playSwitchSound();
+    // Curated pop-maximizer pools (subsets of the wider catalogs, tuned
+    // for guaranteed +pop-score contribution)
+    const POP_GENRES = [
+      { genre: "Pop",       sub: "Dance-Pop",           micro: null },
+      { genre: "Pop",       sub: "Synth-Pop",           micro: null },
+      { genre: "Hip-Hop",   sub: "Melodic Rap",         micro: null },
+      { genre: "Hip-Hop",   sub: "Trap",                micro: null },
+      { genre: "R&B / Soul",sub: "Contemporary R&B",    micro: null },
+      { genre: "R&B / Soul",sub: "Alt R&B",             micro: null },
+      { genre: "Latin",     sub: "Reggaeton",           micro: null },
+      { genre: "Latin",     sub: "Latin Trap",          micro: null },
+      { genre: "World / Global", sub: "Afrobeats",      micro: null },
+      { genre: "World / Global", sub: "K-Pop",          micro: null },
+      { genre: "Electronic",sub: "House",               micro: null },
+      { genre: "Pop",       sub: "Indie Pop",           micro: null },
+    ];
+    const POP_MOODS       = ["Euphoric", "Catchy", "Romantic", "Confident", "Playful", "Hopeful", "Dreamy", "Nostalgic"];
+    const POP_ENERGIES    = ["Euphoric continuous build", "Slow burn to explosion", "Steady groove throughout", "Starts huge then strips back"];
+    const POP_GROOVES     = ["straight", "swing", "half-time"];
+    const POP_VOCALISTS   = ["Breathy female lead", "Smooth tenor", "Falsetto-led", "Auto-tuned melodic delivery", "Whisper to full belt"];
+    const POP_LANGS       = ["en", "es", "ko"];
+    const POP_VIBES       = ["Party celebration", "Romantic devotion", "Confessional diary", "Nostalgic storytelling", "Coming-of-age narrative", "Braggadocio flex", "Heartbreak elegy"];
+    const POP_MIXES       = ["Ultra clean & polished", "Punchy & compressed", "Wide cinematic"];
+    const POP_HARMONICS   = ["Major-key lift", "Jazz extensions"];
+    const POP_TEXTURES    = ["Smooth & liquid", "Airy & weightless", "Crystalline & brittle"];
+    const POP_BPMS        = [98, 104, 110, 116, 120, 124, 128]; // all in 95-130 sweet spot
+    const POP_INSTRUMENTS = ["808 drum machine", "Synth pad", "Clean electric guitar", "Bass synth", "Snap / clap layer"];
+    const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
+    const primary = pick(POP_GENRES);
+    // Optional second slot for a hybrid vibe (50% chance)
+    const second = Math.random() < 0.5 ? pick(POP_GENRES.filter(g => g.genre !== primary.genre)) : null;
+    const nextSlots = [primary, second, null];
+    // Commit the new config
+    setLyricsOn(true);
+    setState(prev => ({
+      ...prev,
+      slots: nextSlots,
+      mood:        pick(POP_MOODS),
+      energy:      pick(POP_ENERGIES),
+      groove:      pick(POP_GROOVES),
+      vocalist:    pick(POP_VOCALISTS),
+      language:    pick(POP_LANGS),
+      lyricalVibe: pick(POP_VIBES),
+      mix:         pick(POP_MIXES),
+      harmonic:    pick(POP_HARMONICS),
+      texture:     pick(POP_TEXTURES),
+      bpm:         pick(POP_BPMS),
+      specificInstruments: POP_INSTRUMENTS.slice(0, 3 + Math.floor(Math.random() * 2)),
+      specificArticulations: {},
+      // Clear locks so the next HIT can re-roll without friction
+      slotLocks: [false, false, false],
+      sectionLocks: { ...ENGINE_DEF.sectionLocks },
+      optionLocks: [],
+    }));
+    showToast("Extra Poppy: config maxed for pop appeal", "info");
+  };
+
   // ─────────────────────────────────────────────────────────────────────
   const shortResult = useMemo(() => compressShortPrompt(state, lyricsOn, maxLen), [state, lyricsOn, maxLen]);
   const detailedResult = useMemo(() => compressDetailedPrompt(state, lyricsOn, maxLen, mode), [state, lyricsOn, maxLen, mode]);
@@ -11076,6 +11378,26 @@ function EnginePage({ onNavigate }) {
     setCopyState(s => ({ ...s, [key]: ok ? "copied" : "error" }));
     setTimeout(() => setCopyState(s => ({ ...s, [key]: "idle" })), 2000);
   };
+
+  // ── Auto-copy detailed (long) prompt for Pro/VIP/Bubble after a HIT
+  // ── roll finishes. Free tier excluded per product rule. A ref flag
+  // ── is set inside triggerHit when the roll completes, and this effect
+  // ── fires once `detailedResult.text` updates as a result of the new
+  // ── randomized state. Using a flag avoids copying on every state
+  // ── change — only the one immediately after a HIT.
+  const autoCopyPendingRef = useRef(false);
+  useEffect(() => {
+    if (!autoCopyPendingRef.current) return;
+    if (tier === "free") {
+      autoCopyPendingRef.current = false;
+      return;
+    }
+    autoCopyPendingRef.current = false;
+    const text = detailedResult?.text || "";
+    if (!text) return;
+    doCopy("detailed", text);
+    showToast("Long prompt auto-copied to clipboard", "info");
+  }, [detailedResult?.text, tier]);
 
   return (
     <div className={isRolling ? "engine-shake" : ""} style={{
@@ -11154,7 +11476,7 @@ function EnginePage({ onNavigate }) {
       <div style={{
         flex: 1, minHeight: 0,
         display: "grid",
-        gridTemplateColumns: isMobile ? "1fr" : "60% 40%",
+        gridTemplateColumns: isMobile ? "1fr" : "58% 42%",
         overflow: isMobile ? "visible" : "hidden",
         position: "relative", zIndex: 1,
       }}>
@@ -11172,82 +11494,216 @@ function EnginePage({ onNavigate }) {
             ? `${T.s5}px ${T.s4}px ${T.s6}px`
             : `${T.s8}px ${T.s7}px ${T.s10}px ${T.s8}px`,
         }}>
-          {/* HERO — chrome HIT-ENGINE type */}
-          <div style={{ marginBottom: isMobile ? T.s5 : T.s8 }}>
-            {/* Musical notes marquee — thin strip aligned to end at ENGINE's
-                left edge. Extends from viewport left all the way up to but
-                not over the ENGINE word. Click refreshes page. */}
-            <MusicalNotesMarquee />
-            <h1 style={{
-              display: "flex", alignItems: "baseline",
-              flexWrap: "wrap",
-              lineHeight: 1,
-              margin: 0, marginBottom: isMobile ? T.s3 : T.s5,
+          {/* HERO — compact workspace header with wordmark-pierce notes.
+              Banner shifted further right so its optical center lands
+              near the middle of the left pane. Musical notes travel
+              HORIZONTALLY THROUGH the HIT⚡ENGINE wordmark — entering
+              mid-H, exiting past the final E — like sound passing
+              through text. Notes sit BEHIND the letters via z-index;
+              letters stay fully readable, notes read as an ambient
+              sub-layer. */}
+          <div style={{
+            marginBottom: isMobile ? T.s4 : T.s5,
+            paddingLeft: isMobile ? 0 : T.s10,   // was T.s7 — shifted right
+            paddingRight: isMobile ? 0 : T.s3,
+          }}>
+            {/* Banner + notes container. Position relative so the
+                absolute-positioned notes strip can anchor to this box. */}
+            <div style={{
+              position: "relative",
+              display: "inline-block",
+              marginBottom: isMobile ? T.s2 : T.s3,
             }}>
-              <AnimatedBanner size={isMobile ? 56 : 112} />
-            </h1>
-            {/* Italic serif tagline — softer, magazine-style lead */}
+              {/* Notes strip — absolute, fills the banner box horizontally.
+                  Starts at ~9% (just inside the H) and ends at 100%
+                  (exit past the final E). Vertically centered on the
+                  banner's midline. z-index: 0 places it behind the
+                  letters (letters at z-index 1). */}
+              <div style={{
+                position: "absolute",
+                top: "50%",
+                left: "9%",
+                right: "-2%",
+                transform: "translateY(-50%)",
+                height: isMobile ? 22 : 34,
+                zIndex: 0,
+                pointerEvents: "auto",
+              }}>
+                <MusicalNotesMarquee spanStyle="through-wordmark" />
+              </div>
+              <h1 style={{
+                display: "flex", alignItems: "baseline",
+                flexWrap: "wrap",
+                lineHeight: 1,
+                margin: 0,
+                position: "relative",
+                zIndex: 1,
+              }}>
+                <AnimatedBanner size={isMobile ? 44 : 68} />
+              </h1>
+            </div>
+            {/* Single italic serif tagline — identifies the tool, nothing more */}
             <p style={{
-              color: T.text,
-              fontSize: isMobile ? T.fs_lg : T.fs_xl,
-              lineHeight: 1.25,
-              maxWidth: 640, margin: 0, marginBottom: T.s2,
+              color: T.textSec,
+              fontSize: isMobile ? T.fs_md : T.fs_lg,
+              lineHeight: 1.3,
+              maxWidth: 560, margin: 0,
               fontFamily: "'Instrument Serif', Georgia, serif",
               fontStyle: "italic",
               fontWeight: 400,
-              letterSpacing: "-0.01em",
+              letterSpacing: "-0.005em",
             }}>
-              Prompts engineered to speak the language Suno and Udio already listen for.
+              Prompts engineered to speak the language every AI music model already listens for.
             </p>
-            {/* Short, bold instruction — three beats separated by gold dots */}
-            <p style={{
-              color: T.textSec, fontSize: T.fs_md, lineHeight: 1.6,
-              maxWidth: 640, margin: 0, marginBottom: T.s4,
-              fontFamily: T.font_sans, fontWeight: 450,
-              display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8,
-            }}>
-              <span>Pick a sound.</span>
-              <span style={{ color: V.neonGold, textShadow: `0 0 6px ${V.neonGold}77` }}>◆</span>
-              <span>Hit the button.</span>
-              <span style={{ color: V.neonGold, textShadow: `0 0 6px ${V.neonGold}77` }}>◆</span>
-              <span>Ship a hit.</span>
-            </p>
-            {/* Interaction legend — tinted chip row, each with its own icon
-                and subtle dashed separator between gesture + description.
-                Much easier to scan than inline dot-separated prose. */}
-            <div style={{
-              display: "flex", flexWrap: "wrap", gap: T.s2,
-              fontFamily: T.font_mono, fontSize: T.fs_xs,
-              letterSpacing: "0.08em",
-            }}>
-              {[
-                { icon: "▸",  key: "CLICK",        desc: "select",            color: T.text,    tint: "rgba(255,255,255,0.04)" },
-                { icon: "▸▸", key: "DOUBLE-CLICK", desc: "favorite",          color: T.text,    tint: "rgba(255,255,255,0.04)" },
-                { icon: "✦",  key: "RIGHT-CLICK",  desc: "lock from randomize", color: V.neonGold, tint: `${V.neonGold}12` },
-              ].map(item => (
-                <span key={item.key} style={{
-                  display: "inline-flex", alignItems: "center", gap: 8,
-                  padding: "6px 10px 6px 8px",
-                  background: item.tint,
-                  border: `1px solid ${item.color === V.neonGold ? V.neonGold + "55" : T.border}`,
-                  borderRadius: T.r_sm,
-                  color: T.textSec,
-                  fontWeight: 600,
-                }}>
-                  <span style={{
-                    color: item.color, fontWeight: 700,
-                    textShadow: item.color === V.neonGold ? `0 0 4px ${V.neonGold}77` : "none",
-                  }}>{item.icon}</span>
-                  <span style={{ color: item.color, fontWeight: 700 }}>{item.key}</span>
-                  <span style={{ color: T.textTer, fontFamily: T.font_sans, textTransform: "none", letterSpacing: "0.01em" }}>
-                    {item.desc}
-                  </span>
-                </span>
-              ))}
-            </div>
           </div>
 
           <TipsManual />
+
+          {/* ── RANDOMIZER — standalone centered CTA, gold palette ──────
+              Extracted from the Presets row so it reads as a primary
+              action button, not a utility control. Design follows site
+              palette: deep black pill, metallic gold gradient interior,
+              thin gold hairline, warm amber glow. No rainbow. Matches
+              the HIT button's chrome/gold language. */}
+          {features.presets && (
+            <div style={{
+              display: "flex", justifyContent: "center",
+              marginBottom: T.s5,
+            }}>
+              <button type="button"
+                onClick={() => {
+                  playSwitchSound();
+                  if (canShufflePresets) {
+                    setVisiblePresetIds(shuffle5Presets());
+                  } else {
+                    setSalesModalFeature("presetShuffle");
+                  }
+                }}
+                title={canShufflePresets
+                  ? "Randomizer — reshuffle the preset pool"
+                  : "VIP only — click to learn more"}
+                className={canShufflePresets ? "randomizer-live" : ""}
+                style={{
+                  position: "relative", overflow: "hidden",
+                  display: "inline-flex", alignItems: "center", gap: 10,
+                  padding: isMobile ? `10px 22px` : `11px 28px`,
+                  minHeight: isMobile ? 40 : 42,
+                  // Palette-aligned: black pill with metallic gold interior
+                  // gradient. Matches the HIT button family rather than
+                  // fighting the site with tri-color rainbow.
+                  background: canShufflePresets
+                    ? `radial-gradient(ellipse at 50% -20%,
+                        rgba(255, 228, 138, 0.22) 0%,
+                        rgba(255, 215, 0, 0.08) 35%,
+                        rgba(0, 0, 0, 0) 70%),
+                      linear-gradient(180deg,
+                        rgba(18, 12, 4, 0.92) 0%,
+                        rgba(8, 6, 3, 0.96) 100%)`
+                    : "transparent",
+                  border: `1px solid ${canShufflePresets
+                    ? `${V.neonGold}88`
+                    : `${V.neonGold}55`}`,
+                  borderRadius: 999,
+                  color: V.neonGold,
+                  fontFamily: T.font_mono,
+                  fontSize: isMobile ? T.fs_sm : T.fs_md,
+                  fontWeight: 800,
+                  letterSpacing: "0.24em",
+                  cursor: "pointer",
+                  textShadow: canShufflePresets
+                    ? `0 0 6px ${V.neonGold}77, 0 0 14px ${V.neonGold}33`
+                    : "none",
+                  boxShadow: canShufflePresets
+                    ? `inset 0 1px 0 rgba(255, 228, 138, 0.18),
+                       inset 0 -1px 0 rgba(0, 0, 0, 0.5),
+                       inset 0 0 22px rgba(0, 0, 0, 0.4),
+                       0 0 18px ${V.neonGold}33,
+                       0 4px 14px rgba(0, 0, 0, 0.45)`
+                    : "none",
+                  transition: `transform 180ms ${T.ease}, box-shadow 240ms ${T.ease}, border-color 240ms ${T.ease}`,
+                }}
+                onMouseEnter={e => {
+                  if (canShufflePresets) {
+                    e.currentTarget.style.transform = "translateY(-1px)";
+                    e.currentTarget.style.borderColor = V.neonGold;
+                    e.currentTarget.style.boxShadow = `
+                      inset 0 1px 0 rgba(255, 228, 138, 0.24),
+                      inset 0 -1px 0 rgba(0, 0, 0, 0.55),
+                      inset 0 0 28px rgba(0, 0, 0, 0.35),
+                      0 0 26px ${V.neonGold}55,
+                      0 6px 18px rgba(0, 0, 0, 0.5)`;
+                  } else {
+                    e.currentTarget.style.borderColor = V.neonGold;
+                    e.currentTarget.style.background = `${V.neonGold}10`;
+                  }
+                }}
+                onMouseLeave={e => {
+                  if (canShufflePresets) {
+                    e.currentTarget.style.transform = "translateY(0)";
+                    e.currentTarget.style.borderColor = `${V.neonGold}88`;
+                    e.currentTarget.style.boxShadow = `
+                      inset 0 1px 0 rgba(255, 228, 138, 0.18),
+                      inset 0 -1px 0 rgba(0, 0, 0, 0.5),
+                      inset 0 0 22px rgba(0, 0, 0, 0.4),
+                      0 0 18px ${V.neonGold}33,
+                      0 4px 14px rgba(0, 0, 0, 0.45)`;
+                  } else {
+                    e.currentTarget.style.borderColor = `${V.neonGold}55`;
+                    e.currentTarget.style.background = "transparent";
+                  }
+                }}>
+                {/* Subtle amber shimmer sweep — single thin warm band,
+                    same language as the HIT button's gold frame edge */}
+                {canShufflePresets && (
+                  <>
+                    <style>{`
+                      @keyframes randomizerShimmer {
+                        0%, 100% { transform: translateX(-120%) skewX(-18deg); opacity: 0; }
+                        10%      { opacity: 1; }
+                        60%      { opacity: 1; }
+                        70%,100% { transform: translateX(320%)  skewX(-18deg); opacity: 0; }
+                      }
+                      @keyframes randomizerIconSpin {
+                        0%   { transform: rotate(0deg); }
+                        100% { transform: rotate(360deg); }
+                      }
+                      .randomizer-live .rand-icon {
+                        display: inline-block;
+                        animation: randomizerIconSpin 10s linear infinite;
+                      }
+                      .randomizer-live:hover .rand-icon {
+                        animation: randomizerIconSpin 1.2s linear infinite;
+                      }
+                      .randomizer-live .rand-shimmer {
+                        position: absolute; top: 0; bottom: 0; left: 0;
+                        width: 30%;
+                        background: linear-gradient(
+                          90deg,
+                          transparent 0%,
+                          rgba(255, 228, 138, 0.28) 50%,
+                          transparent 100%
+                        );
+                        animation: randomizerShimmer 5s ease-in-out infinite;
+                        pointer-events: none;
+                      }
+                    `}</style>
+                    <span className="rand-shimmer" aria-hidden="true" />
+                  </>
+                )}
+                <span className="rand-icon" style={{
+                  fontSize: isMobile ? 14 : 16, lineHeight: 1,
+                  filter: canShufflePresets
+                    ? `drop-shadow(0 0 6px ${V.neonGold}88)`
+                    : "none",
+                }}>
+                  {canShufflePresets ? "⟳" : "🔒"}
+                </span>
+                <span style={{ position: "relative" }}>
+                  RANDOMIZER
+                </span>
+              </button>
+            </div>
+          )}
 
           {/* ── PRESETS ─ quick-start configurations (5 random out of 50) ───── */}
           {features.presets ? (
@@ -11259,51 +11715,6 @@ function EnginePage({ onNavigate }) {
                 <Label color={T.textSec}>
                   Presets
                 </Label>
-                <button type="button"
-                  onClick={() => {
-                    playSwitchSound();
-                    if (canShufflePresets) {
-                      setVisiblePresetIds(shuffle5Presets());
-                    } else {
-                      setSalesModalFeature("presetShuffle");
-                    }
-                  }}
-                  title={canShufflePresets
-                    ? "Shuffle — show 5 different presets"
-                    : "VIP only — click to learn more"}
-                  style={{
-                    display: "inline-flex", alignItems: "center", gap: 4,
-                    padding: isMobile ? `6px 10px` : `3px 8px`,
-                    minHeight: isMobile ? 32 : "auto",
-                    background: "transparent",
-                    border: `1px solid ${canShufflePresets ? T.border : "#FFD70055"}`,
-                    borderRadius: T.r_sm,
-                    color: canShufflePresets ? T.textMuted : "#FFD700",
-                    fontFamily: T.font_mono, fontSize: T.fs_xs, fontWeight: 700,
-                    letterSpacing: "0.15em",
-                    cursor: "pointer",
-                    transition: `all ${T.dur_fast} ${T.ease}`,
-                  }}
-                  onMouseEnter={e => {
-                    if (canShufflePresets) {
-                      e.currentTarget.style.borderColor = T.borderFocus;
-                      e.currentTarget.style.color = T.text;
-                    } else {
-                      e.currentTarget.style.borderColor = "#FFD700";
-                      e.currentTarget.style.background = "#FFD70010";
-                    }
-                  }}
-                  onMouseLeave={e => {
-                    if (canShufflePresets) {
-                      e.currentTarget.style.borderColor = T.border;
-                      e.currentTarget.style.color = T.textMuted;
-                    } else {
-                      e.currentTarget.style.borderColor = "#FFD70055";
-                      e.currentTarget.style.background = "transparent";
-                    }
-                  }}>
-                  {canShufflePresets ? "⟳ SHUFFLE" : "🔒 SHUFFLE"}
-                </button>
               </div>
               <div style={{ display: "flex", flexWrap: "wrap", gap: T.s2 }}>
                 {visiblePresets.map(p => (
@@ -11345,15 +11756,60 @@ function EnginePage({ onNavigate }) {
             <LyricalSwitch value={lyricsOn} onChange={setLyricsOn} />
           </Section>
 
-          <Section title="Genre slots" hint="Up to 3. Main genre alone is fine."
-            filled={(state.slots || []).some(s => s && s.genre)}>
+          {/* ── GENRE ANCHOR — differentiated card ───────────────────────
+              Genre is the primary axis of every prompt, so this section
+              reads as a "tier 1" module: warmer background, soft gold
+              hairline border, labeled header chip, and subtle inset
+              shadow. Visually distinct from the flat cubicle grid below
+              without being loud. ───────────────────────────────────── */}
+          <div style={{
+            position: "relative",
+            marginTop: T.s4,
+            marginBottom: T.s6,
+            padding: `${T.s5}px ${T.s5}px ${T.s4}px`,
+            background: `linear-gradient(180deg, rgba(255,215,0,0.035) 0%, rgba(255,215,0,0.01) 50%, ${T.surface} 100%)`,
+            border: `1px solid ${V.neonGold}33`,
+            borderRadius: T.r_lg,
+            boxShadow: `
+              inset 0 1px 0 rgba(255,215,0,0.08),
+              inset 0 0 24px rgba(255,215,0,0.02),
+              0 1px 0 rgba(0,0,0,0.2)
+            `,
+          }}>
+            {/* Header row: label chip + hint */}
+            <div style={{
+              display: "flex", alignItems: "center", justifyContent: "space-between",
+              gap: T.s3, flexWrap: "wrap",
+              marginBottom: T.s4,
+            }}>
+              <div style={{
+                display: "inline-flex", alignItems: "center", gap: 8,
+                padding: "4px 10px",
+                background: `${V.neonGold}18`,
+                border: `1px solid ${V.neonGold}55`,
+                borderRadius: T.r_sm,
+                color: V.neonGold,
+                fontFamily: T.font_mono, fontSize: 10, fontWeight: 800,
+                letterSpacing: "0.2em",
+                textShadow: `0 0 6px ${V.neonGold}55`,
+              }}>
+                <span style={{ fontSize: 11, lineHeight: 1 }}>◆</span>
+                GENRE ANCHOR
+              </div>
+              <span style={{
+                fontSize: T.fs_sm, color: T.textTer,
+                fontFamily: T.font_sans, fontStyle: "italic",
+              }}>
+                Up to 3. Main genre alone is fine.
+              </span>
+            </div>
             <GenreSlotPicker slots={state.slots} onChange={v => set("slots", v)}
               slotLocks={state.slotLocks} onToggleSlotLock={toggleSlotLock}
               maxSlots={effectiveLimits.maxSlots}
               restrictSubgenres={effectiveLimits.restrictSubgenres}
               locksDisabled={!effectiveLimits.locksAvailable}
               onLockedClick={(f) => setSalesModalFeature(f || "lockedSubgenre")} />
-          </Section>
+          </div>
 
           {/* ── UNIFIED CUBICLE GRID ────────────────────────────────
               5 columns on desktop / 3 on mobile, auto-flow wrapping.
@@ -12214,7 +12670,11 @@ function EnginePage({ onNavigate }) {
             <div style={{ display: "flex", flexDirection: "column", gap: T.s4 }}>
               {features.popHitMeter ? (
                 <PopHitMeter score={popHitScore.score} verdict={popHitScore.verdict} notes={popHitScore.notes}
-                  showDebug={features.adminDebug} state={state} lyricsOn={lyricsOn} />
+                  showDebug={features.adminDebug} state={state} lyricsOn={lyricsOn}
+                  onExtraPoppy={applyMaxPoppy}
+                  canExtraPoppy={canAffordExtraPoppy}
+                  extraPoppyCost={EXTRA_POPPY_COST}
+                  extraPoppyLocked={extraPoppyLocked} />
               ) : (
                 <TierLock feature="Pop-hit match meter" requiredTier="pro" />
               )}
