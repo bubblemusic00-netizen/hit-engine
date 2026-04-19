@@ -23602,27 +23602,76 @@ function playButtonSound() {
 
 // Hit-button sound — fires once when the user presses HIT and fuel is
 // available to start a roll. Uses the same pool pattern as the other
-// sound helpers so rapid successive HITs don't cut off. The asset lives
-// at /hit-button-sound.mp3 in the public folder.
+// sound helpers so rapid successive HITs don't cut off.
+//
+// Asset path: /hit%20button%20sound.mp3 (the file in public/ is named
+// "hit button sound.mp3" with spaces). Spaces in URLs must be encoded
+// as %20 for the browser to request the right asset. Do NOT rename
+// the space-separated filename without updating this path.
+//
+// DIAGNOSTICS: set window.__HE_DEBUG_AUDIO = true in DevTools console
+// to see verbose logs explaining exactly why the sound might not fire.
+// Covers: path 404, autoplay policy block, load errors, pool exhaustion.
+const HIT_SOUND_URL = "/hit%20button%20sound.mp3";
 let _hitAudioPool = null;
 let _hitAudioIdx = 0;
+let _hitAudioLoadError = null;
 function playHitSound() {
+  const debug = typeof window !== "undefined" && window.__HE_DEBUG_AUDIO;
   try {
-    if (typeof window === "undefined" || typeof Audio === "undefined") return;
+    if (typeof window === "undefined" || typeof Audio === "undefined") {
+      if (debug) console.warn("[HIT sound] Audio API unavailable");
+      return;
+    }
     if (!_hitAudioPool) {
-      _hitAudioPool = [
-        new Audio("/hit-button-sound.mp3"),
-        new Audio("/hit-button-sound.mp3"),
-        new Audio("/hit-button-sound.mp3"),
-      ];
-      _hitAudioPool.forEach(a => { a.volume = 0.6; a.preload = "auto"; });
+      // Initialize pool. Each Audio is a separate HTMLAudioElement so
+      // rapid-fire HITs can overlap without cutting each other off.
+      _hitAudioPool = [];
+      for (let i = 0; i < 3; i++) {
+        const a = new Audio(HIT_SOUND_URL);
+        a.volume = 0.6;
+        a.preload = "auto";
+        // Capture any load error so future playHitSound calls can log it
+        a.addEventListener("error", (e) => {
+          _hitAudioLoadError = a.error ? a.error.code : "unknown";
+          if (debug) {
+            console.error("[HIT sound] load error code:", _hitAudioLoadError,
+              `— expected asset at ${HIT_SOUND_URL} (decoded: "hit button sound.mp3")`);
+          }
+        });
+        if (debug) {
+          a.addEventListener("canplaythrough", () => {
+            console.log("[HIT sound] loaded OK, pool slot", i);
+          }, { once: true });
+        }
+        _hitAudioPool.push(a);
+      }
+      if (debug) console.log("[HIT sound] pool initialized, 3 slots");
     }
     const a = _hitAudioPool[_hitAudioIdx];
     _hitAudioIdx = (_hitAudioIdx + 1) % _hitAudioPool.length;
-    a.currentTime = 0;
+    // Reset playhead — important for pool re-use
+    try { a.currentTime = 0; } catch (e) {
+      if (debug) console.warn("[HIT sound] currentTime reset failed:", e);
+    }
     const p = a.play();
-    if (p && typeof p.catch === "function") p.catch(() => {});
-  } catch {}
+    if (p && typeof p.then === "function") {
+      p.then(() => {
+        if (debug) console.log("[HIT sound] play() resolved");
+      }).catch(err => {
+        if (debug) {
+          console.error("[HIT sound] play() rejected:", err.name, err.message);
+          if (err.name === "NotAllowedError") {
+            console.warn("[HIT sound] Autoplay blocked — browser requires a user gesture first. Click anywhere, then try HIT again.");
+          } else if (err.name === "NotSupportedError") {
+            console.warn(`[HIT sound] Source format not supported or file missing. Check Network tab for 404 on ${HIT_SOUND_URL}`);
+          }
+        }
+      });
+    }
+  } catch (e) {
+    if (debug) console.error("[HIT sound] unexpected error:", e);
+  }
 }
 
 // Fuel-button sound — short, punchy click used on fuel tank tiles in the
