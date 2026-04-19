@@ -5984,12 +5984,14 @@ function CountStepper({ value, onChange, min = 1, max = 10 }) {
 
 function HitButton({ onRandomize, isRolling, disabled, compact = false, fuelType = "pro" }) {
   const [hover, setHover] = useState(false);
-  const [pressing, setPressing] = useState(false);
   const [burstKey, setBurstKey] = useState(0); // remount burst on each press
-  const ledCount = compact ? 10 : 16;
-  const btnPad = compact ? "22px 16px" : "34px 20px";
-  const btnFontSize = compact ? 52 : 72;
   const fuelColor = FUEL_TYPES[fuelType]?.color || V.red;
+
+  // 32 LEDs flicker around the frame perimeter — classic marquee.
+  // Compact mode scales to 24 so phone frames don't get crowded.
+  const ledCount = compact ? 24 : 32;
+  const btnPad = compact ? "22px 16px" : "34px 20px";
+  const btnFontSize = compact ? 46 : 66;
 
   const handleClick = () => {
     if (disabled || isRolling) return;
@@ -5997,214 +5999,258 @@ function HitButton({ onRandomize, isRolling, disabled, compact = false, fuelType
     onRandomize();
   };
 
-  const MARQUEE_COLORS = [V.hotPink, V.neonGold, V.cyan, V.orange, V.lime, V.magenta, V.red, V.purple];
+  // Refined palette — restrained, casino-luxe, NOT rainbow rave.
+  // Gold + cream + soft amber — marquee reads expensive not cheap.
+  const LED_ON  = V.neonGold;
+  const LED_OFF = "#3a2a08";  // dark amber = unlit bulb
 
   return (
     <>
       <style>{`
-        /* Conic gradient halo rotating around the entire button */
-        @keyframes hitHaloRotate {
-          from { transform: rotate(0deg); }
-          to   { transform: rotate(360deg); }
-        }
-        /* Idle breathing — subtle alive state */
+        /* ── Casino HIT button — refined, not frantic ─────────────── */
+
+        /* Subtle breathing — alive but not panicked */
         @keyframes hitBreathe {
-          0%,100% { transform: scale(1);    filter: brightness(1); }
-          50%     { transform: scale(1.015); filter: brightness(1.08); }
+          0%,100% { transform: scale(1);     filter: brightness(1); }
+          50%     { transform: scale(1.012); filter: brightness(1.05); }
         }
-        /* Dopamine glow pulse */
-        @keyframes hitGlowPulse {
+
+        /* Rich gold glow halo — single color, not rainbow */
+        @keyframes hitGoldPulse {
           0%,100% { box-shadow:
-            0 0 30px ${V.red},
-            0 0 60px ${V.hotPink}aa,
-            0 0 100px ${V.hotPink}55,
-            inset 0 6px 0 rgba(255,255,255,0.35),
-            inset 0 -10px 20px rgba(0,0,0,0.6); }
+            0 0 24px ${V.neonGold}66,
+            0 0 60px ${V.neonGold}33,
+            inset 0 4px 0 rgba(255,255,255,0.35),
+            inset 0 -8px 18px rgba(0,0,0,0.55); }
           50%     { box-shadow:
-            0 0 50px ${V.red},
-            0 0 90px ${V.hotPink}cc,
-            0 0 140px ${V.neonGold}55,
-            inset 0 6px 0 rgba(255,255,255,0.45),
-            inset 0 -10px 20px rgba(0,0,0,0.6); }
+            0 0 36px ${V.neonGold}88,
+            0 0 80px ${V.neonGold}44,
+            inset 0 4px 0 rgba(255,255,255,0.42),
+            inset 0 -8px 18px rgba(0,0,0,0.55); }
         }
-        /* Press ring burst — expanding circle that fades */
+
+        /* Press ring ripple */
         @keyframes hitRingBurst {
-          0%   { transform: scale(0.5); opacity: 0.9; border-width: 4px; }
-          100% { transform: scale(2.4); opacity: 0;   border-width: 1px; }
+          0%   { transform: scale(0.6); opacity: 0.9; border-width: 3px; }
+          100% { transform: scale(2.0); opacity: 0;   border-width: 1px; }
         }
-        /* Particle burst */
+
+        /* Sparks burst — tightened */
         @keyframes hitParticle {
           0%   { transform: translate(0,0) scale(1); opacity: 1; }
           100% { transform: var(--tr) scale(0.3);    opacity: 0; }
         }
-        /* Rolling strobe */
-        @keyframes hitStrobe {
-          0%,100% { filter: brightness(1.1) saturate(1.2); }
-          50%     { filter: brightness(2.2) saturate(1.6); }
+
+        /* Rolling label softer shimmer, still alive */
+        @keyframes hitRollGlow {
+          0%,100% { filter: brightness(1.05); }
+          50%     { filter: brightness(1.25); }
         }
-        /* Text shimmer */
+
+        /* Label two-tone shimmer: white↔gold only */
         @keyframes hitTextShimmer {
           0%,100% { text-shadow:
-            0 0 18px rgba(255,255,255,0.9),
-            0 0 36px ${V.hotPink},
-            0 0 72px ${V.neonGold},
-            2px 2px 0 rgba(0,0,0,0.8); }
+            0 0 14px rgba(255,255,255,0.85),
+            0 0 28px ${V.neonGold}aa,
+            0 2px 2px rgba(0,0,0,0.6); }
           50%     { text-shadow:
-            0 0 24px rgba(255,255,255,1),
-            0 0 48px ${V.neonGold},
-            0 0 96px ${V.hotPink},
-            2px 2px 0 rgba(0,0,0,0.8); }
+            0 0 20px rgba(255,255,255,1),
+            0 0 36px ${V.neonGold},
+            0 2px 2px rgba(0,0,0,0.6); }
         }
-        /* Marquee LED flicker */
+
+        /* Walking-lights LED animation — one pulse travels around the
+           ring instead of chaotic flicker. Clean rhythm, feels premium. */
+        @keyframes hitLedWalk {
+          0%, 45% { opacity: 0.2; box-shadow: 0 0 1px currentColor; background: ${LED_OFF}; }
+          50%     { opacity: 1;   box-shadow: 0 0 8px currentColor, 0 0 14px currentColor; background: ${LED_ON}; }
+          55%,100%{ opacity: 0.2; box-shadow: 0 0 1px currentColor; background: ${LED_OFF}; }
+        }
+
+        /* Classic casino LED flicker — on/off with bright glow */
         @keyframes hitLed {
-          0%,49%   { opacity: 1; box-shadow: 0 0 10px currentColor, 0 0 20px currentColor; }
-          50%,100% { opacity: 0.2; box-shadow: 0 0 3px currentColor; }
+          0%,49%   { opacity: 1;   box-shadow: 0 0 8px currentColor, 0 0 16px currentColor; }
+          50%,100% { opacity: 0.2; box-shadow: 0 0 2px currentColor; }
         }
-        /* Chrome ring rotation */
+
+        /* Slow rotating inner ring — reads as CNC detail, not rave */
         @keyframes hitRingRotate {
           from { transform: rotate(0deg); }
           to   { transform: rotate(-360deg); }
         }
 
+        /* Subtle muted halo — conic but mostly gold, faint */
+        @keyframes hitHaloRotate {
+          from { transform: rotate(0deg); }
+          to   { transform: rotate(360deg); }
+        }
+
+        /* Static "!" — no bouncing. Subtle brightness breath only, so the
+           white exclamation glows softly without jumping around. */
+        @keyframes hitBangPop {
+          0%, 100% { filter: brightness(1);    opacity: 1; }
+          50%      { filter: brightness(1.18); opacity: 0.95; }
+        }
+
+        /* Tech dashed ring — gentle brightness pulse, no rotation */
+        @keyframes hitTechDashPulse {
+          0%, 100% { opacity: 0.55; }
+          50%      { opacity: 1; }
+        }
+
+        /* Spy-UI dashed ring rotation — slow counter-rotating rings
+           around the HIT! text read as tactical targeting HUD. */
+        @keyframes hitTechRingSpin {
+          from { transform: translate(-50%, -50%) rotate(0deg); }
+          to   { transform: translate(-50%, -50%) rotate(360deg); }
+        }
+        @keyframes hitTechRingSpinRev {
+          from { transform: translate(-50%, -50%) rotate(0deg); }
+          to   { transform: translate(-50%, -50%) rotate(-360deg); }
+        }
+
         .hit-wrapper {
           position: relative;
-          animation: hitBreathe 3.2s ease-in-out infinite;
+          animation: hitBreathe 3.6s ease-in-out infinite;
           transition: transform 120ms cubic-bezier(.5,1.5,.5,1);
         }
-        .hit-wrapper:hover { animation-duration: 1.4s; }
         .hit-core {
-          transition: transform 80ms cubic-bezier(.3,1.5,.4,1), box-shadow 180ms ease-out;
+          transition:
+            transform 90ms cubic-bezier(.3,1.5,.4,1),
+            box-shadow 200ms ease-out;
         }
-        .hit-core:hover:not(:disabled) { transform: translateY(-3px) scale(1.02); }
-        .hit-core:active:not(:disabled) { transform: translateY(4px) scale(0.97); }
+        .hit-core:not(:disabled):hover  { transform: translateY(-2px) scale(1.015); }
+        .hit-core:not(:disabled):active { transform: translateY(3px) scale(0.98); }
       `}</style>
 
       <div className="hit-wrapper" style={{ position: "relative" }}>
-        {/* ── EXCLAMATION BADGE — top-right notification dot ──────────── */}
+        {/* ── FUEL-COLOR CORONA — soft aura tinted by active fuel ─── */}
         <div style={{
           position: "absolute",
-          top: -14, right: -14,
-          width: 36, height: 36,
-          borderRadius: "50%",
-          background: `radial-gradient(circle at 35% 30%, ${V.neonGold} 0%, ${V.orange} 70%, ${V.darkRed} 100%)`,
-          border: `2px solid ${V.neonGold}`,
-          boxShadow: `0 0 12px ${V.neonGold}, 0 0 24px ${V.orange}88, inset 0 2px 4px rgba(255,255,255,0.4)`,
-          display: "grid", placeItems: "center",
-          fontSize: 20, fontWeight: 900, fontFamily: T.font_display,
-          fontStyle: "italic",
-          color: "#4A0000",
-          textShadow: "0 1px 1px rgba(255,255,255,0.4)",
-          zIndex: 10,
-          animation: "hitGlowPulse 1.8s ease-in-out infinite",
-          pointerEvents: "none",
-        }}>!</div>
-
-        {/* ── FUEL-COLOR CORONA — soft spherical aura tinted by active fuel ────── */}
-        <div style={{
-          position: "absolute",
-          inset: -8,
-          borderRadius: "50%",
-          background: `radial-gradient(circle at center, ${fuelColor}33 0%, ${fuelColor}00 62%)`,
-          filter: "blur(6px)",
+          inset: -10,
+          borderRadius: 22,
+          background: `radial-gradient(circle at center, ${fuelColor}44 0%, ${fuelColor}00 65%)`,
+          filter: "blur(14px)",
           pointerEvents: "none",
           zIndex: -1,
-          opacity: isRolling ? 0.85 : hover ? 0.6 : 0.4,
-          transition: "opacity 220ms ease-out",
+          opacity: disabled ? 0.2 : isRolling ? 0.95 : hover ? 0.7 : 0.5,
+          transition: "opacity 240ms ease-out",
         }} />
 
-        {/* ── SPHERICAL CONIC HALO ────────────────────────────────────────
-            Contained within the button rect (inset 0 — no outward bleed).
-            Circular clip, muted saturation, slow rotation — reads as a
-            gentle hypnotic shimmer rather than a casino wheel. */}
+        {/* ── MUTED CONIC HALO — dominantly gold, barely a trace of
+            color. Slow rotation reads premium, not casino-floor. ── */}
         <div style={{
           position: "absolute",
           inset: 0,
-          borderRadius: "50%",
+          borderRadius: 18,
           background: `conic-gradient(from 0deg,
-            ${V.hotPink}cc 0%, ${V.neonGold}aa 14%, ${V.cyan}bb 28%,
-            ${V.lime}99 42%, ${V.orange}cc 56%, ${V.magenta}aa 70%,
-            ${V.red}cc 84%, ${V.hotPink}cc 100%)`,
-          filter: "blur(5px)",
-          opacity: isRolling ? 0.7 : hover ? 0.42 : 0.26,
-          animation: `hitHaloRotate ${isRolling ? "2s" : "14s"} linear infinite`,
+            ${V.neonGold}66 0%,
+            ${V.neonGold}44 25%,
+            ${fuelColor}55 50%,
+            ${V.neonGold}44 75%,
+            ${V.neonGold}66 100%)`,
+          filter: "blur(4px)",
+          opacity: isRolling ? 0.5 : hover ? 0.34 : 0.2,
+          animation: `hitHaloRotate ${isRolling ? "4s" : "22s"} linear infinite`,
           pointerEvents: "none",
-          transition: "opacity 240ms ease-out",
+          transition: "opacity 260ms ease-out",
           zIndex: 0,
-          // Mask: full opacity in the middle, fading to transparent at the edges
-          // so the halo doesn't have a hard circular cutoff but reads spherical.
-          WebkitMaskImage: "radial-gradient(circle at center, #000 45%, transparent 72%)",
-          maskImage: "radial-gradient(circle at center, #000 45%, transparent 72%)",
+          WebkitMaskImage: "radial-gradient(circle at center, #000 45%, transparent 75%)",
+          maskImage: "radial-gradient(circle at center, #000 45%, transparent 75%)",
         }} />
 
-        {/* ── FRAME WITH MARQUEE LIGHTS ────────────────────────────── */}
+        {/* ── OUTER FRAME — brushed gold + charcoal ────────────────── */}
         <div style={{
           position: "relative", zIndex: 1,
           padding: 5,
-          background: `linear-gradient(180deg, #120010 0%, #05000a 100%)`,
-          backgroundImage: `
-            linear-gradient(180deg, #120010 0%, #05000a 100%),
-            conic-gradient(from 0deg,
-              ${V.hotPink}, ${V.neonGold}, ${V.cyan}, ${V.lime},
-              ${V.orange}, ${V.magenta}, ${V.red}, ${V.hotPink})`,
+          background: `
+            linear-gradient(180deg, #1a1408 0%, #0a0804 100%),
+            linear-gradient(135deg, #d4a94e 0%, #8a6d2e 50%, #d4a94e 100%)
+          `,
           backgroundOrigin: "border-box",
           backgroundClip: "padding-box, border-box",
           border: "3px solid transparent",
           borderRadius: 18,
-          boxShadow: `0 20px 60px rgba(0,0,0,0.7), inset 0 0 30px rgba(0,0,0,0.8)`,
-          overflow: "hidden",
+          boxShadow: `
+            0 18px 50px rgba(0,0,0,0.75),
+            0 4px 12px rgba(0,0,0,0.5),
+            inset 0 0 24px rgba(0,0,0,0.75),
+            inset 0 1px 0 rgba(255,215,120,0.25)
+          `,
+          overflow: "visible",
         }}>
-          {/* Top marquee */}
-          <div style={{
-            display: "flex", justifyContent: "space-between", alignItems: "center",
-            padding: "10px 14px 4px", gap: 6,
-          }}>
-            {Array.from({ length: ledCount }).map((_, i) => {
-              const color = MARQUEE_COLORS[i % MARQUEE_COLORS.length];
-              return (
+          {/* ── 32-LED PERIMETER MARQUEE — CASINO RAINBOW ──────────
+              Flickering casino-color bulbs wrapping the entire frame.
+              8 hues cycle (hotPink/gold/cyan/orange/lime/magenta/red/
+              purple); each flickers independently on the hitLed rhythm.
+              Chaotic, hypnotic, casino-grade. */}
+          {(() => {
+            const CASINO_COLORS = [V.hotPink, V.neonGold, V.cyan, V.orange, V.lime, V.magenta, V.red, V.purple];
+            const perSide = ledCount / 4;
+            const leds = [];
+            for (let i = 0; i < ledCount; i++) {
+              const side = Math.floor(i / perSide);
+              const posInSide = (i % perSide) / perSide; // 0..1
+              let top = "0", left = "0";
+              if (side === 0)      { top = "-5px";  left = `${posInSide * 100}%`; }
+              else if (side === 1) { left = "calc(100% - 2px)"; top = `${posInSide * 100}%`; }
+              else if (side === 2) { top = "calc(100% - 2px)"; left = `${(1 - posInSide) * 100}%`; }
+              else                 { left = "-5px"; top = `${(1 - posInSide) * 100}%`; }
+              const color = CASINO_COLORS[i % CASINO_COLORS.length];
+              const duration = isRolling
+                ? (0.14 + (i % 5) * 0.035)
+                : (0.42 + (i % 5) * 0.09);
+              const delay = i * (isRolling ? 0.02 : 0.05);
+              leds.push(
                 <span key={i} style={{
-                  width: 8, height: 8, borderRadius: "50%",
+                  position: "absolute",
+                  top, left,
+                  width: 9, height: 9, borderRadius: "50%",
                   background: color, color,
-                  animation: `hitLed ${isRolling ? 0.1 + (i % 4) * 0.02 : 0.45 + (i % 4) * 0.08}s ease-in-out infinite`,
-                  animationDelay: `${i * (isRolling ? 0.012 : 0.05)}s`,
-                  flex: "0 0 auto",
+                  animation: `hitLed ${duration}s ease-in-out infinite`,
+                  animationDelay: `${delay}s`,
+                  pointerEvents: "none",
+                  zIndex: 5,
+                  transform: "translate(-50%, -50%)",
                 }} />
               );
-            })}
-          </div>
+            }
+            return <>{leds}</>;
+          })()}
 
-          {/* Status readout */}
+          {/* Status readout — polished, muted */}
           <div style={{
-            margin: "0 14px 10px",
-            padding: "7px 12px",
-            background: "rgba(0,0,0,0.75)",
-            border: `1px solid ${V.neonGold}66`,
+            margin: "14px 14px 10px",
+            padding: "6px 12px",
+            background: `linear-gradient(180deg, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.55) 100%)`,
+            border: `1px solid ${V.neonGold}55`,
             borderRadius: 4,
             display: "flex", justifyContent: "space-between", alignItems: "center",
-            fontFamily: T.font_mono, fontSize: 10, letterSpacing: "0.25em", fontWeight: 700,
+            fontFamily: T.font_mono, fontSize: 10, letterSpacing: "0.28em", fontWeight: 700,
+            boxShadow: `inset 0 1px 2px rgba(0,0,0,0.5)`,
           }}>
-            <span style={{ color: V.neonGold, textShadow: `0 0 8px ${V.neonGold}` }}>
+            <span style={{ color: V.neonGold, textShadow: `0 0 6px ${V.neonGold}88` }}>
               ★ JACKPOT
             </span>
             <span style={{
-              color: isRolling ? V.orange : V.lime,
-              textShadow: `0 0 8px currentColor`,
-              animation: isRolling ? "hitStrobe 0.18s linear infinite" : "none",
+              color: isRolling ? V.neonGold : "#8bd47c",
+              textShadow: `0 0 6px currentColor`,
             }}>
               {isRolling ? "◉ SPINNING" : "● READY"}
             </span>
           </div>
 
-          {/* ── THE BUTTON ITSELF ─────────────────────────────────────── */}
-          <div style={{ padding: "0 14px 14px", position: "relative" }}>
-            {/* Expanding ring burst — one per press */}
+          {/* ── BUTTON BODY with side LED rails ─────────────────────── */}
+          <div style={{ padding: "0 14px 18px", position: "relative" }}>
+            {/* Press ring — two rings with staggered timing */}
             <div key={burstKey} style={{
               position: "absolute", top: "50%", left: "50%",
               width: 200, height: 200,
               marginTop: -100, marginLeft: -100,
-              border: `4px solid ${V.neonGold}`,
+              border: `3px solid ${V.neonGold}`,
               borderRadius: "50%",
               pointerEvents: "none",
-              animation: burstKey > 0 ? "hitRingBurst 0.8s ease-out forwards" : "none",
+              animation: burstKey > 0 ? "hitRingBurst 0.7s ease-out forwards" : "none",
               opacity: 0,
               zIndex: 3,
             }} />
@@ -6212,35 +6258,35 @@ function HitButton({ onRandomize, isRolling, disabled, compact = false, fuelType
               position: "absolute", top: "50%", left: "50%",
               width: 200, height: 200,
               marginTop: -100, marginLeft: -100,
-              border: `3px solid ${V.hotPink}`,
+              border: `2px solid ${fuelColor}`,
               borderRadius: "50%",
               pointerEvents: "none",
-              animation: burstKey > 0 ? "hitRingBurst 1.0s ease-out 0.12s forwards" : "none",
+              animation: burstKey > 0 ? "hitRingBurst 0.95s ease-out 0.1s forwards" : "none",
               opacity: 0,
               zIndex: 3,
             }} />
 
-            {/* Particle burst — 12 sparks flying outward on press */}
+            {/* Sparks — 8 instead of 14. Two-tone: gold + fuel. */}
             {burstKey > 0 && (
               <div key={`particles-${burstKey}`} style={{
                 position: "absolute", top: "50%", left: "50%",
                 pointerEvents: "none", zIndex: 4,
               }}>
-                {Array.from({ length: 14 }).map((_, i) => {
-                  const angle = (i / 14) * Math.PI * 2;
-                  const dist = 80 + Math.random() * 60;
+                {Array.from({ length: 8 }).map((_, i) => {
+                  const angle = (i / 8) * Math.PI * 2 + (Math.random() - 0.5) * 0.35;
+                  const dist = 70 + Math.random() * 50;
                   const dx = Math.cos(angle) * dist;
                   const dy = Math.sin(angle) * dist;
-                  const color = MARQUEE_COLORS[i % MARQUEE_COLORS.length];
+                  const color = i % 2 === 0 ? V.neonGold : fuelColor;
                   return (
                     <span key={i} style={{
                       position: "absolute",
-                      width: 6, height: 6, borderRadius: "50%",
+                      width: 5, height: 5, borderRadius: "50%",
                       background: color, color,
                       left: 0, top: 0,
-                      boxShadow: `0 0 10px currentColor, 0 0 20px currentColor`,
+                      boxShadow: `0 0 8px currentColor, 0 0 14px currentColor`,
                       "--tr": `translate(${dx}px, ${dy}px)`,
-                      animation: "hitParticle 0.9s cubic-bezier(.2,.8,.3,1) forwards",
+                      animation: "hitParticle 0.85s cubic-bezier(.2,.8,.3,1) forwards",
                     }} />
                   );
                 })}
@@ -6252,20 +6298,22 @@ function HitButton({ onRandomize, isRolling, disabled, compact = false, fuelType
               onClick={handleClick}
               disabled={disabled || isRolling}
               onMouseEnter={() => setHover(true)}
-              onMouseLeave={() => { setHover(false); setPressing(false); }}
-              onMouseDown={() => setPressing(true)}
-              onMouseUp={() => setPressing(false)}
+              onMouseLeave={() => setHover(false)}
               style={{
                 width: "100%",
                 padding: btnPad,
-                background: isRolling
-                  ? `radial-gradient(circle at 50% 30%, #FF7070 0%, ${V.red} 45%, #5a0000 100%)`
-                  : `radial-gradient(circle at 50% 25%, #FF4848 0%, ${V.red} 45%, #6a0000 100%)`,
-                border: `4px solid ${V.neonGold}`,
+                background: `
+                  radial-gradient(circle at 50% 22%,
+                    ${fuelColor}FF 0%,
+                    ${fuelColor}DD 35%,
+                    ${fuelColor}88 70%,
+                    #1a0005 100%)
+                `,
+                border: `3px solid ${V.neonGold}`,
                 color: "#FFFFFF",
                 fontSize: btnFontSize,
                 fontWeight: 900,
-                letterSpacing: "0.15em",
+                letterSpacing: "0.14em",
                 fontFamily: T.font_display,
                 cursor: disabled ? "not-allowed" : isRolling ? "wait" : "pointer",
                 borderRadius: 12,
@@ -6273,63 +6321,104 @@ function HitButton({ onRandomize, isRolling, disabled, compact = false, fuelType
                 overflow: "hidden",
                 opacity: disabled ? 0.5 : 1,
                 animation: isRolling
-                  ? "hitStrobe 0.13s linear infinite"
-                  : "hitGlowPulse 2.4s ease-in-out infinite",
+                  ? "hitRollGlow 0.6s ease-in-out infinite"
+                  : "hitGoldPulse 2.8s ease-in-out infinite",
               }}>
-              {/* Spinning chrome ring behind text */}
-              <div style={{
-                position: "absolute", top: "50%", left: "50%",
-                width: 180, height: 180,
-                marginTop: -90, marginLeft: -90,
-                borderRadius: "50%",
-                border: `2px dashed rgba(255,215,0,0.35)`,
-                animation: `hitRingRotate ${isRolling ? "2s" : "12s"} linear infinite`,
-                pointerEvents: "none",
-              }} />
-              {/* Secondary inner ring */}
-              <div style={{
-                position: "absolute", top: "50%", left: "50%",
-                width: 130, height: 130,
-                marginTop: -65, marginLeft: -65,
-                borderRadius: "50%",
-                border: `1px solid rgba(255,255,255,0.25)`,
-                animation: `hitHaloRotate ${isRolling ? "1.2s" : "18s"} linear infinite`,
-                pointerEvents: "none",
-              }} />
-              {/* Top gloss */}
+              {/* ── TECHY DASHED RINGS around HIT! text ────────────────
+                  Spy/hacker-UI aesthetic — three concentric dashed
+                  circles, counter-rotating, with subtle brightness pulse.
+                  Reads as tactical HUD targeting the word HIT!. */}
+              {(() => {
+                const outerR = compact ? 70 : 88;
+                const midR   = compact ? 54 : 68;
+                const innerR = compact ? 40 : 50;
+                const rings = [
+                  { r: outerR, dash: "6 5",  width: 1.2, op: 0.55, dur: isRolling ? 3 : 12, rev: false, color: V.neonGold },
+                  { r: midR,   dash: "3 6",  width: 1,   op: 0.4,  dur: isRolling ? 4 : 16, rev: true,  color: V.neonGold },
+                  { r: innerR, dash: "10 4", width: 0.8, op: 0.3,  dur: isRolling ? 5 : 20, rev: false, color: "#FFFFFF" },
+                ];
+                return (
+                  <>
+                    {rings.map((ring, i) => (
+                      <svg key={i} style={{
+                        position: "absolute",
+                        top: "50%", left: "50%",
+                        width: ring.r * 2 + 4, height: ring.r * 2 + 4,
+                        transform: "translate(-50%, -50%)",
+                        pointerEvents: "none",
+                        animation: `${ring.rev ? "hitTechRingSpinRev" : "hitTechRingSpin"} ${ring.dur}s linear infinite`,
+                        overflow: "visible",
+                      }}>
+                        <circle
+                          cx="50%" cy="50%" r={ring.r}
+                          fill="none"
+                          stroke={ring.color}
+                          strokeWidth={ring.width}
+                          strokeDasharray={ring.dash}
+                          opacity={ring.op}
+                          style={{
+                            filter: `drop-shadow(0 0 2px ${ring.color})`,
+                          }}
+                        />
+                        {/* Two small diamond ticks at 0° and 180° for tactical look */}
+                        {i === 0 && (
+                          <>
+                            <rect x="50%" y={`calc(50% - ${ring.r + 3}px)`} width="3" height="3"
+                              fill={ring.color} opacity="0.85"
+                              style={{ transform: "translate(-1.5px, 0) rotate(45deg)", transformOrigin: "center", transformBox: "fill-box" }} />
+                            <rect x="50%" y={`calc(50% + ${ring.r}px)`} width="3" height="3"
+                              fill={ring.color} opacity="0.85"
+                              style={{ transform: "translate(-1.5px, 0) rotate(45deg)", transformOrigin: "center", transformBox: "fill-box" }} />
+                          </>
+                        )}
+                      </svg>
+                    ))}
+                  </>
+                );
+              })()}
+              {/* Top gloss — the premium shine */}
               <span style={{
-                position: "absolute", top: 0, left: "6%", right: "6%", height: "45%",
-                background: "linear-gradient(180deg, rgba(255,255,255,0.55) 0%, rgba(255,255,255,0) 100%)",
+                position: "absolute", top: 0, left: "8%", right: "8%", height: "42%",
+                background: "linear-gradient(180deg, rgba(255,255,255,0.5) 0%, rgba(255,255,255,0) 100%)",
                 pointerEvents: "none",
                 borderRadius: "0 0 50% 50% / 0 0 100% 100%",
               }} />
-              {/* Inner scanlines for texture */}
+              {/* Hot spot — specular highlight */}
               <div style={{
-                position: "absolute", inset: 0,
-                backgroundImage: `repeating-linear-gradient(0deg,
-                  rgba(0,0,0,0.08) 0 2px,
-                  transparent 2px 4px)`,
+                position: "absolute", top: "12%", left: "50%",
+                width: 70, height: 36,
+                marginLeft: -35,
+                background: "radial-gradient(ellipse, rgba(255,255,255,0.55) 0%, rgba(255,255,255,0) 70%)",
                 pointerEvents: "none",
-                mixBlendMode: "multiply",
-                opacity: 0.4,
+                filter: "blur(3px)",
               }} />
-              {/* Hot spot */}
-              <div style={{
-                position: "absolute", top: "15%", left: "50%",
-                width: 80, height: 40,
-                marginLeft: -40,
-                background: "radial-gradient(ellipse, rgba(255,255,255,0.6) 0%, rgba(255,255,255,0) 70%)",
-                pointerEvents: "none",
-                filter: "blur(4px)",
-              }} />
-              {/* HIT LABEL */}
+              {/* HIT LABEL — "HIT" in white + eye-candy "!" in gold */}
               <span style={{
                 position: "relative", zIndex: 1,
                 display: "inline-block",
-                animation: isRolling ? "none" : "hitTextShimmer 1.8s ease-in-out infinite",
-                fontStyle: "italic",
+                animation: isRolling ? "none" : "hitTextShimmer 2.4s ease-in-out infinite",
               }}>
-                {isRolling ? "◉" : "HIT!"}
+                {isRolling ? (
+                  "◉"
+                ) : (
+                  <>
+                    HIT
+                    <span style={{
+                      display: "inline-block",
+                      color: "#FFFFFF",
+                      fontStyle: "italic",
+                      fontWeight: 900,
+                      marginLeft: "0.04em",
+                      textShadow: `
+                        0 0 8px rgba(255,255,255,0.95),
+                        0 0 18px rgba(255,255,255,0.7),
+                        0 0 36px rgba(255,255,255,0.4),
+                        0 2px 3px rgba(0,0,0,0.7)
+                      `,
+                      animation: "hitBangPop 2.6s ease-in-out infinite",
+                    }}>!</span>
+                  </>
+                )}
               </span>
             </button>
 
@@ -6338,32 +6427,13 @@ function HitButton({ onRandomize, isRolling, disabled, compact = false, fuelType
               marginTop: 8,
               display: "flex", justifyContent: "center", alignItems: "center", gap: 6,
               fontFamily: T.font_mono, fontSize: 9, letterSpacing: "0.3em",
-              color: V.neonGold, textShadow: `0 0 6px ${V.neonGold}88`,
+              color: V.neonGold, textShadow: `0 0 6px ${V.neonGold}66`,
               fontWeight: 700,
             }}>
-              <span style={{ opacity: 0.6 }}>▸</span>
+              <span style={{ opacity: 0.5 }}>▸</span>
               PRESS TO ROLL
-              <span style={{ opacity: 0.6 }}>◂</span>
+              <span style={{ opacity: 0.5 }}>◂</span>
             </div>
-          </div>
-
-          {/* Bottom marquee */}
-          <div style={{
-            display: "flex", justifyContent: "space-between", alignItems: "center",
-            padding: "4px 14px 10px", gap: 6,
-          }}>
-            {Array.from({ length: ledCount }).map((_, i) => {
-              const color = MARQUEE_COLORS[(i + 3) % MARQUEE_COLORS.length];
-              return (
-                <span key={i} style={{
-                  width: 8, height: 8, borderRadius: "50%",
-                  background: color, color,
-                  animation: `hitLed ${isRolling ? 0.11 + (i % 4) * 0.02 : 0.5 + (i % 4) * 0.07}s ease-in-out infinite`,
-                  animationDelay: `${i * (isRolling ? 0.015 : 0.06) + (isRolling ? 0.05 : 0.3)}s`,
-                  flex: "0 0 auto",
-                }} />
-              );
-            })}
           </div>
         </div>
       </div>
@@ -8324,6 +8394,380 @@ function CasinoParticles({ isRolling }) {
 }
 
 // ════════════════════════════════════════════════════════════════════════════
+// COSMIC VFX — interstellar overlay used in two places:
+//   - intensity="light": HIT roll. Calm scene — nebulas + starfield +
+//     vignette + subtle chromatic edge rings. Opacity ~0.45.
+//   - intensity="deep":  Going Trend transition. Full VFX composition —
+//     gravitational well, wormhole pulses, shockwave, speed lines,
+//     chromatic aberration ghosts, warp-speed streaks, scan bar, 3
+//     nebula layers, 140 parallax stars. Opacity ~0.82.
+// Pure SVG. Pointer-events none. Caller mounts it conditionally.
+// ════════════════════════════════════════════════════════════════════════════
+
+function CosmicVFX({ intensity = "light" }) {
+  const deep = intensity === "deep";
+  return (
+    <>
+      <style>{`
+        @keyframes cosmicFadeIn {
+          from { opacity: 0; } to { opacity: 1; }
+        }
+        @keyframes cosmicNebulaDriftA {
+          0%,100% { transform: translate(-14%, -10%) scale(1)    rotate(0deg); }
+          50%     { transform: translate(10%, 8%)    scale(1.15) rotate(6deg); }
+        }
+        @keyframes cosmicNebulaDriftB {
+          0%,100% { transform: translate(12%, 14%)  scale(1)    rotate(0deg); }
+          50%     { transform: translate(-10%, -8%) scale(1.18) rotate(-7deg); }
+        }
+        @keyframes cosmicNebulaDriftC {
+          0%,100% { transform: translate(0, 0)    scale(1.1); }
+          50%     { transform: translate(4%, -6%) scale(1.3); }
+        }
+        @keyframes cosmicStarTwinkle {
+          0%,100% { opacity: 0.15; }
+          50%     { opacity: 1; }
+        }
+        @keyframes cosmicStarDriftNear {
+          from { transform: translate(0, 0); } to { transform: translate(-10%, 6%); }
+        }
+        @keyframes cosmicStarDriftFar {
+          from { transform: translate(0, 0); } to { transform: translate(-4%, 2%); }
+        }
+        @keyframes cosmicSpeedLines {
+          from { stroke-dashoffset: 0;    opacity: 0.9; }
+          to   { stroke-dashoffset: -200; opacity: 0.35; }
+        }
+        @keyframes cosmicWormholePulse {
+          0%   { transform: scale(0.3); opacity: 0; }
+          15%  { opacity: 0.85; }
+          100% { transform: scale(3.2); opacity: 0; }
+        }
+        @keyframes cosmicShockwave {
+          0%   { transform: scale(0.1); opacity: 0; stroke-width: 8; }
+          25%  { opacity: 1; }
+          100% { transform: scale(4); opacity: 0; stroke-width: 1; }
+        }
+        @keyframes cosmicChromaShiftR {
+          0%,100% { transform: translate(0, 0); }
+          50%     { transform: translate(3px, -1px); }
+        }
+        @keyframes cosmicChromaShiftB {
+          0%,100% { transform: translate(0, 0); }
+          50%     { transform: translate(-3px, 1px); }
+        }
+        @keyframes cosmicBarrelWarp {
+          0%,100% { transform: scale(1)    rotate(0deg);   filter: hue-rotate(0deg); }
+          50%     { transform: scale(1.05) rotate(1.5deg); filter: hue-rotate(20deg); }
+        }
+        @keyframes cosmicScanBar {
+          0%   { transform: translateY(-110%); opacity: 0; }
+          10%  { opacity: 0.9; }
+          50%  { opacity: 0.9; }
+          100% { transform: translateY(110%);  opacity: 0; }
+        }
+        @keyframes cosmicStarStreak {
+          0%   { transform: scaleX(1);   opacity: 0.7; }
+          50%  { transform: scaleX(12);  opacity: 1; }
+          100% { transform: scaleX(20);  opacity: 0; }
+        }
+      `}</style>
+      <svg
+        viewBox="0 0 1000 1000"
+        preserveAspectRatio="xMidYMid slice"
+        style={{
+          position: "absolute", inset: 0,
+          width: "100%", height: "100%",
+          opacity: deep ? 0.82 : 0.45,
+          animation: "cosmicFadeIn 220ms ease-out",
+        }}>
+        <defs>
+          <radialGradient id={`cvNebA-${intensity}`} cx="50%" cy="50%" r="50%">
+            <stop offset="0%"   stopColor="#8A9AFF" stopOpacity={deep ? "0.95" : "0.75"} />
+            <stop offset="25%"  stopColor="#5E6AD2" stopOpacity={deep ? "0.75" : "0.5"} />
+            <stop offset="55%"  stopColor="#3A2A7A" stopOpacity="0.3" />
+            <stop offset="100%" stopColor="#1A0F3A" stopOpacity="0" />
+          </radialGradient>
+          <radialGradient id={`cvNebB-${intensity}`} cx="50%" cy="50%" r="50%">
+            <stop offset="0%"   stopColor="#8EF4FF" stopOpacity={deep ? "0.9" : "0.7"} />
+            <stop offset="30%"  stopColor="#C070FF" stopOpacity={deep ? "0.65" : "0.45"} />
+            <stop offset="65%"  stopColor="#4A1A8A" stopOpacity="0.25" />
+            <stop offset="100%" stopColor="#0A0520" stopOpacity="0" />
+          </radialGradient>
+          {deep && (
+            <radialGradient id={`cvNebC-${intensity}`} cx="50%" cy="50%" r="50%">
+              <stop offset="0%"   stopColor="#FFB0E8" stopOpacity="0.85" />
+              <stop offset="30%"  stopColor="#E060C0" stopOpacity="0.5" />
+              <stop offset="70%"  stopColor="#6A1A4A" stopOpacity="0.15" />
+              <stop offset="100%" stopColor="#100010" stopOpacity="0" />
+            </radialGradient>
+          )}
+          {deep && (
+            <radialGradient id={`cvWell-${intensity}`} cx="50%" cy="50%" r="50%">
+              <stop offset="0%"   stopColor="#FFFFFF" stopOpacity="1" />
+              <stop offset="6%"   stopColor="#C8D8FF" stopOpacity="0.9" />
+              <stop offset="20%"  stopColor="#6E7FFF" stopOpacity="0.55" />
+              <stop offset="45%"  stopColor="#3A2A7A" stopOpacity="0.2" />
+              <stop offset="100%" stopColor="#000000" stopOpacity="0" />
+            </radialGradient>
+          )}
+          <radialGradient id={`cvVignette-${intensity}`} cx="50%" cy="50%" r="55%">
+            <stop offset="0%"   stopColor="#000" stopOpacity="0" />
+            <stop offset={deep ? "55%" : "65%"}  stopColor="#000" stopOpacity="0" />
+            <stop offset={deep ? "80%" : "85%"}  stopColor="#1A0F3A" stopOpacity={deep ? "0.55" : "0.35"} />
+            <stop offset="100%" stopColor="#02010A" stopOpacity={deep ? "0.92" : "0.75"} />
+          </radialGradient>
+          {deep && (
+            <linearGradient id={`cvScan-${intensity}`} x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%"   stopColor="#6EEEFF" stopOpacity="0" />
+              <stop offset="45%"  stopColor="#B0E0FF" stopOpacity="0.85" />
+              <stop offset="50%"  stopColor="#FFFFFF" stopOpacity="1" />
+              <stop offset="55%"  stopColor="#B0E0FF" stopOpacity="0.85" />
+              <stop offset="100%" stopColor="#6EEEFF" stopOpacity="0" />
+            </linearGradient>
+          )}
+          <filter id={`cvBlur-${intensity}`} x="-20%" y="-20%" width="140%" height="140%">
+            <feGaussianBlur stdDeviation={deep ? "45" : "35"} />
+          </filter>
+          {deep && (
+            <filter id={`cvBlurSmall-${intensity}`} x="-20%" y="-20%" width="140%" height="140%">
+              <feGaussianBlur stdDeviation="18" />
+            </filter>
+          )}
+          <filter id={`cvStarGlow-${intensity}`} x="-300%" y="-300%" width="700%" height="700%">
+            <feGaussianBlur stdDeviation="1.4" />
+            <feMerge>
+              <feMergeNode />
+              <feMergeNode in="SourceGraphic" />
+            </feMerge>
+          </filter>
+          {deep && (
+            <filter id={`cvTurbulence-${intensity}`} x="-10%" y="-10%" width="120%" height="120%">
+              <feTurbulence type="fractalNoise" baseFrequency="0.013" numOctaves="2" seed="7">
+                <animate attributeName="baseFrequency"
+                  values="0.013;0.028;0.013" dur="3.6s" repeatCount="indefinite" />
+              </feTurbulence>
+              <feDisplacementMap in="SourceGraphic" scale="38" />
+            </filter>
+          )}
+          {deep && (
+            <radialGradient id={`cvShock-${intensity}`} cx="50%" cy="50%" r="50%">
+              <stop offset="0%"   stopColor="#FFFFFF" stopOpacity="0" />
+              <stop offset="80%"  stopColor="#6EEEFF" stopOpacity="0.9" />
+              <stop offset="95%"  stopColor="#B050FF" stopOpacity="0.6" />
+              <stop offset="100%" stopColor="#000" stopOpacity="0" />
+            </radialGradient>
+          )}
+        </defs>
+
+        {/* Deep space base */}
+        <rect width="1000" height="1000" fill="#03010A" opacity={deep ? "0.75" : "0.45"} />
+
+        {/* Nebulas — 2 for light, 3 for deep */}
+        <g style={{ animation: "cosmicNebulaDriftA 12s ease-in-out infinite" }}>
+          <ellipse cx="350" cy="400" rx="420" ry="330"
+            fill={`url(#cvNebA-${intensity})`} filter={`url(#cvBlur-${intensity})`} />
+        </g>
+        <g style={{ animation: "cosmicNebulaDriftB 15s ease-in-out infinite" }}>
+          <ellipse cx="720" cy="620" rx="380" ry="300"
+            fill={`url(#cvNebB-${intensity})`} filter={`url(#cvBlur-${intensity})`} />
+        </g>
+        {deep && (
+          <g style={{ animation: "cosmicNebulaDriftC 18s ease-in-out infinite" }}>
+            <ellipse cx="550" cy="300" rx="280" ry="180"
+              fill={`url(#cvNebC-${intensity})`} filter={`url(#cvBlurSmall-${intensity})`} />
+          </g>
+        )}
+
+        {/* Far starfield */}
+        <g style={{ animation: "cosmicStarDriftFar 14s linear infinite" }}>
+          {(() => {
+            let a = 0x6d2b79f5;
+            const rng = () => {
+              a = (a + 0x6D2B79F5) | 0;
+              let t = a;
+              t = Math.imul(t ^ (t >>> 15), t | 1);
+              t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+              return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+            };
+            const stars = [];
+            const STAR_COLORS = ["#FFFFFF", "#E5E9FF", "#C8D0FF", "#A8B4FF", "#FFE8F5", "#D0F0FF"];
+            const count = deep ? 100 : 60;
+            for (let i = 0; i < count; i++) {
+              const cx = rng() * 1000;
+              const cy = rng() * 1000;
+              const r = 0.4 + rng() * 1.4;
+              const delay = rng() * 4;
+              const duration = 1.3 + rng() * 2.6;
+              const color = STAR_COLORS[Math.floor(rng() * STAR_COLORS.length)];
+              stars.push(
+                <circle key={`f${i}`} cx={cx} cy={cy} r={r} fill={color}
+                  style={{
+                    animation: `cosmicStarTwinkle ${duration}s ease-in-out infinite`,
+                    animationDelay: `${delay}s`,
+                  }} />
+              );
+            }
+            return stars;
+          })()}
+        </g>
+
+        {/* Near starfield — bigger, brighter */}
+        <g style={{ animation: "cosmicStarDriftNear 6s linear infinite" }}>
+          {(() => {
+            let a = 0x13579bdf;
+            const rng = () => {
+              a = (a + 0x6D2B79F5) | 0;
+              let t = a;
+              t = Math.imul(t ^ (t >>> 15), t | 1);
+              t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+              return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+            };
+            const stars = [];
+            const count = deep ? 40 : 20;
+            for (let i = 0; i < count; i++) {
+              const cx = rng() * 1000;
+              const cy = rng() * 1000;
+              const r = 1.4 + rng() * 2.6;
+              const delay = rng() * 3;
+              const duration = 0.9 + rng() * 1.6;
+              stars.push(
+                <circle key={`n${i}`} cx={cx} cy={cy} r={r} fill="#FFFFFF"
+                  filter={`url(#cvStarGlow-${intensity})`}
+                  style={{
+                    animation: `cosmicStarTwinkle ${duration}s ease-in-out infinite`,
+                    animationDelay: `${delay}s`,
+                  }} />
+              );
+            }
+            return stars;
+          })()}
+        </g>
+
+        {/* ───── DEEP ONLY: wormhole, shockwave, speed lines, chromatic ──── */}
+        {deep && (() => {
+          // Warp-speed streaks
+          let a = 0xabcdef01;
+          const rng = () => {
+            a = (a + 0x6D2B79F5) | 0;
+            let t = a;
+            t = Math.imul(t ^ (t >>> 15), t | 1);
+            t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+            return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+          };
+          const streaks = [];
+          for (let i = 0; i < 14; i++) {
+            const angle = (i / 14) * Math.PI * 2 + rng() * 0.3;
+            const dist = 140 + rng() * 280;
+            const cx = 500 + Math.cos(angle) * dist;
+            const cy = 500 + Math.sin(angle) * dist;
+            const delay = rng() * 1.4;
+            const duration = 0.8 + rng() * 0.8;
+            streaks.push(
+              <rect key={`streak${i}`}
+                x={cx - 2} y={cy - 0.8}
+                width={4} height={1.6}
+                fill="#FFFFFF"
+                transform={`rotate(${(angle * 180) / Math.PI}, ${cx}, ${cy})`}
+                style={{
+                  transformOrigin: `${cx}px ${cy}px`,
+                  animation: `cosmicStarStreak ${duration}s ease-out infinite`,
+                  animationDelay: `${delay}s`,
+                  filter: `drop-shadow(0 0 3px #FFFFFF)`,
+                }} />
+            );
+          }
+          return <>{streaks}</>;
+        })()}
+        {deep && (
+          <g filter={`url(#cvTurbulence-${intensity})`} style={{ animation: "cosmicBarrelWarp 3.2s ease-in-out infinite", transformOrigin: "500px 500px" }}>
+            <circle cx="500" cy="500" r="280" fill={`url(#cvWell-${intensity})`} />
+          </g>
+        )}
+        {deep && [0, 0.4, 0.8, 1.2].map((delay, i) => (
+          <circle key={`wh${i}`}
+            cx="500" cy="500" r="140"
+            fill="none"
+            stroke="#6EEEFF"
+            strokeWidth="2"
+            opacity="0.7"
+            style={{
+              transformOrigin: "500px 500px",
+              animation: "cosmicWormholePulse 1.6s ease-out infinite",
+              animationDelay: `${delay}s`,
+              filter: `drop-shadow(0 0 6px #6EEEFF)`,
+            }} />
+        ))}
+        {deep && (
+          <circle cx="500" cy="500" r="120"
+            fill="none"
+            stroke={`url(#cvShock-${intensity})`}
+            strokeWidth="6"
+            style={{
+              transformOrigin: "500px 500px",
+              animation: "cosmicShockwave 2s ease-out infinite",
+              filter: `drop-shadow(0 0 8px #6EEEFF)`,
+            }} />
+        )}
+        {deep && (() => {
+          const rays = [];
+          for (let i = 0; i < 24; i++) {
+            const angle = (i / 24) * Math.PI * 2;
+            const x1 = 500 + Math.cos(angle) * 80;
+            const y1 = 500 + Math.sin(angle) * 80;
+            const x2 = 500 + Math.cos(angle) * 600;
+            const y2 = 500 + Math.sin(angle) * 600;
+            rays.push(
+              <line key={`ray${i}`}
+                x1={x1} y1={y1} x2={x2} y2={y2}
+                stroke="#B0D8FF" strokeWidth="1.2"
+                strokeDasharray="40 160"
+                opacity="0.4"
+                style={{
+                  animation: `cosmicSpeedLines 1.2s linear infinite`,
+                  animationDelay: `${(i % 6) * 0.1}s`,
+                  filter: "drop-shadow(0 0 2px #6EEEFF)",
+                }} />
+            );
+          }
+          return <>{rays}</>;
+        })()}
+        {deep && (
+          <g style={{ mixBlendMode: "screen", animation: "cosmicChromaShiftR 0.18s linear infinite" }}>
+            <circle cx="500" cy="500" r="340" fill="none"
+              stroke="#FF3355" strokeWidth="1.5" opacity="0.45" />
+            <circle cx="500" cy="500" r="520" fill="none"
+              stroke="#FF3355" strokeWidth="1" opacity="0.3" />
+          </g>
+        )}
+        {deep && (
+          <g style={{ mixBlendMode: "screen", animation: "cosmicChromaShiftB 0.18s linear infinite" }}>
+            <circle cx="500" cy="500" r="340" fill="none"
+              stroke="#33AAFF" strokeWidth="1.5" opacity="0.5" />
+            <circle cx="500" cy="500" r="520" fill="none"
+              stroke="#33AAFF" strokeWidth="1" opacity="0.3" />
+          </g>
+        )}
+
+        {/* Vignette */}
+        <rect width="1000" height="1000" fill={`url(#cvVignette-${intensity})`} />
+
+        {/* Scan bar — deep only */}
+        {deep && (
+          <rect x="0" y="0" width="1000" height="8"
+            fill={`url(#cvScan-${intensity})`}
+            style={{
+              animation: "cosmicScanBar 1.6s linear infinite",
+              mixBlendMode: "screen",
+              filter: "blur(3px)",
+            }} />
+        )}
+      </svg>
+    </>
+  );
+}
+
+// ════════════════════════════════════════════════════════════════════════════
 // ENGINE PAGE
 // ════════════════════════════════════════════════════════════════════════════
 
@@ -9574,6 +10018,17 @@ function EnginePage({ onNavigate }) {
         }} />
       )}
 
+      {/* Light cosmic fade on HIT roll — subtle atmospheric moment.
+          Deep VFX lives on the Going Trend transition, not here. */}
+      {isRolling && (
+        <div style={{
+          position: "absolute", inset: 0, pointerEvents: "none",
+          zIndex: 40, overflow: "hidden",
+        }}>
+          <CosmicVFX intensity="light" />
+        </div>
+      )}
+
       <style>{`
         @keyframes engineShake {
           0%,100% { transform: translate(0,0) rotate(0deg); }
@@ -9616,7 +10071,7 @@ function EnginePage({ onNavigate }) {
       <div style={{
         flex: 1, minHeight: 0,
         display: "grid",
-        gridTemplateColumns: isMobile ? "1fr" : "1.1fr 1fr",
+        gridTemplateColumns: isMobile ? "1fr" : "65% 35%",
         overflow: isMobile ? "visible" : "hidden",
         position: "relative", zIndex: 1,
       }}>
@@ -10223,9 +10678,10 @@ function EnginePage({ onNavigate }) {
           {/* ── BPM — always-open, full-width, sits below the grid ────
               BPM lives outside the cubicle grid because it contains a
               slider + live genre suggestions that benefit from a full
-              horizontal surface. Visually matches the expanded-cubicle
-              style so it still reads as part of the engine deck. */}
-          <div style={{ marginTop: T.s2, marginBottom: T.s3 }}>
+              horizontal surface. Sits flush beneath the cubicle grid
+              (no top margin) so its toggle panel connects visually to
+              the cubicles above. */}
+          <div style={{ marginTop: -T.s3, marginBottom: T.s3 }}>
             <Cubicle id="bpm" icon="⏱️" title="BPM"
               description="Tempo — how fast the track moves"
               filled={state.bpm > 0}
@@ -10460,83 +10916,58 @@ function EnginePage({ onNavigate }) {
             <HitButton onRandomize={triggerHit} isRolling={isRolling}
               disabled={Number.isFinite(fuels[activeFuel]) && fuels[activeFuel] <= 0}
               compact={isMobile} fuelType={activeFuel} />
-            {/* Credits counter — shows current fuel remaining for active type */}
+            {/* ── CREDITS READOUT — styled to echo HIT button aesthetic.
+                Deep charcoal panel with gold-tinted dashed frame mirrors
+                the button's tech rings. LCD-style mono label, fuel-color
+                readout with glow. Sits flush under the button. ─────── */}
             <div style={{
-              display: "flex", alignItems: "center", justifyContent: "space-between",
-              padding: `${T.s2}px ${T.s3}px`,
-              background: T.surface,
-              border: `1px solid ${FUEL_TYPES[activeFuel].color}44`,
+              position: "relative",
+              padding: `${T.s3}px ${T.s4}px`,
+              background: `
+                linear-gradient(180deg, rgba(16,12,6,0.92) 0%, rgba(8,6,4,0.96) 100%)
+              `,
+              border: `1px solid ${V.neonGold}44`,
               borderRadius: T.r_md,
-              fontFamily: T.font_mono, fontSize: T.fs_xs,
+              fontFamily: T.font_mono,
+              boxShadow: `
+                inset 0 1px 0 rgba(255,215,120,0.12),
+                inset 0 0 18px rgba(0,0,0,0.6),
+                0 4px 12px rgba(0,0,0,0.4)
+              `,
+              overflow: "hidden",
             }}>
+              {/* Top-edge brass shimmer line — matches button frame edge */}
               <span style={{
-                color: T.textMuted, letterSpacing: "0.2em", fontWeight: 700,
+                position: "absolute", top: 0, left: "10%", right: "10%", height: 1,
+                background: `linear-gradient(90deg, transparent 0%, ${V.neonGold}66 50%, transparent 100%)`,
+                pointerEvents: "none",
+              }} />
+              <div style={{
+                display: "flex", alignItems: "center", justifyContent: "space-between",
+                gap: T.s2,
               }}>
-                CREDITS
-              </span>
-              <span style={{
-                color: FUEL_TYPES[activeFuel].color,
-                textShadow: `0 0 8px ${FUEL_TYPES[activeFuel].color}66`,
-                fontSize: T.fs_lg, fontWeight: 700,
-                letterSpacing: "0.05em",
-              }}>
-                {Number.isFinite(fuels[activeFuel]) ? fuels[activeFuel] : "∞"}
-              </span>
+                <span style={{
+                  fontSize: 9,
+                  letterSpacing: "0.3em", fontWeight: 700,
+                  color: `${V.neonGold}aa`,
+                  textShadow: `0 0 4px ${V.neonGold}33`,
+                }}>
+                  ● CREDITS
+                </span>
+                <span style={{
+                  color: FUEL_TYPES[activeFuel].color,
+                  textShadow: `
+                    0 0 8px ${FUEL_TYPES[activeFuel].color}88,
+                    0 0 16px ${FUEL_TYPES[activeFuel].color}44
+                  `,
+                  fontSize: 20, fontWeight: 800,
+                  letterSpacing: "0.03em",
+                  lineHeight: 1,
+                }}>
+                  {Number.isFinite(fuels[activeFuel]) ? fuels[activeFuel] : "∞"}
+                </span>
+              </div>
             </div>
-            {/* ── CLEAR ALL — wipe every selection and start fresh.
-                Respects section locks and the slot locks for paid tiers —
-                the user can still lock things they want to keep. For Free
-                tier locks aren't available, so this is a true nuke. ───── */}
-            <button type="button"
-              onClick={() => {
-                if (isRolling) return;
-                const confirmed = (state.specificInstruments?.length || 0) > 0
-                  || state.mood || state.energy
-                  || (state.groove && state.groove !== "default")
-                  || state.vocalist || state.lyricalVibe
-                  || state.harmonic || state.texture || state.mix
-                  || (state.slots || []).some(s => s)
-                  || state.bpm > 0;
-                if (!confirmed) return; // already empty, nothing to clear
-                // Preserve language and slot/section locks (paid tiers).
-                setState(s => ({
-                  ...s,
-                  slots: (s.slotLocks || []).map((lk, i) => lk ? s.slots[i] : null),
-                  mood: s.sectionLocks?.mood ? s.mood : "",
-                  energy: s.sectionLocks?.energy ? s.energy : "",
-                  groove: s.sectionLocks?.groove ? s.groove : "default",
-                  vocalist: s.sectionLocks?.vocalist ? s.vocalist : "",
-                  lyricalVibe: s.sectionLocks?.lyricalVibe ? s.lyricalVibe : "",
-                  harmonic: s.sectionLocks?.harmonic ? s.harmonic : "",
-                  texture: s.sectionLocks?.texture ? s.texture : "",
-                  mix: s.sectionLocks?.mix ? s.mix : "",
-                  specificInstruments: s.sectionLocks?.specificInstruments ? s.specificInstruments : [],
-                  specificArticulations: s.sectionLocks?.specificInstruments ? s.specificArticulations : {},
-                  bpm: s.sectionLocks?.bpm ? s.bpm : 0,
-                  toggles: { ...s.toggles, bpm: "off" },
-                }));
-              }}
-              style={{
-                padding: `${T.s2}px ${T.s3}px`,
-                background: "transparent",
-                border: `1px solid ${T.danger}55`,
-                borderRadius: T.r_md,
-                color: T.danger,
-                fontFamily: T.font_mono, fontSize: T.fs_xs,
-                fontWeight: 700, letterSpacing: "0.15em",
-                cursor: "pointer", height: 34,
-                transition: `all ${T.dur_fast} ${T.ease}`,
-              }}
-              onMouseEnter={e => {
-                e.currentTarget.style.background = `${T.danger}12`;
-                e.currentTarget.style.borderColor = T.danger;
-              }}
-              onMouseLeave={e => {
-                e.currentTarget.style.background = "transparent";
-                e.currentTarget.style.borderColor = `${T.danger}55`;
-              }}>
-              CLEAR ALL
-            </button>
             <Joystick
               onNavigate={onNavigate}
               onLockedClick={() => setSalesModalFeature("joystick")}
@@ -10569,36 +11000,47 @@ function EnginePage({ onNavigate }) {
                 {FUEL_TYPES[activeFuel].label.toUpperCase()} EMPTY · REFILLS TOMORROW
               </div>
             )}
+            {/* ── CLEAR ALL — red danger-state reset.
+                Sits separated from the above by extra top margin so it
+                reads as a distinct destructive action, not part of the
+                status group above. Dashed border matches the rest of the
+                reset/danger UI grammar in the app. ───────────────────── */}
             <button
               type="button"
               onClick={clearAll}
               title="Clear all selections — start fresh"
               style={{
                 alignSelf: "stretch",
-                padding: isMobile ? "10px 14px" : "8px 14px",
+                marginTop: T.s3,
+                padding: isMobile ? "10px 14px" : "9px 14px",
                 minHeight: isMobile ? 44 : "auto",
                 background: "transparent",
-                border: `1px solid #F9731644`,
+                border: `1px dashed ${T.danger}55`,
                 borderRadius: T.r_md,
-                color: "#F97316",
+                color: T.danger,
                 fontFamily: T.font_mono, fontSize: T.fs_xs, fontWeight: 700,
-                letterSpacing: "0.18em",
+                letterSpacing: "0.22em",
                 cursor: "pointer",
-                display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6,
+                display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8,
                 transition: `all ${T.dur_fast} ${T.ease}`,
+                opacity: 0.75,
               }}
               onMouseEnter={e => {
-                e.currentTarget.style.background = "#F9731612";
-                e.currentTarget.style.borderColor = "#F97316";
-                e.currentTarget.style.boxShadow = "0 0 0 3px #F9731622";
+                e.currentTarget.style.background = `${T.danger}10`;
+                e.currentTarget.style.borderStyle = "solid";
+                e.currentTarget.style.borderColor = T.danger;
+                e.currentTarget.style.opacity = "1";
+                e.currentTarget.style.boxShadow = `0 0 0 3px ${T.danger}18`;
               }}
               onMouseLeave={e => {
                 e.currentTarget.style.background = "transparent";
-                e.currentTarget.style.borderColor = "#F9731644";
+                e.currentTarget.style.borderStyle = "dashed";
+                e.currentTarget.style.borderColor = `${T.danger}55`;
+                e.currentTarget.style.opacity = "0.75";
                 e.currentTarget.style.boxShadow = "none";
               }}
             >
-              <span style={{ fontSize: 11 }}>⟲</span>
+              <span style={{ fontSize: 12 }}>⟲</span>
               CLEAR ALL
             </button>
           </div>
@@ -17008,6 +17450,9 @@ function Joystick({ onNavigate, onLockedClick }) {
   // continuous value so the handle tracks the pointer 1:1.
   const [dragAngle, setDragAngle] = useState(null);
   const svgRef = useRef(null);
+  // Track pointer-down position so we can distinguish a tap (click) from a
+  // drag on pointer-up. Small movement → toggle free/pro; larger → snap-drag.
+  const pointerStartRef = useRef(null);
 
   // Joystick is always rendered with all 3 positions so free/pro users can
   // see the full VIP experience (and be tempted to upgrade). Trend slot is
@@ -17080,6 +17525,7 @@ function Joystick({ onNavigate, onLockedClick }) {
     if (positions.length < 2) return; // nothing to drag to
     e.preventDefault();
     e.currentTarget.setPointerCapture(e.pointerId);
+    pointerStartRef.current = { x: e.clientX, y: e.clientY, t: Date.now() };
     setDragAngle(pointerToAngle(e));
   };
 
@@ -17090,10 +17536,28 @@ function Joystick({ onNavigate, onLockedClick }) {
 
   const handlePointerUp = (e) => {
     if (dragAngle == null) return;
-    const targetIdx = angleToNearestIdx(dragAngle);
-    const targetPos = positions[targetIdx];
+    // Determine whether this was a tap (click) vs a drag.
+    // Tap = small pointer movement + short duration.
+    const start = pointerStartRef.current;
+    const dx = start ? Math.abs(e.clientX - start.x) : 999;
+    const dy = start ? Math.abs(e.clientY - start.y) : 999;
+    const dt = start ? Date.now() - start.t : 9999;
+    const isTap = dx < 6 && dy < 6 && dt < 400;
+    pointerStartRef.current = null;
     setDragAngle(null); // release drag — CSS transition re-engages toward discrete
     try { e.currentTarget.releasePointerCapture(e.pointerId); } catch {}
+
+    if (isTap) {
+      // TAP BEHAVIOR: toggle between free and pro, ignoring trend.
+      // If currently on trend/something else, snap to free first.
+      const next = activeFuel === "free" ? "pro" : "free";
+      if (next !== activeFuel) handleSelect(next);
+      return;
+    }
+
+    // DRAG BEHAVIOR: snap to the nearest position based on drag angle.
+    const targetIdx = angleToNearestIdx(dragAngle);
+    const targetPos = positions[targetIdx];
     // Locked position: fire modal, don't switch fuel (snap-back is automatic
     // since we cleared dragAngle — tilt reverts to current activeFuel's idx).
     if (isLocked(targetPos)) {
@@ -17123,54 +17587,63 @@ function Joystick({ onNavigate, onLockedClick }) {
 
   return (
     <>
-      {/* Transition overlay — tire smoke animation */}
+      <style>{`
+        @keyframes lcdFlicker {
+          0%, 100% { opacity: 1; }
+          48%      { opacity: 0.94; }
+          49%      { opacity: 1; }
+        }
+        @keyframes lcdScan {
+          from { transform: translateY(-100%); }
+          to   { transform: translateY(200%); }
+        }
+      `}</style>
+      {/* ── GOING TREND TRANSITION — deep cosmic VFX ──────────────────
+          Replaces the previous tire-smoke effect. Full interstellar VFX
+          composition (gravitational well, wormhole pulses, shockwave,
+          speed lines, chromatic aberration, warp-speed streaks, nebulas,
+          scan bar) plays for the full 1.8s transition duration. ───── */}
       {transitioning && (
         <div style={{
           position: "fixed", inset: 0, zIndex: 10000, pointerEvents: "none",
-          background: "radial-gradient(ellipse at center, rgba(60,60,60,0.7) 0%, rgba(20,20,20,0.95) 80%)",
-          animation: "smokeBurst 1.8s ease-out forwards",
+          background: "#02010A",
+          animation: "trendCosmicFade 1.8s ease-out forwards",
+          overflow: "hidden",
         }}>
           <style>{`
-            @keyframes smokeBurst {
-              0%   { opacity: 0; backdrop-filter: blur(0px); }
-              20%  { opacity: 1; backdrop-filter: blur(8px); }
-              80%  { opacity: 1; backdrop-filter: blur(14px); }
-              100% { opacity: 0; backdrop-filter: blur(0px); }
+            @keyframes trendCosmicFade {
+              0%   { opacity: 0; }
+              15%  { opacity: 1; }
+              80%  { opacity: 1; }
+              100% { opacity: 0; }
             }
-            @keyframes smokePuff {
-              from { transform: scale(0.4) translateY(0); opacity: 0.8; }
-              to   { transform: scale(3) translateY(-80px); opacity: 0; }
-            }
-            @keyframes lcdFlicker {
-              0%, 100% { opacity: 1; }
-              48%      { opacity: 0.94; }
-              49%      { opacity: 1; }
-            }
-            @keyframes lcdScan {
-              from { transform: translateY(-100%); }
-              to   { transform: translateY(200%); }
+            @keyframes trendTitleZoom {
+              0%   { transform: translate(-50%, -50%) scale(0.3); opacity: 0; filter: blur(20px); }
+              30%  { opacity: 1; filter: blur(0); }
+              70%  { opacity: 1; filter: blur(0); }
+              100% { transform: translate(-50%, -50%) scale(1.15); opacity: 0; filter: blur(8px); }
             }
           `}</style>
-          {Array.from({ length: 12 }).map((_, i) => {
-            const delay = Math.random() * 0.4;
-            const size = 80 + Math.random() * 120;
-            const x = 30 + Math.random() * 40;
-            const y = 40 + Math.random() * 40;
-            return (
-              <div key={i} style={{
-                ...SMOKE_PUFF_STATIC_STYLE,
-                left: `${x}%`, top: `${y}%`,
-                width: size, height: size,
-                animation: `smokePuff 1.6s ease-out ${delay}s forwards`,
-              }} />
-            );
-          })}
+          {/* Deep cosmic scene fills the fixed-position container */}
+          <CosmicVFX intensity="deep" />
+          {/* Title on top of the VFX */}
           <div style={{
-            position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -50%)",
-            fontSize: "clamp(32px, 6vw, 72px)",
+            position: "absolute", top: "50%", left: "50%",
+            transform: "translate(-50%, -50%)",
+            fontSize: "clamp(40px, 7vw, 88px)",
             fontFamily: T.font_display, fontStyle: "italic",
-            color: "#FFD700", textShadow: "0 0 20px #FFD70088, 0 4px 20px rgba(0,0,0,0.8)",
+            color: "#FFD700",
+            textShadow: `
+              0 0 20px #FFD70099,
+              0 0 48px #FFD70055,
+              0 0 96px #FF6B9988,
+              0 4px 20px rgba(0,0,0,0.95)
+            `,
             letterSpacing: "-0.02em",
+            fontWeight: 900,
+            zIndex: 2,
+            animation: "trendTitleZoom 1.8s cubic-bezier(0.2, 0.8, 0.3, 1) forwards",
+            whiteSpace: "nowrap",
           }}>
             ⭐ Going Trend
           </div>
