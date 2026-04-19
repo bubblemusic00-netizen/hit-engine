@@ -16094,47 +16094,142 @@ function EnginePage({ onNavigate }) {
               anchor (no centering). Gold diamond separator between
               them gives the row a ledger feel. One horizontal band of
               controls between the hero and the content config below. */}
+          {/* ── TYPE SWITCH — Instrumental / Song ─────────────────────
+              Hoisted to the top so it's the first decision the user
+              makes after reading the banner. This flag governs whether
+              lyric sections render downstream, so it's structurally
+              the most important toggle and deserves the prime slot.
+              Borderless rail — no heavy card around it — so the eye
+              flows naturally from the HIT ENGINE headline into the
+              first real control without hitting a visual wall. */}
+          <div style={{
+            marginBottom: isMobile ? T.s4 : T.s5,
+            paddingBottom: T.s4,
+            borderBottom: `1px solid ${T.border}`,
+          }}>
+            <LyricalSwitch value={lyricsOn} onChange={setLyricsOn} />
+          </div>
+
+          {/* ── TIPS ROW — Quick tips entry kept adjacent to the primary
+              switch so newcomers see it second. Single control, no
+              heavy visual weight. */}
           <div style={{
             display: "flex",
             alignItems: "center",
             gap: isMobile ? T.s2 : T.s3,
             flexWrap: "wrap",
-            marginBottom: isMobile ? T.s5 : T.s7,
+            marginBottom: isMobile ? T.s5 : T.s6,
           }}>
             <TipsManual />
           </div>
 
-          {/* ── PRESETS ─ quick-start configurations, paginated ───── */}
-          {features.presets ? (
-            <div style={{ marginBottom: T.s6 }}>
-              {/* Header row: label on left, pagination controls on right
-                  (only for VIP+ who can navigate between pages). Pro
-                  users see just "Presets · Starter 5" — they're stuck
-                  on page 1 so no arrows are shown. */}
+          {/* ── QUICK PROMPTS — always rendered, Free sees locked preview
+              Free tier: grayed card with "PRO+ unlocks" chip, cards
+              show but are non-interactive and faintly blurred. Upgrade
+              CTA lives in the header.
+              Pro: 5 starter presets, no pagination, "🔒 UNLOCK ALL" nudge
+              for VIP.
+              VIP/Admin: full pagination across all 50 presets. */}
+          {(() => {
+            const presetsUnlocked = features.presets; // Free = false, Pro+ = true
+            return (
+            <div style={{
+              position: "relative",
+              marginBottom: T.s6,
+              padding: isMobile ? T.s4 : `${T.s5}px ${T.s5}px ${T.s4}px`,
+              background: `linear-gradient(180deg,
+                rgba(94, 106, 210, ${presetsUnlocked ? "0.04" : "0.02"}) 0%,
+                rgba(94, 106, 210, 0.01) 45%,
+                ${T.surface} 100%)`,
+              border: `1px solid ${presetsUnlocked ? T.accent + "22" : T.border}`,
+              borderRadius: T.r_lg,
+              boxShadow: `
+                inset 0 1px 0 rgba(255, 255, 255, 0.02),
+                0 1px 0 rgba(0, 0, 0, 0.2)
+              `,
+              opacity: presetsUnlocked ? 1 : 0.85,
+            }}>
+              {/* Subtle top accent line — one pixel of indigo */}
+              <span aria-hidden="true" style={{
+                position: "absolute", top: -1, left: "10%", right: "10%", height: 1,
+                background: presetsUnlocked
+                  ? `linear-gradient(90deg, transparent 0%, ${T.accent}88 50%, transparent 100%)`
+                  : `linear-gradient(90deg, transparent 0%, ${T.textTer}44 50%, transparent 100%)`,
+              }} />
+
+              {/* ── HEADER ROW ── */}
               <div style={{
                 display: "flex", justifyContent: "space-between", alignItems: "center",
-                marginBottom: T.s3, gap: T.s3, flexWrap: "wrap",
+                marginBottom: T.s4, gap: T.s3, flexWrap: "wrap",
               }}>
-                <div style={{ display: "flex", alignItems: "center", gap: T.s3 }}>
-                  <Label color={T.textSec}>Presets</Label>
-                  {canPaginatePresets ? (
+                <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: T.s2 }}>
                     <span style={{
-                      fontFamily: T.font_mono, fontSize: T.fs_xs,
-                      color: T.textTer, letterSpacing: "0.08em",
+                      display: "inline-flex", alignItems: "center",
+                      padding: "3px 7px",
+                      background: presetsUnlocked ? `${T.accent}18` : `${T.textTer}18`,
+                      border: `1px solid ${presetsUnlocked ? T.accent + "44" : T.textTer + "33"}`,
+                      borderRadius: 3,
+                      color: presetsUnlocked ? T.accentHi : T.textTer,
+                      fontFamily: T.font_mono, fontSize: 9, fontWeight: 700,
+                      letterSpacing: "0.18em",
                     }}>
-                      page {presetPage + 1} of {totalPresetPages}
+                      {presetsUnlocked ? "✦ QUICK" : "🔒 LOCKED"}
                     </span>
-                  ) : (
                     <span style={{
-                      fontFamily: T.font_mono, fontSize: T.fs_xs,
-                      color: T.textTer, letterSpacing: "0.08em",
+                      fontFamily: T.font_display,
+                      fontSize: isMobile ? 18 : 22,
+                      fontWeight: 700,
+                      color: presetsUnlocked ? T.text : T.textSec,
+                      letterSpacing: "-0.01em",
+                      lineHeight: 1.1,
                     }}>
-                      starter 5 · VIP unlocks {PRESETS.length}
+                      Quick Prompts
                     </span>
-                  )}
+                  </div>
+                  <span style={{
+                    fontFamily: T.font_sans,
+                    fontSize: isMobile ? 12 : 13,
+                    color: T.textTer,
+                    letterSpacing: "0.01em",
+                  }}>
+                    {!presetsUnlocked
+                      ? `${PRESETS.length} one-click starters — upgrade to Pro to unlock`
+                      : canPaginatePresets
+                          ? `One-click starters · page ${presetPage + 1} of ${totalPresetPages}`
+                          : `One-click starters · starter 5 of ${PRESETS.length}`}
+                  </span>
                 </div>
+
+                {/* FREE: Upgrade CTA button instead of pagination */}
+                {!presetsUnlocked && (
+                  <button type="button"
+                    onClick={() => { playSwitchSound(); setSalesModalFeature("presets"); }}
+                    style={{
+                      padding: "6px 14px",
+                      background: `linear-gradient(135deg, ${V.neonGold}22 0%, ${V.neonGold}10 100%)`,
+                      border: `1px solid ${V.neonGold}88`,
+                      borderRadius: 999,
+                      color: V.neonGold,
+                      fontFamily: T.font_mono, fontSize: T.fs_xs, fontWeight: 700,
+                      letterSpacing: "0.12em",
+                      cursor: "pointer",
+                      transition: `all ${T.dur_fast} ${T.ease}`,
+                      boxShadow: `0 0 10px ${V.neonGold}22`,
+                    }}
+                    onMouseEnter={e => {
+                      e.currentTarget.style.background = `linear-gradient(135deg, ${V.neonGold}33 0%, ${V.neonGold}18 100%)`;
+                      e.currentTarget.style.boxShadow = `0 0 16px ${V.neonGold}44`;
+                    }}
+                    onMouseLeave={e => {
+                      e.currentTarget.style.background = `linear-gradient(135deg, ${V.neonGold}22 0%, ${V.neonGold}10 100%)`;
+                      e.currentTarget.style.boxShadow = `0 0 10px ${V.neonGold}22`;
+                    }}
+                  >⚡ UPGRADE TO UNLOCK</button>
+                )}
+
                 {/* Pagination arrows — VIP+ only */}
-                {canPaginatePresets && (
+                {presetsUnlocked && canPaginatePresets && (
                   <div style={{
                     display: "inline-flex", alignItems: "center",
                     gap: T.s1,
@@ -16172,7 +16267,6 @@ function EnginePage({ onNavigate }) {
                         }
                       }}
                     >←</button>
-                    {/* Page dots — compact visual index */}
                     <div style={{
                       display: "inline-flex", alignItems: "center", gap: 4,
                       padding: "0 6px",
@@ -16189,15 +16283,11 @@ function EnginePage({ onNavigate }) {
                               height: 6,
                               padding: 0,
                               border: "none",
-                              background: active
-                                ? V.neonGold
-                                : T.textMuted,
+                              background: active ? V.neonGold : T.textMuted,
                               borderRadius: 999,
                               cursor: "pointer",
                               transition: `width 200ms ${T.ease}, background 200ms ${T.ease}`,
-                              boxShadow: active
-                                ? `0 0 6px ${V.neonGold}88`
-                                : "none",
+                              boxShadow: active ? `0 0 6px ${V.neonGold}88` : "none",
                             }}
                           />
                         );
@@ -16238,12 +16328,13 @@ function EnginePage({ onNavigate }) {
                     >→</button>
                   </div>
                 )}
-                {/* Pro-tier nudge to upgrade */}
-                {!canPaginatePresets && (
+
+                {/* Pro-tier "unlock all presets" nudge */}
+                {presetsUnlocked && !canPaginatePresets && (
                   <button type="button"
                     onClick={() => { playSwitchSound(); setSalesModalFeature("presetShuffle"); }}
                     style={{
-                      padding: "4px 10px",
+                      padding: "5px 11px",
                       background: `${V.neonGold}12`,
                       border: `1px solid ${V.neonGold}55`,
                       borderRadius: 999,
@@ -16264,44 +16355,151 @@ function EnginePage({ onNavigate }) {
                   >🔒 UNLOCK ALL</button>
                 )}
               </div>
-              {/* Preset chips — 5 per page */}
-              <div style={{ display: "flex", flexWrap: "wrap", gap: T.s2 }}>
-                {visiblePresets.map(p => (
+
+              {/* ── PRESET CARDS GRID ─ Free sees first 5 as a teaser,
+                  visually locked (blur + desaturate + no hover + cursor
+                  not-allowed). Click opens the upgrade modal. */}
+              <div style={{
+                display: "grid",
+                gridTemplateColumns: isMobile ? "1fr" : "repeat(2, 1fr)",
+                gap: T.s2,
+                position: "relative",
+              }}>
+                {(presetsUnlocked ? visiblePresets : PRESETS.slice(0, 5)).map(p => (
                   <button key={p.id} type="button"
-                    onClick={() => { playSwitchSound(); applyPreset(p); }}
+                    onClick={() => {
+                      playSwitchSound();
+                      if (!presetsUnlocked) {
+                        setSalesModalFeature("presets");
+                        return;
+                      }
+                      applyPreset(p);
+                    }}
+                    title={!presetsUnlocked ? `${p.name} · locked — upgrade to Pro to unlock all ${PRESETS.length} Quick Prompts` : p.name}
                     style={{
-                      display: "inline-flex", alignItems: "center", gap: T.s2,
-                      padding: isMobile ? `10px 14px` : `${T.s2}px ${T.s3}px`,
-                      minHeight: isMobile ? 44 : "auto",
-                      background: T.surface,
+                      display: "flex", alignItems: "center", gap: T.s3,
+                      padding: isMobile ? "12px 14px" : "14px 16px",
+                      minHeight: isMobile ? 56 : 60,
+                      background: `linear-gradient(135deg,
+                        ${T.surface} 0%,
+                        ${T.elevated} 100%)`,
                       border: `1px solid ${T.border}`,
                       borderRadius: T.r_md,
-                      color: T.textSec,
-                      fontFamily: T.font_sans, fontSize: T.fs_sm, fontWeight: 500,
-                      cursor: "pointer",
+                      color: presetsUnlocked ? T.text : T.textSec,
+                      fontFamily: T.font_sans,
+                      fontSize: isMobile ? 14 : T.fs_md,
+                      fontWeight: 500,
+                      cursor: presetsUnlocked ? "pointer" : "not-allowed",
+                      textAlign: "left",
                       transition: `all ${T.dur_fast} ${T.ease}`,
+                      position: "relative",
+                      overflow: "hidden",
+                      // Locked: blur + desaturate so the content is
+                      // visibly present but clearly not usable. Still
+                      // clickable (→ upgrade modal).
+                      filter: presetsUnlocked ? "none" : "saturate(0.55) brightness(0.85)",
+                      opacity: presetsUnlocked ? 1 : 0.72,
                     }}
                     onMouseEnter={e => {
-                      e.currentTarget.style.borderColor = T.borderFocus;
-                      e.currentTarget.style.color = T.text;
-                      e.currentTarget.style.background = T.elevated;
+                      if (presetsUnlocked) {
+                        e.currentTarget.style.borderColor = T.accent + "66";
+                        e.currentTarget.style.transform = "translateY(-1px)";
+                        e.currentTarget.style.boxShadow = `0 2px 8px ${T.accent}22, 0 0 0 1px ${T.accent}11`;
+                      } else {
+                        // Locked hover = tempt with gold glow, no lift
+                        e.currentTarget.style.borderColor = V.neonGold + "55";
+                        e.currentTarget.style.opacity = "0.88";
+                        e.currentTarget.style.boxShadow = `0 0 10px ${V.neonGold}22`;
+                      }
                     }}
                     onMouseLeave={e => {
                       e.currentTarget.style.borderColor = T.border;
-                      e.currentTarget.style.color = T.textSec;
-                      e.currentTarget.style.background = T.surface;
+                      e.currentTarget.style.transform = "translateY(0)";
+                      e.currentTarget.style.boxShadow = "none";
+                      if (!presetsUnlocked) {
+                        e.currentTarget.style.opacity = "0.72";
+                      }
                     }}>
-                    <span style={{ fontSize: T.fs_base }}>{p.emoji}</span>
-                    {p.name}
+                    <span style={{
+                      display: "inline-flex", alignItems: "center", justifyContent: "center",
+                      width: 36, height: 36, flexShrink: 0,
+                      background: presetsUnlocked
+                        ? `linear-gradient(135deg, ${V.neonGold}1A 0%, ${V.neonGold}08 100%)`
+                        : `linear-gradient(135deg, ${T.textTer}10 0%, ${T.textTer}04 100%)`,
+                      border: `1px solid ${presetsUnlocked ? V.neonGold + "33" : T.border}`,
+                      borderRadius: T.r_sm,
+                      fontSize: 18, lineHeight: 1,
+                    }}>
+                      {p.emoji}
+                    </span>
+                    <span style={{
+                      flex: 1,
+                      letterSpacing: "-0.005em",
+                    }}>
+                      {p.name}
+                    </span>
+                    {/* Right glyph — arrow if unlocked, padlock if locked */}
+                    <span style={{
+                      fontSize: presetsUnlocked ? 16 : 12,
+                      color: presetsUnlocked ? T.textMuted : V.neonGold,
+                      fontFamily: T.font_mono,
+                      fontWeight: 400,
+                      opacity: presetsUnlocked ? 0.4 : 0.9,
+                      transition: `all ${T.dur_fast} ${T.ease}`,
+                    }}>{presetsUnlocked ? "→" : "🔒"}</span>
                   </button>
                 ))}
               </div>
-            </div>
-          ) : null}
 
-          <Section>
-            <LyricalSwitch value={lyricsOn} onChange={setLyricsOn} />
-          </Section>
+              {/* Free-tier footer — inviting upgrade line below the
+                  locked card grid. Positions the upsell where the eye
+                  naturally lands after scanning the teaser cards. */}
+              {!presetsUnlocked && (
+                <div style={{
+                  marginTop: T.s4, paddingTop: T.s4,
+                  borderTop: `1px dashed ${V.neonGold}33`,
+                  display: "flex", alignItems: "center", justifyContent: "space-between",
+                  gap: T.s3, flexWrap: "wrap",
+                }}>
+                  <div style={{
+                    fontFamily: T.font_sans,
+                    fontSize: isMobile ? 12 : 13,
+                    color: T.textSec,
+                    lineHeight: 1.5,
+                  }}>
+                    <span style={{ color: V.neonGold, fontWeight: 700 }}>
+                      Pro unlocks 5 starters · VIP unlocks all {PRESETS.length}.
+                    </span>
+                    {" "}Skip the setup grind — press, tweak, done.
+                  </div>
+                  <button type="button"
+                    onClick={() => { playSwitchSound(); setSalesModalFeature("presets"); }}
+                    style={{
+                      padding: "8px 16px",
+                      background: `linear-gradient(180deg, ${V.neonGold} 0%, #E6A900 100%)`,
+                      border: "none",
+                      borderRadius: T.r_sm,
+                      color: "#1a1200",
+                      fontFamily: T.font_mono, fontSize: T.fs_xs, fontWeight: 800,
+                      letterSpacing: "0.12em",
+                      cursor: "pointer",
+                      transition: `all ${T.dur_fast} ${T.ease}`,
+                      boxShadow: `0 2px 8px ${V.neonGold}44`,
+                    }}
+                    onMouseEnter={e => {
+                      e.currentTarget.style.transform = "translateY(-1px)";
+                      e.currentTarget.style.boxShadow = `0 4px 14px ${V.neonGold}66`;
+                    }}
+                    onMouseLeave={e => {
+                      e.currentTarget.style.transform = "translateY(0)";
+                      e.currentTarget.style.boxShadow = `0 2px 8px ${V.neonGold}44`;
+                    }}
+                  >SEE PLANS →</button>
+                </div>
+              )}
+            </div>
+            );
+          })()}
 
           {/* ── GENRE ANCHOR — differentiated card ───────────────────────
               Genre is the primary axis of every prompt, so this section
