@@ -1293,6 +1293,7 @@ function FuelLever({ currentPage, onNavigate }) {
     const allocation = TIER_FEATURES[tier]?.dailyFuel?.[fuelId] ?? 0;
     if (allocation === 0) return; // locked
 
+    playFuelButtonSound();
     setShakeKey(k => k + 1);
     setActiveFuel(fuelId);
   };
@@ -6188,10 +6189,19 @@ function HitButton({ onRandomize, isRolling, disabled, compact = false, fuelType
           55%,100%{ opacity: 0.2; box-shadow: 0 0 1px currentColor; background: ${LED_OFF}; }
         }
 
-        /* Classic casino LED flicker — on/off with bright glow */
+        /* Vegas marquee LED — realistic bulb flicker with warm off-ember.
+           Off state keeps a tiny filament warmth instead of going black, so
+           the ring reads as a real incandescent sign, not a flat LED panel. */
         @keyframes hitLed {
-          0%,49%   { opacity: 1;   box-shadow: 0 0 8px currentColor, 0 0 16px currentColor; }
-          50%,100% { opacity: 0.2; box-shadow: 0 0 2px currentColor; }
+          0%,  49%  { opacity: 1;    filter: brightness(1.15); }
+          50%, 100% { opacity: 0.35; filter: brightness(0.45); }
+        }
+        /* Chase wave — a bright pulse travels around the perimeter.
+           Layered OVER the random flicker via a second element so bulbs
+           get extra-hot when the chase passes through. */
+        @keyframes hitLedChase {
+          0%,  90%, 100% { opacity: 0; }
+          5%,  25%       { opacity: 1; }
         }
 
         /* Slow rotating inner ring — reads as CNC detail, not rave */
@@ -6300,40 +6310,149 @@ function HitButton({ onRandomize, isRolling, disabled, compact = false, fuelType
           `,
           overflow: "visible",
         }}>
-          {/* ── 32-LED PERIMETER MARQUEE — CASINO RAINBOW ──────────
-              Flickering casino-color bulbs wrapping the entire frame.
-              8 hues cycle (hotPink/gold/cyan/orange/lime/magenta/red/
-              purple); each flickers independently on the hitLed rhythm.
-              Chaotic, hypnotic, casino-grade. */}
+          {/* ── VEGAS MARQUEE LED RING ─────────────────────────────────
+              Authentic casino-sign aesthetic: each bulb is a 3D radial
+              gradient (hot cream core → warm color body → dark rim),
+              seated in a brass-screw socket plate, casting a soft glow
+              onto the surrounding frame. Bulbs are inset from the corners
+              with visible frame between them so the ring reads like a
+              real marquee, not a perimeter stripe. A chase-wave pulse
+              travels around the ring layered over the random flicker. */}
           {(() => {
-            const CASINO_COLORS = [V.hotPink, V.neonGold, V.cyan, V.orange, V.lime, V.magenta, V.red, V.purple];
-            const perSide = ledCount / 4;
+            // Pure casino rainbow palette — every bulb randomly picks
+            // from this set on mount. Seeded PRNG so the pattern is
+            // stable across re-renders but chaotic across reloads.
+            const CASINO_COLORS = [
+              V.hotPink, V.neonGold, V.cyan, V.orange, V.lime,
+              V.magenta, V.red, V.purple, "#FF8C42", "#60EFFF",
+              "#FF40A0", "#FFD700", "#B968FF", "#32FFB8",
+            ];
+            // Stable seeded PRNG so bulbs keep their colors across
+            // rerenders (e.g., when isRolling flips) but the full ring
+            // re-randomizes on a fresh page load.
+            let seed = 0x5E6AD2;
+            const rng = () => {
+              seed = (seed * 9301 + 49297) % 233280;
+              return seed / 233280;
+            };
+            const pickColor = (i) => {
+              // Warm up the PRNG differently per bulb index so adjacent
+              // bulbs don't correlate.
+              for (let k = 0; k < (i % 7) + 1; k++) rng();
+              return CASINO_COLORS[Math.floor(rng() * CASINO_COLORS.length)];
+            };
+            const count = ledCount;
+            const perSide = count / 4;
+            const INSET_PCT = 10; // distance from each corner as % of side length
+            const SPAN_PCT  = 100 - (2 * INSET_PCT); // 80%
+            const BULB_SIZE = 11;          // px — slightly bigger for presence
+            const SOCKET_SIZE = 18;        // socket plate diameter
+            const EDGE_OFFSET = -9;        // how far outside the frame the bulb sits
             const leds = [];
-            for (let i = 0; i < ledCount; i++) {
+            for (let i = 0; i < count; i++) {
               const side = Math.floor(i / perSide);
-              const posInSide = (i % perSide) / perSide; // 0..1
-              let top = "0", left = "0";
-              if (side === 0)      { top = "-5px";  left = `${posInSide * 100}%`; }
-              else if (side === 1) { left = "calc(100% - 2px)"; top = `${posInSide * 100}%`; }
-              else if (side === 2) { top = "calc(100% - 2px)"; left = `${(1 - posInSide) * 100}%`; }
-              else                 { left = "-5px"; top = `${(1 - posInSide) * 100}%`; }
-              const color = CASINO_COLORS[i % CASINO_COLORS.length];
+              const posInSide = (i % perSide) / Math.max(1, (perSide - 1)); // 0..1
+              const sideCoord = `${INSET_PCT + posInSide * SPAN_PCT}%`;
+              const sideCoordRev = `${INSET_PCT + (1 - posInSide) * SPAN_PCT}%`;
+              let top, left;
+              if (side === 0)      { top = `${EDGE_OFFSET}px`; left = sideCoord; }
+              else if (side === 1) { left = `calc(100% - ${EDGE_OFFSET}px)`; top = sideCoord; }
+              else if (side === 2) { top  = `calc(100% - ${EDGE_OFFSET}px)`; left = sideCoordRev; }
+              else                 { left = `${EDGE_OFFSET}px`; top = sideCoordRev; }
+              const color = pickColor(i);
+              // Flicker timing — slightly longer than before so the eye
+              // can appreciate each bulb's state.
               const duration = isRolling
-                ? (0.14 + (i % 5) * 0.035)
-                : (0.42 + (i % 5) * 0.09);
-              const delay = i * (isRolling ? 0.02 : 0.05);
+                ? (0.16 + (i * 37 % 5) * 0.04)
+                : (0.5 + (i * 41 % 7) * 0.1);
+              const delay = (i * 37 % 11) * (isRolling ? 0.028 : 0.065);
+              // Chase-wave delay: the chase travels around in 2.4s total.
+              const chaseDelay = ((i / count) * 2.4).toFixed(3);
               leds.push(
-                <span key={i} style={{
+                <div key={i} style={{
                   position: "absolute",
                   top, left,
-                  width: 9, height: 9, borderRadius: "50%",
-                  background: color, color,
-                  animation: `hitLed ${duration}s ease-in-out infinite`,
-                  animationDelay: `${delay}s`,
+                  width: SOCKET_SIZE, height: SOCKET_SIZE,
+                  transform: "translate(-50%, -50%)",
                   pointerEvents: "none",
                   zIndex: 5,
-                  transform: "translate(-50%, -50%)",
-                }} />
+                }}>
+                  {/* Brass socket plate — the ring-screw look behind
+                      every real marquee bulb. Dark gradient ring with
+                      warm outer rim for depth. */}
+                  <div style={{
+                    position: "absolute", inset: 0,
+                    borderRadius: "50%",
+                    background: `
+                      radial-gradient(circle at 50% 50%,
+                        #2a1d10 0%, #1a120a 55%, #0d0906 100%)
+                    `,
+                    border: `1px solid ${V.neonGold}55`,
+                    boxShadow: `
+                      0 0 0 1px rgba(0,0,0,0.7),
+                      inset 0 1px 2px rgba(0,0,0,0.9),
+                      inset 0 -1px 0 ${V.neonGold}33
+                    `,
+                  }} />
+                  {/* The bulb itself — 3D radial gradient from hot
+                      cream core through colored body to dark rim.
+                      Flickers via hitLed opacity/brightness animation. */}
+                  <div style={{
+                    position: "absolute",
+                    top: "50%", left: "50%",
+                    width: BULB_SIZE, height: BULB_SIZE,
+                    marginTop: -BULB_SIZE / 2,
+                    marginLeft: -BULB_SIZE / 2,
+                    borderRadius: "50%",
+                    background: `
+                      radial-gradient(circle at 35% 30%,
+                        #FFFBE6 0%,
+                        ${color} 45%,
+                        ${color} 70%,
+                        ${color}66 100%)
+                    `,
+                    boxShadow: `
+                      0 0 4px ${color},
+                      0 0 10px ${color}cc,
+                      0 0 20px ${color}88,
+                      0 0 34px ${color}55,
+                      inset 0 0 2px rgba(255,255,255,0.6),
+                      inset 0 1px 1px rgba(255,255,255,0.85),
+                      inset 0 -1px 1px ${color}aa
+                    `,
+                    animation: `hitLed ${duration}s ease-in-out infinite`,
+                    animationDelay: `${delay}s`,
+                    // Warm off-ember color kept in the gradient so opacity
+                    // drops during off-phase reveal a dim warmth instead
+                    // of pure darkness.
+                  }} />
+                  {/* Chase overlay — adds extra brightness when the wave
+                      passes. Transparent most of the time, lights hot on
+                      its phase. Staggered delay so the chase travels. */}
+                  <div style={{
+                    position: "absolute",
+                    top: "50%", left: "50%",
+                    width: BULB_SIZE + 2, height: BULB_SIZE + 2,
+                    marginTop: -(BULB_SIZE + 2) / 2,
+                    marginLeft: -(BULB_SIZE + 2) / 2,
+                    borderRadius: "50%",
+                    background: `radial-gradient(circle at 50% 50%,
+                      #FFFFFF 0%,
+                      ${color} 35%,
+                      ${color}00 75%)`,
+                    boxShadow: `
+                      0 0 8px #FFFFFF,
+                      0 0 20px ${color},
+                      0 0 40px ${color},
+                      0 0 60px ${color}aa
+                    `,
+                    opacity: 0,
+                    mixBlendMode: "screen",
+                    animation: `hitLedChase 2.4s linear infinite`,
+                    animationDelay: `-${chaseDelay}s`,
+                    pointerEvents: "none",
+                  }} />
+                </div>
               );
             }
             return <>{leds}</>;
