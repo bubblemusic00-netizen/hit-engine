@@ -6409,9 +6409,17 @@ function Nav({ page, onNavigate }) {
       display: "flex", alignItems: "center", justifyContent: "space-between",
       height: isMobile ? 52 : 56, gap: isMobile ? T.s2 : T.s4,
     }}>
-      {/* Page links — desktop inline, mobile hamburger */}
+      {/* Page links — desktop inline (left-aligned to match the Engine
+          page's left pane content), mobile hamburger.
+          Negative marginLeft compensates for the first button's inner
+          padding so the "Engine" label text lines up exactly with the
+          HIT wordmark's left edge below. */}
       {!isMobile ? (
-        <div style={{ display: "flex", gap: T.s1, flex: 1, justifyContent: "center" }}>
+        <div style={{
+          display: "flex", gap: T.s1, flex: 1,
+          justifyContent: "flex-start",
+          marginLeft: `-${T.s3}px`,
+        }}>
           {links.map(l => (
             <button key={l.id} type="button" onClick={() => { playSwitchSound(); onNavigate(l.id); }}
               style={{
@@ -11492,40 +11500,45 @@ function EnginePage({ onNavigate }) {
           order: isMobile ? 1 : 0,
           padding: isMobile
             ? `${T.s5}px ${T.s4}px ${T.s6}px`
-            : `${T.s8}px ${T.s7}px ${T.s10}px ${T.s8}px`,
+            : `${T.s8}px ${T.s6}px ${T.s10}px ${T.s6}px`,
+        }}>
+        {/* ── INNER CENTERED COLUMN ──────────────────────────────
+            All left-pane content shares one centered column (max
+            760px on desktop, full width on mobile). This establishes
+            a single left edge for the hero, tips pill, randomizer,
+            genre card, and cubicles — so the composition reads as
+            an optically-centered tool panel rather than a top-left-
+            anchored wall of controls. */}
+        <div style={{
+          maxWidth: isMobile ? "100%" : 760,
+          margin: "0 auto",
         }}>
           {/* HERO — compact workspace header with wordmark-pierce notes.
-              Banner shifted further right so its optical center lands
-              near the middle of the left pane. Musical notes travel
-              HORIZONTALLY THROUGH the HIT⚡ENGINE wordmark — entering
-              mid-H, exiting past the final E — like sound passing
-              through text. Notes sit BEHIND the letters via z-index;
-              letters stay fully readable, notes read as an ambient
-              sub-layer. */}
+              Banner now sized for focus (96px desktop / 56px mobile).
+              Sits at the top of the centered column, so its natural
+              left-align reads as the pane's starting line. Musical
+              notes travel HORIZONTALLY THROUGH the wordmark. */}
           <div style={{
-            marginBottom: isMobile ? T.s4 : T.s5,
-            paddingLeft: isMobile ? 0 : T.s10,   // was T.s7 — shifted right
-            paddingRight: isMobile ? 0 : T.s3,
+            marginBottom: isMobile ? T.s5 : T.s6,
           }}>
             {/* Banner + notes container. Position relative so the
                 absolute-positioned notes strip can anchor to this box. */}
             <div style={{
               position: "relative",
               display: "inline-block",
-              marginBottom: isMobile ? T.s2 : T.s3,
+              marginBottom: isMobile ? T.s3 : T.s4,
             }}>
               {/* Notes strip — absolute, fills the banner box horizontally.
                   Starts at ~9% (just inside the H) and ends at 100%
-                  (exit past the final E). Vertically centered on the
-                  banner's midline. z-index: 0 places it behind the
-                  letters (letters at z-index 1). */}
+                  (exit past the final E). z-index: 0 places it behind
+                  the letters (letters at z-index 1). */}
               <div style={{
                 position: "absolute",
                 top: "50%",
                 left: "9%",
                 right: "-2%",
                 transform: "translateY(-50%)",
-                height: isMobile ? 22 : 34,
+                height: isMobile ? 28 : 44,
                 zIndex: 0,
                 pointerEvents: "auto",
               }}>
@@ -11539,7 +11552,7 @@ function EnginePage({ onNavigate }) {
                 position: "relative",
                 zIndex: 1,
               }}>
-                <AnimatedBanner size={isMobile ? 44 : 68} />
+                <AnimatedBanner size={isMobile ? 56 : 96} />
               </h1>
             </div>
             {/* Single italic serif tagline — identifies the tool, nothing more */}
@@ -12486,6 +12499,8 @@ function EnginePage({ onNavigate }) {
             })()}
             </Cubicle>
           </div>
+        </div>
+        {/* /INNER CENTERED COLUMN */}
         </div>
 
         {/* RIGHT PANE */}
