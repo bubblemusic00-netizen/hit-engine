@@ -5083,6 +5083,137 @@ function SalesModal({ open, onClose, onUpgrade, feature }) {
   );
 }
 
+// ════════════════════════════════════════════════════════════════════════════
+// MUSICAL NOTES MARQUEE — seamless horizontal loop of animated music glyphs
+// ════════════════════════════════════════════════════════════════════════════
+// A thin strip of musical notes (♪ ♫ ♬ ♩ ♭ ♯ 𝄞 𝄢) scrolling horizontally
+// with a palindromic loop so start == end (no seam at loop wrap). Each note
+// has its own subtle vertical-bounce offset via individual CSS animation
+// delays, creating a "dancing" feel rather than a rigid conveyor belt.
+// Clicking the strip refreshes the page via window.location.reload().
+// ────────────────────────────────────────────────────────────────────────────
+function MusicalNotesMarquee({ compact = false }) {
+  const { layout } = useLayout();
+  const isMobile = layout === "mobile";
+  // 14 notes in a row — a mix of glyphs with slightly different weights,
+  // so the pattern doesn't feel repetitive on short loops. Doubled below
+  // for the seamless scroll effect.
+  const notes = ["♪", "♫", "♬", "♩", "♪", "♭", "♫", "♯", "♩", "♬", "𝄞", "♪", "♫", "♩"];
+  // Height sized so notes sit comfortably in a narrow strip above the
+  // wordmark. Mobile version is smaller — saves precious vertical space.
+  const stripHeight = isMobile ? 20 : 28;
+  const noteFontSize = isMobile ? 14 : 22;
+  // The left pane padding on its parent is T.s8 (64px) desktop / T.s4
+  // (16px) mobile. We use a negative margin to "escape" that gutter
+  // and extend the strip to the true viewport left edge, then widen
+  // via calc so the right side still ends where it used to (well
+  // before the ENGINE wordmark, via the fade mask).
+  const leftPaneGutter = isMobile ? 16 : 64;
+  const extraLeft = leftPaneGutter;
+  // Width: occupy the left portion of the viewport, ending before ENGINE.
+  // Desktop: ~50vw + gutter compensation. Mobile: full width + gutter.
+  const stripWidth = compact
+    ? "100%"
+    : (isMobile
+        ? `calc(100% + ${leftPaneGutter * 2}px)`
+        : `calc(min(620px, 52vw) + ${extraLeft}px)`);
+  return (
+    <div
+      onClick={() => { playSwitchSound(); window.location.reload(); }}
+      role="button"
+      aria-label="Refresh page"
+      title="Click to refresh"
+      style={{
+        width: stripWidth,
+        height: stripHeight,
+        overflow: "hidden",
+        position: "relative",
+        cursor: "pointer",
+        // Pull left by the parent's left-padding so we hit the screen edge.
+        marginLeft: `-${extraLeft}px`,
+        // Right-edge fade so the strip melts into background before the
+        // ENGINE wordmark — we don't need to know ENGINE's X coordinate,
+        // the fade handles the transition visually. Tightened to 78% so
+        // notes remain visible across more of the (now-longer) strip.
+        WebkitMaskImage: "linear-gradient(90deg, rgba(0,0,0,1) 0%, rgba(0,0,0,1) 78%, rgba(0,0,0,0) 100%)",
+        maskImage: "linear-gradient(90deg, rgba(0,0,0,1) 0%, rgba(0,0,0,1) 78%, rgba(0,0,0,0) 100%)",
+        marginBottom: isMobile ? 6 : 10,
+        userSelect: "none",
+      }}
+    >
+      <style>{`
+        /* ── Seamless marquee via 50% translation ──────────────────────
+           Classic trick: we render the note sequence TWICE back-to-back.
+           Translating by exactly -50% moves one full copy off-screen
+           left, landing the second copy where the first started. The
+           next iteration is visually identical to the first. No seam.
+           ─────────────────────────────────────────────────────────── */
+        @keyframes notesMarqueeScroll {
+          0%   { transform: translateX(0); }
+          100% { transform: translateX(-50%); }
+        }
+        /* Each note breathes: slight vertical bob + opacity pulse. Their
+           individual animation-delays (computed inline below) make the
+           group feel musical rather than mechanical. */
+        @keyframes noteBob {
+          0%, 100% { transform: translateY(0)     scale(1);    opacity: 0.75; }
+          50%      { transform: translateY(-3px)  scale(1.08); opacity: 1; }
+        }
+        .musical-notes-track {
+          display: inline-flex;
+          align-items: center;
+          gap: ${isMobile ? 16 : 22}px;
+          height: 100%;
+          padding: 0 ${isMobile ? 12 : 18}px;
+          white-space: nowrap;
+          animation: notesMarqueeScroll ${isMobile ? 18 : 26}s linear infinite;
+          will-change: transform;
+        }
+        .musical-notes-track:hover { animation-play-state: paused; }
+        .musical-note-glyph {
+          display: inline-block;
+          font-family: "Noto Music", "Segoe UI Symbol", "Apple Symbols", serif;
+          font-size: ${noteFontSize}px;
+          line-height: 1;
+          color: #E8D26B;
+          text-shadow:
+            0 0 6px rgba(255, 215, 107, 0.55),
+            0 0 14px rgba(255, 215, 107, 0.25),
+            0 0 1px #FFFFFF88;
+          animation: noteBob 2.4s ease-in-out infinite;
+          will-change: transform, opacity;
+        }
+        /* Alternating hue accents — every 3rd note picks up a cyan tint,
+           every 5th a soft pink. Adds a polished-graffiti flair without
+           going cartoonish. */
+        .musical-notes-track > :nth-child(3n) {
+          color: #9FE8FF;
+          text-shadow:
+            0 0 6px rgba(159, 232, 255, 0.6),
+            0 0 14px rgba(60, 200, 255, 0.3),
+            0 0 1px #FFFFFF88;
+        }
+        .musical-notes-track > :nth-child(5n) {
+          color: #FFB6DA;
+          text-shadow:
+            0 0 6px rgba(255, 182, 218, 0.6),
+            0 0 14px rgba(255, 100, 200, 0.3),
+            0 0 1px #FFFFFF88;
+        }
+      `}</style>
+      <div className="musical-notes-track">
+        {[...notes, ...notes].map((n, i) => (
+          <span
+            key={i}
+            className="musical-note-glyph"
+            style={{ animationDelay: `${(i % notes.length) * 0.13}s` }}
+          >{n}</span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function AnimatedBanner({ size = 112 }) {
   useEffect(() => { ensureBannerFonts(); }, []);
   const fontFamily = "'Anton', 'Bebas Neue', Impact, sans-serif";
@@ -11034,6 +11165,9 @@ function EnginePage({ onNavigate }) {
         }}>
           {/* HERO — chrome HIT-ENGINE type */}
           <div style={{ marginBottom: isMobile ? T.s5 : T.s8 }}>
+            {/* Musical notes marquee — thin strip of animated glyphs above
+                the wordmark. Click to refresh page. */}
+            <MusicalNotesMarquee />
             <h1 style={{
               display: "flex", alignItems: "baseline",
               flexWrap: "wrap",
@@ -11916,7 +12050,7 @@ function EnginePage({ onNavigate }) {
                 readout with glow. Sits flush under the button. ─────── */}
             <div style={{
               position: "relative",
-              padding: `${T.s3}px ${T.s4}px`,
+              padding: `${T.s4}px ${T.s5}px`,
               background: `
                 linear-gradient(180deg, rgba(16,12,6,0.92) 0%, rgba(8,6,4,0.96) 100%)
               `,
@@ -11928,7 +12062,10 @@ function EnginePage({ onNavigate }) {
                 inset 0 0 18px rgba(0,0,0,0.6),
                 0 4px 12px rgba(0,0,0,0.4)
               `,
-              overflow: "hidden",
+              // Overflow: visible so the stretched infinity's glow bloom
+              // isn't clipped at the frame edge. The frame itself still
+              // reads cleanly because the radialGradient falls off.
+              overflow: "visible",
             }}>
               {/* Top-edge brass shimmer line — matches button frame edge */}
               <span style={{
@@ -11960,21 +12097,24 @@ function EnginePage({ onNavigate }) {
                     lineHeight: 1,
                   }}>{fuels[activeFuel]}</span>
                 ) : (
-                  // ── PSYCHEDELIC VEGAS INFINITY ──────────────────────
-                  // When credits are infinite, replace the drab "∞" with
-                  // an oversized neon glyph that rotates through hot-pink,
-                  // amber, cyan, and violet — a miniature Fremont St. sign.
-                  // Drops a 4-layer textShadow (cyan/magenta/amber/hot-pink)
-                  // so it reads as chromatic, wavy, and alive.
+                  // ── VEGAS INFINITY ──────────────────────────────────
+                  // Large, stretched neon glyph. Color cycles slowly
+                  // through 4 phases (pink → gold → cyan → violet). No
+                  // rotation, no scale pulse — just a stretched, glowing
+                  // piece of signage. Keep it simple so the readout
+                  // frame reads as "value", not "animation showcase".
                   <span style={{
-                    fontSize: 40,
+                    fontSize: 64,
                     fontWeight: 900,
                     lineHeight: 1,
                     letterSpacing: 0,
                     display: "inline-block",
-                    animation: "infinityPsychedelic 4s ease-in-out infinite",
-                    filter: "drop-shadow(0 0 12px rgba(255, 62, 157, 0.55))",
-                    transform: "translateY(-2px)", // optical centering
+                    // Horizontal stretch for that widescreen-marquee feel.
+                    // 1.35× reads as "elongated neon" without becoming
+                    // cartoonish.
+                    transform: "scaleX(1.35) translateY(-4px)",
+                    transformOrigin: "right center",
+                    animation: "infinityPsychedelic 6s ease-in-out infinite",
                   }}>∞</span>
                 )}
               </div>
@@ -19924,54 +20064,39 @@ export default function HitEngine() {
         .page-transition {
           animation: pageFadeIn 380ms cubic-bezier(0.16, 1, 0.3, 1);
         }
-        /* ── Psychedelic Vegas infinity ────────────────────────────────
-           Cycles through 4 neon phases (hot-pink → amber → cyan → violet)
-           with a chromatic-aberration textShadow trick. Rotates subtly
-           so it reads as alive and carnival-bright. ─────────────────── */
+        /* ── Vegas infinity: slow color cycle only ─────────────────────
+           Cycles through hot-pink → gold → cyan → violet over 6s.
+           No rotation, no scale — the element is already stretched
+           via scaleX(1.35) inline. Transform must be preserved inside
+           the keyframe so the stretch isn't lost during animation. */
         @keyframes infinityPsychedelic {
           0%, 100% {
             color: #FF3E9D;
-            transform: translateY(-2px) rotate(-2deg) scale(1);
             text-shadow:
-              -2px  0 #00E5FF,
-               2px  0 #FFD700,
-               0   -1px #FF2E5E,
-               0    0 10px #FF3E9DAA,
-               0    0 24px #FF3E9D55,
-               0    0 40px #A855F733;
+              0 0 12px #FF3E9DAA,
+              0 0 28px #FF3E9D55,
+              0 0 48px #A855F733;
           }
           25% {
             color: #FFD700;
-            transform: translateY(-2px) rotate(1deg) scale(1.06);
             text-shadow:
-              -2px  0 #FF3E9D,
-               2px  0 #00E5FF,
-               0   -1px #FFA500,
-               0    0 12px #FFD700AA,
-               0    0 28px #FFD70055,
-               0    0 44px #FF3E9D33;
+              0 0 14px #FFD700AA,
+              0 0 32px #FFD70055,
+              0 0 52px #FF3E9D33;
           }
           50% {
             color: #00E5FF;
-            transform: translateY(-3px) rotate(2deg) scale(1.04);
             text-shadow:
-              -2px  0 #A855F7,
-               2px  0 #FF3E9D,
-               0   -1px #00FFD1,
-               0    0 10px #00E5FFAA,
-               0    0 24px #00E5FF55,
-               0    0 40px #A855F733;
+              0 0 12px #00E5FFAA,
+              0 0 28px #00E5FF55,
+              0 0 48px #A855F733;
           }
           75% {
             color: #A855F7;
-            transform: translateY(-2px) rotate(-1deg) scale(1.06);
             text-shadow:
-              -2px  0 #FFD700,
-               2px  0 #00E5FF,
-               0   -1px #FF3E9D,
-               0    0 12px #A855F7AA,
-               0    0 28px #A855F755,
-               0    0 44px #FFD70033;
+              0 0 14px #A855F7AA,
+              0 0 32px #A855F755,
+              0 0 52px #FFD70033;
           }
         }
         /* ── Space-graffiti motto — subtle hue-shift + breath pulse ── */
