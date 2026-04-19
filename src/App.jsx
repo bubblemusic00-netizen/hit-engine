@@ -2482,6 +2482,419 @@ const ARTIST_VOCABULARY = {
     ],
     era: "2010s-2020s Afrobeats — Lagos / London axis Afrofusion global era",
   },
+
+  // ── OMER ADAM ──────────────────────────────────────────────────
+  // Core: Israel's most famous singer as of the mid-2020s. Mountain
+  // Jewish (Kavkazi) paternal heritage, Ashkenazi maternal. Defining
+  // formula: Mizrahi Middle-Eastern modes + silsulim trill ornaments
+  // + Western pop instrumentation + radio-polished ballad/dance mix.
+  // Primary producer Stav Beger (co-wrote + produced breakthrough
+  // "Shnei Meshuga'im" 2017 — Israel's best-selling song 2017-18,
+  // beat Netta's "Toy"). Repertoire range: heartfelt mid-tempo
+  // ballads (gutting kiddush-bridge style), upbeat dance-pop, and
+  // arena-scaled Mizrahi anthems. Voice: tenor with Mediterranean
+  // melismatic range, pulls both soft intimate phrasing and
+  // full-throated celebration. Stage: Israel's biggest arena draw —
+  // Caesarea Maritima youngest headliner at 17, regular Hayarkon
+  // Park sold-out shows, Maccabiah opener 2017.
+  "omer-adam": {
+    vocal: [
+      "Mediterranean tenor with Mizrahi melismatic ornamentation",
+      "silsulim trill-ornament phrasing on key hooks",
+      "soft intimate ballad close-mic to full-chest celebration dynamic",
+      "Hebrew diction with Mizrahi pronunciation cadence",
+      "emotional ascending cry in pre-chorus lifts",
+      "layered backing vocals doubling the silsulim on final chorus",
+    ],
+    production: [
+      "Stav Beger hit-craft Mizrahi-pop polish",
+      "oud / bouzouki / Mizrahi strings layered over modern drum programming",
+      "darbuka + doumbek Mediterranean percussion bed",
+      "synth pad washes giving 'modern arena' scale under traditional lead",
+      "radio-polished gloss mix with wide stereo chorus",
+      "piano or acoustic guitar intimate intro before the full-band hit",
+    ],
+    signature: [
+      "Mizrahi modes (Hijaz / Kurdi / Bayati) in Western pop song structure",
+      "silsulim hook as the melodic signature moment",
+      "kiddush-bridge sentimentality — ballad bridge reaches prayer-like intensity",
+      "crossover formula — appeals equally to older Mizrahi listeners and younger pop audience",
+      "arena-scaled emotional ballad that still works on a radio 3:30 edit",
+    ],
+    era: "2010s-2020s Israeli pop — defining voice of contemporary Mizrahi-pop crossover",
+  },
+
+  // ── NOA KIREL ──────────────────────────────────────────────────
+  // Core: Raanana-born, Atlantic Records signed at 18. Pop-forward
+  // bilingual (Hebrew-English) mainstream star. Eurovision 2023 3rd
+  // place with "Unicorn" — the defining track: Doron Medalie + May
+  // Sfadia + Yinon Yahel writing/production team. Structural move
+  // that became her signature: genre-shifting mid-song (polished
+  // English dance-pop verse → Hebrew bridge with Mizrahi cadence →
+  // empowerment chant breakdown). "U wanna see me dance?! Watch me!"
+  // ad-lib delivery. Earlier career: pop-rap leaning ("Bad Little
+  // Thing", "Million Dollar"), theatrical videos, TV judge persona.
+  // Voice: bright soprano-leaning with chest belt, confident ad-lib
+  // attacks, hooks tailored for dance-floor + TikTok virality.
+  "noa-kirel": {
+    vocal: [
+      "bright confident soprano-leaning delivery with chest belt on hooks",
+      "bilingual Hebrew-English code-switching mid-song",
+      "Mizrahi cadence on Hebrew bridges under polished English verses",
+      "staccato chant breakdown — 'U-ni-corn! U-ni-corn!' percussive syllables",
+      "spoken ad-lib attacks ('Watch me!' 'U wanna see me dance?')",
+      "empowerment belt with ascending run on pre-chorus lift",
+    ],
+    production: [
+      "Doron Medalie + May Sfadia + Yinon Yahel hit-team Eurovision polish",
+      "genre-shifting structure — dance-pop verse into Hebrew-Mizrahi bridge",
+      "four-on-the-floor Eurovision-ready propulsion",
+      "supersaw lead + plucky synth bed + booming 808 sub",
+      "orchestral brass stab breakdown into chant section",
+      "theatrical stadium-dance arrangement built around viral choreography",
+    ],
+    signature: [
+      "bilingual empowerment dance-pop with Israeli-cultural pride lyric frame",
+      "genre-hopping song architecture — multiple grooves within one track",
+      "viral-optimized hook with chant-along syllables",
+      "polished international Atlantic Records sheen with Tel Aviv energy",
+      "theatrical performance-first writing — hooks designed to be danced, not just sung",
+    ],
+    era: "2020s Israeli pop — Eurovision-era international crossover with Gen-Z pop-rap roots",
+  },
+
+  // ── STATIC & BEN EL (TAVORI) ───────────────────────────────────
+  // Core: Duo active 2015-2022 (split August 2022). Static (Liraz
+  // Russo, Haifa, hip-hop background) + Ben El Tavori (son of Mizrahi
+  // crooner Shimi Tavori, Yemenite+Moroccan Jewish heritage, Middle
+  // Eastern vocal tradition). Producer: Yarden "Jordi" Peleg —
+  // defining third member. Self-described formula ("Silsulim" lyric):
+  // "bass and silsulim" — Western hip-hop/dance bass + Mizrahi
+  // melismatic trills. Genre signature: Mizrahi × hip-hop × reggaeton
+  // × baile funk × Teenybop. Saban Music Group flagship signing 2019;
+  // Capitol Records deal; Pitbull / Black Eyed Peas / J Balvin collabs.
+  // Defining tracks: "Tudo Bom" (baile funk Hebrew/Portuguese, 300M+
+  // YouTube), "Silsulim" (Mizrahi self-definition anthem), "Shake Ya
+  // Boom Boom" (will.i.am + Johnny Goldstein produced). Still the
+  // production template most Israeli pop acts chase even post-split.
+  "static-ben-el": {
+    vocal: [
+      "Static: hip-hop-rooted Hebrew rap cadence, rhythmic not melodic",
+      "Ben El: Mizrahi melismatic tenor with inherited silsulim ornamentation",
+      "duo interplay — rap verse into Mizrahi sung hook, call-response energy",
+      "Hebrew + English + Portuguese / Spanish code-switching on international tracks",
+      "catchy chant-along hook design — hooks meant for stadium singalong",
+      "Ben El's smile-in-the-voice tonality — warmth, seduction, never heavy",
+    ],
+    production: [
+      "Jordi (Yarden Peleg) reggaeton-Mizrahi fusion production signature",
+      "dembow groove + darbuka / oud Middle-Eastern percussion layer",
+      "big-bass hip-hop low-end under Mizrahi melodic top",
+      "baile funk tamborzão kick patterns on Brazil-influenced tracks",
+      "Johnny Goldstein / will.i.am international-collab polished mix",
+      "synth plucks + reggaeton snare + silsulim vocal-chop samples",
+    ],
+    signature: [
+      "'bass and silsulim' formula — Western body, Mediterranean soul",
+      "Mizrahi melismatic hook as the hit-signature, rap verse as the engine",
+      "genre-blending confidence — Portuguese, Arabic, Japanese aesthetic nods all in bounds",
+      "YouTube-first music-video-as-product model — every single a premium clip",
+      "Israeli young-generation cultural soundtrack 2015-2022, template still copied",
+    ],
+    era: "2015-2022 Israeli pop — defining Mizrahi-hip-hop-reggaeton hybrid era, formative for Gen-Z Israeli sound",
+  },
+
+  // ── STÉPHANE LEGAR ─────────────────────────────────────────────
+  // Core: Togolese-Israeli, Bat Yam born, son of Togolese diplomats
+  // at the Nigerian embassy. Fluent French / Hebrew / English /
+  // Spanish / Ewe (Togolese). Stage name from "Le Garçon" (French
+  // for "the boy"). Dancer-first origin — TikTok dance challenges
+  // drove early visibility. Signed Warner Music France 2018.
+  // Breakout "Step Fun" 2016 (dance-challenge viral), mainstream
+  // breakthrough "Comme Ci Comme Ça" 2018 (44M+ views French
+  // hit), "Vida Loca" 2020 French #1. Placed 3rd on France's
+  // Dancing with the Stars 2022. Hip-hop/trap core with Afro
+  // influences + French pop + Israeli Mediterranean flavor.
+  // Collaborations: Noa Kirel ("Tikitas"), Static & Ben El +
+  // Eden Ben Zaken ("Yassu"), Itay Levi ("Maman", "Rak Banot").
+  "stephane-legar": {
+    vocal: [
+      "youthful rap-sung hybrid delivery with dance-first energy",
+      "multilingual code-switching — French / Hebrew / English / Spanish in single verses",
+      "French 'le garçon' cheeky charm persona — warm, playful, never aggressive",
+      "Afro-diasporic melodic cadence with hip-hop rhythmic phrasing",
+      "call-and-response hook-shouting — chant-along designed for dance crowds",
+      "smile-in-the-voice tonality — energy > technical virtuosity",
+    ],
+    production: [
+      "French-house-meets-Afrobeats hybrid beds — 4-on-floor kick with Afro polyrhythmic percussion",
+      "dembow + reggaeton crossover grooves on Latin-tilted tracks",
+      "trap hi-hats layered over Afro-Caribbean percussion (congas, shekere, djembe)",
+      "Warner Music France radio polish on French-market releases",
+      "Mediterranean pop synth plucks + French-touch filtered disco on crossover tracks",
+      "vocal chops + dance-challenge-ready drops engineered for TikTok loops",
+    ],
+    signature: [
+      "dance-first songwriting — hooks optimized for choreography, not just listening",
+      "multilingual identity as sonic signature — French-Togolese-Israeli all in one track",
+      "Afro-French-Mediterranean hybrid sound unique in the Israeli roster",
+      "viral TikTok dance challenge as marketing model — every release hook is a move",
+      "cross-cultural bridging — French-market legitimacy + Israeli mainstream + African roots",
+    ],
+    era: "2016-present Israeli pop — dance-challenge-native Afro-French-Mediterranean hybrid",
+  },
+
+  // ── EDEN GOLAN ─────────────────────────────────────────────────
+  // Core: Kfar Saba born, family moved to Russia age 6, returned to
+  // Israel. Russian-Israeli Ashkenazi heritage. Won Kokhav HaBa
+  // season 10 (2024). Represented Israel Eurovision 2024 with
+  // "Hurricane" — 5th place, 375 points, won public vote in
+  // second semi-final. Producer/writing team on Hurricane: Avi
+  // Ohayon + Keren Peles + Stav Beger (Stav Beger also produces
+  // Omer Adam — top-tier Israeli pop producer). Session 42 label.
+  // Stated sonic DNA: pop + soul + R&B, inspired by Beyoncé,
+  // Ariana Grande, Jessie J, RAYE, Whitney Houston, Justin
+  // Timberlake. Pre-Eurovision solo catalog: "Dopamine", "Ghost
+  // Town", "Let Me Blow Ya Mind" — high-energy pop. Lead vocalist
+  // of girl group "Cosmos Girls" for two years before solo.
+  // "Hurricane" originally titled "October Rain" — rewritten
+  // after EBU rejected political content.
+  "eden-golan": {
+    vocal: [
+      "powerful belted soprano with R&B melismatic runs",
+      "soul-trained phrasing — Whitney Houston / Jessie J school of dynamic control",
+      "bilingual Hebrew-English switching with polished diction in both",
+      "Eurovision-scale chest voice belt into falsetto bridge capability",
+      "pop-ballad vulnerability phrasing — quiet verses to full-throated chorus lift",
+      "competition-honed technical precision (Kokhav HaBa winner, Voice Kids finalist)",
+    ],
+    production: [
+      "Stav Beger + Avi Ohayon + Keren Peles Eurovision-ready pop-ballad polish",
+      "Session 42 label sheen — international-market radio gloss",
+      "orchestral pop arrangement — piano foundation into full-string swell",
+      "programmed drum kit with live-sounding toms and organic kick on power-ballad structure",
+      "layered vocal stacks on final chorus for arena Eurovision scale",
+      "high-energy pop production on non-ballad catalog (four-on-floor dance-pop on 'Dopamine')",
+    ],
+    signature: [
+      "Eurovision-ready power-ballad architecture — quiet verse, belt-chorus, bridge modulation",
+      "Beyoncé/Ariana-inspired melismatic hook execution",
+      "Hebrew bridge inside English-language song — Israeli signature inside international pop frame",
+      "technical vocal showcase as the song's selling point, production serves voice",
+      "Ashkenazi Israeli pop lineage — follows Dana International / Netta / Kirel international tradition",
+    ],
+    era: "2020s Israeli pop — Eurovision-era power-ballad R&B-soul crossover, Session 42 production-house sound",
+  },
+
+  // ── ANNA ZAK ───────────────────────────────────────────────────
+  // Core: Born Anna Kuzenkova in Sochi, Russia (2001). Made aliyah
+  // with family age 9 (2010), settled in Ashdod. Russian-Israeli,
+  // Ashkenazi Jewish paternal heritage. Stage name "Zak" chosen
+  // for catchiness. TikTok/Musical.ly origin story — 5M+ TikTok
+  // followers, 1M+ Instagram, Israel's top Instagram influencer
+  // 2017 per Nana 10. Simon Fuller's Now United international
+  // project 2017 as Russia representative. Debut single "Money
+  // Honey" Aug 2017. Commercial breakthrough "Lech Lishon"
+  // (לך לישון, "Go to Sleep") Jan 2022 — #1 Media Forest, Kaan
+  // Gimel, Galgalatz; 20M+ YouTube views. Other key tracks:
+  // "Mi Zot", "Hola Mamacita" (Hebrew+Spanish+English), "Bang
+  // Bang", "Tik Tok" (Hebrew+English). Trilingual bilingual
+  // pop with influencer-first audience strategy. Relationship
+  // history: Roee Sendler (2019-2023), then Jonathan Mergui.
+  "anna-zak": {
+    vocal: [
+      "bright breathy upper-register pop delivery — airy, not belted",
+      "trilingual Hebrew-Russian-English phrasing with Slavic-accent Hebrew color",
+      "TikTok-ready hook diction — every syllable engineered for lip-sync legibility",
+      "styled soft-attack phrasing — seductive, conversational, flirtatious tone",
+      "occasional Mizrahi-ornament nods on Hebrew-language hooks (learned, not native)",
+      "vocal affect leans character-performance over technical range",
+    ],
+    production: [
+      "glossy international pop production — trap hi-hats, plucky synths, big 808 bass",
+      "Latin-reggaeton crossover beds on 'Hola Mamacita' style tracks",
+      "Eastern-European dance-pop four-on-floor on energy tracks ('Bang Bang')",
+      "Mediterranean-pop palette on her Israeli-market releases (darbuka accents, Hebrew hooks)",
+      "music-video-led production — every single designed as a visual product first",
+      "influencer-era pop polish — streaming-optimized short intros, quick drop to hook",
+    ],
+    signature: [
+      "TikTok/Musical.ly-native pop — virality baked into the writing, not bolted on",
+      "bilingual hook strategy — Hebrew verse + English chorus (or vice versa) for dual-market reach",
+      "influencer-to-singer crossover archetype — personal brand as distribution engine",
+      "Russian-Israeli cultural-bridge identity — unique demographic positioning in Israeli pop",
+      "image-first pop product — the song and the visual are inseparable",
+    ],
+    era: "2017-present Israeli pop — influencer-first TikTok-native bilingual pop, Russian-aliyah Gen-Z wave",
+  },
+
+  // ── SASSON IFRAM SHAULOV ──────────────────────────────────────
+  // Core: Born 15 June 2002, Bat Galim neighborhood of Haifa.
+  // Kavkazi (Mountain Jewish) heritage on both sides — same
+  // Mountain Jewish lineage as Omer Adam's paternal side. Now
+  // based in Tel Aviv. Described in the Israeli press as the
+  // "hottest name in music in Israel" and "great promise of the
+  // year" — called himself the generational voice of Mediterranean
+  // music. Broke through via social networks with a powerful deep
+  // voice. Genre self-described as "quality Mediterranean music"
+  // with indie-pop + electronic + sentimental-lyric fusion.
+  // Signature hit "Tamid Ohev Oti" (תמיד אוהב אותי, "Always
+  // Loves Me") — cover of a song originally written by Breslav
+  // Chassidic Rabbi Shalom Arush, produced by Eli Keshet + Shai
+  // Reuveni. Hit #1 Hitlist Mako October 2024. Album "Crazy
+  // Paradise" (August 2024), "Tamid Samaech" (2025). Collabs:
+  // Odeya on "My Blood" (Jan 2024), Eden Hason on "Broken Heart"
+  // (Sep 2024). Spiritual / God-conscious lyrical theme — rare
+  // positioning in Israeli mainstream.
+  "sasson-shaulov": {
+    vocal: [
+      "powerful deep baritone with Kavkazi melismatic ornamentation",
+      "Mountain Jewish (Kavkazi) vocal-tradition coloring — same lineage as Omer Adam paternal",
+      "addictive conversational-to-belt dynamic range",
+      "emotional-sincere Hebrew delivery with spiritual weight",
+      "reflective slow-burn intro phrasing that builds to full-chest chorus",
+      "unique 'fingerprint' voice described by Israeli press as unmistakable after one phrase",
+    ],
+    production: [
+      "Eli Keshet + Shai Reuveni Mediterranean-pop production on signature hits",
+      "indie-pop guitar foundation with electronic-Mediterranean hybrid textures",
+      "modern drum programming under traditional Mizrahi melodic arrangements",
+      "piano / acoustic-guitar intimate openings into full-band emotional lift",
+      "moody mid-tempo grooves — not dance-club, not pure ballad, emotional mid-range",
+      "streaming-polished production that still feels handmade and emotional",
+    ],
+    signature: [
+      "Gen-Z Mediterranean-pop voice — young artist carrying Mizrahi heritage into indie-pop territory",
+      "spiritual / God-conscious lyrical frame — prayer language inside contemporary pop structure",
+      "social-network-native breakthrough without reality-show lineage",
+      "Kavkazi Mountain Jewish heritage as sonic texture — distinct from dominant Yemenite/Moroccan Mizrahi templates",
+      "collaborator-friendly — duets with Odeya, Eden Hason as co-equal voices not features",
+    ],
+    era: "2022-present Israeli pop — new-wave Mediterranean indie-pop with Kavkazi Mizrahi spiritual lineage",
+  },
+
+  // ── NADAV HANZIS ──────────────────────────────────────────────
+  // Core: Born 13 August 2007, Nir Yisrael — MUCH younger than
+  // other roster artists (18 years old as of writing). Very new
+  // wave. Label: Liam Productions under exclusive license to
+  // D-Music. Breakthrough single "Im At Kvar Holechet" (אם את
+  // כבר הולכת, "If You're Already Leaving") May 2025 — reached
+  // #1 position in Israeli charts for 3 weeks. Other 2025
+  // releases: "Melech Echad La'Olam" (מלך אחד לעולם), "Ani
+  // Mistovev" (אני מסתובב, live on Galgalatz studio). Feature
+  // on Eyal Golan's "Taniach Et HaMadim" (תניח את המדים, "Put
+  // Down the Uniforms") military memorial project alongside
+  // Liam Golan, Yuval Mizrachi, Yigal Osheri, Rotem Chen. Genre
+  // positioning: young-generation Mizrahi-pop with occasional
+  // afro-house / TikTok-viral hybrid elements. Pure Gen-Z sound.
+  "nadav-hanzis": {
+    vocal: [
+      "young-tenor Mizrahi-pop delivery — unbroken youthful quality",
+      "silsulim-trained melismatic Hebrew phrasing",
+      "emotional vulnerability forward — heartbreak phrasing as core mode",
+      "Galgalatz live-session capable — pure voice without autotune crutch",
+      "conversational pre-chorus into full-chest emotional chorus lift",
+      "next-gen Mizrahi-pop cadence — no generational-weight baggage, fresh-voiced",
+    ],
+    production: [
+      "Liam Productions / D-Music contemporary Mizrahi-pop polish",
+      "modern drum programming + acoustic-guitar foundation",
+      "TikTok-optimized short intro into immediate hook",
+      "afro-house / reggaeton-tinged rhythm beds on party tracks",
+      "streaming-ready mix with emphasized vocal presence + modern sub-bass",
+      "eyal-golan-adjacent Mediterranean-pop when on collaborative/memorial projects",
+    ],
+    signature: [
+      "youngest-generation Mizrahi-pop voice — 2007-born, post-Static-Ben-El wave",
+      "heartbreak-forward songwriting — 'if you're already leaving' / 'come back' themes",
+      "TikTok-native breakout pattern — single-driven, no album-era cycle yet",
+      "comfortable in both solo breakup ballads AND big collaborative memorial projects",
+      "Eyal Golan-cosigned — anointed by the generation above him",
+    ],
+    era: "2025-present Israeli pop — emerging Gen-Z Mizrahi-pop wave, TikTok-era single-driven breakout",
+  },
+
+  // ── AGAM BUHBUT ────────────────────────────────────────────────
+  // Core: Born 8 December 2003, Beersheba. Entered public eye
+  // age 8 on reality show "Beit Sefer LeMusika" (School of Music)
+  // second-season finale (2013). Mentor: Moshe Peretz (Mizrahi
+  // pop veteran). Pop + reggaeton positioning. Genre self-fusion:
+  // pop, dance, electronic, reggaeton. Served in IDF musical band
+  // unit (~2021-2022), including "My Brother's Keeper" Unity Day
+  // 2022 recording. Pre-IDF career: "Like in Rio" 2016 (Moshe
+  // Peretz-written reggaeton summer hit), "Kupidon" (produced by
+  // Triangle, written by Yam Refaeli + Hapshuta + Ido Netzer +
+  // Amit Mordechai — also performed at The Song 5 Espoo Finland).
+  // Signature territory: upbeat dance-pop with reggaeton spine,
+  // Hebrew hooks, high-energy "party anthem" writing.
+  "agam-buhbut": {
+    vocal: [
+      "bright confident soprano-pop delivery with reggaeton-forward hook energy",
+      "child-star-to-pop-adult trajectory — hone-edged vocal with stage confidence from age 8",
+      "Hebrew-language party-pop phrasing with summer-anthem immediacy",
+      "chant-along hook writing — designed for dance crowds, not audiophile listening",
+      "cheerful bright tone as core mode — optimism baked into the vocal character",
+      "upbeat energetic delivery — rarely ventures into ballad melancholy",
+    ],
+    production: [
+      "Moshe Peretz mentorship lineage — Mizrahi-pop reggaeton crossover formula",
+      "Triangle producer signature on key tracks ('Kupidon') — polished modern dance-pop",
+      "dembow-forward reggaeton rhythm beds with Hebrew hook overlay",
+      "electronic-dance + pop hybrid arrangements with heavy synth presence",
+      "summer-hit radio polish — every song engineered for beach / party contexts",
+      "'party anthem' template — intro / build / huge hook / breakdown / bigger hook",
+    ],
+    signature: [
+      "Israeli reggaeton-pop party-anthem specialist — summer-hit positioning",
+      "reality-TV-child to adult-pop-artist transition (School of Music cohort)",
+      "optimism and celebration as writing frame — deliberate anti-melancholy positioning",
+      "Triangle / Moshe Peretz network production pedigree",
+      "dance-floor-first songwriting — legibility at club volume is the design target",
+    ],
+    era: "2010s-2020s Israeli pop — reggaeton-forward party-pop wave, School of Music reality-TV generation",
+  },
+
+  // ── YASMIN MUALEM / JASMIN MOALLEM (יסמין מועלם) ─────────────
+  // Core: Born 15 April 1995, Jerusalem. Mizrahi Jewish family.
+  // Note: roster entry "yasmin-mualem" is transliteration variant
+  // of Jasmin Moallem (יסמין מועלם) — same artist. Singer,
+  // songwriter, rapper, AND record producer (rare four-way
+  // self-sufficiency in Israeli scene). Critically positioned as
+  // a "groundbreaking musician redefining the rules of talent and
+  // style" — not following templates. Two albums: "Aryeh"
+  // (launched her) and "Ein Olam" (עין עולם, "World's Eye")
+  // 2023 — won ACUM's Album of the Year. Defining hit: "Yihihe
+  // Tov" (יהיה טוב, "It Will Be Good") — #1 streaming both
+  // Apple Music Israel and Spotify Israel. Collab: Mergui on
+  // "Tsunami" (lead single off Ein Olam). Genre-bending — Mizrahi
+  // + rap + alt-pop + indie-pop + R&B all coexist in her writing.
+  // Unusual for Mizrahi-descended artist to self-produce.
+  "yasmin-mualem": {
+    vocal: [
+      "alto-mezzo rap-sung hybrid delivery — genre-bending phrasing",
+      "Mizrahi-descended Hebrew phrasing with alt-pop / R&B melodic sensibility",
+      "conversational-to-belted dynamic range with spoken-rap breakdown capability",
+      "emotional sincerity forward — technical perfection subordinated to feel",
+      "unique genre-agnostic vocal identity — can't be mistaken for template Mizrahi-pop",
+      "introspective Hebrew-language phrasing with literary-lyric depth",
+    ],
+    production: [
+      "self-produced — rare control of full vocal-to-mix pipeline in Israeli scene",
+      "genre-fluid arrangements — Mizrahi percussion meets alt-pop synths meets rap drum kits",
+      "indie-pop production aesthetic within Mizrahi melodic framework",
+      "R&B harmonic palette fused with Middle-Eastern modal writing",
+      "ACUM Album of the Year-winning production on 'Ein Olam' (2023)",
+      "auteur-album production — coherent sonic world across full albums, not singles-first",
+    ],
+    signature: [
+      "four-way auteur — singer + songwriter + rapper + record producer",
+      "genre-rule-breaking writer — Mizrahi artist who refuses the Mizrahi-pop template",
+      "ACUM Album of the Year peer-recognition as genre-redefining artist",
+      "album-coherence writer in a singles-first scene — bucks Israeli pop distribution logic",
+      "'Yihihe Tov' streaming dominance proves genre-bending commands mass audience",
+    ],
+    era: "2019-present Israeli pop — genre-agnostic auteur wave, self-producing female Mizrahi-pop outlier",
+  },
 };
 
 // Resolve the vocabulary descriptors to attach to a pack's prompt.
@@ -13382,7 +13795,520 @@ function CosmicVFX({ intensity = "light", active = true, wipeOriginX = "50%", wi
 // ENGINE PAGE
 // ════════════════════════════════════════════════════════════════════════════
 
-function EnginePage({ onNavigate }) {
+// ════════════════════════════════════════════════════════════════════════════
+// ADMIN CONSOLE — Turn-3 admin-exclusive UI embedded in EngineWorkspace
+// ════════════════════════════════════════════════════════════════════════════
+// Renders only when EngineWorkspace is mounted with variant="admin" (i.e.
+// inside BubbleToolsPage). Gives Bubble fast controls over the admin-only
+// workflow: save/restore snapshots, view recent HIT history with one-click
+// rewind, export/import state JSON.
+//
+// Persistence model:
+//   - Snapshots live in localStorage under key "he-admin-snapshots" as an
+//     array of { id, label, ts, state, lyricsOn, mode } objects. Named slots
+//     persist across sessions. Max 8 slots (admin can free them by deleting).
+//   - History lives in localStorage under "he-admin-history" as an array of
+//     { ts, state, lyricsOn, mode, preview } objects. Auto-recorded every
+//     time the detailed prompt text changes. Max 20 entries, FIFO-evicted.
+//
+// Design: a compact horizontal bar (green-hairline) with three tool buttons.
+// Expanded drawer below the active tool shows the actual interface. Clicking
+// a tool button toggles its drawer open/closed. Only one drawer open at a
+// time so the console doesn't dominate vertical space.
+// ════════════════════════════════════════════════════════════════════════════
+
+const ADMIN_SNAPSHOT_KEY = "he-admin-snapshots";
+const ADMIN_HISTORY_KEY = "he-admin-history";
+const ADMIN_SNAPSHOT_CAP = 8;
+const ADMIN_HISTORY_CAP = 20;
+
+function loadAdminSnapshots() {
+  try {
+    const raw = localStorage.getItem(ADMIN_SNAPSHOT_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch { return []; }
+}
+function saveAdminSnapshots(snaps) {
+  try { localStorage.setItem(ADMIN_SNAPSHOT_KEY, JSON.stringify(snaps)); } catch {}
+}
+function loadAdminHistory() {
+  try {
+    const raw = localStorage.getItem(ADMIN_HISTORY_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch { return []; }
+}
+function saveAdminHistory(hist) {
+  try { localStorage.setItem(ADMIN_HISTORY_KEY, JSON.stringify(hist)); } catch {}
+}
+
+function AdminConsole({ state, lyricsOn, mode, onRestore, historyEntry }) {
+  const [drawer, setDrawer] = useState(null); // "snapshots" | "history" | "json" | null
+  const [snapshots, setSnapshots] = useState(() => loadAdminSnapshots());
+  const [history, setHistory] = useState(() => loadAdminHistory());
+  const [jsonText, setJsonText] = useState("");
+  const [jsonError, setJsonError] = useState(null);
+  const [newLabel, setNewLabel] = useState("");
+  const lastRecordedRef = useRef(null);
+
+  const GREEN = "#00FF41";
+  const GREEN_DIM = "rgba(0, 255, 65, 0.45)";
+  const GREEN_FAINT = "rgba(0, 255, 65, 0.18)";
+  const GREEN_BG = "rgba(0, 255, 65, 0.04)";
+
+  // Auto-record history on every new distinct prompt text. historyEntry is
+  // the current detailedResult.text passed in from the parent. We ref-guard
+  // against duplicate writes so a re-render with the same text doesn't
+  // produce redundant history rows.
+  useEffect(() => {
+    if (!historyEntry) return;
+    if (lastRecordedRef.current === historyEntry) return;
+    lastRecordedRef.current = historyEntry;
+    const preview = historyEntry.slice(0, 80).replace(/\s+/g, " ");
+    const next = [
+      { ts: Date.now(), state, lyricsOn, mode, preview },
+      ...history,
+    ].slice(0, ADMIN_HISTORY_CAP);
+    setHistory(next);
+    saveAdminHistory(next);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [historyEntry]);
+
+  const capSnapshot = () => {
+    if (snapshots.length >= ADMIN_SNAPSHOT_CAP) return null;
+    const label = (newLabel || "").trim() || `snap ${snapshots.length + 1}`;
+    const entry = {
+      id: `snap-${Date.now()}`,
+      label,
+      ts: Date.now(),
+      state,
+      lyricsOn,
+      mode,
+    };
+    const next = [entry, ...snapshots].slice(0, ADMIN_SNAPSHOT_CAP);
+    setSnapshots(next);
+    saveAdminSnapshots(next);
+    setNewLabel("");
+    return entry;
+  };
+  const deleteSnapshot = (id) => {
+    const next = snapshots.filter(s => s.id !== id);
+    setSnapshots(next);
+    saveAdminSnapshots(next);
+  };
+  const clearHistory = () => {
+    setHistory([]);
+    saveAdminHistory([]);
+  };
+
+  const currentJson = JSON.stringify({ state, lyricsOn, mode }, null, 2);
+  const copyCurrentJson = async () => {
+    try { await navigator.clipboard.writeText(currentJson); } catch {}
+  };
+  const importJson = () => {
+    setJsonError(null);
+    try {
+      const parsed = JSON.parse(jsonText);
+      if (!parsed || typeof parsed !== "object") throw new Error("invalid payload");
+      onRestore({ label: "json import", ...parsed });
+      setJsonText("");
+      setDrawer(null);
+    } catch (err) {
+      setJsonError(err.message || "parse error");
+    }
+  };
+
+  const toolBtn = (id, icon, label, count) => {
+    const active = drawer === id;
+    return (
+      <button type="button"
+        onClick={() => { playSwitchSound(); setDrawer(active ? null : id); }}
+        style={{
+          display: "inline-flex", alignItems: "center", gap: 8,
+          padding: "7px 12px",
+          background: active ? "rgba(0, 255, 65, 0.10)" : "transparent",
+          border: `1px solid ${active ? GREEN : GREEN_FAINT}`,
+          borderRadius: 4,
+          color: active ? GREEN : GREEN_DIM,
+          fontFamily: T.font_mono, fontSize: 11, fontWeight: 700,
+          letterSpacing: "0.12em",
+          cursor: "pointer",
+          transition: `all ${T.dur_fast} ${T.ease}`,
+          textShadow: active ? `0 0 6px ${GREEN_DIM}` : "none",
+        }}
+        onMouseEnter={e => {
+          if (!active) e.currentTarget.style.borderColor = GREEN_DIM;
+        }}
+        onMouseLeave={e => {
+          if (!active) e.currentTarget.style.borderColor = GREEN_FAINT;
+        }}
+      >
+        <span style={{ fontSize: 13, lineHeight: 1 }}>{icon}</span>
+        <span>{label}</span>
+        {typeof count === "number" && (
+          <span style={{
+            fontSize: 9, padding: "1px 5px",
+            background: active ? "rgba(0, 255, 65, 0.18)" : "rgba(0, 255, 65, 0.08)",
+            borderRadius: 3, letterSpacing: "0.05em",
+          }}>{count}</span>
+        )}
+      </button>
+    );
+  };
+
+  return (
+    <div style={{
+      marginBottom: T.s5,
+      padding: T.s3,
+      background: "rgba(5, 10, 5, 0.6)",
+      border: `1px solid ${GREEN_FAINT}`,
+      borderRadius: T.r_md,
+    }}>
+      {/* Tool bar */}
+      <div style={{
+        display: "flex", alignItems: "center", gap: T.s2,
+        flexWrap: "wrap",
+      }}>
+        <span style={{
+          fontSize: 9, fontWeight: 700, letterSpacing: "0.22em",
+          color: GREEN,
+          padding: "3px 7px",
+          background: GREEN_BG,
+          border: `1px solid ${GREEN_FAINT}`,
+          borderRadius: 3,
+        }}>
+          ◢ ADMIN_CONSOLE
+        </span>
+        {toolBtn("snapshots", "◎", "SNAPSHOTS", snapshots.length)}
+        {toolBtn("history", "↺", "HISTORY", history.length)}
+        {toolBtn("json", "{ }", "JSON", null)}
+      </div>
+
+      {/* ── DRAWER: SNAPSHOTS ─────────────────────────────────────── */}
+      {drawer === "snapshots" && (
+        <div style={{
+          marginTop: T.s3, paddingTop: T.s3,
+          borderTop: `1px dashed ${GREEN_FAINT}`,
+          display: "flex", flexDirection: "column", gap: T.s3,
+        }}>
+          {/* Capture row */}
+          <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+            <input type="text" value={newLabel}
+              onChange={e => setNewLabel(e.target.value)}
+              placeholder="label (optional)"
+              style={{
+                flex: 1, minWidth: 140,
+                padding: "7px 10px",
+                background: "#000",
+                border: `1px solid ${GREEN_FAINT}`,
+                borderRadius: 4,
+                color: GREEN,
+                fontFamily: T.font_mono, fontSize: 16,
+                outline: "none",
+              }}
+              onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); capSnapshot(); } }}
+            />
+            <button type="button"
+              onClick={() => { playSwitchSound(); capSnapshot(); }}
+              disabled={snapshots.length >= ADMIN_SNAPSHOT_CAP}
+              style={{
+                padding: "7px 12px",
+                background: snapshots.length >= ADMIN_SNAPSHOT_CAP
+                  ? "rgba(120,120,120,0.08)"
+                  : "rgba(0, 255, 65, 0.10)",
+                border: `1px solid ${snapshots.length >= ADMIN_SNAPSHOT_CAP ? "#666" : GREEN}`,
+                borderRadius: 4,
+                color: snapshots.length >= ADMIN_SNAPSHOT_CAP ? "#888" : GREEN,
+                fontFamily: T.font_mono, fontSize: 11, fontWeight: 700,
+                letterSpacing: "0.12em",
+                cursor: snapshots.length >= ADMIN_SNAPSHOT_CAP ? "not-allowed" : "pointer",
+              }}
+            >
+              ⊕ CAPTURE
+            </button>
+            {snapshots.length >= ADMIN_SNAPSHOT_CAP && (
+              <span style={{ fontSize: 10, color: GREEN_DIM, fontFamily: T.font_mono }}>
+                {ADMIN_SNAPSHOT_CAP} slot max · delete one to free a slot
+              </span>
+            )}
+          </div>
+          {/* List */}
+          {snapshots.length === 0 ? (
+            <div style={{
+              padding: T.s3, textAlign: "center",
+              color: GREEN_DIM, fontSize: 11, fontFamily: T.font_mono,
+              border: `1px dashed ${GREEN_FAINT}`,
+              borderRadius: 4,
+            }}>
+              &gt; no snapshots yet · capture the current config above
+            </div>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+              {snapshots.map(snap => {
+                const ageSec = Math.max(1, Math.floor((Date.now() - snap.ts) / 1000));
+                const age = ageSec < 60 ? `${ageSec}s` : ageSec < 3600 ? `${Math.floor(ageSec/60)}m` : `${Math.floor(ageSec/3600)}h`;
+                return (
+                  <div key={snap.id} style={{
+                    display: "flex", alignItems: "center", gap: 8,
+                    padding: "7px 10px",
+                    background: "rgba(0, 255, 65, 0.03)",
+                    border: `1px solid ${GREEN_FAINT}`,
+                    borderRadius: 4,
+                  }}>
+                    <span style={{
+                      flex: 1, fontSize: 11, color: GREEN,
+                      fontFamily: T.font_mono, fontWeight: 700,
+                      overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                    }}>{snap.label}</span>
+                    <span style={{ fontSize: 9, color: GREEN_DIM, fontFamily: T.font_mono }}>
+                      {age} ago
+                    </span>
+                    <button type="button"
+                      onClick={() => { playSwitchSound(); onRestore(snap); }}
+                      style={{
+                        padding: "4px 9px",
+                        background: "rgba(0, 255, 65, 0.08)",
+                        border: `1px solid ${GREEN_DIM}`,
+                        borderRadius: 3,
+                        color: GREEN,
+                        fontFamily: T.font_mono, fontSize: 9, fontWeight: 700,
+                        letterSpacing: "0.1em",
+                        cursor: "pointer",
+                      }}
+                    >↻ RESTORE</button>
+                    <button type="button"
+                      onClick={() => { playSwitchSound(); deleteSnapshot(snap.id); }}
+                      title="Delete"
+                      style={{
+                        width: 22, height: 22,
+                        display: "grid", placeItems: "center",
+                        background: "transparent",
+                        border: `1px solid ${GREEN_FAINT}`,
+                        borderRadius: 3,
+                        color: GREEN_DIM,
+                        fontSize: 12, lineHeight: 1,
+                        cursor: "pointer",
+                      }}
+                    >×</button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── DRAWER: HISTORY ───────────────────────────────────────── */}
+      {drawer === "history" && (
+        <div style={{
+          marginTop: T.s3, paddingTop: T.s3,
+          borderTop: `1px dashed ${GREEN_FAINT}`,
+          display: "flex", flexDirection: "column", gap: T.s3,
+        }}>
+          <div style={{
+            display: "flex", justifyContent: "space-between", alignItems: "center",
+            gap: 8,
+          }}>
+            <span style={{ fontSize: 10, color: GREEN_DIM, fontFamily: T.font_mono, letterSpacing: "0.1em" }}>
+              AUTO-RECORDED · {ADMIN_HISTORY_CAP} MAX · NEWEST FIRST
+            </span>
+            {history.length > 0 && (
+              <button type="button"
+                onClick={() => { playSwitchSound(); clearHistory(); }}
+                style={{
+                  padding: "3px 9px",
+                  background: "transparent",
+                  border: `1px dashed ${GREEN_FAINT}`,
+                  borderRadius: 3,
+                  color: GREEN_DIM,
+                  fontFamily: T.font_mono, fontSize: 9, fontWeight: 700,
+                  letterSpacing: "0.1em",
+                  cursor: "pointer",
+                }}
+              >CLEAR ALL</button>
+            )}
+          </div>
+          {history.length === 0 ? (
+            <div style={{
+              padding: T.s3, textAlign: "center",
+              color: GREEN_DIM, fontSize: 11, fontFamily: T.font_mono,
+              border: `1px dashed ${GREEN_FAINT}`,
+              borderRadius: 4,
+            }}>
+              &gt; no history yet · press HIT to generate a prompt
+            </div>
+          ) : (
+            <div style={{
+              display: "flex", flexDirection: "column", gap: 3,
+              maxHeight: 280, overflowY: "auto",
+              paddingRight: 4,
+            }}>
+              {history.map((h, i) => {
+                const ageSec = Math.max(1, Math.floor((Date.now() - h.ts) / 1000));
+                const age = ageSec < 60 ? `${ageSec}s` : ageSec < 3600 ? `${Math.floor(ageSec/60)}m` : `${Math.floor(ageSec/3600)}h`;
+                return (
+                  <div key={h.ts + "-" + i} style={{
+                    display: "flex", alignItems: "center", gap: 8,
+                    padding: "5px 10px",
+                    background: i === 0 ? "rgba(0, 255, 65, 0.05)" : "rgba(0, 255, 65, 0.02)",
+                    border: `1px solid ${i === 0 ? GREEN_FAINT : "rgba(0, 255, 65, 0.09)"}`,
+                    borderRadius: 3,
+                  }}>
+                    <span style={{ fontSize: 9, color: GREEN_DIM, fontFamily: T.font_mono, minWidth: 24 }}>
+                      #{history.length - i}
+                    </span>
+                    <span style={{
+                      flex: 1, fontSize: 10, color: GREEN,
+                      fontFamily: T.font_mono,
+                      overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                    }}>{h.preview}…</span>
+                    <span style={{ fontSize: 9, color: GREEN_DIM, fontFamily: T.font_mono }}>
+                      {age}
+                    </span>
+                    <button type="button"
+                      onClick={() => { playSwitchSound(); onRestore({ label: `history #${history.length - i}`, ...h }); }}
+                      style={{
+                        padding: "3px 7px",
+                        background: "rgba(0, 255, 65, 0.08)",
+                        border: `1px solid ${GREEN_DIM}`,
+                        borderRadius: 3,
+                        color: GREEN,
+                        fontFamily: T.font_mono, fontSize: 9, fontWeight: 700,
+                        letterSpacing: "0.08em",
+                        cursor: "pointer",
+                      }}
+                    >↻</button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── DRAWER: JSON ──────────────────────────────────────────── */}
+      {drawer === "json" && (
+        <div style={{
+          marginTop: T.s3, paddingTop: T.s3,
+          borderTop: `1px dashed ${GREEN_FAINT}`,
+          display: "flex", flexDirection: "column", gap: T.s3,
+        }}>
+          {/* Export */}
+          <div>
+            <div style={{
+              display: "flex", justifyContent: "space-between", alignItems: "center",
+              marginBottom: 6,
+            }}>
+              <span style={{ fontSize: 10, color: GREEN_DIM, fontFamily: T.font_mono, letterSpacing: "0.1em" }}>
+                ◂ EXPORT · CURRENT STATE
+              </span>
+              <button type="button"
+                onClick={() => { playSwitchSound(); copyCurrentJson(); }}
+                style={{
+                  padding: "3px 9px",
+                  background: "rgba(0, 255, 65, 0.08)",
+                  border: `1px solid ${GREEN_DIM}`,
+                  borderRadius: 3,
+                  color: GREEN,
+                  fontFamily: T.font_mono, fontSize: 9, fontWeight: 700,
+                  letterSpacing: "0.1em",
+                  cursor: "pointer",
+                }}
+              >⎘ COPY</button>
+            </div>
+            <textarea
+              readOnly value={currentJson}
+              style={{
+                width: "100%", boxSizing: "border-box",
+                minHeight: 100, maxHeight: 200,
+                padding: 10,
+                background: "#000",
+                border: `1px solid ${GREEN_FAINT}`,
+                borderRadius: 4,
+                color: GREEN,
+                fontFamily: T.font_mono, fontSize: 10,
+                resize: "vertical",
+                outline: "none",
+              }}
+            />
+          </div>
+          {/* Import */}
+          <div>
+            <div style={{
+              fontSize: 10, color: GREEN_DIM, fontFamily: T.font_mono,
+              letterSpacing: "0.1em", marginBottom: 6,
+            }}>
+              ▸ IMPORT · PASTE JSON TO RESTORE
+            </div>
+            <textarea
+              value={jsonText}
+              onChange={e => { setJsonText(e.target.value); setJsonError(null); }}
+              placeholder='{ "state": {...}, "lyricsOn": true, "mode": "expanded" }'
+              style={{
+                width: "100%", boxSizing: "border-box",
+                minHeight: 80, maxHeight: 200,
+                padding: 10,
+                background: "#000",
+                border: `1px solid ${jsonError ? "#FF3E3E" : GREEN_FAINT}`,
+                borderRadius: 4,
+                color: GREEN,
+                fontFamily: T.font_mono, fontSize: 10,
+                resize: "vertical",
+                outline: "none",
+              }}
+            />
+            {jsonError && (
+              <div style={{
+                marginTop: 4, fontSize: 10, color: "#FF5A5A",
+                fontFamily: T.font_mono,
+              }}>! {jsonError}</div>
+            )}
+            <button type="button"
+              onClick={() => { playSwitchSound(); importJson(); }}
+              disabled={!jsonText.trim()}
+              style={{
+                marginTop: 8,
+                padding: "7px 12px",
+                background: jsonText.trim() ? "rgba(0, 255, 65, 0.10)" : "rgba(120,120,120,0.06)",
+                border: `1px solid ${jsonText.trim() ? GREEN : "#555"}`,
+                borderRadius: 4,
+                color: jsonText.trim() ? GREEN : "#888",
+                fontFamily: T.font_mono, fontSize: 11, fontWeight: 700,
+                letterSpacing: "0.12em",
+                cursor: jsonText.trim() ? "pointer" : "not-allowed",
+              }}
+            >↻ RESTORE FROM JSON</button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// ENGINE WORKSPACE — the reusable prompt-builder body
+// ════════════════════════════════════════════════════════════════════════════
+// This component contains the full prompt-building UI + all its state. It was
+// extracted from the old EnginePage so it can be reused in multiple contexts:
+//   - EnginePage (below) — the default consumer-facing Engine experience
+//   - BubbleToolsPage   — the admin workstation, where we embed this plus
+//                          admin-exclusive tools (mimic browser, Extra Poppy,
+//                          Hebrew-only, contrast blend, future magic)
+// The idea: one source of truth for all prompt-building state + JSX. When we
+// improve the Engine UX, both surfaces improve together. When we add admin
+// magic, we layer it on top of this base without forking.
+//
+// Props:
+//   onNavigate  — top-level page nav callback (for sales modal → shop, etc.)
+//   variant     — "default" (consumer) or "admin" (BubbleTools embed). Reserved
+//                 for future use — turn 3 will light up admin-exclusive UI when
+//                 variant === "admin". For now the value is ignored.
+// ════════════════════════════════════════════════════════════════════════════
+
+function EngineWorkspace({ onNavigate, variant = "default" }) {
   const { tier, features } = useTier();
   const { layout } = useLayout();
   const { fuels, activeFuel, consumeFuel, setFuel } = useFuel();
@@ -13444,6 +14370,50 @@ function EnginePage({ onNavigate }) {
   // SUGGESTION_MAP for instrument picks. Each suggestion has a 🎲 reroll.
   // State: { sourceId, targets, values } — only one panel open at a time.
   const [suggestions, setSuggestions] = useState(null);
+
+  // ── ADMIN SNAPSHOTS — config save/restore slots ─────────────────────
+  // Only relevant when variant === "admin". Gives Bubble 4 quick-access
+  // slots (A/B/C/D) to save the current config (state + lyricsOn + mode)
+  // and restore it later. Use case: "save my current promising direction
+  // as A, try a wild variant, if it sucks I restore A; if it's better I
+  // save it as B to compare against A." Cheap session-only memory — no
+  // localStorage, cleared on refresh. That's intentional: snapshots are
+  // for short-term iteration, not persistent templates.
+  //
+  // Each slot holds { state, lyricsOn, mode, savedAt } or null when empty.
+  // A green dot indicates an occupied slot. Empty slots are dashed.
+  // Clicking an empty slot saves current config. Clicking a filled slot
+  // shows save/restore/clear options.
+  const [adminSnapshots, setAdminSnapshots] = useState({
+    A: null, B: null, C: null, D: null,
+  });
+  const isAdmin = variant === "admin";
+  const saveSnapshot = (slot) => {
+    setAdminSnapshots(prev => ({
+      ...prev,
+      [slot]: {
+        // Deep clone state so later mutations don't leak into the snapshot
+        state: JSON.parse(JSON.stringify(state)),
+        lyricsOn,
+        mode,
+        savedAt: Date.now(),
+      },
+    }));
+    showToast(`Snapshot ${slot} saved`, "info");
+  };
+  const restoreSnapshot = (slot) => {
+    const snap = adminSnapshots[slot];
+    if (!snap) return;
+    setState(JSON.parse(JSON.stringify(snap.state)));
+    setLyricsOn(snap.lyricsOn);
+    setMode(snap.mode);
+    showToast(`Snapshot ${slot} restored`, "info");
+    autoCopyPendingRef.current = true;
+  };
+  const clearSnapshot = (slot) => {
+    setAdminSnapshots(prev => ({ ...prev, [slot]: null }));
+    showToast(`Snapshot ${slot} cleared`, "info");
+  };
 
   // Build pools for ALL 8 target sections: mood, groove, lyricalVibe, energy,
   // vocalist, harmonic, texture, mix. Every complement-map entry can carry
@@ -15359,12 +16329,19 @@ function EnginePage({ onNavigate }) {
 
   // ── PENDING MIMIC HAND-OFF ─────────────────────────────────────────
   // When the BubbleToolsPage applies a pack, it writes the selection
-  // to sessionStorage and navigates to this page. We check for that
-  // pending entry on mount, resolve it to {artist, pack, blendVibe},
-  // apply via applyMimicPack, and clear the pending entry so it
-  // doesn't replay on subsequent visits. If the entry is missing or
-  // malformed we silently skip — not a critical path.
-  useEffect(() => {
+  // to sessionStorage. Historically it also navigated to /engine so
+  // the Engine mount effect picked it up. In Turn 2 of the BubbleTools
+  // refactor, Engine is ALSO embedded inside BubbleTools directly —
+  // which means navigation is skipped and the embedded workspace needs
+  // a different trigger to notice the pending flag. We handle both:
+  //   - Mount effect: reads sessionStorage on mount (handles the case
+  //     where user lands fresh on /engine with a pending flag)
+  //   - Event listener: reacts to 'he-pending-change' custom events
+  //     dispatched by BubbleToolsPage when a pack or Extra Poppy is
+  //     clicked while Engine is embedded on the same page
+  // Both paths call the same drain helpers so behavior is identical.
+
+  const drainPendingMimic = () => {
     let pending = null;
     try {
       const raw = sessionStorage.getItem("he-pending-mimic");
@@ -15377,21 +16354,11 @@ function EnginePage({ onNavigate }) {
     if (!artist) return;
     const pack = artist.packs.find(p => p.id === pending.packId);
     if (!pack) return;
-    // Apply the blend vibe if one was set before clicking the pack
     if (pending.blendVibe) setMimicBlendVibe(pending.blendVibe);
-    // Fire the apply — same handler as direct click
     applyMimicPack(artist, pack);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  };
 
-  // ── PENDING MAX-POPPY HAND-OFF ─────────────────────────────────────
-  // BubbleToolsPage fires Extra Poppy by writing this flag and
-  // navigating here. Engine picks it up on mount and calls
-  // applyMaxPoppy on the current state. Fires AFTER mimic hand-off
-  // would fire, so if both are queued (shouldn't happen, but) the
-  // mimic pack applies first, then Extra Poppy overrides it — matches
-  // the click-order behavior.
-  useEffect(() => {
+  const drainPendingMaxPoppy = () => {
     try {
       const raw = sessionStorage.getItem("he-pending-max-poppy");
       if (!raw) return;
@@ -15400,6 +16367,35 @@ function EnginePage({ onNavigate }) {
       // finishes before Extra Poppy re-derives from state.
       setTimeout(() => { applyMaxPoppy(); }, 120);
     } catch {}
+  };
+
+  // Mount-time consumer — handles fresh /engine visits that carry a
+  // pending sessionStorage entry from a prior BubbleTools click that
+  // did navigate (pre-Turn-2 behavior, or if user manually goes to
+  // /engine after writing a pending). Runs both drains in sequence.
+  useEffect(() => {
+    drainPendingMimic();
+    drainPendingMaxPoppy();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Event listener — handles the Turn-2 case: BubbleTools dispatches
+  // 'he-pending-change' after writing to sessionStorage, Engine is
+  // already mounted (embedded on same page), and we react by running
+  // the appropriate drain based on the event's kind detail.
+  useEffect(() => {
+    const onPendingChange = (e) => {
+      const kind = e?.detail?.kind;
+      if (kind === "mimic") drainPendingMimic();
+      else if (kind === "max-poppy") drainPendingMaxPoppy();
+      else {
+        // Unknown or missing kind — be safe and drain both
+        drainPendingMimic();
+        drainPendingMaxPoppy();
+      }
+    };
+    window.addEventListener("he-pending-change", onPendingChange);
+    return () => window.removeEventListener("he-pending-change", onPendingChange);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -16087,6 +17083,49 @@ function EnginePage({ onNavigate }) {
                 <span>refresh tiers as Israeli scene evolves</span>
               </div>
             </div>
+          )}
+
+          {/* ── ADMIN CONSOLE — variant === "admin" only ─────────────
+              Only renders when EngineWorkspace is embedded inside
+              BubbleToolsPage (variant="admin"). NOT visible on the
+              regular /engine page, even for admin-tier users —
+              admin's normal Engine stays clean for consumer parity
+              testing. The console lives at the top of the workspace
+              so admin sees it immediately on entering BubbleTools.
+
+              Three tools this turn:
+                1. Snapshots — save current state to 4 named slots
+                   persisted in localStorage, restore on click.
+                2. History — auto-recorded last 20 HIT rolls, rewind
+                   to any past state.
+                3. JSON export/import — copy state as JSON text for
+                   out-of-band saving, paste JSON to restore.
+
+              Turn 4+ will add: seed lock, A/B race, prompt-diff view,
+              batch export, Hebrew-only mode toggle, contrast blend.
+
+              Visual: terminal-green hairline + dark bg, matches the
+              BubbleTools surrounding aesthetic so it reads as part
+              of the admin page not an Engine page extension. Uses a
+              single horizontal bar of controls + an expandable drawer
+              underneath for the actual UI. Starts collapsed to keep
+              visual weight low when admin isn't actively using it. */}
+          {variant === "admin" && (
+            <AdminConsole
+              state={state}
+              lyricsOn={lyricsOn}
+              mode={mode}
+              onRestore={(snap) => {
+                // Restoration applies state + lyricsOn + mode
+                // atomically. Null guards per field so corrupt
+                // snapshots don't crash the restore.
+                if (snap.state) setState(snap.state);
+                if (typeof snap.lyricsOn === "boolean") setLyricsOn(snap.lyricsOn);
+                if (snap.mode) setMode(snap.mode);
+                showToast(`↻ Restored: ${snap.label || "snapshot"}`, "info");
+              }}
+              historyEntry={detailedResult?.text}
+            />
           )}
 
           {/* ── ACTION ROW ──────────────────────────────────────────
@@ -17459,6 +18498,24 @@ function EnginePage({ onNavigate }) {
       />
     </div>
   );
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// ENGINE PAGE — thin consumer-facing wrapper around EngineWorkspace
+// ════════════════════════════════════════════════════════════════════════════
+// EnginePage is what the router mounts for the /engine route. It renders the
+// EngineWorkspace in its default variant — exactly the same experience as
+// before the Turn-1 refactor. All state, all handlers, all UI live inside
+// EngineWorkspace above. This shell exists so:
+//   1. The page router keeps working (page === "engine" → <EnginePage/>)
+//   2. If we ever need page-level chrome ABOVE the workspace (e.g. a banner
+//      specific to consumers that we don't want admins to see), it goes here
+//      without polluting the workspace's internals.
+// BubbleToolsPage will embed EngineWorkspace directly — NOT via this wrapper.
+// ════════════════════════════════════════════════════════════════════════════
+
+function EnginePage({ onNavigate }) {
+  return <EngineWorkspace onNavigate={onNavigate} variant="default" />;
 }
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -20749,6 +21806,593 @@ function GenreRow({ genre, rank, current, isSelected, onClick }) {
 }
 
 
+// ════════════════════════════════════════════════════════════════════════════
+// GENRE HISTORY HERO — memorable page opening, cinematic
+// ════════════════════════════════════════════════════════════════════════════
+// A living intro that frames the whole page thesis. Three-part composition:
+//
+//   1. Year ticker pane (left) — rotates through curated music-moment cards
+//      every 2.5s. Each card shows { year, genre, epitaph }. Uses a crossfade
+//      transition so the swap feels like a film cut, not a refresh.
+//
+//   2. Editorial stack (right) — Instrument Serif giant statement. Italic
+//      emphasis word. Short sub-copy. Editorial magazine energy, not
+//      generic SaaS marketing copy.
+//
+//   3. Sonogram pulse (bottom full-width) — animated SVG wave that ticks
+//      decade marks from 1960 to 2026, suggesting "sound waves through time."
+//      The pulse flows left-to-right continuously via stroke-dashoffset.
+//
+// Disclaimer pill lives at the top-right as a thin editorial byline so it
+// doesn't compete with the statement.
+// ════════════════════════════════════════════════════════════════════════════
+
+const GENRE_MOMENTS = [
+  { year: "1973", genre: "Disco", epitaph: "a kick, a hat, and a hall full of strangers" },
+  { year: "1979", genre: "Post-Punk", epitaph: "four chords and a question about industry" },
+  { year: "1987", genre: "Acid House", epitaph: "a 303 squelched and Britain rewired overnight" },
+  { year: "1992", genre: "Grunge", epitaph: "a flannel shirt became a generation's uniform" },
+  { year: "1996", genre: "Trip-Hop", epitaph: "Bristol made sadness sound expensive" },
+  { year: "2001", genre: "Garage", epitaph: "UK clubs chopped the 2-step until it cracked" },
+  { year: "2005", genre: "Crunk", epitaph: "Atlanta yelled louder than the bass hit" },
+  { year: "2011", genre: "Dubstep", epitaph: "the drop became a cultural instrument" },
+  { year: "2016", genre: "Trap", epitaph: "808s rewired what a chorus was supposed to do" },
+  { year: "2019", genre: "Hyperpop", epitaph: "every vocal peak, clipped on purpose" },
+  { year: "2022", genre: "Amapiano", epitaph: "the log drum walked out of Johannesburg" },
+  { year: "2025", genre: "Sierra Jersey", epitaph: "country and club drum machines found each other" },
+];
+
+function GenreHistoryHero({ isMobile }) {
+  const [idx, setIdx] = useState(0);
+  const [phase, setPhase] = useState("in"); // "in" | "out"
+  // When the user interacts with the scrubber, pause the auto-rotation for
+  // a few seconds so they can actually read what they landed on. Resets
+  // itself via a timer so eventually the hero starts breathing again.
+  const [scrubbing, setScrubbing] = useState(false);
+  const [autoPausedUntil, setAutoPausedUntil] = useState(0);
+  // Has the hero finished its mount-time entrance animation? Used to
+  // gate the sonogram stroke-draw so it doesn't replay every render.
+  const [entered, setEntered] = useState(false);
+  // Ref to the scrubber track so we can convert mouse/touch X into index.
+  const trackRef = useRef(null);
+
+  // Entrance animation — flip `entered` to true one frame after mount so
+  // the CSS transitions / keyframes animate IN from the initial state.
+  useEffect(() => {
+    const t = setTimeout(() => setEntered(true), 40);
+    return () => clearTimeout(t);
+  }, []);
+
+  // Rotate the year-moment card on a 2.5s interval UNLESS the user is
+  // scrubbing or has recently scrubbed (autoPausedUntil > now). Keeps
+  // the hero "alive" when idle but respects user input.
+  useEffect(() => {
+    const tick = setInterval(() => {
+      if (scrubbing) return;
+      if (Date.now() < autoPausedUntil) return;
+      setPhase("out");
+      setTimeout(() => {
+        setIdx(i => (i + 1) % GENRE_MOMENTS.length);
+        setPhase("in");
+      }, 400);
+    }, 2500);
+    return () => clearInterval(tick);
+  }, [scrubbing, autoPausedUntil]);
+
+  const current = GENRE_MOMENTS[idx];
+
+  // Convert a clientX to a GENRE_MOMENTS index based on the track bounds.
+  // Pins to [0, length-1]. Used by both mouse + touch handlers.
+  const xToIndex = (clientX) => {
+    const el = trackRef.current;
+    if (!el) return idx;
+    const rect = el.getBoundingClientRect();
+    const pct = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+    const maxI = GENRE_MOMENTS.length - 1;
+    return Math.round(pct * maxI);
+  };
+
+  const commitScrub = (clientX) => {
+    const next = xToIndex(clientX);
+    if (next !== idx) setIdx(next);
+  };
+
+  // Pointer event handlers for the scrubber. Uses Pointer Events API so
+  // mouse, touch, and pen all work through the same code path.
+  const onPointerDown = (e) => {
+    e.currentTarget.setPointerCapture?.(e.pointerId);
+    setScrubbing(true);
+    setPhase("in"); // kill any in-flight fade so the scrub feels instant
+    commitScrub(e.clientX);
+  };
+  const onPointerMove = (e) => {
+    if (!scrubbing) return;
+    commitScrub(e.clientX);
+  };
+  const onPointerUp = (e) => {
+    if (!scrubbing) return;
+    e.currentTarget.releasePointerCapture?.(e.pointerId);
+    setScrubbing(false);
+    // Pause auto-rotation for 6 seconds after release, then resume naturally
+    setAutoPausedUntil(Date.now() + 6000);
+  };
+
+  // Compute current scrubber knob position as a percentage 0-100 for both
+  // the knob and the "filled" bar segment behind it.
+  const maxI = GENRE_MOMENTS.length - 1;
+  const knobPct = (idx / maxI) * 100;
+
+  // Year range derived from the data so we don't have to hardcode — the
+  // scrubber always reflects the actual available moments.
+  const firstYear = GENRE_MOMENTS[0]?.year || "1960";
+  const lastYear  = GENRE_MOMENTS[GENRE_MOMENTS.length - 1]?.year || "2026";
+
+  return (
+    <>
+      {/* Scoped keyframes for the hero animations */}
+      <style>{`
+        @keyframes ghhPulseFlow {
+          0% { stroke-dashoffset: 0; }
+          100% { stroke-dashoffset: -240; }
+        }
+        @keyframes ghhGradDrift {
+          0%, 100% { background-position: 0% 50%; }
+          50%      { background-position: 100% 50%; }
+        }
+        @keyframes ghhVignettePulse {
+          0%, 100% { opacity: 0.7; }
+          50%      { opacity: 1; }
+        }
+        @keyframes ghhFadeIn {
+          from { opacity: 0; transform: translateY(8px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+        /* Mount-time stagger — each element fades up from 10px with
+           a delay that cascades down the visual hierarchy. Makes the
+           hero feel like it's composing itself on arrival. */
+        @keyframes ghhStagger {
+          from { opacity: 0; transform: translateY(14px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+        /* Sonogram stroke-draw — the path "writes itself" from left
+           to right on first reveal. Combined with the flow animation
+           underneath to give the illusion of sound waves emerging. */
+        @keyframes ghhStrokeDraw {
+          from { stroke-dashoffset: 1200; opacity: 0; }
+          60%  { opacity: 1; }
+          to   { stroke-dashoffset: 0; opacity: 1; }
+        }
+        /* "You are here" marker — gentle pulse on the 2026 dot so the
+           user can always find their place in the timeline. */
+        @keyframes ghhYouPulse {
+          0%, 100% { transform: scale(1);   opacity: 0.85; }
+          50%      { transform: scale(1.4); opacity: 1; }
+        }
+        /* Ping ring for the "you are here" marker — expands + fades */
+        @keyframes ghhYouPing {
+          0%   { transform: scale(0.6); opacity: 0.7; }
+          100% { transform: scale(2.4); opacity: 0;   }
+        }
+      `}</style>
+
+      <div style={{
+        position: "relative",
+        marginBottom: isMobile ? 40 : 64,
+        padding: isMobile ? "32px 20px 28px" : "56px 40px 44px",
+        borderRadius: 12,
+        overflow: "hidden",
+        // Drifting gradient field — slow horizontal movement suggests
+        // "time flowing". Uses V palette so it reads as branded.
+        background: `linear-gradient(135deg, #0A0D14 0%, #131728 35%, #1A1533 70%, #0D1020 100%)`,
+        backgroundSize: "200% 200%",
+        animation: "ghhGradDrift 18s ease-in-out infinite",
+        border: `1px solid ${T.border}`,
+      }}>
+        {/* Corner vignette — soft gold bleed in top-right, subtle */}
+        <div aria-hidden="true" style={{
+          position: "absolute", top: "-30%", right: "-20%",
+          width: "60%", height: "120%", pointerEvents: "none",
+          background: `radial-gradient(ellipse, ${V.neonGold}18 0%, transparent 60%)`,
+          animation: "ghhVignettePulse 6s ease-in-out infinite",
+        }} />
+        {/* Corner vignette — opposite, faint indigo */}
+        <div aria-hidden="true" style={{
+          position: "absolute", bottom: "-30%", left: "-15%",
+          width: "50%", height: "100%", pointerEvents: "none",
+          background: `radial-gradient(ellipse, ${T.accent}15 0%, transparent 60%)`,
+        }} />
+
+        {/* Editorial byline / disclaimer pill — top right, thin */}
+        <div style={{
+          position: "absolute", top: 16, right: isMobile ? 16 : 24,
+          display: "inline-flex", alignItems: "center", gap: 6,
+          padding: "4px 10px",
+          background: "rgba(255, 215, 0, 0.04)",
+          border: `1px solid ${V.neonGold}22`,
+          borderRadius: 3,
+          fontSize: 9, fontFamily: T.font_mono, fontWeight: 700,
+          letterSpacing: "0.18em",
+          color: `${V.neonGold}cc`,
+          zIndex: 2,
+          opacity: entered ? 1 : 0,
+          transform: entered ? "translateY(0)" : "translateY(-6px)",
+          transition: "opacity 600ms ease 40ms, transform 600ms ease 40ms",
+        }}>
+          <span style={{ width: 5, height: 5, borderRadius: 999, background: V.neonGold, boxShadow: `0 0 6px ${V.neonGold}` }} />
+          EDITORIAL · APR 2026
+        </div>
+
+        <div style={{
+          position: "relative", zIndex: 1,
+          display: "grid",
+          gridTemplateColumns: isMobile ? "1fr" : "minmax(0, 0.85fr) minmax(0, 1.15fr)",
+          gap: isMobile ? 28 : 48,
+          alignItems: "center",
+        }}>
+          {/* ═══ LEFT: ROTATING YEAR-MOMENT CARD ═══ */}
+          <div style={{
+            position: "relative",
+            padding: isMobile ? "20px 18px" : "28px 24px",
+            background: "rgba(255, 255, 255, 0.02)",
+            border: `1px solid rgba(255, 255, 255, 0.06)`,
+            borderRadius: 8,
+            backdropFilter: "blur(4px)",
+            minHeight: isMobile ? 180 : 230,
+            display: "flex", flexDirection: "column", justifyContent: "center",
+            overflow: "hidden",
+            // Stagger entrance: card appears after kicker (460ms delay)
+            opacity: entered ? 1 : 0,
+            transform: entered ? "translateY(0)" : "translateY(18px)",
+            transition: "opacity 700ms ease 460ms, transform 700ms ease 460ms",
+          }}>
+            {/* Micro header */}
+            <div style={{
+              fontFamily: T.font_mono, fontSize: 9, fontWeight: 700,
+              letterSpacing: "0.28em", color: T.textTer,
+              marginBottom: 14,
+              display: "flex", alignItems: "center", gap: 8,
+            }}>
+              <span style={{ width: 6, height: 6, borderRadius: 999, background: V.neonGold,
+                boxShadow: `0 0 8px ${V.neonGold}` }} />
+              <span>MOMENTS · {String(idx + 1).padStart(2, "0")}/{GENRE_MOMENTS.length}</span>
+              {scrubbing && (
+                <span style={{
+                  marginLeft: "auto",
+                  fontSize: 8, letterSpacing: "0.2em",
+                  padding: "2px 6px",
+                  color: V.neonGold,
+                  border: `1px dashed ${V.neonGold}55`,
+                  borderRadius: 2,
+                }}>SCRUBBING</span>
+              )}
+            </div>
+
+            {/* Crossfading content */}
+            <div style={{
+              opacity: phase === "in" ? 1 : 0,
+              transform: phase === "in" ? "translateY(0)" : "translateY(6px)",
+              transition: "opacity 320ms ease, transform 320ms ease",
+            }}>
+              {/* The year — big, serif, editorial */}
+              <div style={{
+                fontFamily: T.font_display,
+                fontSize: isMobile ? 48 : 72,
+                fontWeight: 400, lineHeight: 0.95,
+                letterSpacing: "-0.02em",
+                color: T.text,
+                marginBottom: 10,
+                fontStyle: "italic",
+              }}>
+                {current.year}
+              </div>
+              {/* Genre tag */}
+              <div style={{
+                display: "inline-block",
+                padding: "3px 10px",
+                marginBottom: 12,
+                background: `${V.neonGold}12`,
+                border: `1px solid ${V.neonGold}55`,
+                borderRadius: 3,
+                fontFamily: T.font_mono, fontSize: 10, fontWeight: 700,
+                letterSpacing: "0.15em", color: V.neonGold,
+                textShadow: `0 0 6px ${V.neonGold}66`,
+              }}>
+                {current.genre.toUpperCase()}
+              </div>
+              {/* The epitaph — lowercase, italic, literary */}
+              <div style={{
+                fontFamily: T.font_display,
+                fontSize: isMobile ? 15 : 17,
+                lineHeight: 1.45, fontStyle: "italic",
+                color: T.textSec,
+                maxWidth: 340,
+              }}>
+                {current.epitaph}.
+              </div>
+            </div>
+
+            {/* Progress dots at the bottom of the card */}
+            <div style={{
+              position: "absolute", left: isMobile ? 18 : 24, bottom: isMobile ? 14 : 18,
+              display: "flex", gap: 3,
+            }}>
+              {GENRE_MOMENTS.map((_, i) => (
+                <span key={i} style={{
+                  width: i === idx ? 14 : 4, height: 2,
+                  background: i === idx ? V.neonGold : "rgba(255,255,255,0.15)",
+                  borderRadius: 1,
+                  transition: "width 320ms ease, background 320ms ease",
+                  boxShadow: i === idx ? `0 0 4px ${V.neonGold}` : "none",
+                }} />
+              ))}
+            </div>
+          </div>
+
+          {/* ═══ RIGHT: EDITORIAL STATEMENT STACK ═══ */}
+          <div style={{
+            display: "flex", flexDirection: "column",
+            gap: isMobile ? 16 : 20,
+          }}>
+            {/* Kicker — first element in the entrance stagger */}
+            <div style={{
+              fontFamily: T.font_mono, fontSize: 10, fontWeight: 700,
+              letterSpacing: "0.32em", color: V.neonGold,
+              display: "flex", alignItems: "center", gap: 10,
+              opacity: entered ? 1 : 0,
+              transform: entered ? "translateY(0)" : "translateY(10px)",
+              transition: "opacity 500ms ease 100ms, transform 500ms ease 100ms",
+            }}>
+              <span style={{ width: 18, height: 1, background: V.neonGold, opacity: 0.6 }} />
+              GENRE HISTORY · SIXTY YEARS OF SOUND
+              <span style={{ flex: 1, maxWidth: 60, height: 1, background: V.neonGold, opacity: 0.25 }} />
+            </div>
+
+            {/* The statement — Instrument Serif, huge, editorial */}
+            <h1 style={{
+              margin: 0,
+              fontFamily: T.font_display,
+              fontSize: isMobile ? "clamp(36px, 9vw, 52px)" : "clamp(44px, 5.5vw, 76px)",
+              fontWeight: 400, lineHeight: 0.98,
+              letterSpacing: "-0.025em",
+              color: T.text,
+              opacity: entered ? 1 : 0,
+              transform: entered ? "translateY(0)" : "translateY(16px)",
+              transition: "opacity 800ms ease 240ms, transform 800ms ease 240ms",
+            }}>
+              Every sound had<br />
+              <span style={{
+                fontStyle: "italic",
+                background: `linear-gradient(90deg, ${V.neonGold} 0%, #FFB800 100%)`,
+                WebkitBackgroundClip: "text",
+                WebkitTextFillColor: "transparent",
+                backgroundClip: "text",
+              }}>a moment</span>.
+              <span style={{ color: T.textTer }}> Then another.</span>
+            </h1>
+
+            {/* Subcopy */}
+            <p style={{
+              margin: 0,
+              fontFamily: T.font_sans,
+              fontSize: isMobile ? 15 : 17,
+              lineHeight: 1.6, color: T.textSec,
+              maxWidth: 520,
+              opacity: entered ? 1 : 0,
+              transform: entered ? "translateY(0)" : "translateY(10px)",
+              transition: "opacity 700ms ease 400ms, transform 700ms ease 400ms",
+            }}>
+              Sixty years of genre births, peaks, and slow fades — mapped from {firstYear} through today. Drag the timeline below to jump through the moments, or let it breathe on its own.
+            </p>
+          </div>
+        </div>
+
+        {/* ═══ BOTTOM: INTERACTIVE TIMELINE SCRUBBER + SONOGRAM ═══
+            This is the "unique and memorable" layer. A scrubbable
+            timeline track that gives the user direct control over
+            the featured moment above. Click or drag anywhere along
+            the track to jump the year card to the nearest moment.
+            The sonogram pulse underneath is visually anchored to
+            the timeline so hovering one affects the other's focus.
+            The 2026 end-marker pulses softly as "you are here".
+        */}
+        <div style={{
+          marginTop: isMobile ? 28 : 40,
+          paddingTop: 20,
+          borderTop: `1px solid rgba(255, 255, 255, 0.06)`,
+          position: "relative",
+          opacity: entered ? 1 : 0,
+          transform: entered ? "translateY(0)" : "translateY(8px)",
+          transition: "opacity 700ms ease 620ms, transform 700ms ease 620ms",
+        }}>
+          {/* Micro label row — HOW TO USE + YOU-ARE-HERE pill */}
+          <div style={{
+            display: "flex", alignItems: "center", gap: 10,
+            marginBottom: 14,
+            fontFamily: T.font_mono, fontSize: 9, fontWeight: 700,
+            letterSpacing: "0.2em",
+          }}>
+            <span style={{ color: T.textTer }}>
+              ◂ DRAG OR TAP TIMELINE ▸
+            </span>
+            <span style={{ flex: 1 }} />
+            <span style={{
+              display: "inline-flex", alignItems: "center", gap: 6,
+              padding: "3px 9px",
+              background: `${V.neonGold}14`,
+              border: `1px solid ${V.neonGold}55`,
+              borderRadius: 2,
+              color: V.neonGold,
+              letterSpacing: "0.22em",
+            }}>
+              <span style={{
+                position: "relative",
+                width: 6, height: 6, borderRadius: 999,
+                background: V.neonGold,
+                boxShadow: `0 0 8px ${V.neonGold}`,
+                animation: "ghhYouPulse 1.8s ease-in-out infinite",
+              }} />
+              YOU ARE HERE · 2026
+            </span>
+          </div>
+
+          {/* The scrubber track itself. 56px tall hit region (mobile-safe)
+              containing: the year-tick labels on top, the interactive bar
+              in the middle, the sonogram pulse below. All pointer events
+              land on the track wrapper and translate to a moment index. */}
+          <div
+            ref={trackRef}
+            onPointerDown={onPointerDown}
+            onPointerMove={onPointerMove}
+            onPointerUp={onPointerUp}
+            onPointerCancel={onPointerUp}
+            style={{
+              position: "relative",
+              height: 80,
+              cursor: scrubbing ? "grabbing" : "grab",
+              touchAction: "none",
+              userSelect: "none",
+            }}
+          >
+            {/* Decade tick labels — positioned along the top of the track */}
+            <div style={{
+              position: "absolute", left: 0, right: 0, top: 0,
+              display: "flex", justifyContent: "space-between",
+              fontFamily: T.font_mono, fontSize: 9, fontWeight: 700,
+              letterSpacing: "0.14em", color: T.textTer,
+              pointerEvents: "none",
+            }}>
+              {["1960", "1970", "1980", "1990", "2000", "2010", "2020", "2026"].map((yr, i, arr) => (
+                <span key={yr} style={{
+                  color: i === arr.length - 1 ? V.neonGold : T.textTer,
+                  textShadow: i === arr.length - 1 ? `0 0 4px ${V.neonGold}` : "none",
+                }}>{yr}</span>
+              ))}
+            </div>
+
+            {/* Scrubber rail + filled segment + knob */}
+            <div style={{
+              position: "absolute", left: 0, right: 0, top: 22,
+              height: 4,
+              background: "rgba(255, 255, 255, 0.06)",
+              borderRadius: 2,
+              pointerEvents: "none",
+            }}>
+              {/* Filled portion up to the current knob */}
+              <div style={{
+                position: "absolute", left: 0, top: 0, bottom: 0,
+                width: `${knobPct}%`,
+                background: `linear-gradient(90deg, ${T.accent}60 0%, ${V.neonGold} 100%)`,
+                borderRadius: 2,
+                transition: scrubbing ? "none" : "width 320ms ease",
+              }} />
+              {/* Moment tick marks along the rail */}
+              {GENRE_MOMENTS.map((_, i) => {
+                const pct = (i / maxI) * 100;
+                const active = i === idx;
+                return (
+                  <span key={i} style={{
+                    position: "absolute",
+                    left: `${pct}%`, top: -3,
+                    width: active ? 2 : 1, height: 10,
+                    marginLeft: active ? -1 : -0.5,
+                    background: active ? V.neonGold : "rgba(255,255,255,0.2)",
+                    borderRadius: 1,
+                    boxShadow: active ? `0 0 6px ${V.neonGold}` : "none",
+                    transition: "background 260ms ease",
+                  }} />
+                );
+              })}
+              {/* Knob */}
+              <div style={{
+                position: "absolute",
+                left: `${knobPct}%`, top: -6,
+                width: 16, height: 16,
+                marginLeft: -8,
+                borderRadius: 999,
+                background: V.neonGold,
+                border: `2px solid #0A0D14`,
+                boxShadow: `0 0 0 2px ${V.neonGold}33, 0 0 14px ${V.neonGold}66`,
+                transition: scrubbing ? "none" : "left 320ms ease",
+              }} />
+            </div>
+
+            {/* "You are here" 2026 marker — positioned flush right, over
+                the end of the rail. Pulses independently of the knob. */}
+            <div aria-hidden="true" style={{
+              position: "absolute", right: 0, top: 18,
+              width: 12, height: 12,
+              marginRight: -2,
+              pointerEvents: "none",
+            }}>
+              <span style={{
+                position: "absolute", inset: 0,
+                borderRadius: 999,
+                border: `2px solid ${V.neonGold}`,
+                animation: "ghhYouPing 1.8s ease-out infinite",
+              }} />
+              <span style={{
+                position: "absolute", inset: 3,
+                borderRadius: 999,
+                background: V.neonGold,
+                boxShadow: `0 0 8px ${V.neonGold}`,
+              }} />
+            </div>
+
+            {/* Sonogram pulse line — positioned below the rail, visually
+                anchored so the track and the sonogram read as one object.
+                Stroke-draws on entrance for the cinematic reveal. */}
+            <svg viewBox="0 0 1200 40" preserveAspectRatio="none"
+              style={{
+                position: "absolute", left: 0, right: 0, bottom: 0,
+                width: "100%", height: 40, display: "block",
+                pointerEvents: "none",
+              }}>
+              <defs>
+                <linearGradient id="ghhPulseGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                  <stop offset="0%"   stopColor={T.accent} stopOpacity="0.15" />
+                  <stop offset="50%"  stopColor={V.neonGold} stopOpacity="0.85" />
+                  <stop offset="100%" stopColor={V.neonGold} stopOpacity="1" />
+                </linearGradient>
+              </defs>
+              {/* Baseline */}
+              <line x1="0" y1="20" x2="1200" y2="20"
+                stroke="rgba(255,255,255,0.08)" strokeWidth="1" />
+              {/* Primary pulse — stroke-draws on mount, then flows */}
+              <path
+                d="M 0 20 L 40 20 L 50 10 L 60 30 L 70 20 L 130 20 L 140 6 L 150 34 L 160 20 L 210 20 L 220 12 L 230 28 L 240 20 L 300 20 L 310 8 L 320 32 L 330 20 L 380 20 L 390 14 L 400 26 L 410 20 L 470 20 L 480 4 L 490 36 L 500 20 L 560 20 L 570 10 L 580 30 L 590 20 L 650 20 L 660 14 L 670 26 L 680 20 L 740 20 L 750 8 L 760 32 L 770 20 L 830 20 L 840 12 L 850 28 L 860 20 L 920 20 L 930 4 L 940 36 L 950 20 L 1020 20 L 1030 12 L 1040 28 L 1050 20 L 1110 20 L 1120 2 L 1130 38 L 1140 20 L 1200 20"
+                fill="none"
+                stroke="url(#ghhPulseGrad)"
+                strokeWidth="1.5"
+                strokeDasharray={entered ? "4 3" : "1200"}
+                strokeDashoffset={entered ? 0 : 1200}
+                strokeLinecap="round"
+                style={{
+                  transition: "stroke-dashoffset 1600ms ease-out 520ms, stroke-dasharray 50ms linear 2100ms",
+                  animation: entered ? "ghhPulseFlow 6s linear 2200ms infinite" : "none",
+                }}
+              />
+              {/* Echo pass — slower, lower opacity */}
+              <path
+                d="M 0 20 L 50 20 L 60 14 L 70 26 L 80 20 L 150 20 L 160 10 L 170 30 L 180 20 L 260 20 L 270 6 L 280 34 L 290 20 L 360 20 L 370 14 L 380 26 L 390 20 L 470 20 L 480 8 L 490 32 L 500 20 L 580 20 L 590 12 L 600 28 L 610 20 L 700 20 L 710 6 L 720 34 L 730 20 L 820 20 L 830 14 L 840 26 L 850 20 L 940 20 L 950 10 L 960 30 L 970 20 L 1060 20 L 1070 4 L 1080 36 L 1090 20 L 1200 20"
+                fill="none"
+                stroke={T.accent}
+                strokeOpacity={entered ? 0.25 : 0}
+                strokeWidth="1"
+                strokeDasharray="2 4"
+                strokeLinecap="round"
+                style={{
+                  transition: "stroke-opacity 900ms ease 1400ms",
+                  animation: entered ? "ghhPulseFlow 11s linear 2200ms infinite reverse" : "none",
+                }}
+              />
+            </svg>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
+
 function HistoryPage({ onNavigate }) {
   const { layout } = useLayout();
   const { features } = useTier();
@@ -20820,41 +22464,29 @@ function HistoryPage({ onNavigate }) {
         ? `${T.s5}px ${T.s4}px ${T.s8}px`
         : `${T.s8}px ${T.s7}px ${T.s10}px`,
     }}>
-      {/* ── HERO ─────────────────────────────────────────────────────── */}
-      <div style={{ marginBottom: T.s8 }}>
-        <Label color={T.textTer} style={{ display: "block", marginBottom: T.s4 }}>
-          Genre History · popularity over time
-        </Label>
-        <h1 style={{
-          fontSize: "clamp(32px, 4vw, 56px)",
-          lineHeight: 1.05, letterSpacing: "-0.025em",
-          margin: 0, marginBottom: T.s3,
-          fontFamily: T.font_sans, fontWeight: 600,
-        }}>
-          What's hot, what's cooling, what's over
-        </h1>
-        <p style={{
-          color: T.textSec, fontSize: T.fs_lg, lineHeight: 1.55,
-          maxWidth: 720, marginBottom: T.s3, fontFamily: T.font_sans,
-        }}>
-          Every genre and subgenre in the engine, plotted from 1960 to now. Each curve shows how a genre's cultural momentum has risen and fallen over the decades.
-        </p>
-        {/* Explicit disclaimer — users deserve to know the data provenance */}
-        <div style={{
-          display: "inline-flex", alignItems: "center", gap: 8,
-          padding: "8px 14px", marginTop: T.s2,
-          background: `${V.neonGold}0a`,
-          border: `1px solid ${V.neonGold}33`,
-          borderRadius: 6,
-          fontSize: 11, fontFamily: T.font_mono, fontWeight: 600,
-          letterSpacing: "0.12em",
-          color: V.neonGold,
-          textShadow: `0 0 4px ${V.neonGold}44`,
-        }}>
-          <span>⚠</span>
-          EDITORIAL ESTIMATES · LAST UPDATED APRIL 2026 · NOT REAL-TIME CHART DATA
-        </div>
-      </div>
+      {/* ── CINEMATIC HERO — memorable opening ────────────────────────
+          Not a plain headline + paragraph. A living intro that evokes
+          the whole thesis of the page: music history is a living
+          timeline, genres rise and fall, every sound has a moment.
+
+          Composition:
+            1. Background: slow-drifting gradient field with faint
+               decade tick marks (1960 → 2026) as subliminal context
+            2. Foreground LEFT: rotating year-moment ledger that
+               cycles through curated {year, genre, epitaph} moments
+               every 2.5s — the "living timeline" feel
+            3. Foreground RIGHT: editorial headline stack — small
+               category kicker, giant serif statement, sub-copy
+            4. Bottom: sonogram pulse line (animated SVG) that
+               suggests "sound waves through time" — ties the
+               abstract "history" to the concrete "audio"
+            5. Disclaimer pill remains at the bottom of the hero
+
+          Aesthetic: consumer-facing (V + T palette), Instrument
+          Serif for the statement, Geist Mono for the ticker, high
+          contrast for long-session readability. No hacker green —
+          that belongs to BubbleTools. */}
+      <GenreHistoryHero isMobile={isMobile} />
 
       {/* ── PAGE MODE SWITCHER — simplified to 2 tabs ─────────────────── */}
       <div style={{
@@ -24490,6 +26122,619 @@ function Joystick({ onNavigate, onLockedClick }) {
 // ════════════════════════════════════════════════════════════════════════════
 
 // ════════════════════════════════════════════════════════════════════════════
+// SUNO MASTER CONSOLE — purpose-built producer workstation for Israeli scene
+// ════════════════════════════════════════════════════════════════════════════
+// Lives inside BubbleToolsPage only (admin-gated upstream). This is NOT a
+// clone of EngineWorkspace — it's a different workflow built specifically
+// for producers who take Suno AI output and finish it for Israeli artists:
+//
+//   1. Pick an Israeli artist from the roster (12 available)
+//   2. Optionally expand a DNA panel that shows the artist's sonic
+//      signature + producers + era notes pulled from ARTIST_VOCABULARY
+//      when available, or fallback to pack-level descriptors
+//   3. Configure a Suno prompt via terminal-skinned structured slots
+//      — genre, mood, groove, BPM, key, texture, mix
+//   4. Live-build a prompt preview on the right that updates as slots
+//      commit. Copy → paste into Suno → done.
+//
+// Aesthetic: full CRT terminal. Scan lines, green glow, monospace
+// everywhere, typing-cursor animations on drawers, ASCII dividers.
+// High contrast readable because producers work long sessions.
+//
+// Data sources (already in the codebase, no new data):
+//   - MIMIC_PACKS filtered to region === "israeli"
+//   - ARTIST_VOCABULARY (getArtistVocabulary helper)
+//   - MOODS, ENERGIES, GROOVES, HARMONIC_STYLES, SOUND_TEXTURES, MIX_CHARS
+//   - GENRE_TREE for genre pickers (simplified single-slot)
+// ════════════════════════════════════════════════════════════════════════════
+
+function SunoMasterConsole() {
+  const { layout } = useLayout();
+  const isMobile = layout === "mobile";
+
+  // Terminal palette — locally scoped so the component is self-contained
+  const GREEN = "#00FF41";
+  const GREEN_HI = "#66FF88";            // brighter accent for text focus
+  const GREEN_DIM = "rgba(0, 255, 65, 0.55)";
+  const GREEN_MUTE = "rgba(0, 255, 65, 0.32)";
+  const GREEN_FAINT = "rgba(0, 255, 65, 0.15)";
+  const GREEN_BG = "rgba(0, 255, 65, 0.04)";
+  const BLACK = "#050805";
+  const BLACK_RAISED = "#0A1008";
+
+  // ── Artists: Israeli roster only ──
+  const israeliArtists = useMemo(
+    () => MIMIC_PACKS.filter(a => a.region === "israeli"),
+    []
+  );
+
+  // ── State ──
+  const [artistId, setArtistId] = useState(israeliArtists[0]?.artistId || null);
+  const [dnaOpen, setDnaOpen] = useState(false);
+  const [genre, setGenre] = useState("Mediterranean pop");
+  const [mood, setMood] = useState("Defiant");
+  const [energy, setEnergy] = useState("Steady groove throughout");
+  const [groove, setGroove] = useState("straight");
+  const [texture, setTexture] = useState("Warm & analog");
+  const [mix, setMix] = useState("Modern polished radio");
+  const [harmonic, setHarmonic] = useState("Minor-key introspection");
+  const [bpm, setBpm] = useState(96);
+  const [copied, setCopied] = useState(false);
+
+  const activeArtist = israeliArtists.find(a => a.artistId === artistId) || israeliArtists[0];
+  const vocab = activeArtist ? getArtistVocabulary(activeArtist.artistId) : null;
+
+  // Reset DNA drawer when changing artist (otherwise data flashes stale)
+  useEffect(() => { setDnaOpen(false); }, [artistId]);
+
+  // Auto-suggest defaults when artist changes: pull the first pack's
+  // state as a soft seed so new artists don't open empty.
+  useEffect(() => {
+    if (!activeArtist) return;
+    const firstPack = activeArtist.packs[0];
+    if (!firstPack || !firstPack.state) return;
+    const s = firstPack.state;
+    if (s.mood) setMood(s.mood);
+    if (s.energy) setEnergy(s.energy);
+    if (s.groove) setGroove(s.groove);
+    if (s.texture) setTexture(s.texture);
+    if (s.mix) setMix(s.mix);
+    if (s.harmonic) setHarmonic(s.harmonic);
+    if (typeof s.bpm === "number") setBpm(s.bpm);
+    if (s.slots && s.slots[0] && s.slots[0].sub) setGenre(s.slots[0].sub);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [artistId]);
+
+  // ── Prompt preview build — structured format Suno accepts well ──
+  const prompt = useMemo(() => {
+    const parts = [];
+    parts.push(`${genre}, ${mood} mood, ${energy}`);
+    parts.push(`${groove} groove at ${bpm} BPM`);
+    parts.push(`${harmonic}, ${texture} texture, ${mix}`);
+    if (vocab) {
+      const vParts = [];
+      if (Array.isArray(vocab.vocal) && vocab.vocal.length) vParts.push(vocab.vocal[0]);
+      if (Array.isArray(vocab.production) && vocab.production.length) vParts.push(vocab.production[0]);
+      if (Array.isArray(vocab.signature) && vocab.signature.length) vParts.push(vocab.signature[0]);
+      if (vParts.length) parts.push(`[sonic DNA: ${vParts.join("; ")}]`);
+    } else if (activeArtist) {
+      parts.push(`[in the style of: ${activeArtist.artistName} pack palette]`);
+    }
+    return parts.join(". ");
+  }, [genre, mood, energy, groove, bpm, harmonic, texture, mix, vocab, activeArtist]);
+
+  const doCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(prompt);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1600);
+    } catch {}
+  };
+
+  // Catalog options pulled from the existing engine data so we stay
+  // aligned with what the main prompt engine considers valid.
+  const MOODS_OPTIONS = useMemo(() => (typeof MOODS !== "undefined" ? MOODS : [mood]), [mood]);
+  const ENERGIES_OPTIONS = useMemo(() => (typeof ENERGIES !== "undefined" ? ENERGIES : [energy]), [energy]);
+  const GROOVES_OPTIONS = useMemo(() => (typeof GROOVES !== "undefined" ? GROOVES.map(g => g.id) : [groove]), [groove]);
+  const HARMONIC_OPTIONS = useMemo(() => (typeof HARMONIC_STYLES !== "undefined" ? HARMONIC_STYLES : [harmonic]), [harmonic]);
+  const TEXTURE_OPTIONS = useMemo(() => (typeof SOUND_TEXTURES !== "undefined" ? SOUND_TEXTURES : [texture]), [texture]);
+  const MIX_OPTIONS = useMemo(() => (typeof MIX_CHARS !== "undefined" ? MIX_CHARS : [mix]), [mix]);
+
+  // Genre list — pull top subgenre names from GENRE_TREE. Flat list of
+  // subgenres across all Tier-A genres so the dropdown is useful without
+  // overwhelming. Fallback if GENRE_TREE shape doesn't match expectation.
+  const GENRE_OPTIONS = useMemo(() => {
+    const out = new Set(["Mediterranean pop"]);
+    try {
+      if (typeof GENRE_TREE !== "undefined" && GENRE_TREE && typeof GENRE_TREE === "object") {
+        Object.values(GENRE_TREE).forEach(cat => {
+          if (cat && typeof cat === "object") {
+            Object.keys(cat).forEach(sub => out.add(sub));
+          }
+        });
+      }
+    } catch {}
+    return Array.from(out);
+  }, []);
+
+  // Reusable terminal slot — label + native select.
+  const slot = (label, value, setter, options, note) => (
+    <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+      <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
+        <span style={{
+          fontSize: 9, fontWeight: 700, letterSpacing: "0.22em",
+          color: GREEN_DIM, fontFamily: T.font_mono,
+        }}>
+          ▸ {label}
+        </span>
+        {note && (
+          <span style={{
+            fontSize: 9, color: GREEN_MUTE, fontFamily: T.font_mono,
+            letterSpacing: "0.05em",
+          }}>// {note}</span>
+        )}
+      </div>
+      <select
+        value={value}
+        onChange={e => { playSwitchSound(); setter(e.target.value); }}
+        style={{
+          padding: isMobile ? "9px 12px" : "7px 10px",
+          background: BLACK,
+          border: `1px solid ${GREEN_FAINT}`,
+          borderRadius: 3,
+          color: GREEN,
+          fontFamily: T.font_mono,
+          fontSize: isMobile ? 16 : 12,
+          fontWeight: 600,
+          letterSpacing: "0.02em",
+          outline: "none",
+          cursor: "pointer",
+          appearance: "none",
+          WebkitAppearance: "none",
+          backgroundImage: `linear-gradient(45deg, transparent 50%, ${GREEN_DIM} 50%), linear-gradient(135deg, ${GREEN_DIM} 50%, transparent 50%)`,
+          backgroundPosition: `calc(100% - 14px) calc(50% - 2px), calc(100% - 9px) calc(50% - 2px)`,
+          backgroundSize: "5px 5px, 5px 5px",
+          backgroundRepeat: "no-repeat",
+          paddingRight: 28,
+        }}
+        onFocus={e => { e.currentTarget.style.borderColor = GREEN; }}
+        onBlur={e => { e.currentTarget.style.borderColor = GREEN_FAINT; }}
+      >
+        {options.map(o => (
+          <option key={o} value={o} style={{ background: BLACK, color: GREEN }}>{o}</option>
+        ))}
+      </select>
+    </div>
+  );
+
+  return (
+    <>
+      {/* ── SCOPED KEYFRAMES FOR CRT/TERMINAL FLAIR ─────────────── */}
+      <style>{`
+        @keyframes smcCaretBlink {
+          0%, 49% { opacity: 1; }
+          50%, 100% { opacity: 0; }
+        }
+        @keyframes smcScanDrift {
+          0%   { background-position: 0 0; }
+          100% { background-position: 0 4px; }
+        }
+        @keyframes smcBootGlow {
+          0%   { opacity: 0; filter: blur(8px) brightness(1.6); }
+          40%  { opacity: 1; filter: blur(0)   brightness(1.2); }
+          100% { opacity: 1; filter: blur(0)   brightness(1); }
+        }
+        @keyframes smcTypeIn {
+          from { clip-path: inset(0 100% 0 0); }
+          to   { clip-path: inset(0 0 0 0); }
+        }
+        @keyframes smcFlicker {
+          0%,100% { opacity: 1; }
+          18%, 22% { opacity: 0.82; }
+          35%, 36% { opacity: 0.96; }
+          72%, 73% { opacity: 0.9; }
+        }
+      `}</style>
+
+      {/* Section header */}
+      <div style={{
+        display: "flex", alignItems: "center", gap: 8,
+        marginBottom: 12,
+      }}>
+        <span style={{
+          fontSize: 10, fontWeight: 700, letterSpacing: "0.3em",
+          color: GREEN,
+          padding: "4px 8px",
+          background: GREEN_BG,
+          border: `1px solid ${GREEN_FAINT}`,
+          borderRadius: 3,
+          fontFamily: T.font_mono,
+        }}>
+          § SUNO_MASTER_CONSOLE
+        </span>
+        <span style={{ flex: 1, height: 1, background: GREEN_FAINT }} />
+        <span style={{
+          color: GREEN_DIM, fontSize: 10,
+          padding: "2px 6px",
+          background: GREEN_BG,
+          border: `1px dashed ${GREEN_FAINT}`,
+          borderRadius: 3,
+          letterSpacing: "0.1em",
+          fontFamily: T.font_mono,
+        }}>
+          ISRAELI SCENE · {israeliArtists.length} ARTISTS
+        </span>
+      </div>
+
+      {/* ── CONSOLE FRAME ── */}
+      <div style={{
+        marginBottom: 32,
+        position: "relative",
+        border: `1px solid ${GREEN_FAINT}`,
+        borderRadius: 6,
+        background: BLACK,
+        overflow: "hidden",
+        animation: "smcBootGlow 420ms ease-out",
+      }}>
+        {/* CRT scan-line overlay — scoped to this frame */}
+        <div aria-hidden="true" style={{
+          position: "absolute", inset: 0, zIndex: 2,
+          pointerEvents: "none",
+          background: "repeating-linear-gradient(0deg, rgba(0,255,65,0.035) 0px, rgba(0,255,65,0.035) 1px, transparent 1px, transparent 4px)",
+          animation: "smcScanDrift 8s linear infinite",
+        }} />
+        {/* Soft vignette from the bottom-right like a CRT corner-glow */}
+        <div aria-hidden="true" style={{
+          position: "absolute", right: "-20%", bottom: "-30%",
+          width: "80%", height: "80%", zIndex: 1,
+          pointerEvents: "none",
+          background: "radial-gradient(ellipse, rgba(0,255,65,0.06) 0%, transparent 60%)",
+        }} />
+
+        {/* Terminal title bar */}
+        <div style={{
+          position: "relative", zIndex: 3,
+          display: "flex", alignItems: "center", gap: 10,
+          padding: "8px 12px",
+          background: "rgba(0, 255, 65, 0.03)",
+          borderBottom: `1px solid ${GREEN_FAINT}`,
+          fontFamily: T.font_mono,
+        }}>
+          <span style={{ color: GREEN_MUTE, fontSize: 11, letterSpacing: "0.08em" }}>
+            ~/suno-master/<span style={{ color: GREEN }}>{activeArtist?.artistName.toLowerCase().replace(/\s+/g, "-") || "console"}</span>
+          </span>
+          <span style={{ flex: 1 }} />
+          <span style={{
+            fontSize: 9, color: GREEN_MUTE, letterSpacing: "0.15em",
+            padding: "2px 6px",
+            border: `1px dashed ${GREEN_FAINT}`, borderRadius: 2,
+          }}>SESSION · ACTIVE</span>
+        </div>
+
+        <div style={{
+          position: "relative", zIndex: 3,
+          padding: isMobile ? 16 : 20,
+          display: "grid",
+          gridTemplateColumns: isMobile ? "1fr" : "minmax(0, 1fr) minmax(0, 0.85fr)",
+          gap: isMobile ? 20 : 24,
+          animation: "smcFlicker 9s ease-in-out infinite",
+        }}>
+          {/* ═══════════ LEFT PANE — ARTIST + SLOTS ═══════════ */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 16, minWidth: 0 }}>
+            {/* Boot prompt line */}
+            <div style={{
+              fontFamily: T.font_mono, fontSize: 11,
+              color: GREEN_MUTE, letterSpacing: "0.1em",
+              display: "flex", alignItems: "center", gap: 6,
+            }}>
+              <span style={{ color: GREEN }}>$</span>
+              <span>suno-master init</span>
+              <span>--artist=<span style={{
+                color: GREEN_HI,
+                animation: "smcTypeIn 380ms ease-out",
+                display: "inline-block",
+              }}>{activeArtist?.artistName.toLowerCase().replace(/\s+/g, "_") || "null"}</span></span>
+              <span style={{
+                display: "inline-block", width: 8, height: 13,
+                background: GREEN, marginLeft: 2,
+                animation: "smcCaretBlink 1s steps(1) infinite",
+              }} />
+            </div>
+
+            {/* Artist picker */}
+            <div>
+              <div style={{
+                fontSize: 9, fontWeight: 700, letterSpacing: "0.22em",
+                color: GREEN_DIM, fontFamily: T.font_mono,
+                marginBottom: 8,
+              }}>
+                ▸ SELECT_ARTIST
+              </div>
+              <div style={{
+                display: "flex", flexWrap: "wrap", gap: 5,
+              }}>
+                {israeliArtists.map(a => {
+                  const isActive = a.artistId === artistId;
+                  const hasDNA = !!getArtistVocabulary(a.artistId);
+                  return (
+                    <button key={a.artistId} type="button"
+                      onClick={() => { playSwitchSound(); setArtistId(a.artistId); }}
+                      style={{
+                        position: "relative",
+                        padding: "6px 11px",
+                        background: isActive ? "rgba(0, 255, 65, 0.12)" : "transparent",
+                        border: `1px solid ${isActive ? GREEN : GREEN_FAINT}`,
+                        borderRadius: 3,
+                        color: isActive ? GREEN_HI : GREEN_DIM,
+                        fontFamily: T.font_mono,
+                        fontSize: 11, fontWeight: 700,
+                        letterSpacing: "0.04em",
+                        cursor: "pointer",
+                        textShadow: isActive ? `0 0 6px ${GREEN_DIM}` : "none",
+                        transition: `all ${T.dur_fast} ${T.ease}`,
+                      }}
+                      onMouseEnter={e => { if (!isActive) e.currentTarget.style.borderColor = GREEN_DIM; }}
+                      onMouseLeave={e => { if (!isActive) e.currentTarget.style.borderColor = GREEN_FAINT; }}
+                    >
+                      {a.artistName}
+                      {hasDNA && (
+                        <span style={{
+                          marginLeft: 6,
+                          fontSize: 7, letterSpacing: "0.2em",
+                          padding: "1px 4px",
+                          color: GREEN,
+                          background: "rgba(0, 255, 65, 0.08)",
+                          borderRadius: 2,
+                        }}>DNA</span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* DNA expandable drawer */}
+            <div>
+              <button type="button"
+                onClick={() => { playSwitchSound(); setDnaOpen(v => !v); }}
+                style={{
+                  width: "100%",
+                  display: "flex", alignItems: "center", gap: 8,
+                  padding: "7px 11px",
+                  background: dnaOpen ? "rgba(0, 255, 65, 0.06)" : "transparent",
+                  border: `1px dashed ${GREEN_MUTE}`,
+                  borderRadius: 3,
+                  color: GREEN,
+                  fontFamily: T.font_mono, fontSize: 10, fontWeight: 700,
+                  letterSpacing: "0.15em",
+                  cursor: "pointer",
+                  textAlign: "left",
+                  transition: `all ${T.dur_fast} ${T.ease}`,
+                }}
+              >
+                <span style={{ color: GREEN_HI }}>{dnaOpen ? "▾" : "▸"}</span>
+                <span>SONIC_DNA</span>
+                <span style={{ flex: 1 }} />
+                <span style={{ color: GREEN_MUTE, fontSize: 9 }}>
+                  {vocab ? "full profile available" : "pack-level only"}
+                </span>
+              </button>
+              {dnaOpen && (
+                <div style={{
+                  marginTop: 6,
+                  padding: "12px 14px",
+                  background: BLACK_RAISED,
+                  border: `1px solid ${GREEN_FAINT}`,
+                  borderRadius: 3,
+                  fontFamily: T.font_mono, fontSize: 11,
+                  color: GREEN_HI,
+                  lineHeight: 1.65,
+                }}>
+                  {vocab ? (
+                    <>
+                      {Array.isArray(vocab.vocal) && vocab.vocal.length > 0 && (
+                        <DnaBlock label="VOCAL" items={vocab.vocal} color={GREEN} dim={GREEN_MUTE} />
+                      )}
+                      {Array.isArray(vocab.production) && vocab.production.length > 0 && (
+                        <DnaBlock label="PRODUCTION" items={vocab.production} color={GREEN} dim={GREEN_MUTE} />
+                      )}
+                      {Array.isArray(vocab.signature) && vocab.signature.length > 0 && (
+                        <DnaBlock label="SIGNATURE" items={vocab.signature} color={GREEN} dim={GREEN_MUTE} />
+                      )}
+                      {vocab.era && (
+                        <div style={{ marginTop: 8 }}>
+                          <span style={{ color: GREEN_MUTE, fontSize: 9, letterSpacing: "0.2em" }}>// ERA</span>
+                          <div style={{ marginTop: 3 }}>{vocab.era}</div>
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <div style={{ color: GREEN_DIM }}>
+                      &gt; no DNA profile in database for this artist yet
+                      <br />
+                      &gt; falling back to first-pack descriptors as seed
+                      {activeArtist?.packs?.[0]?.state && (
+                        <div style={{ marginTop: 10, paddingTop: 10, borderTop: `1px dashed ${GREEN_FAINT}`, color: GREEN_HI }}>
+                          mood: {activeArtist.packs[0].state.mood || "—"}<br />
+                          groove: {activeArtist.packs[0].state.groove || "—"}<br />
+                          texture: {activeArtist.packs[0].state.texture || "—"}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Divider */}
+            <div style={{
+              fontFamily: T.font_mono, fontSize: 10, color: GREEN_MUTE,
+              letterSpacing: "0.1em",
+              padding: "6px 0",
+              borderTop: `1px dashed ${GREEN_FAINT}`,
+              borderBottom: `1px dashed ${GREEN_FAINT}`,
+            }}>
+              ─── CONFIG ───────────────────────────
+            </div>
+
+            {/* Structured slots */}
+            <div style={{
+              display: "grid",
+              gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr",
+              gap: 14,
+            }}>
+              {slot("GENRE",     genre,     setGenre,     GENRE_OPTIONS, "primary style anchor")}
+              {slot("MOOD",      mood,      setMood,      MOODS_OPTIONS, "emotional tone")}
+              {slot("ENERGY",    energy,    setEnergy,    ENERGIES_OPTIONS, "dynamic arc")}
+              {slot("GROOVE",    groove,    setGroove,    GROOVES_OPTIONS, "rhythmic feel")}
+              {slot("HARMONIC",  harmonic,  setHarmonic,  HARMONIC_OPTIONS, "key character")}
+              {slot("TEXTURE",   texture,   setTexture,   TEXTURE_OPTIONS, "sonic feel")}
+              {slot("MIX",       mix,       setMix,       MIX_OPTIONS, "polish character")}
+              {/* BPM — slider rather than dropdown */}
+              <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
+                  <span style={{
+                    fontSize: 9, fontWeight: 700, letterSpacing: "0.22em",
+                    color: GREEN_DIM, fontFamily: T.font_mono,
+                  }}>▸ BPM</span>
+                  <span style={{
+                    fontSize: 11, color: GREEN, fontFamily: T.font_mono,
+                    fontWeight: 700,
+                  }}>{bpm}</span>
+                </div>
+                <input type="range" min="60" max="180" value={bpm}
+                  onChange={e => setBpm(parseInt(e.target.value, 10))}
+                  style={{
+                    width: "100%",
+                    accentColor: GREEN,
+                  }}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* ═══════════ RIGHT PANE — LIVE PROMPT ═══════════ */}
+          <div style={{
+            display: "flex", flexDirection: "column", gap: 14,
+            minWidth: 0,
+          }}>
+            <div style={{
+              fontFamily: T.font_mono, fontSize: 11,
+              color: GREEN_MUTE, letterSpacing: "0.1em",
+            }}>
+              <span style={{ color: GREEN }}>$</span> cat prompt.txt
+            </div>
+            <div style={{
+              position: "relative",
+              flex: 1,
+              minHeight: 180,
+              padding: "14px 16px",
+              background: BLACK_RAISED,
+              border: `1px solid ${GREEN_FAINT}`,
+              borderRadius: 3,
+              fontFamily: T.font_mono,
+              fontSize: 12.5,
+              lineHeight: 1.7,
+              color: GREEN_HI,
+              letterSpacing: "0.01em",
+              whiteSpace: "pre-wrap",
+              wordBreak: "break-word",
+              overflow: "auto",
+              textShadow: `0 0 4px ${GREEN_MUTE}`,
+            }}>
+              {prompt}
+              <span style={{
+                display: "inline-block", width: 7, height: 13,
+                background: GREEN, marginLeft: 4, verticalAlign: "middle",
+                animation: "smcCaretBlink 1s steps(1) infinite",
+              }} />
+            </div>
+            {/* Action rail */}
+            <div style={{
+              display: "flex", gap: 8, flexWrap: "wrap",
+              alignItems: "center",
+            }}>
+              <button type="button"
+                onClick={doCopy}
+                style={{
+                  padding: "8px 14px",
+                  background: copied ? "rgba(0, 255, 65, 0.18)" : "rgba(0, 255, 65, 0.08)",
+                  border: `1px solid ${copied ? GREEN_HI : GREEN}`,
+                  borderRadius: 3,
+                  color: copied ? GREEN_HI : GREEN,
+                  fontFamily: T.font_mono, fontSize: 11, fontWeight: 700,
+                  letterSpacing: "0.15em",
+                  cursor: "pointer",
+                  textShadow: `0 0 6px ${GREEN_MUTE}`,
+                  transition: `all ${T.dur_fast} ${T.ease}`,
+                }}
+              >
+                {copied ? "✓ COPIED_TO_CLIPBOARD" : "⎘ COPY_PROMPT"}
+              </button>
+              <span style={{
+                fontFamily: T.font_mono, fontSize: 10,
+                color: GREEN_MUTE, letterSpacing: "0.08em",
+              }}>
+                // paste into suno.com and generate
+              </span>
+            </div>
+            {/* Footer stat ledger */}
+            <div style={{
+              marginTop: "auto",
+              paddingTop: 10,
+              borderTop: `1px dashed ${GREEN_FAINT}`,
+              fontFamily: T.font_mono, fontSize: 10,
+              color: GREEN_MUTE,
+              letterSpacing: "0.08em",
+              lineHeight: 1.7,
+            }}>
+              <div>length: {prompt.length} chars</div>
+              <div>slots_configured: {[genre, mood, energy, groove, harmonic, texture, mix].filter(Boolean).length}/7</div>
+              <div>dna_source: {vocab ? "ARTIST_VOCABULARY" : "pack_palette_fallback"}</div>
+            </div>
+          </div>
+        </div>
+
+        {/* ── BOTTOM STATUS STRIP ── */}
+        <div style={{
+          position: "relative", zIndex: 3,
+          padding: "6px 12px",
+          borderTop: `1px solid ${GREEN_FAINT}`,
+          background: "rgba(0, 255, 65, 0.02)",
+          display: "flex", gap: 16, flexWrap: "wrap",
+          fontFamily: T.font_mono, fontSize: 9,
+          color: GREEN_MUTE, letterSpacing: "0.1em",
+        }}>
+          <span>sys: suno-master-console</span>
+          <span>v: 1.0.0</span>
+          <span style={{ flex: 1 }} />
+          <span>bpm: {bpm}</span>
+          <span>•</span>
+          <span>{activeArtist?.artistName || "—"}</span>
+        </div>
+      </div>
+    </>
+  );
+}
+
+// Helper: one DNA block inside the expandable drawer. Separated so the
+// drawer body stays readable in the main component.
+function DnaBlock({ label, items, color, dim }) {
+  return (
+    <div style={{ marginBottom: 10 }}>
+      <div style={{ color: dim, fontSize: 9, letterSpacing: "0.2em", marginBottom: 3 }}>
+        // {label}
+      </div>
+      {items.map((item, i) => (
+        <div key={i} style={{ paddingLeft: 10 }}>
+          <span style={{ color: dim }}>›</span> {item}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ════════════════════════════════════════════════════════════════════════════
 // BUBBLE TOOLS PAGE — admin-only dedicated surface for internal tools
 // ════════════════════════════════════════════════════════════════════════════
 // Hacker-backdoor aesthetic: black background, electric-green accents,
@@ -24580,10 +26825,20 @@ function BubbleToolsPage({ onNavigate }) {
         blendVibe: mimicBlendVibe,
         ts: Date.now(),
       }));
+      // Dispatch a custom event so the EngineWorkspace embedded on
+      // THIS page (Turn 2 refactor) can pick up the pack immediately
+      // without a page navigation. The workspace listens for this
+      // event and re-reads sessionStorage. Pure /engine page visits
+      // still work via the mount-time useEffect handler.
+      window.dispatchEvent(new CustomEvent("he-pending-change", {
+        detail: { kind: "mimic" },
+      }));
     } catch {}
     trackVibeUse(pack.vibe);
-    // Navigate to engine — pack applies on mount
-    if (onNavigate) onNavigate("engine");
+    // No page navigation — the Engine is embedded right here on
+    // BubbleTools. Let the embedded workspace react via event.
+    // If admin scrolled past the embedded Engine, they can scroll
+    // back up to see the applied result.
   };
 
   const shuffleVibe = () => {
@@ -24726,6 +26981,20 @@ function BubbleToolsPage({ onNavigate }) {
           </div>
         </div>
 
+        {/* ── SECTION — SUNO MASTER CONSOLE ───────────────────────
+            Purpose-built workstation for producers turning Suno AI
+            output into finished tracks for Israeli artists. Not a
+            clone of the Engine — it's a different workflow:
+              1. Pick an Israeli artist from the roster
+              2. See their sonic DNA (expandable on demand)
+              3. Build a Suno prompt around that DNA using terminal
+                 slot controls
+              4. Copy, iterate, produce
+            Full CRT/hacker aesthetic — matches the surrounding
+            BubbleTools page, no context-switching between indigo
+            and green zones like the old embedded Engine did. */}
+        <SunoMasterConsole />
+
         {/* ── SECTION — EXTRA POPPY ─────────────────────────────────
             Admin-exclusive pop-maximizer. Golden treasure chest
             opened-state since admin always has permission + infinite
@@ -24764,8 +27033,14 @@ function BubbleToolsPage({ onNavigate }) {
             playSwitchSound();
             try {
               sessionStorage.setItem("he-pending-max-poppy", JSON.stringify({ ts: Date.now() }));
+              // Same pattern as applyAndGo — fire event for the
+              // embedded EngineWorkspace to react immediately
+              // without a page navigation.
+              window.dispatchEvent(new CustomEvent("he-pending-change", {
+                detail: { kind: "max-poppy" },
+              }));
             } catch {}
-            if (onNavigate) onNavigate("engine");
+            // No navigation — embedded Engine reacts via event.
           }}
           title="Open the chest — maximize the current config for pop appeal"
           style={{
