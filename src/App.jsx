@@ -573,7 +573,7 @@ function LayoutToggle() {
       borderRadius: 6, padding: 2, flexShrink: 0,
     }}>
       <button type="button"
-        onClick={() => setLayout("desktop")}
+        onClick={() => { playSwitchSound(); setLayout("desktop"); }}
         title="Desktop layout"
         style={{
           background: layout === "desktop" ? T.elevated : "transparent",
@@ -584,7 +584,7 @@ function LayoutToggle() {
           transition: "all 120ms ease-out",
         }}>🖥</button>
       <button type="button"
-        onClick={() => setLayout("mobile")}
+        onClick={() => { playSwitchSound(); setLayout("mobile"); }}
         title="Mobile layout"
         style={{
           background: layout === "mobile" ? T.elevated : "transparent",
@@ -596,7 +596,7 @@ function LayoutToggle() {
         }}>📱</button>
       {!auto && (
         <button type="button"
-          onClick={setAuto}
+          onClick={() => { playSwitchSound(); setAuto(); }}
           title="Revert to auto-detect"
           style={{
             background: "transparent", border: "none",
@@ -617,7 +617,7 @@ function ThemeToggle() {
   const isDark = theme === "dark";
   return (
     <button type="button"
-      onClick={toggleTheme}
+      onClick={() => { playSwitchSound(); toggleTheme(); }}
       title={isDark ? "Switch to light mode" : "Switch to dark mode"}
       aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
       style={{
@@ -4098,7 +4098,7 @@ function AddCustomChip({ sectionId, onLockedClick }) {
   if (!allowed) {
     return (
       <span
-        onClick={() => onLockedClick && onLockedClick()}
+        onClick={() => { playSwitchSound(); onLockedClick && onLockedClick(); }}
         onMouseEnter={() => setHover(true)}
         onMouseLeave={() => setHover(false)}
         title="Custom options are a Pro feature — click to upgrade"
@@ -4159,7 +4159,7 @@ function AddCustomChip({ sectionId, onLockedClick }) {
   // IDLE MODE — plus button
   return (
     <span
-      onClick={() => setEditing(true)}
+      onClick={() => { playSwitchSound(); setEditing(true); }}
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
       title="Add your own option — Enter to save, right-click to delete custom chips"
@@ -4328,6 +4328,8 @@ function Cubicle({ id, icon, title, description, valuePreview, filled, isOpen, o
   const disabled = toggle === "off";
   const showLed = !disabled && filled !== undefined;
   const ledGreen = filled === true;
+  const { layout } = useLayout();
+  const isMobile = layout === "mobile";
   // Suppress the chevron and click handlers when the cubicle is always open
   // (e.g. BPM which lives below the grid and never collapses).
   const headerClickable = !disabled && !alwaysOpen;
@@ -4467,12 +4469,16 @@ function Cubicle({ id, icon, title, description, valuePreview, filled, isOpen, o
 
       {/* ── DROP-DOWN POPOVER ─ anchored to the tile's bottom edge.
           Spans the full grid-row width so chips have room to breathe.
-          Does NOT push sibling cubicles — they stay where they were. */}
+          Does NOT push sibling cubicles — they stay where they were.
+          On mobile: anchors to viewport left/right edges so content
+          reads across the full narrow screen (no side gutters eating
+          real estate). Capped at a viewport-proportional max-height
+          with internal scroll for very long option lists. */}
       {isOpen && (
         <>
           {/* Invisible scrim — click-outside closes the popover */}
           <div
-            onClick={() => onToggle(id)}
+            onClick={() => { playSwitchSound(); onToggle(id); }}
             style={{
               position: "fixed",
               inset: 0,
@@ -4484,16 +4490,27 @@ function Cubicle({ id, icon, title, description, valuePreview, filled, isOpen, o
             role="region"
             aria-label={`${title} options`}
             style={{
-              position: "absolute",
-              top: "calc(100% + 8px)",
-              // Expand sideways to the full width of the grid row by
-              // over-reaching the tile's own boundaries. The negative
-              // margins here pull the panel out to a usable width; the
-              // popover is clamped by the enclosing grid-row width below.
-              left: "50%",
-              transform: "translateX(-50%)",
-              width: "min(880px, calc(100vw - 48px))",
-              maxWidth: "calc(100vw - 48px)",
+              position: isMobile ? "fixed" : "absolute",
+              ...(isMobile
+                ? {
+                    // Mobile: fixed position, edge-to-edge (minus 8px gutter).
+                    // The user's thumb has the full screen to work with.
+                    left: 8,
+                    right: 8,
+                    top: "auto",
+                    bottom: 12,
+                    width: "auto",
+                    maxHeight: "72vh",
+                  }
+                : {
+                    // Desktop: anchored below the tile, centered horizontally.
+                    top: "calc(100% + 10px)",
+                    left: "50%",
+                    transform: "translateX(-50%)",
+                    width: "min(920px, calc(100vw - 48px))",
+                    maxWidth: "calc(100vw - 48px)",
+                    maxHeight: "min(600px, 68vh)",
+                  }),
               zIndex: 6,
               background: `linear-gradient(180deg, ${T.surface} 0%, ${T.elevated}F0 100%)`,
               border: `1px solid ${filled === true ? V.neonGold + "44" : T.border}`,
@@ -4505,33 +4522,90 @@ function Cubicle({ id, icon, title, description, valuePreview, filled, isOpen, o
                 0 0 0 1px rgba(255,255,255,0.06),
                 inset 0 1px 0 rgba(255,255,255,0.06)
               `,
-              padding: `${T.s3}px ${T.s4}px ${T.s4}px`,
               animation: "cubiclePopoverIn 180ms cubic-bezier(0.16, 1, 0.3, 1)",
               backdropFilter: "blur(20px) saturate(140%)",
+              display: "flex",
+              flexDirection: "column",
+              overflow: "hidden",
             }}>
-            {/* Pointer arrow — small triangle linking popover to its tile origin */}
-            <div
-              aria-hidden="true"
-              style={{
-                position: "absolute",
-                top: -7, left: "50%",
-                transform: "translateX(-50%) rotate(45deg)",
-                width: 12, height: 12,
-                background: T.surface,
-                borderTop: `2px solid ${WHITE_OUTLINE}`,
-                borderLeft: `1px solid ${filled === true ? V.neonGold + "44" : T.border}`,
-              }}
-            />
-            {(extra || hint) && (
+            {/* Pointer arrow — small triangle linking popover to its tile
+                origin (desktop only; hidden on mobile since the popover
+                docks to the bottom of the viewport). */}
+            {!isMobile && (
+              <div
+                aria-hidden="true"
+                style={{
+                  position: "absolute",
+                  top: -7, left: "50%",
+                  transform: "translateX(-50%) rotate(45deg)",
+                  width: 12, height: 12,
+                  background: T.surface,
+                  borderTop: `2px solid ${WHITE_OUTLINE}`,
+                  borderLeft: `1px solid ${filled === true ? V.neonGold + "44" : T.border}`,
+                }}
+              />
+            )}
+            {/* Mobile header with close button — easier than reaching for
+                the scrim on a small screen. Desktop doesn't need this since
+                the layout is less cramped. */}
+            {isMobile && (
               <div style={{
                 display: "flex", alignItems: "center", justifyContent: "space-between",
-                gap: T.s2, flexWrap: "wrap", marginBottom: T.s3,
+                padding: `${T.s3}px ${T.s4}px`,
+                borderBottom: `1px solid ${T.border}`,
+                background: `linear-gradient(180deg, ${T.elevated} 0%, ${T.surface} 100%)`,
+                flexShrink: 0,
               }}>
-                {hint && <span style={{ fontSize: T.fs_sm, color: T.textTer, fontFamily: T.font_sans }}>{hint}</span>}
-                {extra && <div style={{ display: "flex", alignItems: "center", gap: T.s3, marginLeft: "auto" }}>{extra}</div>}
+                <div style={{
+                  display: "flex", alignItems: "center", gap: T.s2,
+                }}>
+                  {icon && <span style={{ fontSize: 18, lineHeight: 1 }}>{icon}</span>}
+                  <span style={{
+                    fontSize: T.fs_md, fontWeight: 600, color: T.text,
+                    fontFamily: T.font_sans,
+                  }}>{title}</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => { playSwitchSound(); onToggle(id); }}
+                  aria-label="Close options"
+                  style={{
+                    background: "transparent",
+                    border: `1px solid ${T.border}`,
+                    color: T.textSec,
+                    width: 32, height: 32,
+                    borderRadius: T.r_sm,
+                    cursor: "pointer",
+                    fontSize: 18, lineHeight: 1,
+                    display: "grid", placeItems: "center",
+                    fontFamily: T.font_mono,
+                  }}>×</button>
               </div>
             )}
-            {children}
+            {/* Scrollable content area — if chips overflow, they scroll
+                inside the panel instead of forcing the whole page. */}
+            <div style={{
+              flex: 1,
+              overflowY: "auto",
+              overflowX: "hidden",
+              padding: isMobile
+                ? `${T.s3}px ${T.s4}px ${T.s4}px`
+                : `${T.s3}px ${T.s5}px ${T.s4}px`,
+              // Improve chip readability inside with consistent min sizing:
+              // we can't reach into children but we set CSS vars they can use.
+              fontSize: T.fs_md,
+            }}>
+              {(extra || hint) && (
+                <div style={{
+                  display: "flex", alignItems: "center", justifyContent: "space-between",
+                  gap: T.s2, flexWrap: "wrap", marginBottom: T.s3,
+                }}>
+                  {hint && <span style={{ fontSize: T.fs_sm, color: T.textTer, fontFamily: T.font_sans }}>{hint}</span>}
+                  {extra && <div style={{ display: "flex", alignItems: "center", gap: T.s3, marginLeft: "auto" }}>{extra}</div>}
+                </div>
+              )}
+              {children}
+            </div>
           </div>
         </>
       )}
@@ -4930,7 +5004,7 @@ function SalesModal({ open, onClose, onUpgrade, feature }) {
 
         {/* CTA row */}
         <div style={{ display: "flex", gap: T.s3, justifyContent: "flex-end", flexWrap: "wrap" }}>
-          <button type="button" onClick={onClose}
+          <button type="button" onClick={() => { playSwitchSound(); onClose(); }}
             style={{
               padding: "10px 18px",
               background: "transparent",
@@ -4944,7 +5018,7 @@ function SalesModal({ open, onClose, onUpgrade, feature }) {
             onMouseEnter={e => { e.currentTarget.style.color = T.text; e.currentTarget.style.borderColor = T.borderFocus; }}
             onMouseLeave={e => { e.currentTarget.style.color = T.textSec; e.currentTarget.style.borderColor = T.border; }}
           >Maybe later</button>
-          <button type="button" onClick={() => { onUpgrade && onUpgrade(); onClose && onClose(); }}
+          <button type="button" onClick={() => { playSwitchSound(); onUpgrade && onUpgrade(); onClose && onClose(); }}
             style={{
               padding: "10px 22px",
               background: tierColor,
@@ -6060,7 +6134,7 @@ function Nav({ page, onNavigate }) {
       {!isMobile ? (
         <div style={{ display: "flex", gap: T.s1, flex: 1, justifyContent: "center" }}>
           {links.map(l => (
-            <button key={l.id} type="button" onClick={() => onNavigate(l.id)}
+            <button key={l.id} type="button" onClick={() => { playSwitchSound(); onNavigate(l.id); }}
               style={{
                 background: page === l.id ? T.elevated : "transparent",
                 border: "none",
@@ -6133,7 +6207,7 @@ function Nav({ page, onNavigate }) {
         )}
         {isMobile && (
           <button type="button"
-            onClick={() => setMenuOpen(!menuOpen)}
+            onClick={() => { playSwitchSound(); setMenuOpen(!menuOpen); }}
             style={{
               background: menuOpen ? T.elevated : T.surface,
               border: `1px solid ${menuOpen ? T.borderFocus : T.border}`,
@@ -6162,7 +6236,7 @@ function Nav({ page, onNavigate }) {
           {/* Nav links */}
           {links.map(l => (
             <button key={l.id} type="button"
-              onClick={() => { onNavigate(l.id); setMenuOpen(false); }}
+              onClick={() => { playSwitchSound(); onNavigate(l.id); setMenuOpen(false); }}
               style={{
                 background: page === l.id ? T.elevated : "transparent",
                 border: "none",
@@ -6247,7 +6321,7 @@ function ModeSelector({ value, onChange, allowedModes }) {
           const locked = allowedModes && !allowedModes.includes(m.id);
           return (
             <button key={m.id} type="button"
-              onClick={() => !locked && onChange(m.id)}
+              onClick={() => { if (!locked) { playSwitchSound(); onChange(m.id); } }}
               disabled={locked}
               title={locked ? "Pro tier unlocks all modes" : ""}
               style={{
@@ -6310,7 +6384,7 @@ function LyricalSwitch({ value, onChange }) {
           borderRadius: T.r_sm,
           transition: `all ${T.dur_norm} ${T.ease}`,
         }} />
-        <button type="button" onClick={() => onChange(false)}
+        <button type="button" onClick={() => { playSwitchSound(); onChange(false); }}
           style={{
             position: "relative", zIndex: 1,
             background: "transparent", border: "none",
@@ -6320,7 +6394,7 @@ function LyricalSwitch({ value, onChange }) {
             fontFamily: T.font_sans, fontSize: T.fs_md, fontWeight: 500,
             transition: `color ${T.dur_fast} ${T.ease}`,
           }}>Instrumental</button>
-        <button type="button" onClick={() => onChange(true)}
+        <button type="button" onClick={() => { playSwitchSound(); onChange(true); }}
           style={{
             position: "relative", zIndex: 1,
             background: "transparent", border: "none",
@@ -6346,7 +6420,7 @@ function CountStepper({ value, onChange, min = 1, max = 10 }) {
       border: `1px solid ${T.border}`,
       background: T.surface, borderRadius: T.r_md, height: 26,
     }}>
-      <button type="button" onClick={() => onChange(Math.max(min, value - 1))}
+      <button type="button" onClick={() => { playSwitchSound(); onChange(Math.max(min, value - 1)); }}
         style={{
           background: "transparent", border: "none", color: T.textSec,
           padding: "0 10px", cursor: "pointer", fontSize: T.fs_base,
@@ -6359,7 +6433,7 @@ function CountStepper({ value, onChange, min = 1, max = 10 }) {
         borderLeft: `1px solid ${T.border}`, borderRight: `1px solid ${T.border}`,
         height: "100%", display: "grid", placeItems: "center",
       }}>{value}</span>
-      <button type="button" onClick={() => onChange(Math.min(max, value + 1))}
+      <button type="button" onClick={() => { playSwitchSound(); onChange(Math.min(max, value + 1)); }}
         style={{
           background: "transparent", border: "none", color: T.textSec,
           padding: "0 10px", cursor: "pointer", fontSize: T.fs_base,
@@ -7026,7 +7100,7 @@ function GenreSlotPicker({ slots, onChange, slotLocks, onToggleSlotLock, maxSlot
           if (i >= maxSlots) {
             return (
               <div key={i}
-                onClick={() => onLockedClick && onLockedClick("extraSlots")}
+                onClick={() => { playSwitchSound(); onLockedClick && onLockedClick("extraSlots"); }}
                 title="Pro unlocks slots 2 and 3 — click to upgrade"
                 style={{
                   position: "relative", minHeight: 82, padding: T.s3,
@@ -7153,7 +7227,7 @@ function GenreSlotPicker({ slots, onChange, slotLocks, onToggleSlotLock, maxSlot
           <div style={{ marginBottom: T.s4 }}>
             {restrictSubgenres ? (
               <div
-                onClick={() => onLockedClick && onLockedClick("searchBar")}
+                onClick={() => { playSwitchSound(); onLockedClick && onLockedClick("searchBar"); }}
                 title="Pro feature — click to upgrade"
                 style={{
                   position: "relative",
@@ -7224,7 +7298,7 @@ function GenreSlotPicker({ slots, onChange, slotLocks, onToggleSlotLock, maxSlot
                 {/* Clear button (right) */}
                 {searchQuery && (
                   <button type="button"
-                    onClick={() => setSearchQuery("")}
+                    onClick={() => { playSwitchSound(); setSearchQuery(""); }}
                     style={{
                       position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)",
                       width: 24, height: 24,
@@ -8213,7 +8287,7 @@ function SpecificInstrumentsPicker({
                           <div style={{ display: "inline-flex", alignItems: "center", gap: T.s2 }}>
                             {hasMapping && onInstrSuggestClick && (
                               <button type="button"
-                                onClick={() => onInstrSuggestClick(inst)}
+                                onClick={() => { playSwitchSound(); onInstrSuggestClick(inst); }}
                                 title={canUseInstrSuggest
                                   ? "Suggest complements for this instrument"
                                   : "VIP feature — click for details"}
@@ -8278,10 +8352,10 @@ function SpecificInstrumentsPicker({
                             </Label>
                             <div style={{ display: "flex", flexWrap: "wrap", gap: T.s1 }}>
                               <Chip label="None" selected={!artSel}
-                                onClick={() => setArticulation(inst, null)} size="sm" />
+                                onClick={() => { playSwitchSound(); setArticulation(inst, null); }} size="sm" />
                               {articulations.map(a => (
                                 <Chip key={a} label={a} selected={artSel === a}
-                                  onClick={() => setArticulation(inst, artSel === a ? null : a)} size="sm" />
+                                  onClick={() => { playSwitchSound(); setArticulation(inst, artSel === a ? null : a); }} size="sm" />
                               ))}
                             </div>
                           </div>
@@ -8634,7 +8708,7 @@ function TipsManual() {
 
       <button
         type="button"
-        onClick={() => setOpen(o => !o)}
+        onClick={() => { playSwitchSound(); setOpen(o => !o); }}
         className={!open ? "tips-manual-trigger" : ""}
         style={{
           position: "relative", overflow: "hidden",
@@ -14420,7 +14494,7 @@ function GenreDetailCard({ genre, onSelectGenre }) {
               <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
                 {node.parents.map(p => (
                   <button key={p} type="button"
-                    onClick={() => onSelectGenre(p)}
+                    onClick={() => { playSwitchSound(); onSelectGenre(p); }}
                     style={{
                       padding: "4px 9px",
                       background: "transparent",
@@ -14448,7 +14522,7 @@ function GenreDetailCard({ genre, onSelectGenre }) {
               <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
                 {children.map(c => (
                   <button key={c} type="button"
-                    onClick={() => onSelectGenre(c)}
+                    onClick={() => { playSwitchSound(); onSelectGenre(c); }}
                     style={{
                       padding: "4px 9px",
                       background: `${T.accent}11`,
@@ -14479,7 +14553,7 @@ function GenreDetailCard({ genre, onSelectGenre }) {
           borderRadius: 8,
         }}>
           <button type="button"
-            onClick={() => setTraitsExpanded(!traitsExpanded)}
+            onClick={() => { playSwitchSound(); setTraitsExpanded(!traitsExpanded); }}
             style={{
               width: "100%",
               display: "flex", alignItems: "center", justifyContent: "space-between",
@@ -14563,7 +14637,7 @@ function GenreDetailCard({ genre, onSelectGenre }) {
             </div>
             {artistsList.length > 3 && (
               <button type="button"
-                onClick={() => setArtistsExpanded(!artistsExpanded)}
+                onClick={() => { playSwitchSound(); setArtistsExpanded(!artistsExpanded); }}
                 style={{
                   background: "transparent", border: "none",
                   color: T.accent, fontSize: 11,
@@ -14944,7 +15018,7 @@ function GenreBrowser({ selectedGenre, onSelectGenre, onNavigate }) {
         overflow: "hidden",
       }}>
         <button type="button"
-          onClick={() => setMobileShowDetail(false)}
+          onClick={() => { playSwitchSound(); setMobileShowDetail(false); }}
           style={{
             width: "100%",
             padding: "12px 16px",
@@ -15015,7 +15089,7 @@ function GenreBrowser({ selectedGenre, onSelectGenre, onNavigate }) {
               borderRadius: T.r_sm,
             }}>
               <button type="button"
-                onClick={() => setSortMode("alpha")}
+                onClick={() => { playSwitchSound(); setSortMode("alpha"); }}
                 style={{
                   padding: "4px 10px",
                   background: sortMode === "alpha" ? T.accent : "transparent",
@@ -15099,7 +15173,7 @@ function GenreBrowser({ selectedGenre, onSelectGenre, onNavigate }) {
                 rank={isSearching ? null : idx + 1}
                 current={g.current}
                 isSelected={selectedGenre === g.name}
-                onClick={() => handleSelect(g.name)}
+                onClick={() => { playSwitchSound(); handleSelect(g.name); }}
               />
             ))
           )}
@@ -15323,7 +15397,7 @@ function HistoryPage({ onNavigate }) {
           { id: "charts", label: "Popularity charts", hint: "Popularity over time" },
         ].map(m => (
           <button key={m.id} type="button"
-            onClick={() => setPageMode(m.id)}
+            onClick={() => { playSwitchSound(); setPageMode(m.id); }}
             title={m.hint}
             style={{
               padding: "8px 16px",
@@ -15385,7 +15459,7 @@ function HistoryPage({ onNavigate }) {
             { id: "grid",    label: "Grid" },
             { id: "overlay", label: "Overlay" },
           ].map(o => (
-            <button key={o.id} type="button" onClick={() => setViewMode(o.id)} style={{
+            <button key={o.id} type="button" onClick={() => { playSwitchSound(); setViewMode(o.id); }} style={{
               background: viewMode === o.id ? T.elevated : "transparent",
               border: "none",
               color: viewMode === o.id ? T.text : T.textTer,
@@ -15404,7 +15478,7 @@ function HistoryPage({ onNavigate }) {
           {selected.length} / {MAX_SELECTED} selected
         </span>
 
-        <Button variant="ghost" size="sm" onClick={selectAllVisible}>
+        <Button variant="ghost" size="sm" onClick={() => { playSwitchSound(); selectAllVisible(); }}>
           Select top {Math.min(MAX_SELECTED, filteredGenres.length)}
         </Button>
         <Button variant="ghost" size="sm" onClick={() => { playSwitchSound(); clearAll(); }}>Clear</Button>
@@ -15443,7 +15517,7 @@ function HistoryPage({ onNavigate }) {
           const disabled = !isOn && selected.length >= MAX_SELECTED;
           return (
             <button key={g} type="button"
-              onClick={() => !disabled && toggleGenre(g)}
+              onClick={() => { if (!disabled) { playSwitchSound(); toggleGenre(g); } }}
               disabled={disabled}
               style={{
                 display: "flex", alignItems: "center", justifyContent: "space-between",
@@ -15767,7 +15841,7 @@ function PromptAnatomyInspector({ isMobile }) {
               <span key={i}
                 onMouseEnter={() => setHovered(tok.cat)}
                 onMouseLeave={() => setHovered(null)}
-                onClick={() => setLegendPinned(legendPinned === tok.cat ? null : tok.cat)}
+                onClick={() => { playSwitchSound(); setLegendPinned(legendPinned === tok.cat ? null : tok.cat); }}
                 style={{
                   color: isActive ? cat.color : (isDimmed ? T.textMuted : T.text),
                   textShadow: isActive ? `0 0 10px ${cat.color}88` : "none",
@@ -15797,7 +15871,7 @@ function PromptAnatomyInspector({ isMobile }) {
                 type="button"
                 onMouseEnter={() => setHovered(key)}
                 onMouseLeave={() => setHovered(null)}
-                onClick={() => setLegendPinned(legendPinned === key ? null : key)}
+                onClick={() => { playSwitchSound(); setLegendPinned(legendPinned === key ? null : key); }}
                 style={{
                   display: "flex", alignItems: "center", gap: 8,
                   padding: "7px 10px",
@@ -15997,7 +16071,7 @@ function GenreFusionDiagram({ isMobile }) {
           const color = clusterColors[g.cluster];
           return (
             <g key={g.id}
-              onClick={() => setSelected(selected === g.id ? null : g.id)}
+              onClick={() => { playSwitchSound(); setSelected(selected === g.id ? null : g.id); }}
               style={{ cursor: "pointer" }}>
               {isSelected && (
                 <circle cx={g.x} cy={g.y} r="8" fill="url(#nodeGlow)" />
@@ -16311,7 +16385,7 @@ function ProductionStackVisualizer({ isMobile }) {
           const widthPct = logPos(item.hzHigh) - logPos(item.hzLow);
           return (
             <div key={item.id}
-              onClick={() => setSelected(selected === item.id ? null : item.id)}
+              onClick={() => { playSwitchSound(); setSelected(selected === item.id ? null : item.id); }}
               style={{
                 position: "relative",
                 height: isMobile ? 22 : 26,
@@ -16505,7 +16579,7 @@ function SongStructureDeconstructor({ isMobile }) {
           const isDimmed = selected && !isSelected;
           return (
             <div key={section.id}
-              onClick={() => setSelected(selected === section.id ? null : section.id)}
+              onClick={() => { playSwitchSound(); setSelected(selected === section.id ? null : section.id); }}
               style={{
                 position: "absolute",
                 left: `${leftPct}%`,
@@ -16700,7 +16774,7 @@ function AntiPatternDetector({ isMobile }) {
           const isSelected = selected === pattern.id;
           return (
             <button key={pattern.id} type="button"
-              onClick={() => setSelected(selected === pattern.id ? null : pattern.id)}
+              onClick={() => { playSwitchSound(); setSelected(selected === pattern.id ? null : pattern.id); }}
               style={{
                 textAlign: "left",
                 padding: T.s3,
@@ -17432,7 +17506,7 @@ function PlaybookPage() {
                 return (
                   <li key={ch.id} style={{ marginBottom: T.s3 }}>
                     <button type="button"
-                      onClick={() => scrollToChapter(ch.id)}
+                      onClick={() => { playSwitchSound(); scrollToChapter(ch.id); }}
                       style={{
                         background: "transparent", border: "none", padding: 0,
                         cursor: "pointer", textAlign: "left", width: "100%",
@@ -18113,7 +18187,7 @@ function TrendSetterPage() {
           const active = region === id;
           return (
             <button key={id} type="button"
-              onClick={() => { setRegion(id); setSelectedItem(null); }}
+              onClick={() => { playSwitchSound(); setRegion(id); setSelectedItem(null); }}
               style={{
                 display: "inline-flex", alignItems: "center", gap: T.s2,
                 padding: `${T.s3}px ${T.s4}px`,
@@ -18145,7 +18219,7 @@ function TrendSetterPage() {
           const isSelected = selectedItem === item;
           return (
             <button key={i} type="button"
-              onClick={() => setSelectedItem(item)}
+              onClick={() => { playSwitchSound(); setSelectedItem(item); }}
               style={{
                 textAlign: "left", padding: T.s4,
                 background: isSelected
@@ -18188,7 +18262,7 @@ function TrendSetterPage() {
             {generatePrompt(selectedItem)}
           </div>
           <button type="button"
-            onClick={() => doCopy(generatePrompt(selectedItem))}
+            onClick={() => { playSwitchSound(); doCopy(generatePrompt(selectedItem)); }}
             style={{
               padding: `${T.s3}px ${T.s5}px`,
               background: copyState === "copied" ? T.success : "#FFD700",
@@ -18981,7 +19055,7 @@ function ShopPage() {
           const active = billing === b.id;
           return (
             <button key={b.id} type="button"
-              onClick={() => setBilling(b.id)}
+              onClick={() => { playSwitchSound(); setBilling(b.id); }}
               style={{
                 display: "inline-flex", alignItems: "center", gap: 8,
                 padding: isMobile ? "8px 14px" : "10px 20px",
@@ -19176,7 +19250,7 @@ function ShopPage() {
 
               {/* Subscribe button */}
               <button type="button"
-                onClick={() => !disabled && handleSubscribe(tierId)}
+                onClick={() => { if (!disabled) { playSwitchSound(); handleSubscribe(tierId); } }}
                 disabled={disabled}
                 style={{
                   width: "100%",
@@ -19380,7 +19454,7 @@ function PaymentModal({ tierId, billing, onClose, onComplete }) {
                     {isYearly ? "Annual plan · save " + yearlySavingsPct(tierId) + "%" : "Monthly plan · cancel anytime"}
                   </div>
                 </div>
-                <button type="button" onClick={onClose}
+                <button type="button" onClick={() => { playSwitchSound(); onClose(); }}
                   aria-label="Close"
                   style={{
                     background: "transparent", border: "none", color: T.textTer,
@@ -19424,7 +19498,7 @@ function PaymentModal({ tierId, billing, onClose, onComplete }) {
                 { id: "paypal",  label: "PayPal",  icon: "P" },
               ].map(m => (
                 <button key={m.id} type="button"
-                  onClick={() => setMethod(m.id)}
+                  onClick={() => { playSwitchSound(); setMethod(m.id); }}
                   style={{
                     padding: "12px 8px",
                     background: method === m.id ? T.surface : "transparent",
@@ -19478,7 +19552,7 @@ function PaymentModal({ tierId, billing, onClose, onComplete }) {
 
               {/* Submit button */}
               <button type="button"
-                onClick={handleSubmit}
+                onClick={() => { playSwitchSound(); handleSubmit(); }}
                 style={{
                   marginTop: 18, width: "100%",
                   padding: "14px",
