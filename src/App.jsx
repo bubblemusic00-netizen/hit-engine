@@ -23609,10 +23609,15 @@ function playButtonSound() {
 // 2026-04-19. If the file is ever renamed in public/, update this URL
 // to match exactly or the asset will 404.
 //
+// Version query (?v=2): cache-bust when the sound file is replaced.
+// Browsers aggressively cache audio assets so bumping this number
+// forces a fresh fetch after a sound swap. Increment when the file
+// changes. Matches the same pattern used on switch-sound (?v=2).
+//
 // DIAGNOSTICS: set window.__HE_DEBUG_AUDIO = true in DevTools console
 // to see verbose logs explaining exactly why the sound might not fire.
 // Covers: path 404, autoplay policy block, load errors, pool exhaustion.
-const HIT_SOUND_URL = "/hit-button-sound.mp3";
+const HIT_SOUND_URL = "/hit-button-sound.mp3?v=3";
 let _hitAudioPool = null;
 let _hitAudioIdx = 0;
 let _hitAudioLoadError = null;
