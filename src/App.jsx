@@ -140,7 +140,7 @@ const TIERS = {
   free:  { id: "free",  label: "Free",  color: "#6B6E76", description: "Try the engine" },
   pro:   { id: "pro",   label: "Pro",   color: "#5E6AD2", description: "Full creative access" },
   vip:   { id: "vip",   label: "VIP",   color: "#FFD700", description: "Everything + premium perks + exports" },
-  admin: { id: "admin", label: "Admin", color: "#EF4444", description: "Behind-the-scenes debug view" },
+  admin: { id: "admin", label: "Bubble", color: "#EF4444", description: "Behind-the-scenes bubble view" },
 };
 
 // Ordered rank for tier comparison (higher number = higher tier)
@@ -647,247 +647,6 @@ function ThemeToggle() {
   );
 }
 
-// ────────────────────────────────────────────────────────────────────────────
-// FUEL GEARSHIFT — car-style gearshift for choosing active fuel
-// ────────────────────────────────────────────────────────────────────────────
-function FuelGearshift({ compact = false }) {
-  const { fuels, activeFuel, setActiveFuel, setFuel, refillAll } = useFuel();
-  const { tier, features } = useTier();
-  const isAdmin = tier === "admin";
-
-  // Trend Fuel is VIP/Admin only — shown as 4th tile when applicable.
-  // Free/Pro users get the cleaner 3-tile layout.
-  const showTrend = tier === "vip" || tier === "admin";
-  const options = [
-    { id: "free", ...FUEL_TYPES.free },
-    { id: "pro",  ...FUEL_TYPES.pro },
-    { id: "vip",  ...FUEL_TYPES.vip },
-    ...(showTrend ? [{ id: "trend", ...FUEL_TYPES.trend }] : []),
-  ];
-  const cols = options.length;
-
-  // Daily allocation for the tier — used as the "of N" sub-value under
-  // current count. Free is Infinity so we show a simple ∞.
-  const allocFor = (fuelId) => {
-    const a = features?.dailyFuel?.[fuelId];
-    return Number.isFinite(a) ? a : null; // null = infinite
-  };
-
-  return (
-    <div style={{
-      background: "linear-gradient(145deg, #1a1d24 0%, #0b0d12 100%)",
-      border: `1px solid ${T.borderHi}`,
-      borderRadius: compact ? 10 : 14,
-      padding: compact ? 10 : 14,
-      boxShadow: "inset 0 1px 0 rgba(255,255,255,0.06), 0 8px 24px rgba(0,0,0,0.6)",
-    }}>
-      <div style={{
-        display: "flex", justifyContent: "space-between", alignItems: "center",
-        marginBottom: compact ? 8 : 10,
-      }}>
-        <span style={{
-          fontSize: 9, letterSpacing: "0.25em", fontWeight: 700,
-          color: T.textTer, fontFamily: T.font_mono,
-        }}>FUEL SELECT</span>
-        <span style={{
-          fontSize: 8, letterSpacing: "0.2em", fontWeight: 700,
-          color: FUEL_TYPES[activeFuel]?.color || T.textTer,
-          textShadow: `0 0 6px ${FUEL_TYPES[activeFuel]?.color || T.textTer}88`,
-          fontFamily: T.font_mono,
-        }}>● ENGAGED</span>
-      </div>
-      <div style={{
-        display: "grid", gridTemplateColumns: `repeat(${cols}, 1fr)`, gap: 6,
-      }}>
-        {options.map(o => {
-          const active = activeFuel === o.id;
-          const fuelLeft = fuels[o.id];
-          const infinite = !Number.isFinite(fuelLeft);
-          const empty = !infinite && fuelLeft <= 0;
-          const alloc = allocFor(o.id);
-          // Fill percentage for the stock bar (bottom edge of tile).
-          // Infinite → always full. Finite → fuelLeft / alloc.
-          const pct = infinite
-            ? 1
-            : (alloc && alloc > 0 ? Math.max(0, Math.min(1, fuelLeft / alloc)) : 0);
-          return (
-            <button key={o.id} type="button"
-              onClick={() => {
-                if (empty) return;
-                playFuelButtonSound();
-                setActiveFuel(o.id);
-              }}
-              disabled={empty}
-              style={{
-                position: "relative", overflow: "hidden",
-                background: active
-                  ? `linear-gradient(145deg, ${o.color}33 0%, ${o.color}11 100%)`
-                  : `linear-gradient(145deg, rgba(255,255,255,0.02) 0%, rgba(0,0,0,0.4) 100%)`,
-                border: `2px solid ${active ? o.color : empty ? T.borderMuted : T.border}`,
-                boxShadow: active
-                  ? `0 0 12px ${o.color}88, inset 0 1px 0 rgba(255,255,255,0.08)`
-                  : "inset 0 1px 0 rgba(255,255,255,0.04)",
-                color: active ? o.color : empty ? T.textMuted : T.textSec,
-                padding: compact ? "10px 6px 12px" : "12px 8px 14px",
-                borderRadius: 8,
-                cursor: empty ? "not-allowed" : "pointer",
-                transition: "all 180ms cubic-bezier(0.16, 1, 0.3, 1)",
-                opacity: empty ? 0.5 : 1,
-                display: "flex", flexDirection: "column", alignItems: "center", gap: 3,
-                fontFamily: T.font_mono,
-              }}
-              onMouseEnter={e => {
-                if (active || empty) return;
-                e.currentTarget.style.borderColor = `${o.color}88`;
-                e.currentTarget.style.boxShadow = `0 0 8px ${o.color}44`;
-              }}
-              onMouseLeave={e => {
-                if (active || empty) return;
-                e.currentTarget.style.borderColor = T.border;
-                e.currentTarget.style.boxShadow = "inset 0 1px 0 rgba(255,255,255,0.04)";
-              }}>
-              {/* Color-dot indicator */}
-              <span style={{
-                width: compact ? 10 : 12, height: compact ? 10 : 12, borderRadius: "50%",
-                background: o.color,
-                boxShadow: active
-                  ? `0 0 8px ${o.color}, 0 0 16px ${o.color}AA`
-                  : empty ? "none" : `0 0 4px ${o.color}66`,
-                filter: empty ? "grayscale(100%)" : "none",
-              }} />
-              <span style={{
-                fontSize: compact ? 9 : 10, fontWeight: 700, letterSpacing: "0.1em",
-                textShadow: active ? `0 0 6px ${o.color}88` : "none",
-              }}>{o.label.split(" ")[0].toUpperCase()}</span>
-              {/* Count — large, prominent */}
-              <span style={{
-                fontSize: compact ? 14 : 16, fontWeight: 700, lineHeight: 1,
-                color: empty ? T.textMuted : active ? o.color : T.text,
-                textShadow: active ? `0 0 10px ${o.color}AA` : "none",
-                letterSpacing: "0.02em",
-              }}>{fuelDisplay(fuelLeft)}</span>
-              {/* Sub-value: "of N" for finite allocations, "daily" for infinite.
-                  Only shown when not empty so the tile stays clean. */}
-              {!empty && (
-                <span style={{
-                  fontSize: compact ? 7.5 : 8, fontWeight: 600,
-                  color: active ? `${o.color}CC` : T.textTer,
-                  letterSpacing: "0.1em", lineHeight: 1,
-                  opacity: 0.85,
-                }}>
-                  {infinite ? "UNLIMITED" : (alloc ? `OF ${alloc}` : "DAILY")}
-                </span>
-              )}
-              {/* Bottom stock bar — visualizes remaining fuel vs allocation.
-                  Sits flush to the tile's bottom edge as a thin band. */}
-              <span style={{
-                position: "absolute", left: 0, right: 0, bottom: 0,
-                height: 3,
-                background: "rgba(255,255,255,0.04)",
-                overflow: "hidden",
-              }}>
-                <span style={{
-                  position: "absolute", top: 0, bottom: 0, left: 0,
-                  width: `${pct * 100}%`,
-                  background: infinite
-                    ? `linear-gradient(90deg, ${o.color}AA 0%, ${o.color}FF 100%)`
-                    : `linear-gradient(90deg, ${o.color}66 0%, ${o.color}DD 100%)`,
-                  boxShadow: active ? `0 0 6px ${o.color}` : "none",
-                  transition: `width ${T.dur_norm} ${T.ease}`,
-                }} />
-              </span>
-            </button>
-          );
-        })}
-      </div>
-
-      {/* ADMIN FUEL EDITOR — only visible to admin tier */}
-      {isAdmin && (
-        <div style={{
-          marginTop: 10, padding: "10px 12px",
-          background: "#100205",
-          border: `1px dashed ${T.danger}55`,
-          borderRadius: 8,
-        }}>
-          <div style={{
-            display: "flex", justifyContent: "space-between", alignItems: "center",
-            marginBottom: 8,
-          }}>
-            <span style={{
-              color: T.danger, fontFamily: T.font_mono, fontSize: 9,
-              fontWeight: 700, letterSpacing: "0.25em",
-              textShadow: `0 0 4px ${T.danger}88`,
-            }}>⚡ ADMIN FUEL EDITOR</span>
-            <button type="button" onClick={refillAll} style={{
-              background: "transparent", border: `1px solid ${T.danger}66`,
-              color: T.danger, padding: "3px 8px", borderRadius: 4,
-              fontFamily: T.font_mono, fontSize: 9, letterSpacing: "0.15em",
-              fontWeight: 700, cursor: "pointer",
-            }}>REFILL ALL</button>
-          </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-            {options.map(o => {
-              const v = fuels[o.id];
-              const isInf = !Number.isFinite(v);
-              return (
-                <div key={o.id} style={{
-                  display: "grid", gridTemplateColumns: "auto 1fr auto", gap: 8,
-                  alignItems: "center",
-                }}>
-                  <span style={{
-                    color: o.color, fontFamily: T.font_mono, fontSize: 10,
-                    fontWeight: 700, letterSpacing: "0.15em",
-                    textShadow: `0 0 4px ${o.color}66`,
-                    minWidth: 48,
-                  }}>{o.label.split(" ")[0].toUpperCase()}</span>
-                  <input type="number"
-                    value={isInf ? "" : v}
-                    placeholder={isInf ? "∞" : ""}
-                    onChange={e => {
-                      const raw = e.target.value;
-                      setFuel(o.id, raw === "" ? Infinity : parseInt(raw, 10) || 0);
-                    }}
-                    style={{
-                      background: "rgba(0,0,0,0.5)",
-                      border: `1px solid ${o.color}44`,
-                      color: T.text,
-                      padding: "4px 8px", borderRadius: 4,
-                      fontFamily: T.font_mono, fontSize: 11,
-                      outline: "none", width: "100%",
-                    }}/>
-                  <div style={{ display: "flex", gap: 4 }}>
-                    <button type="button"
-                      onClick={() => setFuel(o.id, isInf ? 0 : Math.max(0, v - 1))}
-                      style={{
-                        background: "transparent", border: `1px solid ${T.border}`,
-                        color: T.textSec, width: 22, height: 22, borderRadius: 3,
-                        fontFamily: T.font_mono, fontSize: 11, cursor: "pointer",
-                      }}>−</button>
-                    <button type="button"
-                      onClick={() => setFuel(o.id, isInf ? 1 : v + 1)}
-                      style={{
-                        background: "transparent", border: `1px solid ${T.border}`,
-                        color: T.textSec, width: 22, height: 22, borderRadius: 3,
-                        fontFamily: T.font_mono, fontSize: 11, cursor: "pointer",
-                      }}>+</button>
-                    <button type="button"
-                      onClick={() => setFuel(o.id, Infinity)}
-                      title="Set to infinite"
-                      style={{
-                        background: "transparent", border: `1px solid ${T.border}`,
-                        color: T.textSec, width: 22, height: 22, borderRadius: 3,
-                        fontFamily: T.font_mono, fontSize: 11, cursor: "pointer",
-                      }}>∞</button>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
 
 function TierLock({ feature, requiredTier = "pro", compact = false }) {
   const t = TIERS[requiredTier];
@@ -1315,27 +1074,28 @@ function TierLever({ tier, onChange, onOpenShop }) {
 // Structure mirrors the main joystick gearshift (gear track with a moving
 // knob indicator over labeled slots) but purpose is different:
 //   - devModeActive=false: LOCKED to the user's subscribed tier. Static.
-//       Cursor is default. No click, no sound, no state change.
-//   - devModeActive=true: UNLOCKED. Click anywhere cycles tier
-//       FREE → PRO → VIP → ADMIN → FREE. Cursor is pointer.
+//       Cursor default on the whole housing, no click anywhere does anything.
+//   - devModeActive=true: UNLOCKED. Each of the 4 slots is INDIVIDUALLY
+//       clickable — click FREE to go free, click PRO to go pro, etc.
+//       Direct selection. No cycling.
 //
-// Visually: 4 labeled slots (FREE/PRO/VIP/ADMIN), each tinted in its tier
+// Visually: 4 labeled slots (FREE/PRO/VIP/BUBBLE), each tinted in its tier
 // color. An indicator knob slides to the active slot with a spring ease.
 // Active slot glows in its tier color, inactive slots are muted.
 // ────────────────────────────────────────────────────────────────────────────
-function TierGearshift({ activeTier, devModeActive, onCycle }) {
+function TierGearshift({ activeTier, devModeActive, onSelect }) {
   const { layout } = useLayout();
   const isMobile = layout === "mobile";
   const positions = ["free", "pro", "vip", "admin"];
   const activeIdx = Math.max(0, positions.indexOf(activeTier));
   const META = {
-    free:  { label: "FREE",  short: "F", color: "#3B82F6" },
-    pro:   { label: "PRO",   short: "P", color: "#FF1744" },
-    vip:   { label: "VIP",   short: "V", color: "#FFD700" },
-    admin: { label: "ADMIN", short: "A", color: "#FF3E9D" },
+    free:  { label: "FREE",   short: "F", color: "#3B82F6" },
+    pro:   { label: "PRO",    short: "P", color: "#FF1744" },
+    vip:   { label: "VIP",    short: "V", color: "#FFD700" },
+    admin: { label: "BUBBLE", short: "B", color: "#FF3E9D" },
   };
   const activeMeta = META[activeTier] || META.free;
-  const slotW = isMobile ? 38 : 32;
+  const slotW = isMobile ? 38 : 36;
   const gateH = isMobile ? 30 : 26;
   const trackPadding = 4;
   const trackInnerW = positions.length * slotW;
@@ -1343,16 +1103,10 @@ function TierGearshift({ activeTier, devModeActive, onCycle }) {
   const knobW = slotW - 4;
   const knobX = trackPadding + activeIdx * slotW + 2;
 
-  const handleClick = () => {
-    if (!devModeActive) return;
-    onCycle && onCycle();
-  };
-
   return (
     <div
-      onClick={handleClick}
       title={devModeActive
-        ? `Tier: ${activeMeta.label} — click to cycle (DEV MODE)`
+        ? `DEV MODE: click any slot to switch tier. Current: ${activeMeta.label}`
         : `Your plan: ${activeMeta.label}`}
       style={{
         position: "relative",
@@ -1364,37 +1118,13 @@ function TierGearshift({ activeTier, devModeActive, onCycle }) {
         boxShadow: devModeActive
           ? `inset 0 2px 4px rgba(0,0,0,0.8), inset 0 -1px 0 rgba(255,255,255,0.04), 0 0 8px ${activeMeta.color}22`
           : `inset 0 2px 4px rgba(0,0,0,0.8), inset 0 -1px 0 rgba(255,255,255,0.03)`,
-        cursor: devModeActive ? "pointer" : "default",
         userSelect: "none",
         overflow: "hidden",
         transition: "border-color 200ms ease, box-shadow 200ms ease",
       }}
     >
-      {/* ── SLOT LABELS — row of tier abbreviations, muted when inactive ── */}
-      {positions.map((p, i) => {
-        const m = META[p];
-        const isActive = p === activeTier;
-        return (
-          <div key={p} style={{
-            position: "absolute",
-            left: trackPadding + i * slotW, top: 0,
-            width: slotW, height: "100%",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            fontFamily: T.font_mono,
-            fontSize: isMobile ? 9 : 8,
-            fontWeight: 700, letterSpacing: "0.12em",
-            color: isActive ? m.color : "#4a4d55",
-            textShadow: isActive ? `0 0 4px ${m.color}88` : "none",
-            zIndex: 1,
-            transition: "color 220ms ease, text-shadow 220ms ease",
-            pointerEvents: "none",
-          }}>
-            {isMobile ? m.short : m.label}
-          </div>
-        );
-      })}
-
-      {/* ── KNOB INDICATOR — glowing pill that slides to active slot ── */}
+      {/* ── KNOB INDICATOR — glowing pill that slides to active slot.
+          Rendered FIRST so labels & click-zones sit above it. ── */}
       <div style={{
         position: "absolute",
         left: knobX, top: 2,
@@ -1407,22 +1137,62 @@ function TierGearshift({ activeTier, devModeActive, onCycle }) {
         pointerEvents: "none",
       }} />
 
-      {/* ── ACTIVE LABEL ON TOP OF KNOB — high contrast ── */}
-      <div style={{
-        position: "absolute",
-        left: knobX, top: 2,
-        width: knobW, height: gateH - 4,
-        display: "flex", alignItems: "center", justifyContent: "center",
-        fontFamily: T.font_mono,
-        fontSize: isMobile ? 9 : 8,
-        fontWeight: 800, letterSpacing: "0.14em",
-        color: "#FFFFFF",
-        textShadow: `0 0 6px ${activeMeta.color}, 0 0 2px ${activeMeta.color}`,
-        pointerEvents: "none",
-        zIndex: 2,
-      }}>
-        {isMobile ? activeMeta.short : activeMeta.label}
-      </div>
+      {/* ── PER-SLOT CLICK ZONES — one button per tier. Label shows on top,
+          click is direct: click FREE to go free, click PRO to go pro. ── */}
+      {positions.map((p, i) => {
+        const m = META[p];
+        const isActive = p === activeTier;
+        const clickable = devModeActive;
+        return (
+          <button
+            key={p}
+            type="button"
+            disabled={!clickable || isActive}
+            onClick={() => {
+              if (!clickable) return;
+              if (isActive) return;
+              onSelect && onSelect(p);
+            }}
+            title={clickable
+              ? (isActive ? `${m.label} (current)` : `Switch to ${m.label}`)
+              : undefined}
+            style={{
+              position: "absolute",
+              left: trackPadding + i * slotW, top: 0,
+              width: slotW, height: "100%",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              fontFamily: T.font_mono,
+              fontSize: isMobile ? 9 : 8,
+              fontWeight: isActive ? 800 : 700,
+              letterSpacing: "0.12em",
+              // Active label sits ON the knob → white text for contrast.
+              // Inactive labels on the dark track → muted color.
+              color: isActive ? "#FFFFFF" : (clickable ? m.color + "cc" : "#4a4d55"),
+              textShadow: isActive
+                ? `0 0 6px ${m.color}, 0 0 2px ${m.color}`
+                : "none",
+              background: "transparent",
+              border: "none",
+              padding: 0,
+              cursor: clickable ? (isActive ? "default" : "pointer") : "default",
+              zIndex: 2,
+              transition: "color 220ms ease, text-shadow 220ms ease",
+            }}
+            onMouseEnter={e => {
+              if (!clickable || isActive) return;
+              e.currentTarget.style.color = "#FFFFFF";
+              e.currentTarget.style.textShadow = `0 0 4px ${m.color}`;
+            }}
+            onMouseLeave={e => {
+              if (!clickable || isActive) return;
+              e.currentTarget.style.color = m.color + "cc";
+              e.currentTarget.style.textShadow = "none";
+            }}
+          >
+            {isMobile ? m.short : m.label}
+          </button>
+        );
+      })}
 
       {/* ── DEV-OFF LOCK ICON — tiny padlock in corner when locked ── */}
       {!devModeActive && (
@@ -1433,6 +1203,7 @@ function TierGearshift({ activeTier, devModeActive, onCycle }) {
           color: "#555",
           pointerEvents: "none",
           lineHeight: 1,
+          zIndex: 3,
         }}>🔒</div>
       )}
     </div>
@@ -5203,6 +4974,11 @@ function AnimatedBanner({ size = 112 }) {
   const canvasRef = useRef(null);
   const engineRef = useRef(null);
   const engineCanvasRef = useRef(null);
+  // Comet canvas is a SEPARATE layer that spans the full viewport width.
+  // This lets the comet arc all the way across the screen, well past the
+  // HIT word's bounding box, unlike the HIT starfield which is text-local.
+  const cometCanvasRef = useRef(null);
+  const bannerOuterRef = useRef(null);
 
   // Starfield animation inside HIT + nebula pinpoints inside ENGINE.
   // Canvas is masked via SVG data-URL so stars only show within letter shapes.
@@ -5221,28 +4997,98 @@ function AnimatedBanner({ size = 112 }) {
     const eStars = [];
     const rand = (a, b) => a + Math.random() * (b - a);
 
+    // ── COSMIC NEBULA STARFIELD ─────────────────────────────────────
+    // Three-layer parallax depth + occasional comet streaks. Palette is
+    // cool: deep blues, violets, cyan highlights, rare magenta punctuation,
+    // rare warm amber flicker for contrast. Reads as "deep space observed
+    // through a telescope" rather than a disco.
+    //
+    // Depth layers — each star is tagged with one of three depth values
+    // which control size, drift speed, alpha ceiling, and blur:
+    //   far (0)   → 55% of stars, tiny + slow + soft (background field)
+    //   mid (1)   → 30% of stars, medium + medium (the bulk of visible stars)
+    //   near (2)  → 15% of stars, large + fast + sharp (hero stars w/ spikes)
+
+    // Cosmic palette — hue buckets weighted for a blue/violet-dominated feel.
+    // Each bucket pairs a hue range with a saturation range and a rarity weight.
+    const COSMIC_PALETTE = [
+      { weight: 38, hueMin: 200, hueMax: 235, satMin: 70, satMax: 95 },  // deep blue
+      { weight: 24, hueMin: 230, hueMax: 260, satMin: 60, satMax: 90 },  // indigo
+      { weight: 18, hueMin: 265, hueMax: 295, satMin: 65, satMax: 95 },  // violet
+      { weight: 10, hueMin: 180, hueMax: 200, satMin: 70, satMax: 100 }, // cyan highlight
+      { weight:  6, hueMin: 310, hueMax: 335, satMin: 75, satMax: 100 }, // magenta accent
+      { weight:  4, hueMin:  35, hueMax:  55, satMin: 60, satMax: 90 },  // rare warm amber (contrast)
+    ];
+    const pickCosmicColor = () => {
+      const total = COSMIC_PALETTE.reduce((a, p) => a + p.weight, 0);
+      let roll = rand(0, total);
+      for (const p of COSMIC_PALETTE) {
+        roll -= p.weight;
+        if (roll <= 0) {
+          return {
+            hue: rand(p.hueMin, p.hueMax),
+            sat: rand(p.satMin, p.satMax),
+          };
+        }
+      }
+      return { hue: 220, sat: 80 };
+    };
+
     const makeStar = () => {
-      // Smaller size range (0.4-2.0 from 0.6-3.2) and slower motion —
-      // drift halved, twinkle slowed, lifecycle pace reduced.
-      const r = rand(0.4, 2.0);
+      // Pick depth layer first — weighted distribution
+      const depthRoll = Math.random();
+      let depth, r, driftMul, spikeChance, twinkleMul, glowMul;
+      if (depthRoll < 0.55) {
+        // FAR: background dust, tiny + slow
+        depth = 0;
+        r = rand(0.3, 0.9);
+        driftMul = 0.35;
+        spikeChance = 0.02;
+        twinkleMul = 0.7;
+        glowMul = 2.5;
+      } else if (depthRoll < 0.85) {
+        // MID: bulk of the field
+        depth = 1;
+        r = rand(0.8, 1.8);
+        driftMul = 0.75;
+        spikeChance = 0.12;
+        twinkleMul = 1.0;
+        glowMul = 3.2;
+      } else {
+        // NEAR: hero stars, rarer but punchy
+        depth = 2;
+        r = rand(1.6, 3.0);
+        driftMul = 1.3;
+        spikeChance = 0.5;
+        twinkleMul = 1.3;
+        glowMul = 4.2;
+      }
+
+      const color = pickCosmicColor();
       return {
+        depth,
         x: rand(0, W), y: rand(0, H),
         r, baseR: r,
         twinkle: rand(0, Math.PI * 2),
-        twinkleSpeed: rand(0.3, 1.1),
-        driftX: rand(-0.07, 0.07),
-        driftY: rand(-0.04, 0.04),
-        spikes: Math.random() < 0.2 ? 4 : 0,
-        hue: Math.random() < 0.7 ? 0 : rand(20, 55),
+        twinkleSpeed: rand(0.3, 1.1) * twinkleMul,
+        driftX: rand(-0.08, 0.08) * driftMul,
+        driftY: rand(-0.05, 0.05) * driftMul,
+        spikes: Math.random() < spikeChance ? 4 : 0,
+        // Rare starburst — 6-pointed flare-out, only for near layer
+        burst: depth === 2 && Math.random() < 0.15,
+        hue: color.hue,
+        sat: color.sat,
+        glowMul,
         life: rand(0, 1),
-        lifeSpeed: rand(0.0015, 0.006),
+        lifeSpeed: rand(0.0012, 0.0045),
       };
     };
 
+
     const seedStars = () => {
       stars.length = 0;
-      // Count scales with banner size — more stars at hero, fewer at nav
-      const count = Math.max(16, Math.floor(size * 0.35));
+      // Density up: 0.55 per pixel of size instead of 0.35. More stars.
+      const count = Math.max(24, Math.floor(size * 0.55));
       for (let i = 0; i < count; i++) stars.push(makeStar());
     };
 
@@ -5289,37 +5135,53 @@ function AnimatedBanner({ size = 112 }) {
       seedEStars();
     };
 
-    const drawSparkle = (x, y, r, alpha, hue, spikes) => {
-      const g = ctx.createRadialGradient(x, y, 0, x, y, r * 3);
-      if (hue === 0) {
-        g.addColorStop(0, `rgba(255,255,255,${alpha})`);
-        g.addColorStop(0.3, `rgba(255,240,210,${alpha * 0.55})`);
-        g.addColorStop(1, `rgba(255,240,210,0)`);
-      } else {
-        g.addColorStop(0, `rgba(255,255,255,${alpha})`);
-        g.addColorStop(0.3, `hsla(${hue}, 100%, 70%, ${alpha * 0.7})`);
-        g.addColorStop(1, `hsla(${hue}, 100%, 60%, 0)`);
-      }
+    const drawSparkle = (x, y, r, alpha, hue, sat, spikes, burst, glowMul) => {
+      // Outer glow halo — cosmic color. Larger for nearer stars.
+      const haloR = r * (glowMul || 3);
+      const g = ctx.createRadialGradient(x, y, 0, x, y, haloR);
+      g.addColorStop(0,    `hsla(${hue}, ${sat}%, 92%, ${alpha})`);
+      g.addColorStop(0.25, `hsla(${hue}, ${sat}%, 72%, ${alpha * 0.55})`);
+      g.addColorStop(0.55, `hsla(${hue}, ${Math.max(40, sat - 20)}%, 52%, ${alpha * 0.18})`);
+      g.addColorStop(1,    `hsla(${hue}, ${sat}%, 40%, 0)`);
       ctx.fillStyle = g;
-      ctx.beginPath(); ctx.arc(x, y, r * 3, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = `rgba(255,255,255,${Math.min(1, alpha * 1.2)})`;
+      ctx.beginPath(); ctx.arc(x, y, haloR, 0, Math.PI * 2); ctx.fill();
+      // Hot-white core — this is what makes stars POP against the halo.
+      ctx.fillStyle = `rgba(255,255,255,${Math.min(1, alpha * 1.25)})`;
       ctx.beginPath(); ctx.arc(x, y, Math.max(0.4, r * 0.55), 0, Math.PI * 2); ctx.fill();
+      // Diffraction spikes (4-point cross) for mid/near stars
       if (spikes) {
         const L = r * 7;
         const grad = ctx.createLinearGradient(x - L, y, x + L, y);
         grad.addColorStop(0, "rgba(255,255,255,0)");
-        grad.addColorStop(0.5, `rgba(255,255,255,${alpha})`);
+        grad.addColorStop(0.5, `hsla(${hue}, 100%, 95%, ${alpha * 0.9})`);
         grad.addColorStop(1, "rgba(255,255,255,0)");
         ctx.strokeStyle = grad; ctx.lineWidth = Math.max(0.5, r * 0.35);
         ctx.beginPath(); ctx.moveTo(x - L, y); ctx.lineTo(x + L, y); ctx.stroke();
         const grad2 = ctx.createLinearGradient(x, y - L, x, y + L);
         grad2.addColorStop(0, "rgba(255,255,255,0)");
-        grad2.addColorStop(0.5, `rgba(255,255,255,${alpha})`);
+        grad2.addColorStop(0.5, `hsla(${hue}, 100%, 95%, ${alpha * 0.9})`);
         grad2.addColorStop(1, "rgba(255,255,255,0)");
         ctx.strokeStyle = grad2;
         ctx.beginPath(); ctx.moveTo(x, y - L); ctx.lineTo(x, y + L); ctx.stroke();
       }
+      // Starburst — 6-point flare for hero stars only (rare)
+      if (burst) {
+        const L = r * 11;
+        const angles = [0, Math.PI / 3, (2 * Math.PI) / 3];
+        for (const ang of angles) {
+          const dx = Math.cos(ang) * L;
+          const dy = Math.sin(ang) * L;
+          const bg = ctx.createLinearGradient(x - dx, y - dy, x + dx, y + dy);
+          bg.addColorStop(0, "rgba(255,255,255,0)");
+          bg.addColorStop(0.5, `hsla(${hue}, 100%, 96%, ${alpha * 0.7})`);
+          bg.addColorStop(1, "rgba(255,255,255,0)");
+          ctx.strokeStyle = bg;
+          ctx.lineWidth = Math.max(0.4, r * 0.22);
+          ctx.beginPath(); ctx.moveTo(x - dx, y - dy); ctx.lineTo(x + dx, y + dy); ctx.stroke();
+        }
+      }
     };
+
 
     const drawEngineStars = (dt) => {
       eCtx.setTransform(DPR, 0, 0, DPR, 0, 0);
@@ -5363,7 +5225,27 @@ function AnimatedBanner({ size = 112 }) {
       ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
       ctx.clearRect(0, 0, W, H);
       // Stars drawn on transparent canvas so the cosmic .hit-bg layer
-      // shows through behind them within letter shapes.
+      // shows through behind them within letter shapes. We sort implicitly
+      // by iterating depth-first so near stars paint over far ones.
+      // ── Edge-fade band: the outer ~10% of each axis fades stars to 0
+      // alpha, so when they wrap around the canvas they don't pop in
+      // at full brightness. The perceived result: stars smoothly fade
+      // out at edges and smoothly fade in from the opposite side, no
+      // invisible walls, no cut-offs. ──────────────────────────────
+      const edgeFade = (x, y) => {
+        const fadeBand = 0.12; // fraction of W/H that fades
+        const fx = Math.min(
+          1,
+          Math.max(0, x / (W * fadeBand)),
+          Math.max(0, (W - x) / (W * fadeBand))
+        );
+        const fy = Math.min(
+          1,
+          Math.max(0, y / (H * fadeBand)),
+          Math.max(0, (H - y) / (H * fadeBand))
+        );
+        return Math.min(fx, fy);
+      };
       for (const s of stars) {
         s.twinkle += dt * s.twinkleSpeed * 2.5;
         s.x += s.driftX * dt * 60;
@@ -5378,9 +5260,14 @@ function AnimatedBanner({ size = 112 }) {
         // fade OUT to 0 at life=1, then respawn. Sin(life·π) gives the
         // smooth bell shape. Combined with the twinkle for subtle breathing.
         const lifeFade = Math.sin(s.life * Math.PI);
-        const alpha = lifeFade * (0.35 + tw * 0.65);
+        // Depth layer modulates alpha ceiling — far stars never exceed 60%,
+        // near stars can hit 100% for full punch.
+        const depthAlphaCap = s.depth === 0 ? 0.55 : s.depth === 1 ? 0.82 : 1.0;
+        // Edge fade smooths the wrap — stars don't "cut" at invisible walls.
+        const edge = edgeFade(s.x, s.y);
+        const alpha = lifeFade * (0.32 + tw * 0.68) * depthAlphaCap * edge;
         const r = s.baseR * (0.7 + tw * 0.6) * (0.6 + lifeFade * 0.4);
-        if (alpha > 0.02) drawSparkle(s.x, s.y, r, alpha, s.hue, s.spikes);
+        if (alpha > 0.02) drawSparkle(s.x, s.y, r, alpha, s.hue, s.sat, s.spikes, s.burst, s.glowMul);
         if (s.life > 1) Object.assign(s, makeStar(), { life: 0 });
       }
       if (eW > 0 && eH > 0) drawEngineStars(dt);
@@ -5404,6 +5291,196 @@ function AnimatedBanner({ size = 112 }) {
     };
   }, [size]);
 
+  // ── FULL-VIEWPORT RAINBOW-ARC COMET ──────────────────────────────
+  // A separate canvas that spans the ENTIRE viewport width at banner
+  // vertical height, so the comet can actually arc "across the screen"
+  // from far left to far right (not just across the HIT word).
+  // Timer: 12-31 seconds between comets. Only one at a time. Classic
+  // comet look: very bright white head, long bright tapering tail,
+  // NOT rainbow-colored (per user spec) — but arcs in a rainbow-shape
+  // curve. Ice-blue / white palette for that "real astronomical comet"
+  // look.
+  useEffect(() => {
+    const canvas = cometCanvasRef.current;
+    const outer = bannerOuterRef.current;
+    if (!canvas || !outer) return;
+    const ctx = canvas.getContext("2d");
+    const DPR = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
+    let CW = 0, CH = 0;
+
+    // Arc geometry. Fixed to the banner's vertical strip height.
+    // CW = window inner width so the comet traverses the full screen.
+    const resizeComet = () => {
+      const outerRect = outer.getBoundingClientRect();
+      CW = window.innerWidth;
+      CH = outerRect.height * 2.2; // extra vertical room for arch peak
+      canvas.width  = Math.max(2, Math.floor(CW * DPR));
+      canvas.height = Math.max(2, Math.floor(CH * DPR));
+      canvas.style.width = CW + "px";
+      canvas.style.height = CH + "px";
+      // Position: align horizontally so canvas is centered behind banner,
+      // vertically so arch peak extends above the banner text.
+      canvas.style.left = `${-outerRect.left}px`;
+      canvas.style.top  = `${-CH * 0.35}px`;
+    };
+
+    let comet = null;
+    let cooldown = 2 + Math.random() * 6; // first comet: 2-8s after mount
+    const rand = (a, b) => a + Math.random() * (b - a);
+
+    const spawnComet = () => {
+      // Fast traversal for a "real comet" feel. 0.7-1.1s across the full
+      // viewport width reads as a streak that catches the eye but doesn't
+      // hang around. Think Perseid meteor, not a parade float.
+      const lifeMax = rand(0.7, 1.1);
+      // Entry just off-screen left, exit just off-screen right.
+      const entryX = -CW * 0.12;
+      const exitX  =  CW * 1.12;
+      // Entry/exit Y roughly at the banner's vertical midline.
+      // The canvas's top is offset above the banner by CH * 0.35, so
+      // banner middle = about CH * 0.55.
+      const entryY = CH * (0.65 + rand(-0.04, 0.04));
+      const exitY  = CH * (0.65 + rand(-0.04, 0.04));
+      // Peak Y — 40-55% up the canvas. Smaller value = higher arch.
+      // This is what gives the "rainbow curve" shape.
+      const archHeight = rand(0.38, 0.52);
+      const peakY = CH * (0.65 - archHeight);
+      comet = {
+        entryX, exitX, entryY, exitY, peakY,
+        x: entryX, y: entryY,
+        life: 0, lifeMax,
+        trail: [],
+        r: rand(2.6, 3.8),
+      };
+    };
+
+    let rafId = 0;
+    let last = performance.now();
+
+    const drawComet = (dt) => {
+      const c = comet;
+      c.life += dt;
+      const t = Math.min(1, c.life / c.lifeMax);
+      // Quadratic Bezier for a proper rainbow-style arc. Control point
+      // Y is derived so the actual curve peaks at peakY.
+      const midX = (c.entryX + c.exitX) / 2;
+      const ctrlY = 2 * c.peakY - (c.entryY + c.exitY) / 2;
+      const u = 1 - t;
+      c.x = u * u * c.entryX + 2 * u * t * midX + t * t * c.exitX;
+      c.y = u * u * c.entryY + 2 * u * t * ctrlY + t * t * c.exitY;
+      c.trail.push({ x: c.x, y: c.y });
+      // Long tail for classic comet look — up to 90 positions kept.
+      if (c.trail.length > 90) c.trail.shift();
+      // Envelope: fade in fast, fade out fast, mostly steady in between.
+      const env = t < 0.08 ? (t / 0.08)
+                 : t > 0.92 ? (1 - (t - 0.92) / 0.08)
+                 : 1;
+      const headAlpha = Math.max(0, env);
+
+      ctx.save();
+      ctx.globalCompositeOperation = "lighter";
+
+      // ── TAIL ── Real comets photograph with TWO visible tails:
+      //   1. Dust tail — warm gold/cream curving gently (we render this
+      //      as the inner trail layer, tighter + brighter)
+      //   2. Ion tail — cool blue/cyan, straighter, fading to violet at
+      //      its tip (this is what gives the Hyakutake/Neowise look)
+      // We render both in one pass by shifting color stops along trailT:
+      // near the head = bright gold-cream; far in the tail = deep blue
+      // shading to violet.
+      for (let i = 0; i < c.trail.length; i++) {
+        const p = c.trail[i];
+        const trailT = i / c.trail.length; // 0 = oldest (tail tip), 1 = newest (head)
+        const pAlpha = headAlpha * trailT * trailT * 0.85;
+        if (pAlpha < 0.015) continue;
+        const pr = c.r * (0.25 + trailT * 0.85);
+        const tg = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, pr * 5);
+        if (trailT > 0.75) {
+          // Near head: hot white core → warm gold-cream → subtle cyan-green
+          // coma (the classic dusty-icy nucleus halo)
+          tg.addColorStop(0,    `rgba(255, 255, 255, ${pAlpha})`);
+          tg.addColorStop(0.15, `rgba(255, 245, 210, ${pAlpha * 0.85})`);
+          tg.addColorStop(0.4,  `rgba(170, 230, 220, ${pAlpha * 0.45})`);
+          tg.addColorStop(1,    `rgba(100, 200, 220, 0)`);
+        } else if (trailT > 0.4) {
+          // Mid tail: cyan-green transitioning to ion-blue
+          tg.addColorStop(0,    `rgba(210, 245, 240, ${pAlpha * 0.9})`);
+          tg.addColorStop(0.3,  `rgba(110, 200, 230, ${pAlpha * 0.55})`);
+          tg.addColorStop(0.7,  `rgba( 80, 150, 235, ${pAlpha * 0.25})`);
+          tg.addColorStop(1,    `rgba( 60, 110, 220, 0)`);
+        } else {
+          // Far tail tip: deep ion-blue fading to violet (the tip color
+          // you see in long-exposure comet photos — magnetic-line drag)
+          tg.addColorStop(0,    `rgba(130, 170, 240, ${pAlpha * 0.7})`);
+          tg.addColorStop(0.4,  `rgba(120, 110, 220, ${pAlpha * 0.35})`);
+          tg.addColorStop(1,    `rgba(110,  80, 180, 0)`);
+        }
+        ctx.fillStyle = tg;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, pr * 5, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // ── HEAD ── Bright yellow-white nucleus with dust-scatter halo.
+      // Real comet photos show the nucleus as almost yellow because
+      // sunlight on dust particles scatters warm. Outer halo picks up
+      // the cyan-green ionization signature.
+      if (headAlpha > 0.02) {
+        const hr = c.r * 8;
+        const hg = ctx.createRadialGradient(c.x, c.y, 0, c.x, c.y, hr);
+        hg.addColorStop(0,    `rgba(255, 255, 255, ${headAlpha})`);
+        hg.addColorStop(0.10, `rgba(255, 250, 225, ${headAlpha * 0.95})`);
+        hg.addColorStop(0.28, `rgba(255, 230, 160, ${headAlpha * 0.7})`);
+        hg.addColorStop(0.55, `rgba(180, 240, 220, ${headAlpha * 0.35})`);
+        hg.addColorStop(0.85, `rgba(110, 180, 230, ${headAlpha * 0.15})`);
+        hg.addColorStop(1,    `rgba( 80, 140, 220, 0)`);
+        ctx.fillStyle = hg;
+        ctx.beginPath();
+        ctx.arc(c.x, c.y, hr, 0, Math.PI * 2);
+        ctx.fill();
+        // Solid hot white nucleus at very center — the bright point of
+        // light you see in any real comet photo.
+        ctx.fillStyle = `rgba(255, 255, 255, ${Math.min(1, headAlpha * 1.5)})`;
+        ctx.beginPath();
+        ctx.arc(c.x, c.y, Math.max(0.8, c.r * 0.85), 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.restore();
+    };
+
+    const loop = (t) => {
+      const dt = Math.min(0.05, (t - last) / 1000);
+      last = t;
+      ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+      ctx.clearRect(0, 0, CW, CH);
+
+      if (comet) {
+        drawComet(dt);
+        if (comet.life >= comet.lifeMax) {
+          comet = null;
+          cooldown = 12 + Math.random() * 19; // 12-31s per spec
+        }
+      } else {
+        cooldown -= dt;
+        if (cooldown <= 0) spawnComet();
+      }
+      rafId = requestAnimationFrame(loop);
+    };
+
+    resizeComet();
+    rafId = requestAnimationFrame(loop);
+    requestAnimationFrame(() => resizeComet());
+    const onResize = () => resizeComet();
+    window.addEventListener("resize", onResize);
+    window.addEventListener("scroll", onResize, { passive: true });
+
+    return () => {
+      cancelAnimationFrame(rafId);
+      window.removeEventListener("resize", onResize);
+      window.removeEventListener("scroll", onResize);
+    };
+  }, [size]);
+
   return (
     <div style={{
       display: "inline-flex",
@@ -5419,16 +5496,32 @@ function AnimatedBanner({ size = 112 }) {
       whiteSpace: "nowrap",
     }}>
       <style>{`
+        /* ── Seamless loop strategy ────────────────────────────────────
+           Keyframes use palindromic (out-and-back) motion so start == end.
+           This eliminates the visible "snap" that happens when a linear
+           animation wraps from 100% back to 0%. The cost (motion momentarily
+           reverses) is invisible because the background pattern reads as
+           ambient flow, not a progress bar. Each animation now:
+             0%   → start position
+             50%  → farthest point
+             100% → identical to start (loop is mathematically airtight)
+           Bonus: using 'linear' timing on a palindromic keyframe creates
+           a natural ease-in/ease-out at the midpoint where direction flips,
+           so movement feels organic without needing a cubic-bezier curve. */
         @keyframes bannerFlowMetal {
           0%   { background-position:   0% 50%; }
-          100% { background-position: 320% 50%; }
+          50%  { background-position: 160% 50%; }
+          100% { background-position:   0% 50%; }
         }
         @keyframes bannerNebulaDrift {
           0%   { background-position:   0% 40%; }
-          33%  { background-position:  40% 55%; }
-          66%  { background-position:  80% 45%; }
-          100% { background-position: 120% 40%; }
+          25%  { background-position:  40% 55%; }
+          50%  { background-position:  80% 50%; }
+          75%  { background-position:  40% 45%; }
+          100% { background-position:   0% 40%; }
         }
+        /* Sheen uses the classic opacity-zero-at-both-ends trick — the
+           jump happens while invisible, so no loop seam is perceptible. */
         @keyframes bannerSheen {
           0%,  8%   { background-position: 120% 50%; opacity: 0; }
           20%       { opacity: 1; }
@@ -5490,7 +5583,7 @@ function AnimatedBanner({ size = 112 }) {
           -webkit-background-clip: text;
           -webkit-text-fill-color: transparent;
           color: transparent;
-          animation: bannerFlowMetal 7s linear infinite;
+          animation: bannerFlowMetal 12s ease-in-out infinite;
           filter:
             drop-shadow(0 1px 0 rgba(0,0,0,0.55))
             drop-shadow(0 0 18px rgba(180, 80, 255, 0.28))
@@ -5519,7 +5612,7 @@ function AnimatedBanner({ size = 112 }) {
           -webkit-background-clip: text;
           -webkit-text-fill-color: transparent;
           color: transparent;
-          animation: bannerNebulaDrift 12s linear infinite;
+          animation: bannerNebulaDrift 18s ease-in-out infinite;
           mix-blend-mode: screen;
           pointer-events: none;
           /* Fade ambient layer out as hover strength rises — cursor-tracked
@@ -5936,12 +6029,12 @@ function Nav({ page, onNavigate }) {
     }
   };
 
-  // Tier gearshift cycler (only callable when dev mode is ON).
-  const DEV_CYCLE = ["free", "pro", "vip", "admin"];
-  const handleTierCycle = () => {
+  // Tier gearshift — DIRECT SELECT (only callable when dev mode is ON).
+  // Click a specific slot to jump straight to that tier. No cycling.
+  const handleTierSelect = (nextTier) => {
     if (!devModeActive) return;
-    const idx = DEV_CYCLE.indexOf(tier);
-    const nextTier = DEV_CYCLE[(idx + 1) % DEV_CYCLE.length];
+    if (!["free", "pro", "vip", "admin"].includes(nextTier)) return;
+    if (nextTier === tier) return;
     setDevTier(nextTier);
     refillForTier(nextTier);
   };
@@ -5991,7 +6084,8 @@ function Nav({ page, onNavigate }) {
         {/* DEV MODE — binary toggle. Click ON to unlock the tier gearshift
             (so you can cycle free→pro→vip→admin). Click OFF to lock it back
             to the user's real subscribed tier.
-            TODO: REMOVE BEFORE PUBLIC LAUNCH. */}
+            TODO: HIDE BEFORE PUBLIC LAUNCH — currently visible to everyone
+            while the app is in active development. */}
         <button type="button"
           onClick={handleDevToggle}
           title={devModeActive ? "DEV MODE ON — click to turn off" : "DEV MODE OFF — click to unlock tier switching"}
@@ -6034,7 +6128,7 @@ function Nav({ page, onNavigate }) {
           <TierGearshift
             activeTier={tier}
             devModeActive={devModeActive}
-            onCycle={handleTierCycle}
+            onSelect={handleTierSelect}
           />
         )}
         {isMobile && (
@@ -6094,7 +6188,7 @@ function Nav({ page, onNavigate }) {
             <TierGearshift
               activeTier={tier}
               devModeActive={devModeActive}
-              onCycle={handleTierCycle}
+              onSelect={handleTierSelect}
             />
           </div>
 
@@ -9778,7 +9872,12 @@ function EnginePage({ onNavigate }) {
     }
 
     return {
-      maxSlots: isFreeFuel ? 1 : features.maxSlots,
+      // SLOTS — tier entitlement is the floor. Free fuel only caps slots
+      // for users whose tier is already 1-slot (free tier). Pro/VIP tier
+      // users keep their full slot count regardless of active fuel —
+      // they paid for 3 slots; using free fuel for a cheap roll doesn't
+      // strip that away.
+      maxSlots: features.maxSlots,
       modes: allowedModes,
       maxInstruments: isFreeFuel ? Math.min(5, features.maxInstruments) : features.maxInstruments,
       maxOptionsPerSection: isFreeFuel
@@ -18123,7 +18222,9 @@ function playSwitchSound() {
   try {
     if (typeof window === "undefined" || typeof Audio === "undefined") return;
     if (!_switchAudioPool) {
-      _switchAudioPool = [new Audio("/switch-sound.mp3"), new Audio("/switch-sound.mp3"), new Audio("/switch-sound.mp3")];
+      // Cache-bust query param forces a fresh fetch when the asset is
+      // replaced. Bump the version number when swapping the sound file.
+      _switchAudioPool = [new Audio("/switch-sound.mp3?v=2"), new Audio("/switch-sound.mp3?v=2"), new Audio("/switch-sound.mp3?v=2")];
       _switchAudioPool.forEach(a => { a.volume = 0.5; a.preload = "auto"; });
     }
     const a = _switchAudioPool[_switchAudioIdx];
