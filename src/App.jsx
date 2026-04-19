@@ -653,11 +653,23 @@ function FuelGearshift({ compact = false }) {
   const { tier, features } = useTier();
   const isAdmin = tier === "admin";
 
+  // Trend Fuel is VIP/Admin only — shown as 4th tile when applicable.
+  // Free/Pro users get the cleaner 3-tile layout.
+  const showTrend = tier === "vip" || tier === "admin";
   const options = [
-    { id: "free",  ...FUEL_TYPES.free,  angle: 0 },
-    { id: "pro",   ...FUEL_TYPES.pro,   angle: 0 },
-    { id: "vip", ...FUEL_TYPES.vip, angle: 0 },
+    { id: "free", ...FUEL_TYPES.free },
+    { id: "pro",  ...FUEL_TYPES.pro },
+    { id: "vip",  ...FUEL_TYPES.vip },
+    ...(showTrend ? [{ id: "trend", ...FUEL_TYPES.trend }] : []),
   ];
+  const cols = options.length;
+
+  // Daily allocation for the tier — used as the "of N" sub-value under
+  // current count. Free is Infinity so we show a simple ∞.
+  const allocFor = (fuelId) => {
+    const a = features?.dailyFuel?.[fuelId];
+    return Number.isFinite(a) ? a : null; // null = infinite
+  };
 
   return (
     <div style={{
@@ -683,32 +695,39 @@ function FuelGearshift({ compact = false }) {
         }}>● ENGAGED</span>
       </div>
       <div style={{
-        display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 6,
+        display: "grid", gridTemplateColumns: `repeat(${cols}, 1fr)`, gap: 6,
       }}>
         {options.map(o => {
           const active = activeFuel === o.id;
           const fuelLeft = fuels[o.id];
-          const empty = Number.isFinite(fuelLeft) && fuelLeft <= 0;
+          const infinite = !Number.isFinite(fuelLeft);
+          const empty = !infinite && fuelLeft <= 0;
+          const alloc = allocFor(o.id);
+          // Fill percentage for the stock bar (bottom edge of tile).
+          // Infinite → always full. Finite → fuelLeft / alloc.
+          const pct = infinite
+            ? 1
+            : (alloc && alloc > 0 ? Math.max(0, Math.min(1, fuelLeft / alloc)) : 0);
           return (
             <button key={o.id} type="button"
               onClick={() => !empty && setActiveFuel(o.id)}
               disabled={empty}
               style={{
-                position: "relative",
+                position: "relative", overflow: "hidden",
                 background: active
                   ? `linear-gradient(145deg, ${o.color}33 0%, ${o.color}11 100%)`
-                  : "rgba(0,0,0,0.4)",
+                  : `linear-gradient(145deg, rgba(255,255,255,0.02) 0%, rgba(0,0,0,0.4) 100%)`,
                 border: `2px solid ${active ? o.color : empty ? T.borderMuted : T.border}`,
                 boxShadow: active
                   ? `0 0 12px ${o.color}88, inset 0 1px 0 rgba(255,255,255,0.08)`
                   : "inset 0 1px 0 rgba(255,255,255,0.04)",
                 color: active ? o.color : empty ? T.textMuted : T.textSec,
-                padding: compact ? "10px 8px" : "12px 10px",
+                padding: compact ? "10px 6px 12px" : "12px 8px 14px",
                 borderRadius: 8,
                 cursor: empty ? "not-allowed" : "pointer",
                 transition: "all 180ms cubic-bezier(0.16, 1, 0.3, 1)",
                 opacity: empty ? 0.5 : 1,
-                display: "flex", flexDirection: "column", alignItems: "center", gap: 4,
+                display: "flex", flexDirection: "column", alignItems: "center", gap: 3,
                 fontFamily: T.font_mono,
               }}
               onMouseEnter={e => {
@@ -734,10 +753,43 @@ function FuelGearshift({ compact = false }) {
                 fontSize: compact ? 9 : 10, fontWeight: 700, letterSpacing: "0.1em",
                 textShadow: active ? `0 0 6px ${o.color}88` : "none",
               }}>{o.label.split(" ")[0].toUpperCase()}</span>
+              {/* Count — large, prominent */}
               <span style={{
-                fontSize: compact ? 11 : 13, fontWeight: 700,
+                fontSize: compact ? 14 : 16, fontWeight: 700, lineHeight: 1,
                 color: empty ? T.textMuted : active ? o.color : T.text,
+                textShadow: active ? `0 0 10px ${o.color}AA` : "none",
+                letterSpacing: "0.02em",
               }}>{fuelDisplay(fuelLeft)}</span>
+              {/* Sub-value: "of N" for finite allocations, "daily" for infinite.
+                  Only shown when not empty so the tile stays clean. */}
+              {!empty && (
+                <span style={{
+                  fontSize: compact ? 7.5 : 8, fontWeight: 600,
+                  color: active ? `${o.color}CC` : T.textTer,
+                  letterSpacing: "0.1em", lineHeight: 1,
+                  opacity: 0.85,
+                }}>
+                  {infinite ? "UNLIMITED" : (alloc ? `OF ${alloc}` : "DAILY")}
+                </span>
+              )}
+              {/* Bottom stock bar — visualizes remaining fuel vs allocation.
+                  Sits flush to the tile's bottom edge as a thin band. */}
+              <span style={{
+                position: "absolute", left: 0, right: 0, bottom: 0,
+                height: 3,
+                background: "rgba(255,255,255,0.04)",
+                overflow: "hidden",
+              }}>
+                <span style={{
+                  position: "absolute", top: 0, bottom: 0, left: 0,
+                  width: `${pct * 100}%`,
+                  background: infinite
+                    ? `linear-gradient(90deg, ${o.color}AA 0%, ${o.color}FF 100%)`
+                    : `linear-gradient(90deg, ${o.color}66 0%, ${o.color}DD 100%)`,
+                  boxShadow: active ? `0 0 6px ${o.color}` : "none",
+                  transition: `width ${T.dur_norm} ${T.ease}`,
+                }} />
+              </span>
             </button>
           );
         })}
@@ -2397,6 +2449,57 @@ const INSTRUMENT_GENRES = {
   "Vocalise wordless":         ["Film Score","Chamber Pop","New Age","Dream Pop"],
   "Orchestral choir stab":     ["Film Score","Epic Orchestral","Cinematic","Symphonic Metal"],
 };
+
+// ────────────────────────────────────────────────────────────────────────────
+// BPM_GENRE_RANGES — Maps BPM buckets to matching subgenres for live
+// suggestions while the user drags the tempo slider. Each entry defines
+// [min, max] inclusive and an array of subgenres that sit naturally in
+// that range. Values match actual GENRE_TREE subgenre keys. Ranges
+// overlap intentionally so multiple buckets can contribute at borders —
+// a 100 BPM track can be Hip-Hop, House, or Reggaeton depending on feel.
+// ────────────────────────────────────────────────────────────────────────────
+const BPM_GENRE_RANGES = [
+  { min: 60,  max: 74,  genres: ["Ambient","Drone","Dark Ambient","New Age","Doom Metal"] },
+  { min: 65,  max: 79,  genres: ["Chopped and Screwed","Downtempo","Trip-Hop","Lo-Fi Hip-Hop"] },
+  { min: 70,  max: 85,  genres: ["Reggae","Dub","Roots Reggae","Soul","Neo-Soul"] },
+  { min: 75,  max: 90,  genres: ["Hip-Hop","Boom Bap","Jazz-Rap","R&B","Contemporary R&B","Smooth Jazz"] },
+  { min: 80,  max: 95,  genres: ["Trap","Plugg","Cloud Rap","Memphis Rap","Phonk","Alternative R&B"] },
+  { min: 85,  max: 100, genres: ["Reggaeton","Dembow","Bossa Nova","Lounge","Chamber Pop"] },
+  { min: 90,  max: 105, genres: ["Drill","UK Drill","Afro Drill","Afrobeats","Amapiano"] },
+  { min: 95,  max: 110, genres: ["Hip-Hop","Rage Rap","Indie Rock","Alternative Rock","Chill House"] },
+  { min: 100, max: 115, genres: ["Pop","Dance-Pop","Synth-Pop","Indie Pop","Electro-Pop"] },
+  { min: 105, max: 120, genres: ["House","Tech House","Deep House","Disco","Nu-Disco"] },
+  { min: 110, max: 125, genres: ["House","Funk","Boogie","Disco","French House"] },
+  { min: 115, max: 130, genres: ["House","Tech House","Techno","Progressive House","Garage"] },
+  { min: 120, max: 135, genres: ["Techno","Minimal Techno","UK Garage","Future Garage","Breakbeat"] },
+  { min: 125, max: 140, genres: ["Techno","Trance","Progressive Trance","Big Room","Electro"] },
+  { min: 130, max: 145, genres: ["Trance","Hardstyle","Psytrance","Dubstep","Brostep"] },
+  { min: 135, max: 150, genres: ["Dubstep","Drum and Bass","Liquid DnB","Neurofunk","Future Bass"] },
+  { min: 140, max: 160, genres: ["Drum and Bass","Jungle","Hardcore","Footwork","Juke"] },
+  { min: 150, max: 170, genres: ["Drum and Bass","Jungle","Gabber","Speedcore","Footwork"] },
+  { min: 160, max: 180, genres: ["Hardcore","Speedcore","Happy Hardcore","Gabber"] },
+  { min: 170, max: 200, genres: ["Speedcore","Extratone","Gabber","Terrorcore","Industrial"] },
+];
+
+// Pick subgenres for a given BPM by walking the ranges that contain it,
+// deduplicating entries, and returning up to maxCount values.
+function genresForBpm(bpm, maxCount = 5) {
+  if (!bpm || bpm <= 0) return [];
+  const seen = new Set();
+  const result = [];
+  for (const { min, max, genres } of BPM_GENRE_RANGES) {
+    if (bpm >= min && bpm <= max) {
+      for (const g of genres) {
+        if (!seen.has(g)) {
+          seen.add(g);
+          result.push(g);
+          if (result.length >= maxCount) return result;
+        }
+      }
+    }
+  }
+  return result;
+}
 
 // ────────────────────────────────────────────────────────────────────────────
 // REVERSE COMPLEMENT MAPS — When the user picks a mood/groove/lyrical as
@@ -4466,10 +4569,13 @@ function Section({ title, children, hint, toggle, onToggleChange, extra, filled 
 // the full section content (chips, toggles, reroll, lock, etc.).
 // Only ONE cubicle is open at a time — click another to swap.
 // ════════════════════════════════════════════════════════════════════════════
-function Cubicle({ id, icon, title, description, valuePreview, filled, isOpen, onToggle, toggle, children, extra, hint }) {
+function Cubicle({ id, icon, title, description, valuePreview, filled, isOpen, onToggle, toggle, children, extra, hint, alwaysOpen = false }) {
   const disabled = toggle === "off";
   const showLed = !disabled && filled !== undefined;
   const ledGreen = filled === true;
+  // Suppress the chevron and click handlers when the cubicle is always open
+  // (e.g. BPM which lives below the grid and never collapses).
+  const headerClickable = !disabled && !alwaysOpen;
 
   // Open state spans ALL grid columns and pushes siblings below.
   const openGridSpan = { gridColumn: "1 / -1" };
@@ -4532,18 +4638,18 @@ function Cubicle({ id, icon, title, description, valuePreview, filled, isOpen, o
         }} />
       )}
 
-      {/* Header — clickable toggle */}
+      {/* Header — clickable toggle (non-clickable when alwaysOpen) */}
       <div
-        onClick={() => { if (!disabled) onToggle(id); }}
+        onClick={() => { if (headerClickable) onToggle(id); }}
         style={{
           display: "flex", alignItems: "center", justifyContent: "space-between",
           gap: T.s2, padding: `${T.s3}px ${T.s3}px`,
-          cursor: disabled ? "not-allowed" : "pointer",
+          cursor: disabled ? "not-allowed" : (alwaysOpen ? "default" : "pointer"),
           userSelect: "none",
           minHeight: 64,
           transition: `background 200ms ${T.ease}`,
         }}
-        onMouseEnter={e => { if (!disabled && !isOpen) e.currentTarget.style.background = `${T.accent}08`; }}
+        onMouseEnter={e => { if (headerClickable && !isOpen) e.currentTarget.style.background = `${T.accent}08`; }}
         onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}>
         <div style={{ display: "flex", alignItems: "center", gap: T.s3, minWidth: 0, flex: 1 }}>
           {/* Icon square — larger, tinted, drop-shadow on fill */}
@@ -4598,19 +4704,21 @@ function Cubicle({ id, icon, title, description, valuePreview, filled, isOpen, o
             )}
           </div>
         </div>
-        {/* Chevron */}
-        <div style={{
-          flexShrink: 0,
-          width: 26, height: 26,
-          display: "flex", alignItems: "center", justifyContent: "center",
-          borderRadius: "50%",
-          background: isOpen ? (filled === true ? `${V.neonGold}22` : `${T.accent}18`) : "transparent",
-          color: isOpen ? (filled === true ? V.neonGold : T.accent) : T.textTer,
-          fontSize: 16, fontWeight: 700, lineHeight: 1,
-          transition: `all 200ms ${T.ease}`,
-        }}>
-          {isOpen ? "−" : "+"}
-        </div>
+        {/* Chevron — hidden when alwaysOpen since toggling isn't possible */}
+        {!alwaysOpen && (
+          <div style={{
+            flexShrink: 0,
+            width: 26, height: 26,
+            display: "flex", alignItems: "center", justifyContent: "center",
+            borderRadius: "50%",
+            background: isOpen ? (filled === true ? `${V.neonGold}22` : `${T.accent}18`) : "transparent",
+            color: isOpen ? (filled === true ? V.neonGold : T.accent) : T.textTer,
+            fontSize: 16, fontWeight: 700, lineHeight: 1,
+            transition: `all 200ms ${T.ease}`,
+          }}>
+            {isOpen ? "−" : "+"}
+          </div>
+        )}
       </div>
 
       {/* Expanded body */}
@@ -10110,9 +10218,16 @@ function EnginePage({ onNavigate }) {
               </div>
               {renderSectionSuggestPanel("mix")}
             </Cubicle>
+          </CubicleGrid>
 
+          {/* ── BPM — always-open, full-width, sits below the grid ────
+              BPM lives outside the cubicle grid because it contains a
+              slider + live genre suggestions that benefit from a full
+              horizontal surface. Visually matches the expanded-cubicle
+              style so it still reads as part of the engine deck. */}
+          <div style={{ marginTop: T.s2, marginBottom: T.s3 }}>
             <Cubicle id="bpm" icon="⏱️" title="BPM"
-              description="Tempo — beats per minute"
+              description="Tempo — how fast the track moves"
               filled={state.bpm > 0}
               valuePreview={state.toggles.bpm === "off"
                 ? "OFF"
@@ -10122,7 +10237,9 @@ function EnginePage({ onNavigate }) {
                 : (state.toggles.bpm === "off"
                     ? "Excluded from prompt"
                     : "Randomize on HIT, or set manually")}
-              isOpen={openCubicle === "bpm"} onToggle={toggleCubicle}
+              isOpen={true}
+              onToggle={() => {}}
+              alwaysOpen={true}
               toggle={state.toggles.bpm}
               extra={<>
                 {sectionExtras("bpm")}
@@ -10259,11 +10376,76 @@ function EnginePage({ onNavigate }) {
                 )}
               </div>
             </div>
+            {/* ── BPM GENRE SUGGESTIONS ──────────────────────────────
+                Live list of subgenres that naturally sit in the current
+                BPM range. Updates as the user drags the slider. Click a
+                suggestion to commit it to the first empty genre slot.
+                Skipped when toggle is OFF (excluded) or bpm == 0 (unset). */}
+            {!bpmOff && state.bpm > 0 && (() => {
+              const suggestions = genresForBpm(state.bpm, 6);
+              if (suggestions.length === 0) return null;
+              const commitGenre = (g) => {
+                const slots = state.slots || [];
+                const emptyIdx = slots.findIndex(s => !s);
+                if (emptyIdx < 0) return;
+                const next = [...slots];
+                next[emptyIdx] = { genre: g, sub: null, micro: null };
+                set("slots", next);
+              };
+              return (
+                <div style={{
+                  marginTop: T.s3, paddingTop: T.s3,
+                  borderTop: `1px dashed ${bpmColorBorder}`,
+                }}>
+                  <div style={{
+                    display: "flex", alignItems: "center", gap: T.s2,
+                    marginBottom: T.s2, flexWrap: "wrap",
+                  }}>
+                    <span style={{
+                      fontSize: 10, fontFamily: T.font_mono, fontWeight: 700,
+                      color: bpmColor, letterSpacing: "0.15em",
+                    }}>⏱ GENRES AT {state.bpm} BPM</span>
+                    <span style={{
+                      fontSize: 11, color: T.textTer, fontFamily: T.font_sans,
+                    }}>tap to add to a genre slot</span>
+                  </div>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: T.s1 }}>
+                    {suggestions.map(g => (
+                      <button type="button" key={g}
+                        onClick={() => commitGenre(g)}
+                        title={`Add ${g} to a genre slot`}
+                        style={{
+                          padding: "4px 10px",
+                          background: `${bpmColor}12`,
+                          border: `1px solid ${bpmColorBorder}`,
+                          borderRadius: T.r_md,
+                          color: T.text,
+                          fontSize: T.fs_sm, fontFamily: T.font_sans,
+                          fontWeight: 500, cursor: "pointer",
+                          transition: `all ${T.dur_fast} ${T.ease}`,
+                        }}
+                        onMouseEnter={e => {
+                          e.currentTarget.style.background = `${bpmColor}28`;
+                          e.currentTarget.style.borderColor = bpmColor;
+                          e.currentTarget.style.boxShadow = `0 0 8px ${bpmColor}55`;
+                        }}
+                        onMouseLeave={e => {
+                          e.currentTarget.style.background = `${bpmColor}12`;
+                          e.currentTarget.style.borderColor = bpmColorBorder;
+                          e.currentTarget.style.boxShadow = "none";
+                        }}>
+                        {g}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
             </>
             );
             })()}
             </Cubicle>
-          </CubicleGrid>
+          </div>
         </div>
 
         {/* RIGHT PANE */}
