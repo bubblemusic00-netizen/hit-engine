@@ -4348,9 +4348,14 @@ function TriToggle({ value, onChange }) {
         top: 2, bottom: 2,
         left: `calc(${activeIdx * 33.333}% + 2px)`,
         width: "calc(33.333% - 4px)",
-        background: value === "on" ? T.accent : T.elevated,
+        background: value === "on"
+          ? "#10b981"
+          : (value === "off" ? "#ef4444" : T.elevated),
         borderRadius: T.r_sm,
         transition: `all ${T.dur_norm} ${T.ease}`,
+        boxShadow: value === "on"
+          ? "0 0 8px #10b98166"
+          : (value === "off" ? "0 0 6px #ef444466" : "none"),
       }} />
       {states.map(s => {
         const active = s.id === value;
@@ -4364,7 +4369,9 @@ function TriToggle({ value, onChange }) {
               background: "transparent", border: "none",
               color: s.locked
                 ? T.textMuted
-                : active ? (s.id === "on" ? "#FFFFFF" : T.text) : T.textTer,
+                : active
+                    ? ((s.id === "on" || s.id === "off") ? "#FFFFFF" : T.text)
+                    : T.textTer,
               padding: "0 12px", fontSize: T.fs_xs, minWidth: 46,
               fontFamily: T.font_sans, fontWeight: 500,
               cursor: s.locked ? "not-allowed" : "pointer",
@@ -4633,7 +4640,7 @@ function CubicleGrid({ children, isMobile }) {
   return (
     <div style={{
       display: "grid",
-      gridTemplateColumns: isMobile ? "repeat(2, minmax(0, 1fr))" : "repeat(3, minmax(0, 1fr))",
+      gridTemplateColumns: isMobile ? "repeat(3, minmax(0, 1fr))" : "repeat(5, minmax(0, 1fr))",
       gap: T.s2,
       marginTop: T.s3, marginBottom: T.s3,
     }}>{children}</div>
@@ -7222,20 +7229,72 @@ function SpecificInstrumentsPicker({
       )}
 
       {/* ── CATEGORY TAB BAR ─────────────────────────────────────────
-          Horizontal scrollable strip of all instrument categories.
-          Only one is active at a time; clicking switches which set of
-          instruments is shown below. Each tab shows emoji + name + a
-          gold dot if that category has user picks. Hidden during
-          search since search spans all categories anyway. ─────────── */}
-      {!isSearching && (
-        <div style={{
-          display: "flex", gap: T.s1, overflowX: "auto", overflowY: "hidden",
-          padding: `${T.s1}px 0 ${T.s2}px`,
-          marginBottom: T.s2,
-          scrollbarWidth: "thin",
-          WebkitOverflowScrolling: "touch",
-        }}>
-          {Object.keys(SPECIFIC_INSTRUMENTS).map(cat => {
+          Horizontal strip of all instrument categories, flanked by left
+          and right arrow buttons that LOOP through the categories. Only
+          one category is active at a time; arrows jump the active tab
+          by 1 and scroll the tab into view. Each tab shows emoji + name
+          + a gold dot if that category has user picks. Hidden during
+          search since search spans all categories anyway.           */}
+      {!isSearching && (() => {
+        const cats = Object.keys(SPECIFIC_INSTRUMENTS);
+        const activeIdx = Math.max(0, cats.indexOf(activeCategory));
+        const stepBy = (delta) => {
+          const nextIdx = (activeIdx + delta + cats.length) % cats.length;
+          const nextCat = cats[nextIdx];
+          setActiveCategory(nextCat);
+          // Scroll the newly-active tab into horizontal view
+          setTimeout(() => {
+            const el = document.querySelector(`[data-cat-tab="${nextCat}"]`);
+            if (el && el.scrollIntoView) {
+              el.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
+            }
+          }, 0);
+        };
+        const arrowBtnStyle = (side) => ({
+          flexShrink: 0,
+          width: 36, height: isMobile ? 38 : 34,
+          display: "flex", alignItems: "center", justifyContent: "center",
+          background: `linear-gradient(${side === "left" ? "90deg" : "270deg"}, ${T.surface} 0%, ${T.elevated} 100%)`,
+          border: `1px solid ${T.border}`,
+          borderRadius: T.r_md,
+          color: T.text, fontSize: 16, fontWeight: 700,
+          cursor: "pointer", userSelect: "none",
+          transition: `all ${T.dur_fast} ${T.ease}`,
+          boxShadow: `0 1px 3px rgba(0,0,0,0.1)`,
+        });
+        return (
+          <div style={{
+            display: "flex", alignItems: "center", gap: T.s1,
+            padding: `${T.s1}px 0 ${T.s2}px`,
+            marginBottom: T.s2,
+          }}>
+            {/* LEFT ARROW — loops to last category from first */}
+            <button type="button"
+              onClick={() => stepBy(-1)}
+              title="Previous category"
+              aria-label="Previous instrument category"
+              style={arrowBtnStyle("left")}
+              onMouseEnter={e => {
+                e.currentTarget.style.borderColor = T.accent;
+                e.currentTarget.style.color = T.accentHi;
+                e.currentTarget.style.boxShadow = `0 0 0 1px ${T.accent}33, 0 2px 8px ${T.accent}22`;
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.borderColor = T.border;
+                e.currentTarget.style.color = T.text;
+                e.currentTarget.style.boxShadow = `0 1px 3px rgba(0,0,0,0.1)`;
+              }}>
+              ‹
+            </button>
+            {/* SCROLLABLE TAB STRIP */}
+            <div style={{
+              flex: 1, minWidth: 0,
+              display: "flex", gap: T.s1, overflowX: "auto", overflowY: "hidden",
+              scrollbarWidth: "thin",
+              WebkitOverflowScrolling: "touch",
+              scrollBehavior: "smooth",
+            }}>
+          {cats.map(cat => {
             const icon = CATEGORY_ICONS[cat] || "🎵";
             const isActive = activeCategory === cat;
             const insts = SPECIFIC_INSTRUMENTS[cat];
@@ -7243,6 +7302,7 @@ function SpecificInstrumentsPicker({
             const hasPicks = pickCount > 0;
             return (
               <button type="button" key={cat}
+                data-cat-tab={cat}
                 onClick={() => setActiveCategory(cat)}
                 style={{
                   display: "inline-flex", alignItems: "center", gap: 6,
@@ -7289,8 +7349,28 @@ function SpecificInstrumentsPicker({
               </button>
             );
           })}
-        </div>
-      )}
+            </div>
+            {/* RIGHT ARROW — loops to first category from last */}
+            <button type="button"
+              onClick={() => stepBy(1)}
+              title="Next category"
+              aria-label="Next instrument category"
+              style={arrowBtnStyle("right")}
+              onMouseEnter={e => {
+                e.currentTarget.style.borderColor = T.accent;
+                e.currentTarget.style.color = T.accentHi;
+                e.currentTarget.style.boxShadow = `0 0 0 1px ${T.accent}33, 0 2px 8px ${T.accent}22`;
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.borderColor = T.border;
+                e.currentTarget.style.color = T.text;
+                e.currentTarget.style.boxShadow = `0 1px 3px rgba(0,0,0,0.1)`;
+              }}>
+              ›
+            </button>
+          </div>
+        );
+      })()}
 
       <div style={{ display: "flex", flexDirection: "column", gap: T.s1 }}>
         {(() => {
@@ -9585,36 +9665,41 @@ function EnginePage({ onNavigate }) {
               onLockedClick={(f) => setSalesModalFeature(f || "lockedSubgenre")} />
           </Section>
 
-          {/* LANGUAGE — positioned at the top of the element stack per spec.
-              Hidden when lyricsOn is false (instrumental mode) since language
-              is only meaningful for sung content. */}
-          {lyricsOn && (
-            <Section title="Language" hint="Shifts vocal phrasing and cadence."
-              filled={!!state.language}
-              toggle={state.toggles.language} onToggleChange={v => setToggle("language", v)}
-              extra={sectionExtras("language")}>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: T.s1 }}>
-                {LANGUAGES.map(lang => (
-                  <Chip key={lang.code} label={lang.label} selected={state.language === lang.code}
-                    favorite={favSetFor("language").has(lang.code)}
-                    locked={optionLockSetFor("language").has(lang.code)}
-                    casinoOutline={casinoOutlines.get(`language:${lang.code}`)}
-                    onClick={() => set("language", lang.code)}
-                    onDoubleClick={() => toggleFavorite("language", lang.code)} />
-                ))}
-                {renderCustomTail("language", (e) => ({
-                  isSelected: state.language === e,
-                  onClick: () => set("language", state.language === e ? "" : e),
-                }))}
-              </div>
-            </Section>
-          )}
-
-          {/* ── CUBICLE GRID (pilot) ────────────────────────────────
-              3 columns on desktop / 2 on mobile. Click a tile to expand
-              it inline; it spans full width and pushes siblings below.
-              Only ONE can be open at a time.                         */}
+          {/* ── UNIFIED CUBICLE GRID ────────────────────────────────
+              5 columns on desktop / 3 on mobile, auto-flow wrapping.
+              All engine elements (Language, Mood, Energy, Groove, Vocalist,
+              Lyrical vibe, Instruments, Harmonic, Texture, Mix, BPM) are
+              Cubicles in this single deck. Only one opens at a time; when
+              open it spans full width and pushes siblings below.         */}
           <CubicleGrid isMobile={isMobile}>
+            {/* LANGUAGE — only when lyrics are on */}
+            {lyricsOn && (
+              <Cubicle id="language" icon="🌐" title="Language"
+                description="Shifts vocal phrasing and cadence"
+                filled={!!state.language}
+                valuePreview={(LANGUAGES.find(l => l.code === state.language)?.label) || state.language || "—"}
+                isOpen={openCubicle === "language"} onToggle={toggleCubicle}
+                toggle={state.toggles.language}
+                extra={<>
+                  {sectionExtras("language")}
+                  <TriToggle value={state.toggles.language} onChange={v => setToggle("language", v)} />
+                </>}>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: T.s1 }}>
+                  {LANGUAGES.map(lang => (
+                    <Chip key={lang.code} label={lang.label} selected={state.language === lang.code}
+                      favorite={favSetFor("language").has(lang.code)}
+                      locked={optionLockSetFor("language").has(lang.code)}
+                      casinoOutline={casinoOutlines.get(`language:${lang.code}`)}
+                      onClick={() => set("language", lang.code)}
+                      onDoubleClick={() => toggleFavorite("language", lang.code)} />
+                  ))}
+                  {renderCustomTail("language", (e) => ({
+                    isSelected: state.language === e,
+                    onClick: () => set("language", state.language === e ? "" : e),
+                  }))}
+                </div>
+              </Cubicle>
+            )}
             <Cubicle id="mood" icon="🎭" title="Mood"
               description="The emotional weather of the song"
               filled={!!state.mood}
@@ -9748,15 +9833,7 @@ function EnginePage({ onNavigate }) {
               </div>
               {renderSectionSuggestPanel("groove")}
             </Cubicle>
-          </CubicleGrid>
 
-
-
-          {/* ── CUBICLE GRID 2: lyrics-dependent + instruments + final polish ──
-              Vocalist / Lyrical vibe only render when lyricsOn.
-              Specific instruments always shows. Expands to full row when
-              open — size stays uniform for the rest. */}
-          <CubicleGrid isMobile={isMobile}>
             {lyricsOn && (
               <Cubicle id="vocalist" icon="🎤" title="Vocalist"
                 description="Who's singing and how they sound"
@@ -10033,21 +10110,60 @@ function EnginePage({ onNavigate }) {
               </div>
               {renderSectionSuggestPanel("mix")}
             </Cubicle>
-          </CubicleGrid>
 
-          <Section title="BPM"
-            filled={state.bpm > 0}
-            hint={state.bpm > 0
-              ? `${state.bpm} BPM — locked in`
-              : (state.toggles.bpm === "off"
-                  ? "Excluded from prompt"
-                  : "Randomize on HIT, or set manually")}
-            toggle={state.toggles.bpm} onToggleChange={v => setToggle("bpm", v)}
-            extra={sectionExtras("bpm")}>
+            <Cubicle id="bpm" icon="⏱️" title="BPM"
+              description="Tempo — beats per minute"
+              filled={state.bpm > 0}
+              valuePreview={state.toggles.bpm === "off"
+                ? "OFF"
+                : (state.bpm > 0 ? `${state.bpm} BPM` : "auto / random")}
+              hint={state.bpm > 0
+                ? `${state.bpm} BPM — locked in`
+                : (state.toggles.bpm === "off"
+                    ? "Excluded from prompt"
+                    : "Randomize on HIT, or set manually")}
+              isOpen={openCubicle === "bpm"} onToggle={toggleCubicle}
+              toggle={state.toggles.bpm}
+              extra={<>
+                {sectionExtras("bpm")}
+                <TriToggle value={state.toggles.bpm} onChange={v => setToggle("bpm", v)} />
+              </>}>
+            {(() => {
+              // Color-theme the BPM slider based on toggle state:
+              //   ON  → green (active, will be included in prompt)
+              //   OFF → red   (excluded from prompt)
+              //   AUTO → indigo accent (default, may be randomized)
+              const bpmOn = state.toggles.bpm === "on";
+              const bpmOff = state.toggles.bpm === "off";
+              const bpmColor = bpmOn ? "#10b981" : (bpmOff ? "#ef4444" : T.accent);
+              const bpmColorSoft = `${bpmColor}22`;
+              const bpmColorBorder = `${bpmColor}66`;
+              return (
+              <>
+              {/* Scoped slider thumb override — matches the state color */}
+              <style>{`
+                .bpm-slider-${bpmOn ? "on" : (bpmOff ? "off" : "auto")}::-webkit-slider-thumb {
+                  -webkit-appearance: none; appearance: none;
+                  width: 18px; height: 18px;
+                  background: ${T.text};
+                  border: 2px solid ${bpmColor};
+                  border-radius: 50%; cursor: pointer;
+                  box-shadow: 0 0 0 2px ${T.bg}, 0 0 8px ${bpmColor}88, 0 2px 8px rgba(0,0,0,0.4);
+                  transition: transform 140ms ease-out;
+                }
+                .bpm-slider-${bpmOn ? "on" : (bpmOff ? "off" : "auto")}::-moz-range-thumb {
+                  width: 18px; height: 18px;
+                  background: ${T.text};
+                  border: 2px solid ${bpmColor};
+                  border-radius: 50%; cursor: pointer;
+                  box-shadow: 0 0 0 2px ${T.bg}, 0 0 8px ${bpmColor}88, 0 2px 8px rgba(0,0,0,0.4);
+                }
+              `}</style>
             <div style={{ display: "flex", alignItems: "center", gap: T.s3, flexWrap: "wrap" }}>
               <div style={{ display: "flex", alignItems: "center", gap: T.s2, flex: 1, minWidth: 220 }}>
                 <span style={{
-                  fontFamily: T.font_mono, fontSize: T.fs_xs, color: T.textMuted,
+                  fontFamily: T.font_mono, fontSize: T.fs_xs,
+                  color: bpmOff ? `${bpmColor}aa` : T.textMuted,
                   letterSpacing: "0.1em", minWidth: 18,
                 }}>60</span>
                 <input
@@ -10056,6 +10172,7 @@ function EnginePage({ onNavigate }) {
                   max="200"
                   step="1"
                   value={state.bpm || 110}
+                  className={`bpm-slider-${bpmOn ? "on" : (bpmOff ? "off" : "auto")}`}
                   onChange={(e) => {
                     const v = parseInt(e.target.value, 10);
                     set("bpm", v);
@@ -10068,30 +10185,33 @@ function EnginePage({ onNavigate }) {
                     WebkitAppearance: "none",
                     appearance: "none",
                     background: state.bpm > 0
-                      ? `linear-gradient(90deg, ${T.accent} 0%, ${T.accent} ${((state.bpm - 60) / 140) * 100}%, ${T.border} ${((state.bpm - 60) / 140) * 100}%, ${T.border} 100%)`
-                      : T.border,
+                      ? `linear-gradient(90deg, ${bpmColor} 0%, ${bpmColor} ${((state.bpm - 60) / 140) * 100}%, ${T.border} ${((state.bpm - 60) / 140) * 100}%, ${T.border} 100%)`
+                      : (bpmOff ? `linear-gradient(90deg, ${bpmColor}44 0%, ${bpmColor}22 100%)` : T.border),
                     borderRadius: 999,
                     outline: "none",
                     cursor: "pointer",
                   }}
                 />
                 <span style={{
-                  fontFamily: T.font_mono, fontSize: T.fs_xs, color: T.textMuted,
+                  fontFamily: T.font_mono, fontSize: T.fs_xs,
+                  color: bpmOff ? `${bpmColor}aa` : T.textMuted,
                   letterSpacing: "0.1em", minWidth: 22,
                 }}>200</span>
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: T.s2 }}>
                 <div style={{
                   padding: `${T.s2}px ${T.s3}px`,
-                  background: state.bpm > 0 ? `${T.accent}15` : T.surface,
-                  border: `1px solid ${state.bpm > 0 ? T.accentBorder : T.border}`,
+                  background: (state.bpm > 0 || bpmOff) ? bpmColorSoft : T.surface,
+                  border: `1px solid ${(state.bpm > 0 || bpmOff) ? bpmColorBorder : T.border}`,
                   borderRadius: T.r_md,
                   fontFamily: T.font_mono, fontSize: T.fs_md, fontWeight: 700,
-                  color: state.bpm > 0 ? T.accent : T.textMuted,
+                  color: (state.bpm > 0 || bpmOff) ? bpmColor : T.textMuted,
                   minWidth: 72, textAlign: "center",
                   letterSpacing: "0.05em",
+                  textShadow: (state.bpm > 0 && (bpmOn || bpmOff)) ? `0 0 6px ${bpmColor}66` : "none",
+                  transition: `all ${T.dur_fast} ${T.ease}`,
                 }}>
-                  {state.bpm > 0 ? `${state.bpm} BPM` : "not set"}
+                  {bpmOff ? "OFF" : (state.bpm > 0 ? `${state.bpm} BPM` : "not set")}
                 </div>
                 <button type="button"
                   onClick={() => set("bpm", 60 + Math.floor(Math.random() * 71) * 2)}
@@ -10139,7 +10259,11 @@ function EnginePage({ onNavigate }) {
                 )}
               </div>
             </div>
-          </Section>
+            </>
+            );
+            })()}
+            </Cubicle>
+          </CubicleGrid>
         </div>
 
         {/* RIGHT PANE */}
