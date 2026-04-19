@@ -10829,45 +10829,47 @@ function Nav({ page, onNavigate }) {
         {/* DEV MODE — binary toggle. Click ON to unlock the tier gearshift
             (so you can cycle free→pro→vip→admin). Click OFF to lock it back
             to the user's real subscribed tier.
-            TODO: HIDE BEFORE PUBLIC LAUNCH — currently visible to everyone
-            while the app is in active development. */}
-        <button type="button"
-          onClick={handleDevToggle}
-          title={devModeActive ? "DEV MODE ON — click to turn off" : "DEV MODE OFF — click to unlock tier switching"}
-          style={{
-            display: "inline-flex", alignItems: "center", gap: 5,
-            padding: isMobile ? "6px 8px" : "5px 10px",
-            height: isMobile ? 34 : 32,
-            minWidth: isMobile ? 34 : "auto",
-            justifyContent: "center",
-            background: devModeActive
-              ? "linear-gradient(180deg, rgba(255,23,68,0.22) 0%, rgba(255,23,68,0.08) 100%)"
-              : "linear-gradient(180deg, rgba(120,120,120,0.10) 0%, rgba(60,60,60,0.04) 100%)",
-            border: `1px ${devModeActive ? "solid" : "dashed"} ${devModeActive ? "#FF1744" : "#66666688"}`,
-            borderRadius: 6,
-            color: devModeActive ? "#FF5577" : "#888",
-            cursor: "pointer",
-            transition: "all 180ms ease-out",
-            boxShadow: devModeActive
-              ? "0 0 12px rgba(255,23,68,0.4), inset 0 1px 0 rgba(255,100,120,0.3)"
-              : "none",
-            animation: devModeActive ? "devModePulse 2.4s ease-in-out infinite" : "none",
-          }}>
-          <style>{`
-            @keyframes devModePulse {
-              0%, 100% { filter: brightness(1); }
-              50%      { filter: brightness(1.18); }
-            }
-          `}</style>
-          <span style={{ fontSize: isMobile ? 13 : 10, lineHeight: 1 }}>⚡</span>
-          {!isMobile && (
-            <span style={{
-              fontFamily: T.font_mono, fontSize: 9, fontWeight: 700,
-              letterSpacing: "0.18em",
-              textShadow: devModeActive ? "0 0 4px rgba(255,23,68,0.7)" : "none",
-            }}>DEV {devModeActive ? "ON" : "OFF"}</span>
-          )}
-        </button>
+            Gated to local dev builds (import.meta.env.DEV) or prod with the
+            ?debug=1 escape hatch — public users never see this. */}
+        {(import.meta.env.DEV || isDebugMode()) && (
+          <button type="button"
+            onClick={handleDevToggle}
+            title={devModeActive ? "DEV MODE ON — click to turn off" : "DEV MODE OFF — click to unlock tier switching"}
+            style={{
+              display: "inline-flex", alignItems: "center", gap: 5,
+              padding: isMobile ? "6px 8px" : "5px 10px",
+              height: isMobile ? 34 : 32,
+              minWidth: isMobile ? 34 : "auto",
+              justifyContent: "center",
+              background: devModeActive
+                ? "linear-gradient(180deg, rgba(255,23,68,0.22) 0%, rgba(255,23,68,0.08) 100%)"
+                : "linear-gradient(180deg, rgba(120,120,120,0.10) 0%, rgba(60,60,60,0.04) 100%)",
+              border: `1px ${devModeActive ? "solid" : "dashed"} ${devModeActive ? "#FF1744" : "#66666688"}`,
+              borderRadius: 6,
+              color: devModeActive ? "#FF5577" : "#888",
+              cursor: "pointer",
+              transition: "all 180ms ease-out",
+              boxShadow: devModeActive
+                ? "0 0 12px rgba(255,23,68,0.4), inset 0 1px 0 rgba(255,100,120,0.3)"
+                : "none",
+              animation: devModeActive ? "devModePulse 2.4s ease-in-out infinite" : "none",
+            }}>
+            <style>{`
+              @keyframes devModePulse {
+                0%, 100% { filter: brightness(1); }
+                50%      { filter: brightness(1.18); }
+              }
+            `}</style>
+            <span style={{ fontSize: isMobile ? 13 : 10, lineHeight: 1 }}>⚡</span>
+            {!isMobile && (
+              <span style={{
+                fontFamily: T.font_mono, fontSize: 9, fontWeight: 700,
+                letterSpacing: "0.18em",
+                textShadow: devModeActive ? "0 0 4px rgba(255,23,68,0.7)" : "none",
+              }}>DEV {devModeActive ? "ON" : "OFF"}</span>
+            )}
+          </button>
+        )}
         {!isMobile && <LayoutToggle />}
         {!isMobile && (
           <TierGearshift
