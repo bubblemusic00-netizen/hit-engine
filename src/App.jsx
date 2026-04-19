@@ -710,7 +710,11 @@ function FuelGearshift({ compact = false }) {
             : (alloc && alloc > 0 ? Math.max(0, Math.min(1, fuelLeft / alloc)) : 0);
           return (
             <button key={o.id} type="button"
-              onClick={() => !empty && setActiveFuel(o.id)}
+              onClick={() => {
+                if (empty) return;
+                playFuelButtonSound();
+                setActiveFuel(o.id);
+              }}
               disabled={empty}
               style={{
                 position: "relative", overflow: "hidden",
@@ -4224,8 +4228,8 @@ function Chip({ label, selected, onClick, onDoubleClick, onLockToggle, favorite,
     <span
       onClick={
         hasLockedRedirect
-          ? (e) => { e.stopPropagation(); onLockedClick(); }
-          : inactive ? undefined : onClick
+          ? (e) => { e.stopPropagation(); playSwitchSound(); onLockedClick(); }
+          : inactive ? undefined : (e) => { playSwitchSound(); onClick && onClick(e); }
       }
       onDoubleClick={inactive ? undefined : onDoubleClick}
       onContextMenu={inactive ? undefined : (e) => {
@@ -4464,7 +4468,11 @@ function TriToggle({ value, onChange }) {
         const active = s.id === value;
         return (
           <button key={s.id} type="button"
-            onClick={() => !s.locked && onChange(s.id)}
+            onClick={() => {
+              if (s.locked) return;
+              if (s.id !== value) playSwitchSound();
+              onChange(s.id);
+            }}
             disabled={s.locked}
             title={s.locked ? "Upgrade to Pro to use the On state" : undefined}
             style={{
@@ -4640,7 +4648,11 @@ function Cubicle({ id, icon, title, description, valuePreview, filled, isOpen, o
 
       {/* Header — clickable toggle (non-clickable when alwaysOpen) */}
       <div
-        onClick={() => { if (headerClickable) onToggle(id); }}
+        onClick={() => {
+          if (!headerClickable) return;
+          playButtonSound();
+          onToggle(id);
+        }}
         style={{
           display: "flex", alignItems: "center", justifyContent: "space-between",
           gap: T.s2, padding: `${T.s3}px ${T.s3}px`,
@@ -6644,7 +6656,10 @@ function GenreSlotPicker({ slots, onChange, slotLocks, onToggleSlotLock, maxSlot
           const isLocked = slotLocks?.[i];
           return (
             <div key={i}
-              onClick={() => isActive ? closeSlot() : openSlot(i)}
+              onClick={() => {
+                playButtonSound();
+                isActive ? closeSlot() : openSlot(i);
+              }}
               style={{
                 position: "relative", minHeight: 82, padding: T.s3,
                 background: slot ? T.elevated : T.surface,
@@ -6661,6 +6676,7 @@ function GenreSlotPicker({ slots, onChange, slotLocks, onToggleSlotLock, maxSlot
                 <button type="button"
                   onClick={e => {
                     e.stopPropagation();
+                    playSwitchSound();
                     if (locksDisabled) {
                       onLockedClick && onLockedClick("slotLock");
                     } else {
@@ -6693,7 +6709,7 @@ function GenreSlotPicker({ slots, onChange, slotLocks, onToggleSlotLock, maxSlot
                       {slot.sub}
                     </div>
                   )}
-                  <button type="button" onClick={e => { e.stopPropagation(); clear(i); }} style={{
+                  <button type="button" onClick={e => { e.stopPropagation(); playSwitchSound(); clear(i); }} style={{
                     position: "absolute", bottom: T.s2, right: T.s2,
                     background: "transparent", border: "none", color: T.textTer,
                     fontSize: T.fs_sm, cursor: "pointer", lineHeight: 1,
@@ -6725,7 +6741,7 @@ function GenreSlotPicker({ slots, onChange, slotLocks, onToggleSlotLock, maxSlot
             <Label color={T.text} size={T.fs_sm}>
               Configuring slot {activeSlot + 1} — picks commit instantly
             </Label>
-            <Button variant="ghost" size="sm" onClick={closeSlot}>Close</Button>
+            <Button variant="ghost" size="sm" onClick={() => { playSwitchSound(); closeSlot(); }}>Close</Button>
           </div>
 
           {/* Search bar — Pro+ only. Free users see a locked placeholder that
@@ -7072,7 +7088,7 @@ function InstrumentSuggestPanel({ instrSuggest, isMobile, onInstrReroll, onInstr
         gap: T.s2, flexWrap: "wrap",
       }}>
         <span>Fill in other sections first, then try {instrSuggest.inst} again — it will suggest against what's missing.</span>
-        <button type="button" onClick={onInstrDismiss}
+        <button type="button" onClick={() => { playSwitchSound(); onInstrDismiss(); }}
           style={{
             background: "transparent", border: "none", color: T.textMuted,
             fontSize: T.fs_xs, fontFamily: T.font_mono, fontWeight: 700,
@@ -7109,14 +7125,14 @@ function InstrumentSuggestPanel({ instrSuggest, isMobile, onInstrReroll, onInstr
           ✨ FOR {instrSuggest.inst.toUpperCase()}
         </div>
         <div style={{ display: "flex", gap: T.s1 }}>
-          <button type="button" onClick={onInstrAcceptAll}
+          <button type="button" onClick={() => { playSwitchSound(); onInstrAcceptAll(); }}
             style={{
               padding: "3px 8px", background: V.neonGold,
               border: `1px solid ${V.neonGold}`, borderRadius: T.r_sm,
               color: "#000", fontSize: 10, fontFamily: T.font_mono,
               fontWeight: 700, letterSpacing: "0.1em", cursor: "pointer",
             }}>ACCEPT ALL</button>
-          <button type="button" onClick={onInstrDismiss}
+          <button type="button" onClick={() => { playSwitchSound(); onInstrDismiss(); }}
             style={{
               padding: "3px 8px", background: "transparent",
               border: `1px solid ${T.border}`, borderRadius: T.r_sm,
@@ -7154,7 +7170,7 @@ function InstrumentSuggestPanel({ instrSuggest, isMobile, onInstrReroll, onInstr
                 }}>{labelFor[field].toUpperCase()}</div>
                 {raw && (
                   <button type="button"
-                    onClick={() => onInstrReroll(field)}
+                    onClick={() => { playSwitchSound(); onInstrReroll(field); }}
                     title="Reroll this suggestion"
                     style={{
                       padding: "2px 6px", background: "transparent",
@@ -7170,7 +7186,7 @@ function InstrumentSuggestPanel({ instrSuggest, isMobile, onInstrReroll, onInstr
               </div>
               {raw ? (
                 <button type="button"
-                  onClick={() => onInstrAccept(field, raw)}
+                  onClick={() => { playSwitchSound(); onInstrAccept(field, raw); }}
                   style={{
                     padding: "6px 10px",
                     background: `${V.neonGold}15`,
@@ -7297,7 +7313,7 @@ function SpecificInstrumentsPicker({
             {/* Clickable header — louder, clearer meaning. Title says what it
                 IS, subtitle says what it DOES, pill on the right shows the
                 action hint. Always visible, even when the grid is collapsed. */}
-            <div onClick={() => setCombosOpen(v => !v)}
+            <div onClick={() => { playButtonSound(); setCombosOpen(v => !v); }}
               style={{
                 display: "flex", alignItems: "center", justifyContent: "space-between",
                 gap: T.s3, flexWrap: "wrap",
@@ -7357,6 +7373,7 @@ function SpecificInstrumentsPicker({
               {INSTRUMENT_COMBOS.map(combo => (
                 <button key={combo.id} type="button"
                   onClick={() => {
+                    playSwitchSound();
                     if (starterCombosLocked) {
                       if (onLockedClick) onLockedClick("starterCombos");
                       return;
@@ -7449,7 +7466,7 @@ function SpecificInstrumentsPicker({
                 const isSel = selected.includes(inst);
                 return (
                   <button key={inst} type="button"
-                    onClick={() => toggleInst(inst)}
+                    onClick={() => { playSwitchSound(); toggleInst(inst); }}
                     style={{
                       display: "inline-flex", alignItems: "center", gap: 6,
                       padding: isMobile ? "9px 14px" : "7px 12px",
@@ -7508,7 +7525,7 @@ function SpecificInstrumentsPicker({
                 }}>
                   {inst}
                   {artSel && <span style={{ color: T.textTer, fontSize: T.fs_xs, fontFamily: T.font_mono }}>· {artSel}</span>}
-                  <button type="button" onClick={() => toggleInst(inst)}
+                  <button type="button" onClick={() => { playSwitchSound(); toggleInst(inst); }}
                     style={{ background: "transparent", border: "none", color: T.textTer, padding: 0, marginLeft: 2, cursor: "pointer", fontSize: T.fs_base, lineHeight: 1 }}>×</button>
                 </span>
               );
@@ -7559,7 +7576,7 @@ function SpecificInstrumentsPicker({
           }}>
             {/* LEFT ARROW — loops to last category from first */}
             <button type="button"
-              onClick={() => stepBy(-1)}
+              onClick={() => { playSwitchSound(); stepBy(-1); }}
               title="Previous category"
               aria-label="Previous instrument category"
               style={arrowBtnStyle("left")}
@@ -7592,7 +7609,7 @@ function SpecificInstrumentsPicker({
             return (
               <button type="button" key={cat}
                 data-cat-tab={cat}
-                onClick={() => setActiveCategory(cat)}
+                onClick={() => { playSwitchSound(); setActiveCategory(cat); }}
                 style={{
                   display: "inline-flex", alignItems: "center", gap: 6,
                   padding: isMobile ? "8px 12px" : "7px 12px",
@@ -7641,7 +7658,7 @@ function SpecificInstrumentsPicker({
             </div>
             {/* RIGHT ARROW — loops to first category from last */}
             <button type="button"
-              onClick={() => stepBy(1)}
+              onClick={() => { playSwitchSound(); stepBy(1); }}
               title="Next category"
               aria-label="Next instrument category"
               style={arrowBtnStyle("right")}
@@ -7718,7 +7735,7 @@ function SpecificInstrumentsPicker({
                       const tierLocked = idx >= maxPerCategory;
                       return (
                         <span key={inst}
-                          onClick={tierLocked ? undefined : () => toggleInst(inst)}
+                          onClick={tierLocked ? undefined : () => { playSwitchSound(); toggleInst(inst); }}
                           onDoubleClick={tierLocked ? undefined : () => onFavorite && onFavorite(inst)}
                           aria-label={tierLocked ? "Locked instrument — upgrade tier to unlock" : undefined}
                           style={{
@@ -7836,7 +7853,7 @@ function SpecificInstrumentsPicker({
                               </button>
                             )}
                             <button type="button"
-                              onClick={() => toggleInst(inst)}
+                              onClick={() => { playSwitchSound(); toggleInst(inst); }}
                               title="Remove this instrument"
                               style={{
                                 background: "transparent", border: "none",
@@ -17685,7 +17702,7 @@ function playSwitchSound() {
   try {
     if (typeof window === "undefined" || typeof Audio === "undefined") return;
     if (!_switchAudioPool) {
-      _switchAudioPool = [new Audio("/switch-sound.mp3"), new Audio("/switch-sound.mp3"), new Audio("/switch-sound.mp3")];
+      _switchAudioPool = [new Audio("/SWITCH-SOUND.mp3"), new Audio("/SWITCH-SOUND.mp3"), new Audio("/SWITCH-SOUND.mp3")];
       _switchAudioPool.forEach(a => { a.volume = 0.5; a.preload = "auto"; });
     }
     const a = _switchAudioPool[_switchAudioIdx];
@@ -17693,6 +17710,45 @@ function playSwitchSound() {
     a.currentTime = 0;
     const p = a.play();
     if (p && typeof p.catch === "function") p.catch(() => {}); // ignore autoplay rejections
+  } catch {}
+}
+
+// Button sound helper — fires on first touch of the joystick (pointer-down)
+// Same pool pattern as switch sound so rapid touches don't cut off.
+let _buttonAudioPool = null;
+let _buttonAudioIdx = 0;
+function playButtonSound() {
+  try {
+    if (typeof window === "undefined" || typeof Audio === "undefined") return;
+    if (!_buttonAudioPool) {
+      _buttonAudioPool = [new Audio("/BUTTON-SOUND.mp3"), new Audio("/BUTTON-SOUND.mp3"), new Audio("/BUTTON-SOUND.mp3")];
+      _buttonAudioPool.forEach(a => { a.volume = 0.5; a.preload = "auto"; });
+    }
+    const a = _buttonAudioPool[_buttonAudioIdx];
+    _buttonAudioIdx = (_buttonAudioIdx + 1) % _buttonAudioPool.length;
+    a.currentTime = 0;
+    const p = a.play();
+    if (p && typeof p.catch === "function") p.catch(() => {});
+  } catch {}
+}
+
+// Fuel-button sound — short, punchy click used on fuel tank tiles in the
+// FUEL SELECT gearshift. Distinct from BUTTON-SOUND and SWITCH-SOUND so
+// fuel changes have their own sonic identity.
+let _fuelBtnAudioPool = null;
+let _fuelBtnAudioIdx = 0;
+function playFuelButtonSound() {
+  try {
+    if (typeof window === "undefined" || typeof Audio === "undefined") return;
+    if (!_fuelBtnAudioPool) {
+      _fuelBtnAudioPool = [new Audio("/FUEL-BUTTON-SOUND.mp3"), new Audio("/FUEL-BUTTON-SOUND.mp3"), new Audio("/FUEL-BUTTON-SOUND.mp3")];
+      _fuelBtnAudioPool.forEach(a => { a.volume = 0.55; a.preload = "auto"; });
+    }
+    const a = _fuelBtnAudioPool[_fuelBtnAudioIdx];
+    _fuelBtnAudioIdx = (_fuelBtnAudioIdx + 1) % _fuelBtnAudioPool.length;
+    a.currentTime = 0;
+    const p = a.play();
+    if (p && typeof p.catch === "function") p.catch(() => {});
   } catch {}
 }
 
@@ -17798,9 +17854,6 @@ function Joystick({ onNavigate, onLockedClick }) {
       onLockedClick && onLockedClick();
       return;
     }
-    // Tactile switch click — fires on every legitimate position change
-    // (tap toggle between Free/Pro, drag-snap to any position).
-    playSwitchSound();
     setActiveFuel(pos);
     if (pos === "trend") {
       setTransitioning(true);
