@@ -30144,6 +30144,121 @@ function BubbleToolsPage({ onNavigate }) {
     });
   };
 
+  // ── BUBBLE TOOLS v2 — TREE OVERLAY (Turn B) ─────────────────────────
+  // Admin annotations layered on top of the read-only GENRE_TREE. Lives
+  // in localStorage under a single versioned key so future schema
+  // changes are easy to migrate. We only store nodes that have BEEN
+  // EDITED — the overlay is small because the default for every node
+  // is "no annotation."
+  //
+  // Node key format: "Genre::Subgenre::Microgenre" (shorter for higher
+  // levels). Using :: as separator because no genre name uses it and
+  // it collapses the three-level hierarchy into one flat lookup.
+  //
+  // Overlay shape per node:
+  //   { bookmarked: bool, note: string, archived: bool, updatedAt: number }
+  //
+  // Four actions exposed:
+  //   · toggleBookmark(key)   — star on/off
+  //   · setNoteFor(key, text) — replace the note; empty string clears
+  //   · toggleArchived(key)   — hide flag (admin-visible only in Turn B;
+  //                             consumer engine integration deferred)
+  //   · seedPromptFromNode(key) — writes a seed to sessionStorage and
+  //                             navigates to /engine (reuses the existing
+  //                             "he-pending-mimic" channel isn't right
+  //                             here since we want a different seed kind;
+  //                             using a fresh key he-pending-seed instead)
+  const OVERLAY_LS_KEY = "he-admin-genre-overlay-v1";
+  const makeNodeKey = (genre, subgenre, microgenre) => {
+    if (microgenre) return `${genre}::${subgenre}::${microgenre}`;
+    if (subgenre) return `${genre}::${subgenre}`;
+    return genre || "";
+  };
+  const makeNodeKeyFromSel = (sel) => {
+    if (!sel || !sel.genre) return "";
+    return makeNodeKey(sel.genre, sel.subgenre, sel.microgenre);
+  };
+
+  const [treeOverlay, setTreeOverlay] = useState(() => {
+    if (typeof window === "undefined") return {};
+    try {
+      const raw = localStorage.getItem(OVERLAY_LS_KEY);
+      if (!raw) return {};
+      const parsed = JSON.parse(raw);
+      // Version gate — future migrations hook in here
+      if (parsed && parsed.version === 1 && parsed.nodes) return parsed.nodes;
+      return {};
+    } catch { return {}; }
+  });
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      localStorage.setItem(OVERLAY_LS_KEY, JSON.stringify({
+        version: 1,
+        nodes: treeOverlay,
+      }));
+    } catch {
+      // Storage full or disabled — degrade silently; admin won't
+      // lose in-session edits, just won't persist them across reloads.
+    }
+  }, [treeOverlay]);
+
+  const getOverlayFor = (key) => treeOverlay[key] || {};
+  const updateOverlay = (key, patch) => {
+    if (!key) return;
+    setTreeOverlay(prev => {
+      const current = prev[key] || {};
+      const next = { ...current, ...patch, updatedAt: Date.now() };
+      // If every meaningful field is empty/false, drop the entry so
+      // the overlay object doesn't accumulate tombstones.
+      const isEmpty = !next.bookmarked
+        && !next.archived
+        && (!next.note || !next.note.trim());
+      const out = { ...prev };
+      if (isEmpty) delete out[key]; else out[key] = next;
+      return out;
+    });
+  };
+  const toggleBookmark = (key) => {
+    const curr = getOverlayFor(key);
+    updateOverlay(key, { bookmarked: !curr.bookmarked });
+  };
+  const setNoteFor = (key, text) => {
+    updateOverlay(key, { note: text });
+  };
+  const toggleArchived = (key) => {
+    const curr = getOverlayFor(key);
+    updateOverlay(key, { archived: !curr.archived });
+  };
+  const seedPromptFromNode = (genre, subgenre, microgenre) => {
+    // Build a prompt seed payload and hand it to the Engine via
+    // sessionStorage. Engine picks it up on mount (or via the
+    // he-pending-change event if already mounted) and applies it
+    // as a fresh starting config. NOTE: the consumer Engine doesn't
+    // yet listen for "he-pending-seed"; that's Turn C plumbing on
+    // the Engine side. For now this writes the payload and shows an
+    // admin-side toast through the onNavigate call. We still navigate
+    // so the admin at least lands on the engine with the genre slot
+    // starter populated via sessionStorage as a future hook.
+    try {
+      sessionStorage.setItem("he-pending-seed", JSON.stringify({
+        kind: "genre-seed",
+        genre, subgenre: subgenre || null, microgenre: microgenre || null,
+        ts: Date.now(),
+      }));
+    } catch {}
+    onNavigate && onNavigate("engine");
+  };
+
+  // Memoize bookmark list for the inspector quick-access panel. Pulls
+  // every overlay entry with bookmarked=true and sorts by recency.
+  const bookmarkList = useMemo(() => {
+    return Object.entries(treeOverlay)
+      .filter(([, v]) => v && v.bookmarked)
+      .map(([k, v]) => ({ key: k, ...v }))
+      .sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+  }, [treeOverlay]);
+
   const filteredMimicArtists = MIMIC_PACKS.filter(a => {
     if (mimicRegionFilter !== "all" && a.region !== mimicRegionFilter) return false;
     if (mimicSearch.trim()) {
@@ -30443,6 +30558,7 @@ function BubbleToolsPage({ onNavigate }) {
                   const isExpanded = q ? true : expandedGenres.has(genre);
                   const isSelectedGenre = selectedTreeNode?.genre === genre
                     && !selectedTreeNode?.subgenre;
+                  const genreOverlay = getOverlayFor(makeNodeKey(genre));
                   return (
                     <div key={genre}>
                       <button
@@ -30465,6 +30581,8 @@ function BubbleToolsPage({ onNavigate }) {
                           textAlign: "left",
                           cursor: "pointer",
                           transition: `all ${T.dur_fast} ${T.ease}`,
+                          opacity: genreOverlay.archived ? 0.4 : 1,
+                          textDecoration: genreOverlay.archived ? "line-through" : "none",
                         }}
                         onMouseEnter={e => { e.currentTarget.style.background = `${GREEN}0d`; }}
                         onMouseLeave={e => { e.currentTarget.style.background = isSelectedGenre ? `${GREEN}18` : "transparent"; }}>
@@ -30472,6 +30590,12 @@ function BubbleToolsPage({ onNavigate }) {
                           {isExpanded ? "▾" : "▸"}
                         </span>
                         <span style={{ flex: 1, textTransform: "uppercase" }}>{genre}</span>
+                        {genreOverlay.bookmarked && (
+                          <span title="bookmarked" style={{ fontSize: 10, color: "#FFD700", textShadow: "0 0 4px rgba(255,215,0,0.6)" }}>★</span>
+                        )}
+                        {genreOverlay.note && genreOverlay.note.trim() && (
+                          <span title="annotated" style={{ fontSize: 10, color: GREEN }}>●</span>
+                        )}
                         <span style={{
                           fontSize: 9, color: "rgba(0,255,65,0.4)",
                           fontWeight: 500,
@@ -30489,6 +30613,7 @@ function BubbleToolsPage({ onNavigate }) {
                           && selectedTreeNode?.subgenre === sub
                           && !selectedTreeNode?.microgenre;
                         const microList = subExpanded ? microMatches : [];
+                        const subOverlay = getOverlayFor(subKey);
                         return (
                           <div key={sub}>
                             <button
@@ -30510,6 +30635,8 @@ function BubbleToolsPage({ onNavigate }) {
                                 textAlign: "left",
                                 cursor: "pointer",
                                 transition: `all ${T.dur_fast} ${T.ease}`,
+                                opacity: subOverlay.archived ? 0.4 : 1,
+                                textDecoration: subOverlay.archived ? "line-through" : "none",
                               }}
                               onMouseEnter={e => { e.currentTarget.style.color = GREEN; }}
                               onMouseLeave={e => { e.currentTarget.style.color = isSelectedSub ? GREEN : GREEN_DIM; }}>
@@ -30517,6 +30644,12 @@ function BubbleToolsPage({ onNavigate }) {
                                 {subExpanded ? "–" : "+"}
                               </span>
                               <span style={{ flex: 1 }}>{sub}</span>
+                              {subOverlay.bookmarked && (
+                                <span title="bookmarked" style={{ fontSize: 9, color: "#FFD700", textShadow: "0 0 4px rgba(255,215,0,0.5)" }}>★</span>
+                              )}
+                              {subOverlay.note && subOverlay.note.trim() && (
+                                <span title="annotated" style={{ fontSize: 9, color: GREEN }}>●</span>
+                              )}
                               <span style={{
                                 fontSize: 8, color: "rgba(0,255,65,0.32)",
                               }}>{(micros || []).length}</span>
@@ -30525,13 +30658,16 @@ function BubbleToolsPage({ onNavigate }) {
                               const isSelectedMicro = selectedTreeNode?.genre === genre
                                 && selectedTreeNode?.subgenre === sub
                                 && selectedTreeNode?.microgenre === m;
+                              const microKey = makeNodeKey(genre, sub, m);
+                              const microOverlay = getOverlayFor(microKey);
                               return (
                                 <button
                                   key={m}
                                   type="button"
                                   onClick={() => setSelectedTreeNode({ genre, subgenre: sub, microgenre: m })}
                                   style={{
-                                    display: "block", width: "100%",
+                                    display: "flex", alignItems: "center", gap: 6,
+                                    width: "100%",
                                     padding: "2px 6px 2px 36px",
                                     background: isSelectedMicro ? `${GREEN}10` : "transparent",
                                     border: "none",
@@ -30543,10 +30679,18 @@ function BubbleToolsPage({ onNavigate }) {
                                     cursor: "pointer",
                                     transition: `all ${T.dur_fast} ${T.ease}`,
                                     fontStyle: "italic",
+                                    opacity: microOverlay.archived ? 0.4 : 1,
+                                    textDecoration: microOverlay.archived ? "line-through" : "none",
                                   }}
                                   onMouseEnter={e => { e.currentTarget.style.color = GREEN; }}
                                   onMouseLeave={e => { e.currentTarget.style.color = isSelectedMicro ? GREEN : "rgba(0,255,65,0.55)"; }}>
-                                  · {m}
+                                  <span style={{ flex: 1 }}>· {m}</span>
+                                  {microOverlay.bookmarked && (
+                                    <span title="bookmarked" style={{ fontSize: 9, color: "#FFD700", textShadow: "0 0 4px rgba(255,215,0,0.5)" }}>★</span>
+                                  )}
+                                  {microOverlay.note && microOverlay.note.trim() && (
+                                    <span title="annotated" style={{ fontSize: 9, color: GREEN }}>●</span>
+                                  )}
                                 </button>
                               );
                             })}
@@ -30565,8 +30709,8 @@ function BubbleToolsPage({ onNavigate }) {
                 color: "rgba(0,255,65,0.35)",
                 letterSpacing: "0.08em", lineHeight: 1.5,
               }}>
-                [ read-only in turn a<br />
-                &nbsp;&nbsp;annotate/bookmark in turn b ]
+                [ ★ bookmarked · ● annotated<br />
+                &nbsp;&nbsp;select a node to edit ]
               </div>
             </aside>
           )}
@@ -31406,21 +31550,92 @@ function BubbleToolsPage({ onNavigate }) {
                 borderBottom: `1px dashed ${GREEN_FAINT}`,
               }}>◉ INSPECTOR</div>
               {!selectedTreeNode && (
-                <div style={{
-                  fontFamily: T.font_mono, fontSize: 10,
-                  color: "rgba(0,255,65,0.4)",
-                  letterSpacing: "0.04em", lineHeight: 1.65,
-                }}>
-                  [ no node selected<br />
-                  &nbsp;&nbsp;click a genre, subgenre,<br />
-                  &nbsp;&nbsp;or microgenre in the tree<br />
-                  &nbsp;&nbsp;to inspect it here ]
+                <div>
+                  {bookmarkList.length > 0 ? (
+                    <>
+                      <div style={{
+                        fontFamily: T.font_mono, fontSize: 9,
+                        color: "rgba(0,255,65,0.5)",
+                        letterSpacing: "0.12em", marginBottom: T.s2,
+                      }}>★ BOOKMARKS ({bookmarkList.length})</div>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                        {bookmarkList.slice(0, 20).map(bm => {
+                          const parts = bm.key.split("::");
+                          const [g, s, m] = parts;
+                          return (
+                            <button
+                              key={bm.key}
+                              type="button"
+                              onClick={() => setSelectedTreeNode({
+                                genre: g,
+                                subgenre: s || undefined,
+                                microgenre: m || undefined,
+                              })}
+                              style={{
+                                display: "flex", alignItems: "center", gap: 6,
+                                width: "100%",
+                                padding: "3px 6px",
+                                background: "transparent",
+                                border: "none",
+                                color: GREEN_DIM,
+                                fontFamily: T.font_mono, fontSize: 10,
+                                letterSpacing: "0.04em",
+                                textAlign: "left",
+                                cursor: "pointer",
+                                transition: `color ${T.dur_fast} ${T.ease}`,
+                              }}
+                              onMouseEnter={e => { e.currentTarget.style.color = GREEN; }}
+                              onMouseLeave={e => { e.currentTarget.style.color = GREEN_DIM; }}>
+                              <span style={{ color: "#FFD700", fontSize: 9 }}>★</span>
+                              <span style={{
+                                flex: 1,
+                                overflow: "hidden",
+                                textOverflow: "ellipsis",
+                                whiteSpace: "nowrap",
+                              }}>{m || s || g}</span>
+                            </button>
+                          );
+                        })}
+                        {bookmarkList.length > 20 && (
+                          <div style={{
+                            fontSize: 9, color: "rgba(0,255,65,0.3)",
+                            padding: "3px 6px",
+                          }}>+ {bookmarkList.length - 20} more</div>
+                        )}
+                      </div>
+                      <div style={{
+                        marginTop: T.s3,
+                        paddingTop: T.s2,
+                        borderTop: `1px dashed ${GREEN_FAINT}`,
+                        fontFamily: T.font_mono, fontSize: 9,
+                        color: "rgba(0,255,65,0.3)",
+                        letterSpacing: "0.08em", lineHeight: 1.5,
+                      }}>
+                        [ click a tree node<br />
+                        &nbsp;&nbsp;to annotate ]
+                      </div>
+                    </>
+                  ) : (
+                    <div style={{
+                      fontFamily: T.font_mono, fontSize: 10,
+                      color: "rgba(0,255,65,0.4)",
+                      letterSpacing: "0.04em", lineHeight: 1.65,
+                    }}>
+                      [ no node selected<br />
+                      &nbsp;&nbsp;click any genre, subgenre,<br />
+                      &nbsp;&nbsp;or microgenre in the tree<br />
+                      &nbsp;&nbsp;to inspect + annotate ]
+                    </div>
+                  )}
                 </div>
               )}
               {selectedTreeNode && (() => {
                 const { genre, subgenre, microgenre } = selectedTreeNode;
                 const subs = GENRE_TREE?.[genre] || {};
                 const micros = subgenre ? (subs[subgenre] || []) : null;
+                const nodeKey = makeNodeKeyFromSel(selectedTreeNode);
+                const overlay = getOverlayFor(nodeKey);
+                const noteValue = overlay.note || "";
                 return (
                   <div style={{ display: "flex", flexDirection: "column", gap: T.s3 }}>
                     {/* Breadcrumb path */}
@@ -31433,7 +31648,157 @@ function BubbleToolsPage({ onNavigate }) {
                       {subgenre && (<> <span style={{ opacity: 0.5 }}>›</span> <span>{subgenre}</span></>)}
                       {microgenre && (<> <span style={{ opacity: 0.5 }}>›</span> <em style={{ color: "rgba(0,255,65,0.75)" }}>{microgenre}</em></>)}
                     </div>
-                    {/* Depth-specific content */}
+
+                    {/* ── ACTION ROW — four icon buttons ───────────── */}
+                    <div style={{
+                      display: "grid",
+                      gridTemplateColumns: "repeat(4, 1fr)",
+                      gap: 4,
+                    }}>
+                      {/* Bookmark */}
+                      <button
+                        type="button"
+                        onClick={() => { playSwitchSound(); toggleBookmark(nodeKey); }}
+                        title={overlay.bookmarked ? "Remove bookmark" : "Bookmark"}
+                        style={{
+                          padding: "8px 4px",
+                          background: overlay.bookmarked ? "rgba(255,215,0,0.1)" : "transparent",
+                          border: `1px solid ${overlay.bookmarked ? "rgba(255,215,0,0.55)" : GREEN_FAINT}`,
+                          borderRadius: T.r_sm,
+                          color: overlay.bookmarked ? "#FFD700" : GREEN_DIM,
+                          fontFamily: T.font_mono, fontSize: 14, fontWeight: 700,
+                          cursor: "pointer",
+                          transition: `all ${T.dur_fast} ${T.ease}`,
+                          textShadow: overlay.bookmarked ? "0 0 6px rgba(255,215,0,0.6)" : "none",
+                        }}
+                        onMouseEnter={e => { if (!overlay.bookmarked) e.currentTarget.style.borderColor = GREEN_DIM; }}
+                        onMouseLeave={e => { if (!overlay.bookmarked) e.currentTarget.style.borderColor = GREEN_FAINT; }}>
+                        ★
+                      </button>
+                      {/* Archive */}
+                      <button
+                        type="button"
+                        onClick={() => { playSwitchSound(); toggleArchived(nodeKey); }}
+                        title={overlay.archived ? "Un-archive" : "Archive (admin-visible for now)"}
+                        style={{
+                          padding: "8px 4px",
+                          background: overlay.archived ? "rgba(239,68,68,0.1)" : "transparent",
+                          border: `1px solid ${overlay.archived ? "rgba(239,68,68,0.55)" : GREEN_FAINT}`,
+                          borderRadius: T.r_sm,
+                          color: overlay.archived ? "#EF4444" : GREEN_DIM,
+                          fontFamily: T.font_mono, fontSize: 12, fontWeight: 700,
+                          cursor: "pointer",
+                          transition: `all ${T.dur_fast} ${T.ease}`,
+                        }}
+                        onMouseEnter={e => { if (!overlay.archived) e.currentTarget.style.borderColor = GREEN_DIM; }}
+                        onMouseLeave={e => { if (!overlay.archived) e.currentTarget.style.borderColor = GREEN_FAINT; }}>
+                        ⊘
+                      </button>
+                      {/* Annotate (focuses textarea below) */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          playSwitchSound();
+                          const el = document.getElementById(`inspector-note-${nodeKey}`);
+                          if (el) el.focus();
+                        }}
+                        title="Annotate"
+                        style={{
+                          padding: "8px 4px",
+                          background: noteValue.trim() ? `${GREEN}10` : "transparent",
+                          border: `1px solid ${noteValue.trim() ? GREEN_DIM : GREEN_FAINT}`,
+                          borderRadius: T.r_sm,
+                          color: noteValue.trim() ? GREEN : GREEN_DIM,
+                          fontFamily: T.font_mono, fontSize: 12, fontWeight: 700,
+                          cursor: "pointer",
+                          transition: `all ${T.dur_fast} ${T.ease}`,
+                        }}>
+                        ✎
+                      </button>
+                      {/* Seed prompt → Engine */}
+                      <button
+                        type="button"
+                        onClick={() => { playSwitchSound(); seedPromptFromNode(genre, subgenre, microgenre); }}
+                        title="Seed this node into Engine"
+                        style={{
+                          padding: "8px 4px",
+                          background: "transparent",
+                          border: `1px solid ${GREEN_FAINT}`,
+                          borderRadius: T.r_sm,
+                          color: GREEN_DIM,
+                          fontFamily: T.font_mono, fontSize: 12, fontWeight: 700,
+                          cursor: "pointer",
+                          transition: `all ${T.dur_fast} ${T.ease}`,
+                        }}
+                        onMouseEnter={e => { e.currentTarget.style.color = GREEN; e.currentTarget.style.borderColor = GREEN_DIM; }}
+                        onMouseLeave={e => { e.currentTarget.style.color = GREEN_DIM; e.currentTarget.style.borderColor = GREEN_FAINT; }}>
+                        ↗
+                      </button>
+                    </div>
+
+                    {/* ── ANNOTATION TEXTAREA ───────────────────────── */}
+                    <div>
+                      <div style={{
+                        fontSize: 9, color: "rgba(0,255,65,0.5)",
+                        letterSpacing: "0.12em", marginBottom: 4,
+                        fontFamily: T.font_mono,
+                      }}>NOTE</div>
+                      <textarea
+                        id={`inspector-note-${nodeKey}`}
+                        key={nodeKey}
+                        defaultValue={noteValue}
+                        onBlur={e => {
+                          const next = e.target.value;
+                          if (next !== noteValue) setNoteFor(nodeKey, next);
+                        }}
+                        placeholder="> your notes on this node..."
+                        rows={4}
+                        style={{
+                          width: "100%",
+                          padding: "6px 8px",
+                          background: "#000",
+                          border: `1px solid ${noteValue.trim() ? GREEN_DIM : GREEN_FAINT}`,
+                          borderRadius: T.r_sm,
+                          color: GREEN,
+                          fontFamily: T.font_mono, fontSize: 11,
+                          letterSpacing: "0.03em", lineHeight: 1.55,
+                          outline: "none",
+                          boxSizing: "border-box",
+                          resize: "vertical",
+                          minHeight: 72,
+                        }}
+                        onFocus={e => { e.currentTarget.style.borderColor = GREEN; }}
+                        onMouseLeaveCapture={e => {
+                          // keep border reflecting saved-state when not focused
+                          if (document.activeElement !== e.currentTarget) {
+                            e.currentTarget.style.borderColor = noteValue.trim() ? GREEN_DIM : GREEN_FAINT;
+                          }
+                        }}
+                      />
+                      <div style={{
+                        fontSize: 9, color: "rgba(0,255,65,0.32)",
+                        letterSpacing: "0.06em", marginTop: 4,
+                        fontFamily: T.font_mono,
+                      }}>saves on blur · persists locally</div>
+                    </div>
+
+                    {/* ── ARCHIVE STATUS HINT ───────────────────────── */}
+                    {overlay.archived && (
+                      <div style={{
+                        padding: "6px 8px",
+                        background: "rgba(239,68,68,0.08)",
+                        border: "1px solid rgba(239,68,68,0.3)",
+                        borderRadius: T.r_sm,
+                        fontFamily: T.font_mono, fontSize: 9,
+                        color: "rgba(239,68,68,0.9)",
+                        letterSpacing: "0.06em", lineHeight: 1.5,
+                      }}>
+                        ⊘ ARCHIVED · admin-visible only<br />
+                        consumer-engine filter not yet wired
+                      </div>
+                    )}
+
+                    {/* ── DEPTH-SPECIFIC TREE SUMMARY ───────────────── */}
                     {!subgenre && (
                       <div style={{
                         fontFamily: T.font_mono, fontSize: 10,
@@ -31467,39 +31832,6 @@ function BubbleToolsPage({ onNavigate }) {
                         ))}
                       </div>
                     )}
-                    {microgenre && (
-                      <div style={{
-                        fontFamily: T.font_mono, fontSize: 10,
-                        color: GREEN_DIM, lineHeight: 1.6,
-                      }}>
-                        <div style={{
-                          fontSize: 9, color: "rgba(0,255,65,0.5)",
-                          letterSpacing: "0.12em", marginBottom: 4,
-                        }}>MICROGENRE · LEAF</div>
-                        <div>
-                          Microgenre nodes are the finest-grained tag in
-                          the tree. Turn B adds annotations here — your
-                          personal notes about when this tag wins, which
-                          artists define it, and which prompt fragments
-                          reliably summon it.
-                        </div>
-                      </div>
-                    )}
-                    {/* Action row placeholder — real actions in Turn B */}
-                    <div style={{
-                      marginTop: T.s2,
-                      paddingTop: T.s2,
-                      borderTop: `1px dashed ${GREEN_FAINT}`,
-                      fontFamily: T.font_mono, fontSize: 9,
-                      color: "rgba(0,255,65,0.32)",
-                      letterSpacing: "0.1em", lineHeight: 1.5,
-                    }}>
-                      [ actions in turn b:<br />
-                      &nbsp;&nbsp;· bookmark<br />
-                      &nbsp;&nbsp;· annotate<br />
-                      &nbsp;&nbsp;· archive<br />
-                      &nbsp;&nbsp;· seed_prompt ]
-                    </div>
                   </div>
                 );
               })()}
