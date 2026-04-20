@@ -294,7 +294,7 @@ const TIER_FEATURES = {
 // FUEL SYSTEM — three fuel types. Daily counters persist via localStorage.
 // ────────────────────────────────────────────────────────────────────────────
 const FUEL_TYPES = {
-  free:  { id: "free",  label: "Free Hit",  color: "#3B82F6", emoji: "🔵" },
+  free:  { id: "free",  label: "Free Hit",  color: "#6B6E76", emoji: "⚪" },
   pro:   { id: "pro",   label: "Pro Hit",   color: "#FF1744", emoji: "🔴" },
   vip:   { id: "vip",   label: "VIP Hit",   color: "#FFD700", emoji: "🟣" },
   trend: { id: "trend", label: "Trend Hit", color: "#FFD700", emoji: "⭐" },
@@ -1157,7 +1157,7 @@ function TierGearshift({ activeTier, devModeActive, onSelect }) {
   const positions = ["free", "pro", "vip", "admin"];
   const activeIdx = Math.max(0, positions.indexOf(activeTier));
   const META = {
-    free:  { label: "FREE",   short: "F", color: "#3B82F6" },
+    free:  { label: "FREE",   short: "F", color: "#6B6E76" },
     pro:   { label: "PRO",    short: "P", color: "#FF1744" },
     vip:   { label: "VIP",    short: "V", color: "#FFD700" },
     admin: { label: "BUBBLE", short: "B", color: "#FF3E9D" },
@@ -8742,6 +8742,61 @@ function Cubicle({ id, icon, title, description, valuePreview, filled, isOpen, o
   // (no scrim). On mobile the ✕ button is the primary dismiss target; this
   // listener is the belt-and-suspenders backup for taps in the margins.
   const cubicleRootRef = useRef(null);
+
+  // ── TILE-ANCHORED POPOVER POSITIONING (desktop) ──────────────────────
+  // Instead of centering the popover over the whole grid at a fixed 920px
+  // (which makes the panel feel disconnected from the tile it came from),
+  // we measure the tile's position and anchor the popover proportionally
+  // beneath it. Panel width ≈ 2 tile columns + 1 gap, so it has room to
+  // breathe without looking oversized. Edge tiles shift the panel inward
+  // so it never clips the viewport; middle tiles center under themselves.
+  // The pointer arrow tracks the tile's center, not the panel's.
+  const [popoverPos, setPopoverPos] = useState(null);
+  useEffect(() => {
+    if (!isOpen || isMobile) { setPopoverPos(null); return; }
+    const measure = () => {
+      const root = cubicleRootRef.current;
+      if (!root) return;
+      const tile = root.getBoundingClientRect();
+      const grid = root.closest('[data-cubicle-grid="true"]');
+      const gridRect = grid ? grid.getBoundingClientRect() : null;
+      const tileW = tile.width;
+      const gap = 8; // matches CubicleGrid's T.s2 gap
+      const sideGutter = 24; // breathing room from viewport edges
+      // Target width: 2 tile columns + 1 gap. Never wider than grid.
+      // Never wider than viewport minus gutters.
+      const targetW = Math.min(
+        tileW * 2 + gap,
+        gridRect ? gridRect.width : Infinity,
+        window.innerWidth - sideGutter * 2
+      );
+      const tileCenterX = tile.left + tileW / 2;
+      // Ideal: panel centered under tile center.
+      let panelLeft = tileCenterX - targetW / 2;
+      // Clamp so panel stays inside viewport (with gutter).
+      const minLeft = sideGutter;
+      const maxLeft = window.innerWidth - sideGutter - targetW;
+      if (panelLeft < minLeft) panelLeft = minLeft;
+      if (panelLeft > maxLeft) panelLeft = maxLeft;
+      // Arrow should sit above the tile's horizontal center, regardless
+      // of where the panel landed.
+      const arrowLeft = tileCenterX - panelLeft;
+      // Convert viewport-space coords back to tile-relative (the popover
+      // is absolute-positioned inside the tile's own relative container).
+      setPopoverPos({
+        leftOffsetFromTile: panelLeft - tile.left,
+        width: targetW,
+        arrowLeft,
+      });
+    };
+    measure();
+    window.addEventListener("resize", measure);
+    window.addEventListener("scroll", measure, true);
+    return () => {
+      window.removeEventListener("resize", measure);
+      window.removeEventListener("scroll", measure, true);
+    };
+  }, [isOpen, isMobile]);
   useEffect(() => {
     if (!isOpen) return;
     const handler = (e) => {
@@ -8929,11 +8984,16 @@ function Cubicle({ id, icon, title, description, valuePreview, filled, isOpen, o
                     maxHeight: "72vh",
                   }
                 : {
-                    // Desktop: anchored below the tile, centered horizontally.
+                    // Desktop: anchored to the tile. Width ≈ 2 tile columns,
+                    // positioned so the panel reads as a child of the tile
+                    // rather than a free-floating overlay. Edge tiles shift
+                    // the panel inward; middle tiles center under themselves.
+                    // First render (before measurement): use a sensible
+                    // default so there's no flash of a wrong-width panel.
                     top: "calc(100% + 10px)",
-                    left: "50%",
-                    transform: "translateX(-50%)",
-                    width: "min(920px, calc(100vw - 48px))",
+                    left: popoverPos ? `${popoverPos.leftOffsetFromTile}px` : "50%",
+                    transform: popoverPos ? "none" : "translateX(-50%)",
+                    width: popoverPos ? `${popoverPos.width}px` : "min(480px, calc(100vw - 48px))",
                     maxWidth: "calc(100vw - 48px)",
                     maxHeight: "min(600px, 68vh)",
                   }),
@@ -8956,14 +9016,20 @@ function Cubicle({ id, icon, title, description, valuePreview, filled, isOpen, o
             }}>
             {/* Pointer arrow — small triangle linking popover to its tile
                 origin (desktop only; hidden on mobile since the popover
-                docks to the bottom of the viewport). */}
+                docks to the bottom of the viewport). Arrow position tracks
+                the TILE's horizontal center, not the panel's — when the
+                panel shifts toward the viewport edge to avoid clipping,
+                the arrow still points at the tile it came from. */}
             {!isMobile && (
               <div
                 aria-hidden="true"
                 style={{
                   position: "absolute",
-                  top: -7, left: "50%",
-                  transform: "translateX(-50%) rotate(45deg)",
+                  top: -7,
+                  left: popoverPos ? `${popoverPos.arrowLeft}px` : "50%",
+                  transform: popoverPos
+                    ? "translateX(-50%) rotate(45deg)"
+                    : "translateX(-50%) rotate(45deg)",
                   width: 12, height: 12,
                   background: T.surface,
                   borderTop: `2px solid ${WHITE_OUTLINE}`,
@@ -9133,7 +9199,9 @@ function CubicleHeader({ id, icon, title, description, valuePreview, filled, isO
 
 function CubicleGrid({ children, isMobile }) {
   return (
-    <div style={{
+    <div
+      data-cubicle-grid="true"
+      style={{
       display: "grid",
       // Fewer columns = wider cells = readable titles/descriptions without
       // wrap truncation. Desktop goes from 5 to 3 columns (tiles 1.67x
@@ -16475,6 +16543,20 @@ function EngineWorkspace({ onNavigate, variant = "default" }) {
 
   const clearAll = () => {
     setState(ENGINE_DEF);
+    // Auto-return flow — after hitting HIT the user scrolls down to the
+    // prompt result. When they CLEAR, they most likely want to start
+    // fresh at the top of the flow again, not stay staring at a pane
+    // full of reset placeholders. Scroll back to the HIT button so the
+    // next HIT is one tap away. scrollToHit uses smooth-scroll with
+    // block:center so the button lands in the middle of the viewport
+    // rather than snapping to the top edge. Wrapped in a rAF so the
+    // reset state has a tick to commit before the scroll — prevents
+    // the browser from choking on simultaneous DOM thrash + scroll.
+    if (typeof window !== "undefined" && typeof window.requestAnimationFrame === "function") {
+      window.requestAnimationFrame(() => scrollToHit());
+    } else {
+      scrollToHit();
+    }
   };
 
   // ── AUTO-COPY FLAG ───────────────────────────────────────────────
@@ -19403,6 +19485,64 @@ function EngineWorkspace({ onNavigate, variant = "default" }) {
                   text={detailedResult.text} length={detailedResult.text.length} limit={maxLen}
                   compressed={detailedResult.compressed} compressionLevel={detailedResult.level}
                   onCopy={() => doCopy("detailed", detailedResult.text)} copyState={copyState.detailed} multiline />
+              </div>
+
+              {/* ── CLEAR & RESTART — end-of-session affordance ─────────
+                  Sits right below the detailed prompt so after the user
+                  has finished with the result (copied, inspected,
+                  considered), they see a one-click path back to the
+                  start. The click resets state AND auto-scrolls to the
+                  HIT button — the complete "I'm done with this pass,
+                  ready for the next" flow compressed into one action.
+                  Styled gold (not red/danger) because at this point in
+                  the flow it's a completion cue, not a panic button —
+                  the destructive CLEAR ALL beside the HIT button keeps
+                  its red treatment for the in-workflow reset case. */}
+              <div style={{
+                display: "flex", justifyContent: "center",
+                marginTop: T.s4, marginBottom: T.s2,
+              }}>
+                <button
+                  type="button"
+                  onClick={() => { playSwitchSound(); clearAll(); }}
+                  title="Clear all selections and return to the HIT button"
+                  style={{
+                    display: "inline-flex", alignItems: "center", gap: 10,
+                    padding: isMobile ? "12px 22px" : "10px 20px",
+                    minHeight: isMobile ? 48 : "auto",
+                    background: `linear-gradient(180deg,
+                      rgba(255, 215, 0, 0.08) 0%,
+                      rgba(255, 215, 0, 0.04) 100%)`,
+                    border: `1px dashed ${V.neonGold}66`,
+                    borderRadius: 999,
+                    color: V.neonGold,
+                    fontFamily: T.font_mono,
+                    fontSize: isMobile ? 12 : 11, fontWeight: 700,
+                    letterSpacing: "0.18em",
+                    cursor: "pointer",
+                    transition: `all ${T.dur_fast} ${T.ease}`,
+                    WebkitTapHighlightColor: "transparent",
+                  }}
+                  onMouseEnter={e => {
+                    e.currentTarget.style.background = `linear-gradient(180deg, ${V.neonGold}22 0%, ${V.neonGold}14 100%)`;
+                    e.currentTarget.style.borderStyle = "solid";
+                    e.currentTarget.style.borderColor = V.neonGold;
+                    e.currentTarget.style.boxShadow = `0 0 0 3px ${V.neonGold}22, 0 6px 18px -6px ${V.neonGold}66`;
+                  }}
+                  onMouseLeave={e => {
+                    e.currentTarget.style.background = `linear-gradient(180deg, rgba(255, 215, 0, 0.08) 0%, rgba(255, 215, 0, 0.04) 100%)`;
+                    e.currentTarget.style.borderStyle = "dashed";
+                    e.currentTarget.style.borderColor = `${V.neonGold}66`;
+                    e.currentTarget.style.boxShadow = "none";
+                  }}
+                >
+                  <span style={{ fontSize: 14, lineHeight: 1 }}>⟲</span>
+                  CLEAR &amp; RESTART
+                  <span aria-hidden="true" style={{
+                    fontSize: 10, color: `${V.neonGold}99`,
+                    letterSpacing: "0.15em",
+                  }}>↑ HIT</span>
+                </button>
               </div>
             </div>
           ) : (
@@ -27171,6 +27311,28 @@ function GenreSlotPickerCRT({ slots, onChange, slotLocks, onToggleSlotLock }) {
         }
       }}
       >
+        {/* Connector tab — only visible on the active cubicle. Sits
+            below the cubicle's bottom edge as a small green triangle
+            pointing down to the drawer. Makes it unambiguous which
+            cubicle the drawer belongs to, so the eye reads the
+            drawer as the cubicle extending downward rather than a
+            floating panel. Uses overflow: visible on parent context
+            (the grid cell) — triangles are small enough not to
+            interact with sibling cubicles. */}
+        {isActive && (
+          <span aria-hidden="true" style={{
+            position: "absolute",
+            bottom: -9, left: "50%",
+            transform: "translateX(-50%)",
+            width: 0, height: 0,
+            borderLeft: "7px solid transparent",
+            borderRight: "7px solid transparent",
+            borderTop: `8px solid ${GREEN}`,
+            filter: `drop-shadow(0 0 4px ${GREEN_DIM})`,
+            pointerEvents: "none",
+            zIndex: 2,
+          }} />
+        )}
         {/* Header row: slot number + action buttons (lock / clear) */}
         <div style={{
           display: "flex", alignItems: "center", justifyContent: "space-between",
@@ -27572,12 +27734,19 @@ function GenreSlotPickerCRT({ slots, onChange, slotLocks, onToggleSlotLock }) {
         <div style={{
           marginTop: 10,
           padding: 14,
-          // Cap drawer width on desktop — the CRT console renders
-          // at full pane width (~580px inside SMC), and 580 for
-          // chip navigation was too wide to scan. 520 tightens the
-          // horizontal scan without hiding any chip text. Mobile
-          // stays 100%.
-          maxWidth: isMobile ? "100%" : 520,
+          // Drawer width matches the slot-cards row EXACTLY — spans
+          // the same horizontal footprint as the 3 cubicles plus their
+          // gaps, not a pixel more and not a pixel less. Previously
+          // we capped at 520px which made the drawer narrower than
+          // the row when the parent was wider, breaking the "expands
+          // in place" feel. Now the drawer always lines up flush with
+          // cubicle 1's left edge and cubicle 3's right edge — reads
+          // as the cubicle row growing downward rather than a
+          // floating panel offset from the row. width 100% fills the
+          // parent div (which also parents the slot grid at 100%),
+          // so both share the same horizontal box perfectly.
+          width: "100%",
+          boxSizing: "border-box",
           background: BLACK_RAISED,
           border: `1px solid ${GREEN_DIM}`,
           borderRadius: 4,
@@ -27811,6 +27980,14 @@ function SunoMasterConsole() {
   const [selectedInstruments, setSelectedInstruments] = useState(() => new Set());
   const [articulations, setArticulations] = useState(() => ({}));
   const [lyrics, setLyrics] = useState("");
+  // Turn 2 polish — instrument-category cubicles expand in place.
+  // openInstrCats is a Set of category names currently expanded.
+  // Multiple can be open at once because picking instruments across
+  // categories (e.g. 1 from Keys + 1 from Strings) is common. Collapsed
+  // state is the default — users see the 12 category tiles and pick
+  // the one they care about, not a scrolling wall of all 80+
+  // instruments at once.
+  const [openInstrCats, setOpenInstrCats] = useState(() => new Set());
   const [copied, setCopied] = useState(false);
 
   const activeArtist = israeliArtists.find(a => a.artistId === artistId) || israeliArtists[0];
@@ -28679,73 +28856,174 @@ function SunoMasterConsole() {
                 <span style={{
                   fontSize: 9, color: GREEN_MUTE, fontFamily: T.font_mono,
                   letterSpacing: "0.05em",
-                }}>// {selectedInstruments.size}/8 selected · click to toggle</span>
+                }}>// {selectedInstruments.size}/8 selected · tap category to expand</span>
               </div>
+              {/* Category cubicle grid — 4-up desktop, 2-up mobile.
+                  Each cubicle is a fixed-width cell in the grid;
+                  expanded cubicles grow DOWNWARD only, never wider
+                  than their column. The row's other cubicles stay
+                  put at their own row-level baseline (CSS grid
+                  auto-aligns row heights to the tallest cell in the
+                  same row, so expanded neighbors pad up — but never
+                  shift horizontally). align-items: start keeps short
+                  cubicles from stretching to match tall ones. */}
               <div style={{
-                display: "flex", flexDirection: "column", gap: 8,
-                maxHeight: isMobile ? "38vh" : "32vh",
+                display: "grid",
+                gridTemplateColumns: `repeat(${isMobile ? 2 : 4}, minmax(0, 1fr))`,
+                gap: 8,
+                alignItems: "start",
+                maxHeight: isMobile ? "50vh" : "46vh",
                 overflowY: "auto",
                 paddingRight: 4,
               }}>
-                {Object.entries(SPECIFIC_INSTRUMENTS).map(([cat, entries]) => (
-                  <div key={cat}>
-                    <div style={{
-                      fontSize: 8, fontFamily: T.font_mono, fontWeight: 700,
-                      color: GREEN_MUTE, letterSpacing: "0.22em",
-                      marginBottom: 4,
-                    }}>▸ {cat.toUpperCase()}</div>
-                    <div style={{
-                      display: "flex", flexWrap: "wrap", gap: 4,
+                {Object.entries(SPECIFIC_INSTRUMENTS).map(([cat, entries]) => {
+                  const isOpen = openInstrCats.has(cat);
+                  // Count selections from this category so collapsed
+                  // cubicles still show their contribution state.
+                  const catInstNames = Object.keys(entries);
+                  const selectedInCat = catInstNames.filter(i => selectedInstruments.has(i)).length;
+                  return (
+                    <div key={cat} style={{
+                      position: "relative",
+                      // Each cubicle is a solid cell. Background tint
+                      // deepens when open so the expanded cubicle
+                      // reads as "dug in deeper" than its siblings.
+                      background: isOpen
+                        ? "rgba(0, 255, 65, 0.04)"
+                        : "rgba(0, 255, 65, 0.015)",
+                      border: `1px solid ${isOpen
+                        ? GREEN_DIM
+                        : selectedInCat > 0 ? GREEN_FAINT : "rgba(0, 255, 65, 0.06)"}`,
+                      borderRadius: 3,
+                      overflow: "hidden",
+                      transition: `background 150ms ease, border-color 150ms ease`,
+                      boxShadow: isOpen
+                        ? `inset 0 0 20px -6px rgba(0, 255, 65, 0.08), 0 0 8px -2px rgba(0, 255, 65, 0.18)`
+                        : "inset 0 0 12px -6px rgba(0, 0, 0, 0.5)",
                     }}>
-                      {Object.keys(entries).map(inst => {
-                        const isSelected = selectedInstruments.has(inst);
-                        const atCap = !isSelected && selectedInstruments.size >= 8;
-                        return (
-                          <button key={inst} type="button"
-                            disabled={atCap}
-                            onClick={() => {
-                              playSwitchSound();
-                              setSelectedInstruments(prev => {
-                                const next = new Set(prev);
-                                if (next.has(inst)) {
-                                  next.delete(inst);
-                                  // Also drop any articulations for this inst
-                                  setArticulations(prevArt => {
-                                    const nextArt = { ...prevArt };
-                                    delete nextArt[inst];
-                                    return nextArt;
+                      {/* Cubicle header — clickable. Shows category
+                          name + selection count + expand/collapse
+                          chevron. Fixed height so all collapsed
+                          cubicles line up on the same visual
+                          baseline. */}
+                      <button type="button"
+                        onClick={() => {
+                          playSwitchSound();
+                          setOpenInstrCats(prev => {
+                            const next = new Set(prev);
+                            if (next.has(cat)) next.delete(cat);
+                            else next.add(cat);
+                            return next;
+                          });
+                        }}
+                        style={{
+                          width: "100%",
+                          display: "flex", alignItems: "center",
+                          justifyContent: "space-between",
+                          gap: 6,
+                          padding: "8px 10px",
+                          background: "transparent",
+                          border: "none",
+                          borderBottom: isOpen ? `1px dashed ${GREEN_FAINT}` : "1px dashed transparent",
+                          color: isOpen ? GREEN_HI : selectedInCat > 0 ? GREEN : GREEN_DIM,
+                          fontFamily: T.font_mono,
+                          fontSize: 10, fontWeight: 700,
+                          letterSpacing: "0.12em",
+                          cursor: "pointer",
+                          textAlign: "left",
+                          transition: `all 120ms ease`,
+                        }}
+                      >
+                        <span style={{
+                          display: "flex", alignItems: "center", gap: 4,
+                          minWidth: 0, overflow: "hidden", textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
+                        }}>
+                          <span style={{
+                            color: isOpen ? GREEN_HI : GREEN_MUTE,
+                            fontSize: 9, flexShrink: 0,
+                          }}>{isOpen ? "▾" : "▸"}</span>
+                          <span style={{
+                            overflow: "hidden", textOverflow: "ellipsis",
+                          }}>{cat.toUpperCase()}</span>
+                        </span>
+                        {selectedInCat > 0 && (
+                          <span style={{
+                            fontSize: 8, letterSpacing: "0.15em",
+                            color: GREEN, background: "rgba(0, 255, 65, 0.1)",
+                            padding: "1px 5px", borderRadius: 2,
+                            flexShrink: 0,
+                          }}>{selectedInCat}</span>
+                        )}
+                      </button>
+                      {/* Expanded content — chips wrap inside the
+                          cubicle's own width. Inner max-height keeps
+                          categories with many instruments from
+                          dominating the grid (Synths has 10, Strings
+                          has 7, etc.); chips scroll inside their own
+                          cubicle if they overflow. The row of tall
+                          cubicles all share the same row height due
+                          to grid's natural align, but none can exceed
+                          this inner cap. */}
+                      {isOpen && (
+                        <div style={{
+                          padding: "8px 10px",
+                          display: "flex", flexWrap: "wrap",
+                          gap: 4,
+                          maxHeight: 220,
+                          overflowY: "auto",
+                        }}>
+                          {catInstNames.map(inst => {
+                            const isSelected = selectedInstruments.has(inst);
+                            const atCap = !isSelected && selectedInstruments.size >= 8;
+                            return (
+                              <button key={inst} type="button"
+                                disabled={atCap}
+                                onClick={() => {
+                                  playSwitchSound();
+                                  setSelectedInstruments(prev => {
+                                    const next = new Set(prev);
+                                    if (next.has(inst)) {
+                                      next.delete(inst);
+                                      setArticulations(prevArt => {
+                                        const nextArt = { ...prevArt };
+                                        delete nextArt[inst];
+                                        return nextArt;
+                                      });
+                                    } else {
+                                      next.add(inst);
+                                    }
+                                    return next;
                                   });
-                                } else {
-                                  next.add(inst);
-                                }
-                                return next;
-                              });
-                            }}
-                            style={{
-                              padding: "4px 9px",
-                              background: isSelected ? "rgba(0, 255, 65, 0.10)" : "transparent",
-                              border: `1px ${isSelected ? "solid" : "dashed"} ${isSelected ? GREEN : GREEN_FAINT}`,
-                              borderRadius: 3,
-                              color: isSelected ? GREEN_HI : atCap ? GREEN_MUTE : GREEN_DIM,
-                              fontFamily: T.font_mono, fontSize: 10, fontWeight: 600,
-                              letterSpacing: "0.02em",
-                              cursor: atCap ? "not-allowed" : "pointer",
-                              opacity: atCap ? 0.4 : 1,
-                              textShadow: isSelected ? `0 0 4px ${GREEN_MUTE}` : "none",
-                              transition: `all ${T.dur_fast} ${T.ease}`,
-                            }}
-                            onMouseEnter={e => {
-                              if (!isSelected && !atCap) e.currentTarget.style.borderColor = GREEN_DIM;
-                            }}
-                            onMouseLeave={e => {
-                              if (!isSelected && !atCap) e.currentTarget.style.borderColor = GREEN_FAINT;
-                            }}
-                          >{inst}</button>
-                        );
-                      })}
+                                }}
+                                style={{
+                                  padding: "3px 8px",
+                                  background: isSelected ? "rgba(0, 255, 65, 0.10)" : "transparent",
+                                  border: `1px ${isSelected ? "solid" : "dashed"} ${isSelected ? GREEN : GREEN_FAINT}`,
+                                  borderRadius: 3,
+                                  color: isSelected ? GREEN_HI : atCap ? GREEN_MUTE : GREEN_DIM,
+                                  fontFamily: T.font_mono, fontSize: 9, fontWeight: 600,
+                                  letterSpacing: "0.02em",
+                                  cursor: atCap ? "not-allowed" : "pointer",
+                                  opacity: atCap ? 0.4 : 1,
+                                  textShadow: isSelected ? `0 0 4px ${GREEN_MUTE}` : "none",
+                                  transition: `all ${T.dur_fast} ${T.ease}`,
+                                  whiteSpace: "nowrap",
+                                }}
+                                onMouseEnter={e => {
+                                  if (!isSelected && !atCap) e.currentTarget.style.borderColor = GREEN_DIM;
+                                }}
+                                onMouseLeave={e => {
+                                  if (!isSelected && !atCap) e.currentTarget.style.borderColor = GREEN_FAINT;
+                                }}
+                              >{inst}</button>
+                            );
+                          })}
+                        </div>
+                      )}
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
 
