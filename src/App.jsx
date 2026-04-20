@@ -294,7 +294,7 @@ const TIER_FEATURES = {
 // FUEL SYSTEM — three fuel types. Daily counters persist via localStorage.
 // ────────────────────────────────────────────────────────────────────────────
 const FUEL_TYPES = {
-  free:  { id: "free",  label: "Free Hit",  color: "#6B6E76", emoji: "⚪" },
+  free:  { id: "free",  label: "Free Hit",  color: "#3B82F6", emoji: "🔵" },
   pro:   { id: "pro",   label: "Pro Hit",   color: "#FF1744", emoji: "🔴" },
   vip:   { id: "vip",   label: "VIP Hit",   color: "#FFD700", emoji: "🟣" },
   trend: { id: "trend", label: "Trend Hit", color: "#FFD700", emoji: "⭐" },
@@ -389,20 +389,13 @@ function FuelProvider({ children }) {
   // If the user's current active fuel is a type their tier doesn't have ANY
   // allocation for (e.g. free user was on VIP fuel then tier dropped),
   // fall back to free fuel — but don't touch the fuel counts themselves.
-  // ALSO: if the user has exhausted their remaining count for the active
-  // fuel (e.g. burned their daily Pro taste), auto-flip to free so the
-  // Engine always has a usable fuel selected. "free" is the one fuel
-  // type with infinite allocation for every tier, so it's always safe
-  // to fall back to. We don't touch Infinity fuels — those never run out.
   useEffect(() => {
     const allocation = features.dailyFuel[activeFuel];
-    const remaining = fuels[activeFuel];
-    const noAllocation = allocation === 0 || allocation === undefined;
-    const exhausted = Number.isFinite(remaining) && remaining <= 0;
-    if (noAllocation || exhausted) {
-      if (activeFuel !== "free") setActiveFuel("free");
+    if (allocation === 0 || allocation === undefined) {
+      // This fuel isn't available at all for the current tier — bounce to free
+      setActiveFuel("free");
     }
-  }, [tier, activeFuel, features, fuels]);
+  }, [tier, activeFuel, features]);
 
   const consumeFuel = (type) => {
     const t = type || activeFuel;
@@ -1164,7 +1157,7 @@ function TierGearshift({ activeTier, devModeActive, onSelect }) {
   const positions = ["free", "pro", "vip", "admin"];
   const activeIdx = Math.max(0, positions.indexOf(activeTier));
   const META = {
-    free:  { label: "FREE",   short: "F", color: "#6B6E76" },
+    free:  { label: "FREE",   short: "F", color: "#3B82F6" },
     pro:   { label: "PRO",    short: "P", color: "#FF1744" },
     vip:   { label: "VIP",    short: "V", color: "#FFD700" },
     admin: { label: "BUBBLE", short: "B", color: "#FF3E9D" },
@@ -8749,61 +8742,6 @@ function Cubicle({ id, icon, title, description, valuePreview, filled, isOpen, o
   // (no scrim). On mobile the ✕ button is the primary dismiss target; this
   // listener is the belt-and-suspenders backup for taps in the margins.
   const cubicleRootRef = useRef(null);
-
-  // ── TILE-ANCHORED POPOVER POSITIONING (desktop) ──────────────────────
-  // Instead of centering the popover over the whole grid at a fixed 920px
-  // (which makes the panel feel disconnected from the tile it came from),
-  // we measure the tile's position and anchor the popover proportionally
-  // beneath it. Panel width ≈ 2 tile columns + 1 gap, so it has room to
-  // breathe without looking oversized. Edge tiles shift the panel inward
-  // so it never clips the viewport; middle tiles center under themselves.
-  // The pointer arrow tracks the tile's center, not the panel's.
-  const [popoverPos, setPopoverPos] = useState(null);
-  useEffect(() => {
-    if (!isOpen || isMobile) { setPopoverPos(null); return; }
-    const measure = () => {
-      const root = cubicleRootRef.current;
-      if (!root) return;
-      const tile = root.getBoundingClientRect();
-      const grid = root.closest('[data-cubicle-grid="true"]');
-      const gridRect = grid ? grid.getBoundingClientRect() : null;
-      const tileW = tile.width;
-      const gap = 8; // matches CubicleGrid's T.s2 gap
-      const sideGutter = 24; // breathing room from viewport edges
-      // Target width: 2 tile columns + 1 gap. Never wider than grid.
-      // Never wider than viewport minus gutters.
-      const targetW = Math.min(
-        tileW * 2 + gap,
-        gridRect ? gridRect.width : Infinity,
-        window.innerWidth - sideGutter * 2
-      );
-      const tileCenterX = tile.left + tileW / 2;
-      // Ideal: panel centered under tile center.
-      let panelLeft = tileCenterX - targetW / 2;
-      // Clamp so panel stays inside viewport (with gutter).
-      const minLeft = sideGutter;
-      const maxLeft = window.innerWidth - sideGutter - targetW;
-      if (panelLeft < minLeft) panelLeft = minLeft;
-      if (panelLeft > maxLeft) panelLeft = maxLeft;
-      // Arrow should sit above the tile's horizontal center, regardless
-      // of where the panel landed.
-      const arrowLeft = tileCenterX - panelLeft;
-      // Convert viewport-space coords back to tile-relative (the popover
-      // is absolute-positioned inside the tile's own relative container).
-      setPopoverPos({
-        leftOffsetFromTile: panelLeft - tile.left,
-        width: targetW,
-        arrowLeft,
-      });
-    };
-    measure();
-    window.addEventListener("resize", measure);
-    window.addEventListener("scroll", measure, true);
-    return () => {
-      window.removeEventListener("resize", measure);
-      window.removeEventListener("scroll", measure, true);
-    };
-  }, [isOpen, isMobile]);
   useEffect(() => {
     if (!isOpen) return;
     const handler = (e) => {
@@ -8860,13 +8798,7 @@ function Cubicle({ id, icon, title, description, valuePreview, filled, isOpen, o
           boxShadow: shadowGlow,
           overflow: "hidden",
           transition: `all 240ms cubic-bezier(0.16, 1, 0.3, 1)`,
-          // NOTE: wrapper stays at full opacity even when disabled (toggle=off).
-          // Previously the whole card dimmed to 0.5 which made the BPM section
-          // nearly invisible on page load since BPM defaults to off. Now the
-          // header (title, icon, toggle, LED) stays legible; only the slider
-          // content body dims, which is enough to signal "off" without hiding
-          // the section's identity. See alwaysOpen content body below.
-          opacity: 1,
+          opacity: disabled ? 0.5 : 1,
           position: "relative",
         }}>
         <style>{`
@@ -8890,28 +8822,17 @@ function Cubicle({ id, icon, title, description, valuePreview, filled, isOpen, o
           padding: `${T.s3}px ${T.s4}px ${T.s4}px`,
           borderTop: `1px solid ${filled === true ? V.neonGold + "33" : T.border}`,
           background: `linear-gradient(180deg, ${T.surface} 0%, ${T.elevated}40 100%)`,
-          // Dim only the interactive body when toggle=off. The `extra` row
-          // (hint + TriToggle) stays bright so user can still see/operate the
-          // toggle; `children` (the actual slider + readout) dims to signal
-          // "currently excluded from prompt" without making the whole card
-          // feel broken.
         }}>
           {(extra || hint) && (
             <div style={{
               display: "flex", alignItems: "center", justifyContent: "space-between",
               gap: T.s2, flexWrap: "wrap", marginBottom: T.s3,
-              opacity: 1,
             }}>
               {hint && <span style={{ fontSize: T.fs_sm, color: T.textTer, fontFamily: T.font_sans }}>{hint}</span>}
               {extra && <div style={{ display: "flex", alignItems: "center", gap: T.s3, marginLeft: "auto" }}>{extra}</div>}
             </div>
           )}
-          <div style={{
-            opacity: disabled ? 0.55 : 1,
-            transition: "opacity 200ms ease-out",
-          }}>
-            {children}
-          </div>
+          {children}
         </div>
       </div>
     );
@@ -9008,16 +8929,11 @@ function Cubicle({ id, icon, title, description, valuePreview, filled, isOpen, o
                     maxHeight: "72vh",
                   }
                 : {
-                    // Desktop: anchored to the tile. Width ≈ 2 tile columns,
-                    // positioned so the panel reads as a child of the tile
-                    // rather than a free-floating overlay. Edge tiles shift
-                    // the panel inward; middle tiles center under themselves.
-                    // First render (before measurement): use a sensible
-                    // default so there's no flash of a wrong-width panel.
+                    // Desktop: anchored below the tile, centered horizontally.
                     top: "calc(100% + 10px)",
-                    left: popoverPos ? `${popoverPos.leftOffsetFromTile}px` : "50%",
-                    transform: popoverPos ? "none" : "translateX(-50%)",
-                    width: popoverPos ? `${popoverPos.width}px` : "min(480px, calc(100vw - 48px))",
+                    left: "50%",
+                    transform: "translateX(-50%)",
+                    width: "min(920px, calc(100vw - 48px))",
                     maxWidth: "calc(100vw - 48px)",
                     maxHeight: "min(600px, 68vh)",
                   }),
@@ -9040,20 +8956,14 @@ function Cubicle({ id, icon, title, description, valuePreview, filled, isOpen, o
             }}>
             {/* Pointer arrow — small triangle linking popover to its tile
                 origin (desktop only; hidden on mobile since the popover
-                docks to the bottom of the viewport). Arrow position tracks
-                the TILE's horizontal center, not the panel's — when the
-                panel shifts toward the viewport edge to avoid clipping,
-                the arrow still points at the tile it came from. */}
+                docks to the bottom of the viewport). */}
             {!isMobile && (
               <div
                 aria-hidden="true"
                 style={{
                   position: "absolute",
-                  top: -7,
-                  left: popoverPos ? `${popoverPos.arrowLeft}px` : "50%",
-                  transform: popoverPos
-                    ? "translateX(-50%) rotate(45deg)"
-                    : "translateX(-50%) rotate(45deg)",
+                  top: -7, left: "50%",
+                  transform: "translateX(-50%) rotate(45deg)",
                   width: 12, height: 12,
                   background: T.surface,
                   borderTop: `2px solid ${WHITE_OUTLINE}`,
@@ -9223,9 +9133,7 @@ function CubicleHeader({ id, icon, title, description, valuePreview, filled, isO
 
 function CubicleGrid({ children, isMobile }) {
   return (
-    <div
-      data-cubicle-grid="true"
-      style={{
+    <div style={{
       display: "grid",
       // Fewer columns = wider cells = readable titles/descriptions without
       // wrap truncation. Desktop goes from 5 to 3 columns (tiles 1.67x
@@ -15001,6 +14909,14 @@ function EngineWorkspace({ onNavigate, variant = "default" }) {
   // that changes the compressed detailed prompt text triggers a scroll
   // to this element, keeping the user's eye on the final output.
   const detailedPromptRef = useRef(null);
+  // Pop Hit Meter ref — the symmetric landing target after HIT.
+  // Landing here (with block: "center") instead of scrolling all the
+  // way down to detailedPromptRef keeps the red CLEAR ALL button
+  // visible (it sits just above PopHitMeter in the mobile stack, and
+  // on desktop lives in the left rail anyway). Also the pop-hit score
+  // + verdict is what the user most wants to see first, so centering
+  // it in the viewport is the right "reveal" moment.
+  const popHitRef = useRef(null);
   // Tracks the last detailed text we scrolled for, so the initial
   // render (first non-empty text) doesn't jump the viewport before the
   // user has interacted. Set after first render pass via the effect
@@ -15559,38 +15475,58 @@ function EngineWorkspace({ onNavigate, variant = "default" }) {
   };
 
   // ── TIER-GATED VISIBILITY ───────────────────────────────────────────
-  // FREE USERS: see the full catalog, but chips beyond their tier cap
-  // render as locked (blurred text, PRO badge, diagonal stripes) via the
-  // Chip component's existing tierLocked treatment. This is a deliberate
-  // psychological design: "loss aversion + curiosity gap" beats silent
-  // hiding. Users understand they're missing 40+ options, not 0. The
-  // locked chips still consume row space, so the section visually reads
-  // as "big catalog, most of it gated" instead of "small catalog."
+  // Returns a subset of a section's options based on the user's tier.
+  // Free tier sees 15-20% of each catalog so there's a real reason to
+  // upgrade. Pro sees 60%. VIP/Admin see everything.
   //
-  // PRO/VIP/ADMIN: see everything, nothing locked.
+  // Deterministic seeded pick: the same subset appears on every load
+  // (keyed by sectionId), so the UI feels stable — not randomized each
+  // visit. We use the total list length as a tail stabilizer to handle
+  // the rare case of catalog updates changing the seed output.
   //
-  // Pro-fuel / VIP-fuel on a free account: effectiveLimits elevates
-  // maxOptionsPerSection when non-free fuel is active, which raises the
-  // unlock cap used by isOptionLocked() — so a free user spending Pro
-  // fuel will see more chips unlock, matching the "fuel as upgrade" model.
+  // Pro-fuel / VIP-fuel on a free account: the effectiveLimits system
+  // already elevates maxOptionsPerSection when non-free fuel is active,
+  // so we defer to that — meaning a free user spending Pro fuel WILL
+  // see more options for that roll, matching the "fuel as upgrade" model.
   const TIER_VISIBILITY_RATIO = {
-    free:  0.18,   // informational only — used by countLockedInSection
+    free:  0.18,   // 18% — sits in the 15-20% range
     pro:   0.60,
     vip:   1.0,
     admin: 1.0,
   };
   const visibleForTier = (sectionId, allOptions) => {
-    // Always return the full list. Per-chip locking is computed by
-    // isOptionLocked(i), which reads the tier's maxOptionsPerSection cap.
-    return Array.isArray(allOptions) ? allOptions : [];
-  };
-
-  // countUnlockedInSection — how many chips in this section are currently
-  // unlocked (clickable) for the user. Used by the counter strip.
-  const countUnlockedInSection = (totalLen) => {
-    if (!totalLen) return 0;
-    const cap = Math.max(3, effectiveLimits.maxOptionsPerSection);
-    return Math.min(totalLen, cap);
+    if (!Array.isArray(allOptions) || allOptions.length === 0) return allOptions || [];
+    // When pro/vip fuel is active on a free account, expand visibility.
+    // The effectiveLimits gate (maxOptionsPerSection) already reflects this,
+    // so we use it as a floor — visible subset never drops below what fuel
+    // would expose.
+    const ratio = TIER_VISIBILITY_RATIO[tier] ?? 1.0;
+    // Admin / VIP: never filter
+    if (ratio >= 1.0) return allOptions;
+    // Compute tier-based cap (min 3 to avoid a completely sparse section)
+    const tierCap = Math.max(3, Math.ceil(allOptions.length * ratio));
+    // Fuel cap — if non-free fuel, effectiveLimits expands options so we
+    // want to honor that. Use it as a FLOOR so fuel can raise visibility.
+    const fuelCap = Math.max(3, effectiveLimits.maxOptionsPerSection || 0);
+    const cap = Math.min(allOptions.length, Math.max(tierCap, Math.min(fuelCap, allOptions.length)));
+    // Seeded shuffle: deterministic by section name + list length
+    let seed = 0;
+    const src = `${sectionId}:${allOptions.length}`;
+    for (let i = 0; i < src.length; i++) seed = ((seed * 31) + src.charCodeAt(i)) >>> 0;
+    const rng = () => {
+      seed = (seed * 9301 + 49297) % 233280;
+      return seed / 233280;
+    };
+    // Fisher-Yates on a copy, then take the first `cap` and re-sort by
+    // original index so the display order reads natural (user-facing
+    // order matches the source catalog, subset just has gaps).
+    const indices = allOptions.map((_, i) => i);
+    for (let i = indices.length - 1; i > 0; i--) {
+      const j = Math.floor(rng() * (i + 1));
+      [indices[i], indices[j]] = [indices[j], indices[i]];
+    }
+    const chosen = indices.slice(0, cap).sort((a, b) => a - b);
+    return chosen.map(i => allOptions[i]);
   };
 
   // ── TIER + FUEL ENFORCEMENT ─────────────────────────────────────────
@@ -15945,92 +15881,6 @@ function EngineWorkspace({ onNavigate, variant = "default" }) {
         onMouseEnter={(e) => { e.currentTarget.style.borderColor = T.borderFocus; e.currentTarget.style.color = T.text; }}
         onMouseLeave={(e) => { e.currentTarget.style.borderColor = T.border; e.currentTarget.style.color = color; }}>
         {label}
-      </button>
-    );
-  };
-
-  // ─────────────────────────────────────────────────────────────────────
-  // LOCKED-COUNTER STRIP — free-tier scarcity signal
-  //
-  // Sits above each section's chip grid when the user is on a tier that
-  // has locked options in this section. Format:
-  //
-  //    7 of 24 unlocked · tap to unlock the rest
-  //
-  // Design rationale (psychology stack):
-  //   - SPECIFICITY: exact numbers ("7 of 24") are ~2x more persuasive
-  //     than vague language ("some are locked"). Cialdini-verified.
-  //   - LOSS AVERSION: the fraction implicitly highlights the 17 they
-  //     DON'T have, which lands harder than "+17 unlockable."
-  //   - PROXIMITY: sits right above the chips the user is browsing,
-  //     not on a separate page — Dropbox-style in-context upsell.
-  //   - LOW INTRUSION: small mono type, gold accent (premium-coded, not
-  //     alarm-coded). No banner, no modal, no interrupt.
-  //
-  // Hides when:
-  //   - user is Pro/VIP/Admin (nothing locked)
-  //   - the section has no locked options (totalLen <= unlocked)
-  //   - totalLen < 6 (small pools don't need a counter — the locks
-  //     are obvious from the chip row itself)
-  //
-  // Clickable: opens the "moreOptions" sales modal, same target as the
-  // locked-chip click path, so there's one consistent upgrade flow.
-  // ─────────────────────────────────────────────────────────────────────
-  const renderLockedCounter = (sectionId, totalLen) => {
-    if (!totalLen || totalLen < 6) return null;
-    const unlocked = countUnlockedInSection(totalLen);
-    const lockedCount = totalLen - unlocked;
-    if (lockedCount <= 0) return null;
-    const goldSoft = `${V.neonGold}22`;
-    const goldBorder = `${V.neonGold}55`;
-    return (
-      <button
-        type="button"
-        onClick={() => { playSwitchSound(); setSalesModalFeature("moreOptions"); }}
-        title={`${lockedCount} more options locked — click to unlock all`}
-        style={{
-          display: "inline-flex",
-          alignItems: "center",
-          gap: T.s2,
-          padding: "4px 10px",
-          background: goldSoft,
-          border: `1px solid ${goldBorder}`,
-          borderRadius: T.r_md,
-          color: V.neonGold,
-          fontFamily: T.font_mono,
-          fontSize: T.fs_xs,
-          fontWeight: 600,
-          letterSpacing: "0.04em",
-          cursor: "pointer",
-          marginBottom: T.s2,
-          alignSelf: "flex-start",
-          transition: `all ${T.dur_fast} ${T.ease}`,
-        }}
-        onMouseEnter={(e) => {
-          e.currentTarget.style.background = `${V.neonGold}33`;
-          e.currentTarget.style.borderColor = V.neonGold;
-          e.currentTarget.style.boxShadow = `0 0 12px ${V.neonGold}44`;
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.background = goldSoft;
-          e.currentTarget.style.borderColor = goldBorder;
-          e.currentTarget.style.boxShadow = "none";
-        }}>
-        <span style={{ opacity: 0.95 }}>🔒</span>
-        <span style={{ color: T.text, opacity: 0.95 }}>
-          <span style={{ color: V.neonGold, fontWeight: 700 }}>{unlocked}</span>
-          <span style={{ color: T.textMuted }}> of </span>
-          <span style={{ color: T.text, fontWeight: 700 }}>{totalLen}</span>
-          <span style={{ color: T.textMuted }}> unlocked</span>
-        </span>
-        <span style={{
-          color: V.neonGold,
-          opacity: 0.9,
-          paddingLeft: T.s1,
-          borderLeft: `1px solid ${V.neonGold}44`,
-        }}>
-          unlock the rest →
-        </span>
       </button>
     );
   };
@@ -16617,14 +16467,20 @@ function EngineWorkspace({ onNavigate, variant = "default" }) {
       // is memoized against the post-randomize state. Skipped for free
       // tier inside the effect itself.
       autoCopyPendingRef.current = true;
-      // Smooth-scroll to the DETAILED prompt — that's the auto-copied
-      // one, and the scroll effect below also anchors there. Unifying
-      // the scroll target prevents a double-jump (HIT → short, then
-      // effect → detailed). Small delay lets React commit first.
+      // Smooth-scroll to the POP HIT METER centered in viewport —
+      // the "symmetric landing" that keeps the red CLEAR ALL button
+      // AND the pop profile match score visible at the same time.
+      // On mobile (stacked), CLEAR ALL sits just above PopHitMeter, so
+      // centering PopHit in viewport puts CLEAR ALL in the top band.
+      // On desktop (2-column), CLEAR ALL stays pinned in the left
+      // rail while PopHit centers in the right pane. Unified target
+      // with the detailed-text-changed scroll effect prevents
+      // double-jumps.
       setTimeout(() => {
-        detailedPromptRef.current?.scrollIntoView({
+        const target = popHitRef.current || detailedPromptRef.current;
+        target?.scrollIntoView({
           behavior: "smooth",
-          block: "start",
+          block: "center",
         });
       }, 80);
     }, CYCLES * INTERVAL);
@@ -17486,10 +17342,20 @@ function EngineWorkspace({ onNavigate, variant = "default" }) {
     // Defer one microtask so React has committed the new text height
     // before we scroll. Prevents scrolling to a stale position.
     const t = setTimeout(() => {
-      const el = detailedPromptRef.current;
-      if (!el) return;
-      if (typeof el.scrollIntoView !== "function") return;
-      el.scrollIntoView({ behavior: "smooth", block: "start" });
+      // Symmetric landing: scroll to the Pop Hit Meter centered in the
+      // viewport rather than to the detailed prompt pinned at the top.
+      // This keeps the red CLEAR ALL button + Pop Hit Meter both in
+      // view at the same time — on mobile (stacked), CLEAR ALL sits
+      // just above PopHitMeter so centering PopHitMeter in the
+      // viewport puts CLEAR ALL in the top portion. On desktop
+      // (2-column), CLEAR ALL lives in the left rail (always on
+      // screen) while PopHitMeter centers in the right pane. Falls
+      // back to the detailed-prompt ref if popHitRef isn't mounted
+      // for any reason — preserves prior behavior.
+      const target = popHitRef.current || detailedPromptRef.current;
+      if (!target) return;
+      if (typeof target.scrollIntoView !== "function") return;
+      target.scrollIntoView({ behavior: "smooth", block: "center" });
     }, 40);
     return () => clearTimeout(t);
   }, [detailedResult?.text, isRolling]);
@@ -17795,29 +17661,15 @@ function EngineWorkspace({ onNavigate, variant = "default" }) {
             marginBottom: isMobile ? T.s5 : T.s7,
             paddingLeft: isMobile ? 0 : T.s5 + 8,
           }}>
-            {/* Banner row — wraps the banner + Quick Tips pill in a flex
-                row so Tips floats to the right of ENGINE on desktop and
-                stacks below on mobile. Baseline-aligned so the pill sits
-                near ENGINE's lower edge (visually tethered to the word,
-                not floating above its cap height). The wrapper is needed
-                because the original banner container is inline-block and
-                TipsManual is inline-flex; placing them as siblings in
-                this flex row gives us clean horizontal rhythm without
-                breaking the banner's internal absolute-positioned notes
-                strip. */}
-            <div style={{
-              display: "flex",
-              flexDirection: isMobile ? "column" : "row",
-              alignItems: isMobile ? "flex-start" : "flex-end",
-              gap: isMobile ? T.s3 : T.s5,
-              flexWrap: "wrap",
-              marginBottom: isMobile ? T.s3 + 15 : T.s4 + 15 + 15,
-            }}>
             {/* Banner + notes container. Position relative so the
                 absolute-positioned notes strip can anchor to this box. */}
             <div style={{
               position: "relative",
               display: "inline-block",
+              // 15px extra below the banner before the subtext line —
+              // builds a clearer typographic rhythm (banner is primary,
+              // subtext is secondary).
+              marginBottom: isMobile ? T.s3 + 15 : T.s4 + 15 + 15,
             }}>
               {/* Notes strip — absolute, fills the banner box horizontally.
                   Starts at ~9% (just inside the H) and ends at 100%
@@ -17845,18 +17697,6 @@ function EngineWorkspace({ onNavigate, variant = "default" }) {
               }}>
                 <AnimatedBanner size={isMobile ? 56 : 96} />
               </h1>
-            </div>
-            {/* Quick Tips pill — desktop: sits to the right of ENGINE,
-                bottom-aligned with the baseline. Mobile: stacks below the
-                banner in normal flow. Small bottom padding on desktop
-                nudges it up so the pill centerline lands closer to the
-                visual midline of ENGINE rather than its true baseline. */}
-            <div style={{
-              paddingBottom: isMobile ? 0 : 18,
-              flexShrink: 0,
-            }}>
-              <TipsManual />
-            </div>
             </div>
             {/* Tagline — indented on desktop for asymmetric editorial
                 rhythm with a small gold leading mark (magazine style).
@@ -18268,6 +18108,19 @@ function EngineWorkspace({ onNavigate, variant = "default" }) {
             <LyricalSwitch value={lyricsOn} onChange={setLyricsOn} />
           </div>
 
+          {/* ── TIPS ROW — Quick tips entry kept adjacent to the primary
+              switch so newcomers see it second. Single control, no
+              heavy visual weight. */}
+          <div style={{
+            display: "flex",
+            alignItems: "center",
+            gap: isMobile ? T.s2 : T.s3,
+            flexWrap: "wrap",
+            marginBottom: isMobile ? T.s5 : T.s6,
+          }}>
+            <TipsManual />
+          </div>
+
           {/* ── QUICK PROMPTS — always rendered, Free sees locked preview
               Free tier: grayed card with "PRO+ unlocks" chip, cards
               show but are non-interactive and faintly blurred. Upgrade
@@ -18618,7 +18471,7 @@ function EngineWorkspace({ onNavigate, variant = "default" }) {
                     {" "}Skip the setup grind — press, tweak, done.
                   </div>
                   <button type="button"
-                    onClick={() => { playSwitchSound(); onNavigate && onNavigate("shop"); }}
+                    onClick={() => { playSwitchSound(); setSalesModalFeature("presets"); }}
                     style={{
                       padding: "8px 16px",
                       background: `linear-gradient(180deg, ${V.neonGold} 0%, #E6A900 100%)`,
@@ -18746,7 +18599,6 @@ function EngineWorkspace({ onNavigate, variant = "default" }) {
                 {sectionExtras("mood")}
                 <TriToggle value={state.toggles.mood} onChange={v => setToggle("mood", v)} />
               </>}>
-              {renderLockedCounter("mood", MOODS.length)}
               <div style={{ display: "flex", flexWrap: "wrap", gap: T.s1 }}>
                 {(() => {
                   const useCollapse = !effectiveLimits.restrictSubgenres;
@@ -18791,7 +18643,6 @@ function EngineWorkspace({ onNavigate, variant = "default" }) {
                 {sectionExtras("energy")}
                 <TriToggle value={state.toggles.energy} onChange={v => setToggle("energy", v)} />
               </>}>
-              {renderLockedCounter("energy", ENERGIES.length)}
               <div style={{ display: "flex", flexWrap: "wrap", gap: T.s1 }}>
                 {(() => {
                   const useCollapse = !effectiveLimits.restrictSubgenres;
@@ -18839,7 +18690,6 @@ function EngineWorkspace({ onNavigate, variant = "default" }) {
                 {sectionExtras("groove")}
                 <TriToggle value={state.toggles.groove} onChange={v => setToggle("groove", v)} />
               </>}>
-              {renderLockedCounter("groove", GROOVES.length)}
               <div style={{ display: "flex", flexWrap: "wrap", gap: T.s1 }}>
                 {(() => {
                   const useCollapse = !effectiveLimits.restrictSubgenres;
@@ -18887,7 +18737,6 @@ function EngineWorkspace({ onNavigate, variant = "default" }) {
                   {sectionExtras("vocalist")}
                   <TriToggle value={state.toggles.vocalist} onChange={v => setToggle("vocalist", v)} />
                 </>}>
-                {renderLockedCounter("vocalist", VOCALISTS.length)}
                 <div style={{ display: "flex", flexWrap: "wrap", gap: T.s1 }}>
                   {(() => {
                     const useCollapse = !effectiveLimits.restrictSubgenres;
@@ -18935,7 +18784,6 @@ function EngineWorkspace({ onNavigate, variant = "default" }) {
                   {sectionExtras("lyricalVibe")}
                   <TriToggle value={state.toggles.lyricalVibe} onChange={v => setToggle("lyricalVibe", v)} />
                 </>}>
-                {renderLockedCounter("lyricalVibe", LYRICAL_VIBES.length)}
                 <div style={{ display: "flex", flexWrap: "wrap", gap: T.s1 }}>
                   {(() => {
                     const useCollapse = !effectiveLimits.restrictSubgenres;
@@ -19030,7 +18878,6 @@ function EngineWorkspace({ onNavigate, variant = "default" }) {
                 {sectionExtras("harmonic")}
                 <TriToggle value={state.toggles.harmonic} onChange={v => setToggle("harmonic", v)} />
               </>}>
-              {renderLockedCounter("harmonic", HARMONIC_STYLES.length)}
               <div style={{ display: "flex", flexWrap: "wrap", gap: T.s1 }}>
                 {(() => {
                   const useCollapse = !effectiveLimits.restrictSubgenres;
@@ -19075,7 +18922,6 @@ function EngineWorkspace({ onNavigate, variant = "default" }) {
                 {sectionExtras("texture")}
                 <TriToggle value={state.toggles.texture} onChange={v => setToggle("texture", v)} />
               </>}>
-              {renderLockedCounter("texture", SOUND_TEXTURES.length)}
               <div style={{ display: "flex", flexWrap: "wrap", gap: T.s1 }}>
                 {(() => {
                   const useCollapse = !effectiveLimits.restrictSubgenres;
@@ -19120,7 +18966,6 @@ function EngineWorkspace({ onNavigate, variant = "default" }) {
                 {sectionExtras("mix")}
                 <TriToggle value={state.toggles.mix} onChange={v => setToggle("mix", v)} />
               </>}>
-              {renderLockedCounter("mix", MIX_CHARS.length)}
               <div style={{ display: "flex", flexWrap: "wrap", gap: T.s1 }}>
                 {(() => {
                   const useCollapse = !effectiveLimits.restrictSubgenres;
@@ -19579,10 +19424,13 @@ function EngineWorkspace({ onNavigate, variant = "default" }) {
                   with a PRO+ upsell chip so they know the feature exists.
                   Extra Poppy was removed from this component entirely —
                   it's now an admin-only tool living on BubbleToolsPage.
-                  No tier except Bubble sees the Poppy button anywhere. */}
-              <PopHitMeter score={popHitScore.score} verdict={popHitScore.verdict} notes={popHitScore.notes}
-                showDebug={features.adminDebug} state={state} lyricsOn={lyricsOn}
-                scoreLocked={!features.popHitMeter} />
+                  No tier except Bubble sees the Poppy button anywhere.
+                  Wrapped so popHitRef can anchor the post-HIT auto-scroll. */}
+              <div ref={popHitRef} style={{ scrollMarginTop: 96, scrollMarginBottom: 96 }}>
+                <PopHitMeter score={popHitScore.score} verdict={popHitScore.verdict} notes={popHitScore.notes}
+                  showDebug={features.adminDebug} state={state} lyricsOn={lyricsOn}
+                  scoreLocked={!features.popHitMeter} />
+              </div>
 
               <div ref={shortPromptRef} style={{ scrollMarginTop: 72 }}>
                 <OutputBlock title="Short prompt" subtitle="Comma-separated tags. For style fields."
@@ -19691,33 +19539,10 @@ function EnginePage({ onNavigate }) {
 }
 
 // ════════════════════════════════════════════════════════════════════════════
-// FUTURE OF SOUND
-//
-// Two-mode page:
-//
-//   (1) Public mode  — polished 8-thesis essay. Credibility piece that
-//       visitors see. Unchanged from v01; this is the face of the page.
-//
-//   (2) Dev mode     — operator command center. Gated behind ?debug=1 OR
-//       admin tier. This is the "war room" version: same theses are
-//       tracked as active bets with status stripes, a prompt arsenal lives
-//       below, competitive reads sit beside, and an open backlog captures
-//       loose ideas. The point is to make this page compound value: every
-//       week you update it, the leverage grows. Visitors never see it.
-//
-// Why two modes instead of one: the public page is a trust signal —
-// essay-polish communicates "whoever built this engine thinks hard about
-// music." The dev page is a tool — it's about giving Bubble (the operator)
-// somewhere to think, plan, and arsenal up. Different jobs, same data.
+// FUTURE OF SOUND — editorial page, clean type hierarchy
 // ════════════════════════════════════════════════════════════════════════════
 
 function FuturePage() {
-  const { tier } = useTier();
-  const showDev = tier === "admin" || isDebugMode();
-  return showDev ? <FuturePageDev /> : <FuturePagePublic />;
-}
-
-function FuturePagePublic() {
   const { layout } = useLayout();
   const isMobile = layout === "mobile";
   const sections = [
@@ -19816,624 +19641,6 @@ function FuturePagePublic() {
         ))}
       </div>
     </div>
-  );
-}
-
-// ════════════════════════════════════════════════════════════════════════════
-// FUTURE PAGE — DEV COMMAND CENTER
-//
-// Operator's workspace. Four zones:
-//   1. BETS — 8 theses tracked with status (live/hot/watching/cool)
-//   2. ARSENAL — copy-ready prompts that exploit each thesis
-//   3. COMPETITIVE READ — what Suno/Udio/Riffusion aren't doing
-//   4. BACKLOG — loose ideas, timestamped
-//
-// Data lives inline as constants — edit this file to evolve your thinking.
-// Not persisted to localStorage because this IS the source of truth; the
-// code itself is the journal. When a bet changes status, you update it
-// here and redeploy. That friction is the point: you only change your
-// mind after actually thinking about it.
-//
-// No fancy state, no API, no persistence magic. Plain React, plain types,
-// plain reason. If you want interactivity later, we add it deliberately.
-// ════════════════════════════════════════════════════════════════════════════
-
-// ── ACTIVE BETS
-// Each bet carries five fields that force end-to-end thinking:
-//   thesis   — what we believe is true about the market
-//   ourMove  — the concrete product move that rides the thesis
-//   cashOut  — the specific monetization path from the move to real $
-//   signal   — the metric that confirms or kills the bet
-//
-// If any field is weak or vague, the bet probably isn't worth running.
-const FUTURE_BETS = [
-  {
-    id: "taste-craft-split",
-    num: "I",
-    status: "live",           // live / hot / watching / cool
-    title: "Taste decouples from craft",
-    thesis: "Generative tools break the historical link between making music and knowing music. A new class of producer ships finished-sounding work with zero theoretical grounding.",
-    ourMove: "Hit Engine sells taste-as-a-service. We're not the tool that makes the music — we're the tool that makes the prompt that makes the music good. Every prompt we generate is a compressed packet of taste. Lean into the framing: 'prompts from people who actually listen.'",
-    cashOut: "VIP tier at $19/mo is the floor — this audience (curious, tasteful, frustrated with generic AI output) will pay for signal. Target: 500 VIP subs = $9.5k MRR = $114k ARR. That's the beachhead number, not the ceiling.",
-    signal: "Count of Suno/Udio prompts that quote pop music theory (chord vocab, mix references). If the curve steepens, the market is hungry for taste. Re-check in 60 days.",
-  },
-  {
-    id: "fragment-speed",
-    num: "II",
-    status: "hot",
-    title: "Genres fragment weekly, not yearly",
-    thesis: "Subgenre half-lives collapsed from ~decade to ~week. The naming layer can't keep up with the sound layer.",
-    ourMove: "Tier C research (37 niche subgenres) is exactly this bet. Ship a subgenre before the name enters Wikipedia. Positioning: Hit Engine has genres your generator's training data doesn't know yet.",
-    cashOut: "Subgenre packs as $5-9 one-time unlocks. 'Phonk Drift Pack — 8 prompts, 12 artist refs, the production dictionary.' Recurring revenue is the subscription; pack sales are the pulse. A hot subgenre pack can do $2-4k in a single week if you ride the TikTok wave.",
-    signal: "TikTok sound tag churn rate. When a new sound label goes from 0→10k uses inside 7 days, we should have a matching subgenre in Tier C within 30 days.",
-  },
-  {
-    id: "global-south",
-    num: "III",
-    status: "hot",
-    title: "Global South becomes the center",
-    thesis: "Lagos, São Paulo, Mumbai, Seoul, Jakarta, Mexico City, Medellín. The creative mass moved; the tools didn't notice yet.",
-    ourMove: "Prompt library skews explicitly toward these scenes — not as 'world music' window-dressing but as primary genre anchors. Afrobeats, Amapiano, Funk Paulista, Phonk, Reggaeton Mexa, Mahraganat, Baile Funk. English-only prompts are a competitive weakness.",
-    cashOut: "Localize. A Portuguese-language Hit Engine for the São Paulo funk scene is the same product with a different front door. $9/mo in BRL converts to ~R$50 — still premium-feeling to the user, competitive for us. Five regional front doors = 5× addressable market without 5× the build cost.",
-    signal: "Share of Hit Engine prompt generations whose primary genre slot is non-Anglo. Target: >30% within 90 days of adding Tier C.",
-  },
-  {
-    id: "listening-context",
-    num: "IV",
-    status: "watching",
-    title: "Mix for the listening context",
-    thesis: "The loudness war is over. The new axis is which physical device the listener is using. Phone-on-table, car bluetooth, laptop in café, earbuds while walking — each has a different mix that wins.",
-    ourMove: "Add a 'listening context' cubicle. Not a gimmick — a legit prompt modifier that tells Suno/Udio to optimize bass response, vocal intelligibility, or dynamic range for a named device. This is a 2-hour add that no competitor has. Edge.",
-    cashOut: "Sell it as a VIP-gated power feature: 'mix-for-device' is the kind of thing producers recognize as pro-grade. Also the seed for a B2B play — pitch it to indie labels as 'QA your AI-generated masters across listening contexts.' $500/mo per label license is a realistic ask.",
-    signal: "Ask beta VIP users to rate playback quality on 3 devices. If context-tuned prompts beat generic prompts by >20% on device-matched devices, ship it broadly.",
-  },
-  {
-    id: "lofi-refusal",
-    num: "V",
-    status: "watching",
-    title: "Lo-fi as refusal (not aesthetic)",
-    thesis: "When producers keep tape hiss, buzzing amps, untuned vocals, it's not nostalgia — it's a refusal of tool-default perfection. Sharper now because tools are seamless.",
-    ourMove: "Build 'imperfection primitives' — prompt fragments like 'leave the breath in,' 'unpitched backing vocal,' 'amp hum under the chorus.' Sell as the Authenticity Pack (VIP feature?). Market angle: 'your AI track doesn't have to sound like AI.'",
-    cashOut: "The Authenticity Pack is the highest-margin thing we can sell because the marginal cost is zero (text strings) and the perceived value is huge (taste > features). $14 one-time, or bundled into VIP as a headline perk. 200 sales = $2.8k. 1000 sales = $14k on literally no incremental cost.",
-    signal: "Engagement rate on the Authenticity Pack vs. regular presets. If it outperforms by >40%, this thesis is correct and we expand it.",
-  },
-  {
-    id: "song-shrinks",
-    num: "VI",
-    status: "live",
-    title: "The song is shrinking",
-    thesis: "Intro gone, bridge gone, verse-2 shorter. Median song ≈ 2:00 and falling. The 3-to-4-minute object is not the default unit anymore.",
-    ourMove: "Short-form prompt preset ('90-second single, chorus at 0:20'). Matches TikTok/Reels economy. Pair with a long-form counter-preset that specifically resists this — for the artists who want to refuse the trend. Two flavors of the same insight.",
-    cashOut: "Partner play: approach indie content creators (meme-page operators, Reels-first musicians) with a 'TikTok-ready prompt' affiliate program — $5 commission per sub they drive. Their content shows the hook working, our audience sees creators using us, flywheel builds. This is the cheapest growth channel we can run.",
-    signal: "Of prompts users generate, the share that explicitly specify <2:30 length. Track monthly.",
-  },
-  {
-    id: "live-is-real",
-    num: "VII",
-    status: "cool",
-    title: "Live performance is the last real thing",
-    thesis: "Everything downstream of a room can be faked. The room can't. Expect the music economy to reorganize around live.",
-    ourMove: "Not directly actionable for Hit Engine (we're a prompt tool, not a booking platform). BUT: this is content marketing territory. An essay on this, with 'this is why the AI-prompt space matters less than people think' angle, is a credibility builder. Park.",
-    cashOut: "Indirect. A strong essay published on Substack drives ~5% email capture rate on qualified readers. 2000 readers = 100 emails = ~4-8 VIP signups over 6 months at typical conversion. Not a monetization play on its own; a feeder for the real machine.",
-    signal: "n/a — qualitative thesis. Revisit if a competitor moves into live-adjacent tooling.",
-  },
-  {
-    id: "tool-wont-save",
-    num: "VIII",
-    status: "live",
-    title: "The tool will not save you",
-    thesis: "Every tool generation promises democratized talent. Every one has been wrong. Tools amplify mediocrity visibility, not talent supply.",
-    ourMove: "Our positioning has to accept this. We are NOT 'make hits effortlessly.' We are 'if you have taste, we make your taste more productive.' That's a smaller market but a real one, and the margins are better. Don't compete with Suno on easy — compete on good.",
-    cashOut: "Premium positioning protects ARPU. Suno is $8/mo for unlimited — race to the bottom. We charge $19 (Pro) and $39 (VIP) and stay there because our audience understands value. Higher ARPU + lower churn + smaller support load = better unit economics than any free-tier AI music product.",
-    signal: "Conversion rate of free → Pro among users who stayed >7 days. These are the people with real interest. Their conversion is the real number.",
-  },
-];
-
-// ── PROMPT ARSENAL (v0 — seed 6 prompts that ride the theses)
-const FUTURE_ARSENAL = [
-  {
-    id: "amapiano-chill",
-    tag: "III · Global South",
-    prompt: "log drum amapiano, 112 BPM, sparse piano stabs, whispered Zulu ad-libs, deep sub bass, warm analog compression, 90-second single, chorus enters at 0:18, mixed for phone speakers",
-    why: "Compresses thesis III (global south center), VI (song shrinks), IV (listening context) into one prompt. This is a three-bet packet.",
-  },
-  {
-    id: "phonk-refusal",
-    tag: "V · Lo-fi refusal",
-    prompt: "memphis phonk, cowbell, detuned 808, cassette hiss left in, vocal chop pitched slightly flat on purpose, no sidechain cleanup, 76 BPM halftime feel, 2:00 max",
-    why: "Thesis V literalized: every 'leave it broken' instruction is a refusal primitive.",
-  },
-  {
-    id: "post-phonk-fragment",
-    tag: "II · Fragment speed",
-    prompt: "post-phonk drift, slowed trap drums with shoegaze guitars, ethereal female vocal doubled at the fifth, reverb tails longer than the kick, 68 BPM, hypnagogic mood",
-    why: "Deliberately targets a sub-subgenre with no canonical name yet. If we can prompt it, we own the naming layer for thirty days until TikTok catches up.",
-  },
-  {
-    id: "funk-paulista-mob",
-    tag: "III · Global South",
-    prompt: "funk paulista mandelão, 150 BPM, tamborzão pattern, raw distorted bass, call-and-response female vocal, street recording ambience left in, mixed loud for car subs",
-    why: "Brazilian funk mandelão is mid-fragmentation right now. First-mover window for prompt library.",
-  },
-  {
-    id: "taste-signal-ballad",
-    tag: "I · Taste over tool",
-    prompt: "nick drake fingerpicking on a nylon string guitar, close-mic breath captured, single vocal take, no auto-tune, slight tape compression, room reverb not plate, arrangement sparse until final 30 seconds",
-    why: "Every instruction here is a taste decision. An untrained user could not write this prompt. That's the moat.",
-  },
-  {
-    id: "context-phone",
-    tag: "IV · Listening context",
-    prompt: "upbeat bedroom pop chorus optimized for phone speaker playback: vocal presence band pushed, low-end rolled off below 120Hz, percussion compressed aggressively for small speaker translation, hook in mono-compatible midrange",
-    why: "Explicit context-aware mix. This is the kind of prompt that, if it works reliably, becomes a product feature (the Listening Context cubicle).",
-  },
-];
-
-// ── COMPETITIVE READ (v0 — gaps observed in Suno / Udio / Riffusion as of now)
-const FUTURE_COMP_READ = [
-  {
-    tool: "Suno",
-    doing: "Mainstream pop/rock/EDM competent. Lyrics engine improving fast. Instrumental variations increasingly listenable.",
-    notDoing: "Non-Anglo genres below surface-level. Amapiano, Funk Paulista, Phonk variants all render as generic 'world-tinted pop.' Listening-context awareness zero.",
-    opportunity: "Our subgenre depth and listening-context cubicle are hard to copy without engine-level changes on their side.",
-  },
-  {
-    tool: "Udio",
-    doing: "Vocal realism leads the pack. Cleaner mixes. Better at jazz/soul genres.",
-    notDoing: "Taste layer — no notion that some prompts are more 'in the pocket' than others. Treats all user input as equally valid.",
-    opportunity: "Our role is pre-Udio: Hit Engine outputs the prompt, user pastes into Udio. We're the taste filter between them.",
-  },
-  {
-    tool: "Riffusion",
-    doing: "Spectrograms + text hybrid is unique. Image-to-music pivot interesting.",
-    notDoing: "Consumer UX is poor. No prompt library. No taste-curated presets. The hackers' tool, not the producer's.",
-    opportunity: "Riffusion users are likely to pay for taste augmentation more than Suno users — they're already technical enough to value prompt quality.",
-  },
-];
-
-// ── BACKLOG (v0 — open ideas, add freely, prune when shipped or rejected)
-const FUTURE_BACKLOG = [
-  { when: "2026-04", note: "Add a 'cover letter' generator — a Claude/GPT pass that turns a finished prompt into a 1-line description for SoundCloud/Spotify." },
-  { when: "2026-04", note: "Each thesis card could have a 'seed a new prompt from this' button — opens Engine pre-populated with a starter." },
-  { when: "2026-04", note: "Weekly prompt of the week — one blessed prompt shared on whatever distribution channel we pick. Simple, consistent, compounds." },
-  { when: "2026-04", note: "Partner with one producer in Lagos or São Paulo for a guest subgenre pack. Legitimacy signal in Global South positioning." },
-  { when: "2026-04", note: "VIP feature: prompt remix — paste a Suno prompt from anywhere, Hit Engine rewrites it in three styles (tighter, weirder, more commercial)." },
-];
-
-// ── CASH-OUT PLAYBOOK
-// Strategic moves ranked by effort/return: the ten plays that, run in
-// sequence, compound into a real exit. Each play has a TIME horizon, a
-// REVENUE target that's realistic for a solo operator with a working
-// product, and a KILL CRITERIA — the specific evidence that tells you
-// "this play did not work, move to the next one" so you don't bleed
-// months on something that's flat.
-//
-// Philosophy: small compounding plays > one big bet. Every play should
-// either ship $$$ directly OR build distribution that feeds the next play.
-// If a play does neither, cut it. No vanity plays.
-const FUTURE_CASHOUT_PLAYBOOK = [
-  {
-    step: "01",
-    horizon: "NOW · 30 DAYS",
-    play: "Nail the VIP conversion funnel",
-    detail: "Before any growth spending: the funnel from free → Pro → VIP must convert at respectable rates (benchmark: 2-4% free→paid, 15-20% Pro→VIP). The new locked-chip psychology is step one. Step two is a checkout page that doesn't leak — one page, one CTA, stripe-or-nothing. Every other play depends on this being tuned.",
-    target: "$500-2k MRR by day 30 from existing traffic alone. No paid ads.",
-    kill: "If MRR is under $200 after 30 days with at least 500 free-user sessions, the offer itself is wrong — not the funnel. Rework pricing / VIP perks before spending on growth.",
-  },
-  {
-    step: "02",
-    horizon: "30-60 DAYS",
-    play: "Subgenre packs as one-time revenue pulses",
-    detail: "Ship 3-5 subgenre packs at $5-9 each, tied to what's trending on TikTok right now. Each pack = 8-12 prompts + a style dictionary + 10-15 artist references. Package as standalone ebooks/PDFs with Stripe one-time checkout. Release cadence: one pack every 10 days. Each pack both prints $500-3k AND feeds Email list.",
-    target: "$3-8k in combined pack revenue across 3-4 packs. Plus 200-500 emails captured.",
-    kill: "If a pack sells <20 units in its first week, the subgenre wasn't timed right or the hook is weak. Don't keep promoting it — ship the next one and learn.",
-  },
-  {
-    step: "03",
-    horizon: "60-90 DAYS",
-    play: "Creator affiliate program",
-    detail: "50 selected music-content creators (TikTok/IG/YouTube, 5k-50k followers in AI-music / producer / beatmaker niches). They get a unique signup link, $5-10 commission per Pro sub and $20-30 per VIP sub. You give them 5 free VIPs to try. They produce organic content showing the tool working. This is the cheapest acquisition we can run.",
-    target: "50 creators signed up, 10 actively posting, 80-150 paid signups attributable to the program inside 60 days. That's $1500-4k in one-time and/or $800-2k in recurring.",
-    kill: "If <5 creators post content in 30 days, the commission's too low or the product isn't demo-able enough for short-form video. Rework the creator brief before giving up.",
-  },
-  {
-    step: "04",
-    horizon: "90 DAYS",
-    play: "Weekly Substack for the essay flywheel",
-    detail: "Thesis VII parked as content marketing — actually run it. One essay per week, 1200-2000 words, on the Future of Sound themes. Embed the Hit Engine CTA tastefully. Cross-post on Twitter/X and LinkedIn threads. By week 12 you have 12 evergreen essays that rank and recirculate.",
-    target: "500-2000 email subscribers by day 90. Conversion rate from Substack → Pro is typically 2-5% → that's 10-100 Pro subs from essays alone.",
-    kill: "If after 8 weeks you have <250 subs despite shipping 8 essays, the essays aren't resonating — get a writer friend to critique the voice and iterate.",
-  },
-  {
-    step: "05",
-    horizon: "90-180 DAYS",
-    play: "B2B pilot: one indie label, one publisher",
-    detail: "Pitch the 'listening context' feature (bet IV) as a QA tool for indie labels: $500-1500/mo license for unlimited prompts + team seats + maybe an API. Start with two prospects you can reach personally. ONE closed pilot = $6-18k ARR and a logo on the site, which is disproportionate credibility for the consumer funnel.",
-    target: "1-2 B2B pilots closed = $10-35k ARR. Use the logos as social proof on the main site.",
-    kill: "If after 15 discovery calls no one is interested, B2B isn't our wedge right now. Pivot spend back to creator channels — B2B requires a different motion we're not built for yet.",
-  },
-  {
-    step: "06",
-    horizon: "180 DAYS",
-    play: "Regional front door — Portuguese edition",
-    detail: "Clone the product with Portuguese UI and a São Paulo / Rio funk focus. Same backend, localized surface. Price in BRL at a premium-feeling local rate. Market through one Brazilian music creator partnership. This is bet III made concrete. Effort is low (translation + marketing front door) relative to 5-10× expansion of addressable audience.",
-    target: "$2-5k MRR from the PT market within 90 days of launch. If it works: ship Spanish next (Mexico + Argentina + Colombia).",
-    kill: "If PT edition does <$500 MRR at 60 days, the demand isn't there or the funk angle wasn't the right wedge. Cut and redirect.",
-  },
-  {
-    step: "07",
-    horizon: "12 MONTHS",
-    play: "Reach $20k MRR = attractive acquisition target",
-    detail: "$20k MRR = $240k ARR. At 3-5× ARR multiples typical for bootstrapped SaaS acquisitions, that's $720k-$1.2M valuation territory. This is the 'life-changing but not generational' range and requires no outside investment. Realistic compounded result of plays 01-06 executed reasonably well over 12 months.",
-    target: "$20k MRR, profitable, ~1000-2000 paid subs across Pro + VIP + B2B.",
-    kill: "If 9 months in you're still under $5k MRR, something structural is wrong — either the product, the positioning, or the market size. Don't keep grinding; stop and diagnose honestly.",
-  },
-  {
-    step: "08",
-    horizon: "12-18 MONTHS",
-    play: "Acqui-hire or strategic sale to a music tools company",
-    detail: "The natural buyers: Splice, BandLab, Output, Native Instruments, or any indie label that wants a proprietary prompt edge. Approach them with the traction numbers from play 07. Angle: 'we're the taste layer on top of generative AI, you integrate us, your catalog stays the best.' This is a sale priced on team + IP + data, not pure multiples — can push the valuation higher.",
-    target: "$1-3M acquisition outcome if traction and narrative align. Realistic for a profitable bootstrapped tool with a defensible angle.",
-    kill: "If no inbound interest at $20k MRR + positive-press moment, the strategic story isn't strong enough yet. Keep building until it is — don't fire-sale out of boredom.",
-  },
-  {
-    step: "09",
-    horizon: "18-24 MONTHS",
-    play: "License the prompt library to Suno / Udio directly",
-    detail: "The taste-arbitrage endgame: Suno or Udio pays us $X/year to license our prompt curation as a 'premium preset' inside their product. We keep the consumer app. This is the 'both sides win' move — they get differentiated content, we get a revenue stream uncorrelated with our own growth rate. Realistic if our brand is strong enough to be worth bundling with theirs.",
-    target: "$50-200k/year licensing deal. Might be the highest-ROI play of the whole playbook because it's pure margin.",
-    kill: "Only pursue if play 07 has already landed. Before $20k MRR you don't have the leverage to negotiate well.",
-  },
-  {
-    step: "10",
-    horizon: "24+ MONTHS",
-    play: "Full exit or founder payout via secondary",
-    detail: "If plays 01-09 compound well: either a full acquisition at $3-10M+ range, or a secondary sale where you take significant founder cash off the table while keeping the product running. The secondary is underrated — you get life-changing money AND keep the thing you built. Requires a buyer who wants ownership without wanting operational control. Private equity or strategic minority investor both qualify.",
-    target: "Founder liquidity of $2-8M range. Generational outcome if plays above compounded more than expected.",
-    kill: "Not a play you can force. Requires all prior plays to have compounded. Don't optimize for this outcome specifically — optimize for plays 01-06 and let this emerge naturally if the market rewards the work.",
-  },
-];
-
-function FuturePageDev() {
-  const { layout } = useLayout();
-  const isMobile = layout === "mobile";
-
-  // Status → visual treatment. Kept inside the component so tokens resolve
-  // from T/V at render time. Four statuses — more would dilute the signal.
-  const statusMeta = {
-    live:     { label: "LIVE",     color: "#10b981", bg: "rgba(16,185,129,0.08)", desc: "Bet is active and paying off. Keep pressing." },
-    hot:      { label: "HOT",      color: "#F59E0B", bg: "rgba(245,158,11,0.08)", desc: "Accelerating. Short window to move." },
-    watching: { label: "WATCH",    color: "#7C8BFF", bg: "rgba(124,139,255,0.08)", desc: "Credible but unproven. Collect evidence before committing." },
-    cool:     { label: "COOL",     color: "#6B6E76", bg: "rgba(107,110,118,0.08)", desc: "Not currently actionable. Parked, not abandoned." },
-  };
-
-  return (
-    <div style={{
-      maxWidth: 1200, margin: "0 auto",
-      padding: isMobile ? `${T.s5}px ${T.s4}px ${T.s8}px` : `${T.s8}px ${T.s6}px ${T.s10}px`,
-      fontFamily: T.font_sans,
-    }}>
-      {/* ── HEADER ─────────────────────────────────────────────────── */}
-      <div style={{
-        display: "flex", alignItems: "center", gap: T.s3,
-        marginBottom: T.s3,
-      }}>
-        <span style={{
-          fontFamily: T.font_mono, fontSize: 10, fontWeight: 800,
-          letterSpacing: "0.22em", color: T.accent,
-          padding: "3px 8px",
-          background: `${T.accent}18`,
-          border: `1px solid ${T.accent}44`,
-          borderRadius: T.r_sm,
-        }}>DEV · OPERATOR VIEW</span>
-        <span style={{
-          fontFamily: T.font_mono, fontSize: T.fs_xs, color: T.textTer,
-          letterSpacing: "0.08em",
-        }}>Not visible to visitors</span>
-      </div>
-      <h1 style={{
-        fontSize: "clamp(32px, 4.5vw, 56px)",
-        lineHeight: 1.05, letterSpacing: "-0.025em",
-        margin: 0, marginBottom: T.s3,
-        fontFamily: T.font_sans, fontWeight: 600, color: T.text,
-      }}>Future of Sound · War Room</h1>
-      <p style={{
-        color: T.textSec, fontSize: T.fs_lg, lineHeight: 1.5,
-        marginBottom: T.s8, maxWidth: 720, fontFamily: T.font_sans,
-      }}>
-        Eight active bets, a prompt arsenal, a read on the competition, and a backlog of things to try. Edit this file to evolve your thinking — the code is the journal.
-      </p>
-
-      {/* ── ZONE 1 — ACTIVE BETS ────────────────────────────────────── */}
-      <section style={{ marginBottom: T.s10 }}>
-        <SectionHeading n="01" title="Active bets" count={FUTURE_BETS.length} />
-        <div style={{
-          display: "grid",
-          gridTemplateColumns: isMobile ? "1fr" : "repeat(2, minmax(0, 1fr))",
-          gap: T.s4,
-        }}>
-          {FUTURE_BETS.map(b => {
-            const meta = statusMeta[b.status] || statusMeta.watching;
-            return (
-              <article key={b.id} style={{
-                background: T.surface,
-                border: `1px solid ${T.border}`,
-                borderLeft: `3px solid ${meta.color}`,
-                borderRadius: T.r_md,
-                padding: `${T.s4}px ${T.s5}px`,
-                display: "flex", flexDirection: "column", gap: T.s3,
-              }}>
-                <div style={{ display: "flex", alignItems: "center", gap: T.s2 }}>
-                  <span style={{
-                    fontFamily: T.font_mono, fontSize: T.fs_xs,
-                    color: T.textTer, letterSpacing: "0.08em",
-                  }}>{b.num}</span>
-                  <span style={{
-                    fontFamily: T.font_mono, fontSize: 10, fontWeight: 700,
-                    color: meta.color, letterSpacing: "0.15em",
-                    padding: "2px 6px",
-                    background: meta.bg,
-                    border: `1px solid ${meta.color}55`,
-                    borderRadius: T.r_sm,
-                  }}>{meta.label}</span>
-                </div>
-                <h3 style={{
-                  margin: 0,
-                  fontSize: T.fs_xl, fontWeight: 600, lineHeight: 1.2,
-                  color: T.text, letterSpacing: "-0.01em",
-                }}>{b.title}</h3>
-                <p style={{
-                  margin: 0, fontSize: T.fs_sm, lineHeight: 1.55,
-                  color: T.textSec,
-                }}>{b.thesis}</p>
-                <FutureField label="OUR MOVE" body={b.ourMove} color={T.text} />
-                <FutureField label="CASH OUT" body={b.cashOut} color={V.neonGold} />
-                <FutureField label="SIGNAL" body={b.signal} color={T.textTer} mono />
-              </article>
-            );
-          })}
-        </div>
-      </section>
-
-      {/* ── ZONE 2 — PROMPT ARSENAL ─────────────────────────────────── */}
-      <section style={{ marginBottom: T.s10 }}>
-        <SectionHeading n="02" title="Prompt arsenal" count={FUTURE_ARSENAL.length} />
-        <div style={{ display: "flex", flexDirection: "column", gap: T.s3 }}>
-          {FUTURE_ARSENAL.map(p => (
-            <ArsenalRow key={p.id} p={p} />
-          ))}
-        </div>
-      </section>
-
-      {/* ── ZONE 3 — COMPETITIVE READ ───────────────────────────────── */}
-      <section style={{ marginBottom: T.s10 }}>
-        <SectionHeading n="03" title="Competitive read" count={FUTURE_COMP_READ.length} />
-        <div style={{
-          display: "grid",
-          gridTemplateColumns: isMobile ? "1fr" : "repeat(3, minmax(0, 1fr))",
-          gap: T.s4,
-        }}>
-          {FUTURE_COMP_READ.map(c => (
-            <article key={c.tool} style={{
-              background: T.surface,
-              border: `1px solid ${T.border}`,
-              borderRadius: T.r_md,
-              padding: `${T.s4}px ${T.s5}px`,
-              display: "flex", flexDirection: "column", gap: T.s3,
-            }}>
-              <div style={{
-                fontFamily: T.font_mono, fontSize: 10, fontWeight: 800,
-                letterSpacing: "0.18em", color: T.textTer,
-              }}>COMPETITOR</div>
-              <h3 style={{
-                margin: 0, fontSize: T.fs_xl, fontWeight: 600,
-                color: T.text, letterSpacing: "-0.01em",
-              }}>{c.tool}</h3>
-              <FutureField label="DOING" body={c.doing} color={T.textSec} />
-              <FutureField label="NOT DOING" body={c.notDoing} color={T.text} />
-              <FutureField label="OPPORTUNITY" body={c.opportunity} color={V.neonGold} />
-            </article>
-          ))}
-        </div>
-      </section>
-
-      {/* ── ZONE 4 — CASH-OUT PLAYBOOK ──────────────────────────────
-          Ten sequential plays. The whole zone is framed as a ladder:
-          each step ships value AND sets up the next. The visual treatment
-          is deliberately heavier than other zones (thicker cards, gold
-          step numbers, more dense) because this is the strategic spine
-          of the operator view — everything else supports it. */}
-      <section style={{ marginBottom: T.s10 }}>
-        <SectionHeading n="04" title="Cash-out playbook" count={FUTURE_CASHOUT_PLAYBOOK.length} />
-        <p style={{
-          color: T.textSec, fontSize: T.fs_md, lineHeight: 1.55,
-          marginTop: -T.s2, marginBottom: T.s5, maxWidth: 720,
-          fontStyle: "italic",
-        }}>
-          Ten plays ranked by sequence. Run them in order. Each play either ships revenue
-          directly or builds distribution that feeds the next. Kill any play that fails
-          its evidence test — don't bleed months on flat lines.
-        </p>
-        <div style={{ display: "flex", flexDirection: "column", gap: T.s4 }}>
-          {FUTURE_CASHOUT_PLAYBOOK.map(p => (
-            <article key={p.step} style={{
-              background: `linear-gradient(180deg, ${T.surface} 0%, ${T.elevated}80 100%)`,
-              border: `1px solid ${V.neonGold}33`,
-              borderRadius: T.r_md,
-              padding: isMobile ? `${T.s4}px ${T.s4}px` : `${T.s5}px ${T.s6}px`,
-              display: "grid",
-              gridTemplateColumns: isMobile ? "1fr" : "100px 1fr",
-              gap: T.s5,
-              alignItems: "start",
-            }}>
-              <div style={{
-                display: "flex", flexDirection: "column",
-                gap: T.s2,
-                borderRight: isMobile ? "none" : `1px dashed ${V.neonGold}33`,
-                paddingRight: isMobile ? 0 : T.s4,
-                minHeight: isMobile ? 0 : 60,
-              }}>
-                <span style={{
-                  fontFamily: T.font_mono, fontSize: T.fs_2xl, fontWeight: 800,
-                  color: V.neonGold, letterSpacing: "-0.02em", lineHeight: 1,
-                  textShadow: `0 0 12px ${V.neonGold}55`,
-                }}>{p.step}</span>
-                <span style={{
-                  fontFamily: T.font_mono, fontSize: 9, fontWeight: 700,
-                  color: T.textTer, letterSpacing: "0.14em",
-                }}>{p.horizon}</span>
-              </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: T.s3 }}>
-                <h3 style={{
-                  margin: 0, fontSize: T.fs_xl, fontWeight: 600,
-                  color: T.text, letterSpacing: "-0.01em", lineHeight: 1.2,
-                }}>{p.play}</h3>
-                <p style={{
-                  margin: 0, fontSize: T.fs_sm, lineHeight: 1.6,
-                  color: T.textSec,
-                }}>{p.detail}</p>
-                <FutureField label="TARGET" body={p.target} color={V.neonGold} mono />
-                <FutureField label="KILL CRITERIA" body={p.kill} color={T.danger} />
-              </div>
-            </article>
-          ))}
-        </div>
-      </section>
-
-      {/* ── ZONE 5 — BACKLOG ────────────────────────────────────────── */}
-      <section>
-        <SectionHeading n="05" title="Backlog" count={FUTURE_BACKLOG.length} />
-        <div style={{
-          background: T.surface,
-          border: `1px solid ${T.border}`,
-          borderRadius: T.r_md,
-          padding: `${T.s4}px ${T.s5}px`,
-          display: "flex", flexDirection: "column", gap: T.s3,
-        }}>
-          {FUTURE_BACKLOG.map((item, i) => (
-            <div key={i} style={{
-              display: "flex", gap: T.s4, alignItems: "baseline",
-              borderTop: i === 0 ? "none" : `1px dashed ${T.border}`,
-              paddingTop: i === 0 ? 0 : T.s3,
-            }}>
-              <span style={{
-                fontFamily: T.font_mono, fontSize: T.fs_xs,
-                color: T.textTer, letterSpacing: "0.08em",
-                minWidth: 64, flexShrink: 0,
-              }}>{item.when}</span>
-              <span style={{
-                fontSize: T.fs_md, lineHeight: 1.55, color: T.text,
-              }}>{item.note}</span>
-            </div>
-          ))}
-        </div>
-      </section>
-    </div>
-  );
-}
-
-// Small helpers — kept local because they only exist to serve FuturePageDev.
-
-function SectionHeading({ n, title, count }) {
-  return (
-    <div style={{
-      display: "flex", alignItems: "baseline", gap: T.s3,
-      marginBottom: T.s4,
-      paddingBottom: T.s2,
-      borderBottom: `1px solid ${T.border}`,
-    }}>
-      <span style={{
-        fontFamily: T.font_mono, fontSize: T.fs_sm,
-        color: T.textTer, letterSpacing: "0.14em", fontWeight: 700,
-      }}>{n}</span>
-      <h2 style={{
-        margin: 0, fontSize: T.fs_2xl, fontWeight: 600,
-        letterSpacing: "-0.015em", color: T.text,
-      }}>{title}</h2>
-      {typeof count === "number" && (
-        <span style={{
-          marginLeft: "auto",
-          fontFamily: T.font_mono, fontSize: T.fs_xs,
-          color: T.textTer, letterSpacing: "0.08em",
-        }}>{count} items</span>
-      )}
-    </div>
-  );
-}
-
-function FutureField({ label, body, color, mono }) {
-  return (
-    <div>
-      <div style={{
-        fontFamily: T.font_mono, fontSize: 10, fontWeight: 800,
-        letterSpacing: "0.18em", color: T.textTer,
-        marginBottom: 4,
-      }}>{label}</div>
-      <div style={{
-        fontFamily: mono ? T.font_mono : T.font_sans,
-        fontSize: T.fs_sm, lineHeight: 1.55,
-        color: color || T.text,
-      }}>{body}</div>
-    </div>
-  );
-}
-
-function ArsenalRow({ p }) {
-  const [copied, setCopied] = useState(false);
-  const handleCopy = () => {
-    if (typeof navigator === "undefined" || !navigator.clipboard) return;
-    navigator.clipboard.writeText(p.prompt).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1400);
-    }).catch(() => {});
-  };
-  return (
-    <article style={{
-      background: T.surface,
-      border: `1px solid ${T.border}`,
-      borderRadius: T.r_md,
-      padding: `${T.s3}px ${T.s4}px`,
-      display: "flex", flexDirection: "column", gap: T.s2,
-    }}>
-      <div style={{ display: "flex", alignItems: "center", gap: T.s2, flexWrap: "wrap" }}>
-        <span style={{
-          fontFamily: T.font_mono, fontSize: 10, fontWeight: 700,
-          letterSpacing: "0.12em", color: T.accent,
-          padding: "2px 6px",
-          background: `${T.accent}18`,
-          border: `1px solid ${T.accent}44`,
-          borderRadius: T.r_sm,
-        }}>{p.tag}</span>
-        <span style={{ flex: 1 }} />
-        <button
-          type="button"
-          onClick={handleCopy}
-          style={{
-            padding: "4px 12px",
-            background: copied ? `${T.success}22` : "transparent",
-            border: `1px solid ${copied ? T.success : T.border}`,
-            borderRadius: T.r_sm,
-            color: copied ? T.success : T.textSec,
-            fontFamily: T.font_mono, fontSize: T.fs_xs, fontWeight: 700,
-            letterSpacing: "0.1em", cursor: "pointer",
-            transition: `all ${T.dur_fast} ${T.ease}`,
-          }}>
-          {copied ? "✓ COPIED" : "COPY"}
-        </button>
-      </div>
-      <div style={{
-        fontFamily: T.font_mono, fontSize: T.fs_sm, lineHeight: 1.55,
-        color: T.text,
-        background: T.bg,
-        border: `1px solid ${T.border}`,
-        borderRadius: T.r_sm,
-        padding: `${T.s2}px ${T.s3}px`,
-      }}>{p.prompt}</div>
-      <div style={{
-        fontSize: T.fs_xs, lineHeight: 1.5, color: T.textTer,
-        fontStyle: "italic",
-      }}>{p.why}</div>
-    </article>
   );
 }
 
@@ -29637,6 +28844,18 @@ function SunoMasterConsole() {
                   return (
                     <div key={cat} style={{
                       position: "relative",
+                      // Cubicle cannot grow beyond its grid column.
+                      // minWidth 0 + width 100% + boxSizing border-box
+                      // locks the cubicle exactly into the cell its
+                      // grid gave it; intrinsic content width (long
+                      // instrument names etc.) can NEVER inflate the
+                      // column past 1fr. Combined with the grid's
+                      // minmax(0, 1fr) all 4 cubicles per row are
+                      // always the same exact width whether collapsed
+                      // or expanded. Only height grows, never sides.
+                      minWidth: 0,
+                      width: "100%",
+                      boxSizing: "border-box",
                       // Each cubicle is a solid cell. Background tint
                       // deepens when open so the expanded cubicle
                       // reads as "dug in deeper" than its siblings.
@@ -29724,6 +28943,10 @@ function SunoMasterConsole() {
                           gap: 4,
                           maxHeight: 220,
                           overflowY: "auto",
+                          overflowX: "hidden",
+                          minWidth: 0,
+                          width: "100%",
+                          boxSizing: "border-box",
                         }}>
                           {catInstNames.map(inst => {
                             const isSelected = selectedInstruments.has(inst);
@@ -29760,7 +28983,21 @@ function SunoMasterConsole() {
                                   opacity: atCap ? 0.4 : 1,
                                   textShadow: isSelected ? `0 0 4px ${GREEN_MUTE}` : "none",
                                   transition: `all ${T.dur_fast} ${T.ease}`,
-                                  whiteSpace: "nowrap",
+                                  // Let long instrument names ("Acoustic
+                                  // steel-string", "Prophet-5 lead") wrap
+                                  // inside the chip if they don't fit
+                                  // the cubicle width — prevents the
+                                  // flex container from being inflated
+                                  // and the cubicle from growing sideways.
+                                  // minWidth: 0 stops the chip from
+                                  // enforcing its intrinsic content width
+                                  // on the flex parent.
+                                  whiteSpace: "normal",
+                                  wordBreak: "break-word",
+                                  minWidth: 0,
+                                  maxWidth: "100%",
+                                  textAlign: "left",
+                                  lineHeight: 1.25,
                                 }}
                                 onMouseEnter={e => {
                                   if (!isSelected && !atCap) e.currentTarget.style.borderColor = GREEN_DIM;
@@ -30098,167 +29335,6 @@ function BubbleToolsPage({ onNavigate }) {
   const [vibeUsageCounts, setVibeUsageCounts] = useState({});
   const [mimicBlendVibe, setMimicBlendVibe] = useState(null);
 
-  // ── BUBBLE TOOLS v2 — three-pane workstation state ──────────────────
-  // Introduced in Turn A of the /bubble redesign. The page now renders
-  // as:
-  //   LEFT pane  → genre tree navigator (GENRE_TREE walked top→bottom)
-  //   CENTER    → workbench, 4 tabs (packs / poppy / shuffle / snaps)
-  //   RIGHT pane → inspector — placeholder in Turn A, shows selected
-  //                tree node's raw data. Annotation/bookmark/archive
-  //                overlay arrives in Turn B.
-  //
-  // Layout: CSS grid at ≥1100px (three columns), single column below
-  // that with the tree pane collapsing into a slide-in drawer.
-  //
-  // State kept minimal on purpose. Tab choice is session-local (not
-  // persisted) — admin starts fresh each visit on the default Packs
-  // tab, which is the most-used workflow.
-  const [activeWorkbenchTab, setActiveWorkbenchTab] = useState("packs");
-  const [selectedTreeNode, setSelectedTreeNode] = useState(null); // { genre, subgenre?, microgenre? }
-  const [treeSearch, setTreeSearch] = useState("");
-  // Which top-level genres are currently expanded. Default: first 3
-  // (Hip-Hop, R&B/Soul, Pop) open so the tree doesn't feel empty on
-  // first visit. Admin can collapse with one click.
-  const [expandedGenres, setExpandedGenres] = useState(() => {
-    const names = Object.keys(GENRE_TREE || {});
-    return new Set(names.slice(0, 3));
-  });
-  const [expandedSubgenres, setExpandedSubgenres] = useState(new Set());
-  // Mobile/narrow: the tree collapses into a drawer. Drawer visibility
-  // is tracked separately so toggling it doesn't affect the expansion
-  // state of individual branches.
-  const [treeDrawerOpen, setTreeDrawerOpen] = useState(false);
-
-  const toggleGenre = (name) => {
-    setExpandedGenres(prev => {
-      const next = new Set(prev);
-      if (next.has(name)) next.delete(name); else next.add(name);
-      return next;
-    });
-  };
-  const toggleSubgenre = (key) => {
-    setExpandedSubgenres(prev => {
-      const next = new Set(prev);
-      if (next.has(key)) next.delete(key); else next.add(key);
-      return next;
-    });
-  };
-
-  // ── BUBBLE TOOLS v2 — TREE OVERLAY (Turn B) ─────────────────────────
-  // Admin annotations layered on top of the read-only GENRE_TREE. Lives
-  // in localStorage under a single versioned key so future schema
-  // changes are easy to migrate. We only store nodes that have BEEN
-  // EDITED — the overlay is small because the default for every node
-  // is "no annotation."
-  //
-  // Node key format: "Genre::Subgenre::Microgenre" (shorter for higher
-  // levels). Using :: as separator because no genre name uses it and
-  // it collapses the three-level hierarchy into one flat lookup.
-  //
-  // Overlay shape per node:
-  //   { bookmarked: bool, note: string, archived: bool, updatedAt: number }
-  //
-  // Four actions exposed:
-  //   · toggleBookmark(key)   — star on/off
-  //   · setNoteFor(key, text) — replace the note; empty string clears
-  //   · toggleArchived(key)   — hide flag (admin-visible only in Turn B;
-  //                             consumer engine integration deferred)
-  //   · seedPromptFromNode(key) — writes a seed to sessionStorage and
-  //                             navigates to /engine (reuses the existing
-  //                             "he-pending-mimic" channel isn't right
-  //                             here since we want a different seed kind;
-  //                             using a fresh key he-pending-seed instead)
-  const OVERLAY_LS_KEY = "he-admin-genre-overlay-v1";
-  const makeNodeKey = (genre, subgenre, microgenre) => {
-    if (microgenre) return `${genre}::${subgenre}::${microgenre}`;
-    if (subgenre) return `${genre}::${subgenre}`;
-    return genre || "";
-  };
-  const makeNodeKeyFromSel = (sel) => {
-    if (!sel || !sel.genre) return "";
-    return makeNodeKey(sel.genre, sel.subgenre, sel.microgenre);
-  };
-
-  const [treeOverlay, setTreeOverlay] = useState(() => {
-    if (typeof window === "undefined") return {};
-    try {
-      const raw = localStorage.getItem(OVERLAY_LS_KEY);
-      if (!raw) return {};
-      const parsed = JSON.parse(raw);
-      // Version gate — future migrations hook in here
-      if (parsed && parsed.version === 1 && parsed.nodes) return parsed.nodes;
-      return {};
-    } catch { return {}; }
-  });
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    try {
-      localStorage.setItem(OVERLAY_LS_KEY, JSON.stringify({
-        version: 1,
-        nodes: treeOverlay,
-      }));
-    } catch {
-      // Storage full or disabled — degrade silently; admin won't
-      // lose in-session edits, just won't persist them across reloads.
-    }
-  }, [treeOverlay]);
-
-  const getOverlayFor = (key) => treeOverlay[key] || {};
-  const updateOverlay = (key, patch) => {
-    if (!key) return;
-    setTreeOverlay(prev => {
-      const current = prev[key] || {};
-      const next = { ...current, ...patch, updatedAt: Date.now() };
-      // If every meaningful field is empty/false, drop the entry so
-      // the overlay object doesn't accumulate tombstones.
-      const isEmpty = !next.bookmarked
-        && !next.archived
-        && (!next.note || !next.note.trim());
-      const out = { ...prev };
-      if (isEmpty) delete out[key]; else out[key] = next;
-      return out;
-    });
-  };
-  const toggleBookmark = (key) => {
-    const curr = getOverlayFor(key);
-    updateOverlay(key, { bookmarked: !curr.bookmarked });
-  };
-  const setNoteFor = (key, text) => {
-    updateOverlay(key, { note: text });
-  };
-  const toggleArchived = (key) => {
-    const curr = getOverlayFor(key);
-    updateOverlay(key, { archived: !curr.archived });
-  };
-  const seedPromptFromNode = (genre, subgenre, microgenre) => {
-    // Build a prompt seed payload and hand it to the Engine via
-    // sessionStorage. Engine picks it up on mount (or via the
-    // he-pending-change event if already mounted) and applies it
-    // as a fresh starting config. NOTE: the consumer Engine doesn't
-    // yet listen for "he-pending-seed"; that's Turn C plumbing on
-    // the Engine side. For now this writes the payload and shows an
-    // admin-side toast through the onNavigate call. We still navigate
-    // so the admin at least lands on the engine with the genre slot
-    // starter populated via sessionStorage as a future hook.
-    try {
-      sessionStorage.setItem("he-pending-seed", JSON.stringify({
-        kind: "genre-seed",
-        genre, subgenre: subgenre || null, microgenre: microgenre || null,
-        ts: Date.now(),
-      }));
-    } catch {}
-    onNavigate && onNavigate("engine");
-  };
-
-  // Memoize bookmark list for the inspector quick-access panel. Pulls
-  // every overlay entry with bookmarked=true and sorts by recency.
-  const bookmarkList = useMemo(() => {
-    return Object.entries(treeOverlay)
-      .filter(([, v]) => v && v.bookmarked)
-      .map(([k, v]) => ({ key: k, ...v }))
-      .sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
-  }, [treeOverlay]);
-
   const filteredMimicArtists = MIMIC_PACKS.filter(a => {
     if (mimicRegionFilter !== "all" && a.region !== mimicRegionFilter) return false;
     if (mimicSearch.trim()) {
@@ -30289,6 +29365,12 @@ function BubbleToolsPage({ onNavigate }) {
     });
     return map;
   }, [allPacksFlat]);
+  const mostUsedVibe = useMemo(() => {
+    const entries = Object.entries(vibeUsageCounts);
+    if (entries.length === 0) return null;
+    entries.sort((a, b) => b[1] - a[1]);
+    return entries[0][0];
+  }, [vibeUsageCounts]);
   const trackVibeUse = (vibeId) => {
     if (!vibeId) return;
     setVibeUsageCounts(prev => ({ ...prev, [vibeId]: (prev[vibeId] || 0) + 1 }));
@@ -30465,413 +29547,6 @@ function BubbleToolsPage({ onNavigate }) {
           </div>
         </div>
 
-        {/* ══════════════════════════════════════════════════════════════
-            BUBBLE TOOLS v2 — THREE-PANE WORKSTATION
-            Layout collapses from 3-column grid on desktop (≥1100px) to
-            a single column on narrower screens, with the tree accessible
-            via a drawer button on mobile. Each pane has its own scroll
-            so the tree can be long without pushing the workbench down.
-            Matches the surrounding CRT terminal aesthetic — nothing
-            indigo or gold leaks into this surface.
-            ════════════════════════════════════════════════════════════ */}
-        <div style={{
-          display: isMobile ? "block" : "grid",
-          gridTemplateColumns: isMobile ? "1fr" : "280px 1fr 260px",
-          gap: isMobile ? 0 : T.s4,
-          alignItems: "start",
-        }}>
-
-          {/* ── LEFT PANE — GENRE TREE NAVIGATOR ─────────────────────
-              A scrollable tree of GENRE_TREE, searchable, collapsible
-              at both the genre and subgenre level. Clicking any node
-              selects it (highlight + updates right inspector). Turn A
-              is READ-ONLY — annotation/bookmark UI arrives in Turn B.
-              On mobile/narrow this is hidden behind a drawer button. */}
-          {!isMobile && (
-            <aside style={{
-              background: "#080808",
-              border: `1px solid ${GREEN_FAINT}`,
-              borderRadius: T.r_md,
-              padding: `${T.s3}px ${T.s3}px ${T.s4}px`,
-              maxHeight: "calc(100vh - 140px)",
-              overflowY: "auto",
-              position: "sticky",
-              top: T.s4,
-            }}>
-              <div style={{
-                display: "flex", alignItems: "center", gap: T.s2,
-                marginBottom: T.s3,
-                paddingBottom: T.s2,
-                borderBottom: `1px dashed ${GREEN_FAINT}`,
-              }}>
-                <span style={{
-                  fontFamily: T.font_mono, fontSize: 10, fontWeight: 800,
-                  color: GREEN, letterSpacing: "0.16em",
-                }}>◇ GENRE_TREE</span>
-                <span style={{ flex: 1 }} />
-                <span style={{
-                  fontFamily: T.font_mono, fontSize: 9,
-                  color: "rgba(0,255,65,0.35)", letterSpacing: "0.08em",
-                }}>{Object.keys(GENRE_TREE || {}).length}</span>
-              </div>
-              <input
-                type="text"
-                value={treeSearch}
-                onChange={e => setTreeSearch(e.target.value)}
-                placeholder="&gt; search_tree..."
-                style={{
-                  width: "100%",
-                  padding: "6px 10px",
-                  background: "#000",
-                  border: `1px solid ${treeSearch ? GREEN_DIM : GREEN_FAINT}`,
-                  borderRadius: T.r_sm,
-                  color: GREEN,
-                  fontFamily: T.font_mono, fontSize: 11,
-                  letterSpacing: "0.04em",
-                  outline: "none",
-                  boxSizing: "border-box",
-                  marginBottom: T.s3,
-                }}
-                onFocus={e => { e.currentTarget.style.borderColor = GREEN; }}
-                onBlur={e => { e.currentTarget.style.borderColor = treeSearch ? GREEN_DIM : GREEN_FAINT; }}
-              />
-              <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-                {Object.entries(GENRE_TREE || {}).map(([genre, subs]) => {
-                  const q = treeSearch.trim().toLowerCase();
-                  // Filter logic: if there's a search query, show any
-                  // genre whose name matches OR whose subgenre names
-                  // match OR whose microgenre names match. When the
-                  // query is empty, show everything with default
-                  // expansion state.
-                  const genreMatch = !q || genre.toLowerCase().includes(q);
-                  const subEntries = Object.entries(subs || {});
-                  const filteredSubs = q
-                    ? subEntries.filter(([sub, micros]) =>
-                        sub.toLowerCase().includes(q)
-                        || genreMatch
-                        || (Array.isArray(micros) && micros.some(m => m.toLowerCase().includes(q)))
-                      )
-                    : subEntries;
-                  if (q && !genreMatch && filteredSubs.length === 0) return null;
-                  // When searching, force-expand matches so results are
-                  // actually visible without manual click.
-                  const isExpanded = q ? true : expandedGenres.has(genre);
-                  const isSelectedGenre = selectedTreeNode?.genre === genre
-                    && !selectedTreeNode?.subgenre;
-                  const genreOverlay = getOverlayFor(makeNodeKey(genre));
-                  return (
-                    <div key={genre}>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          toggleGenre(genre);
-                          setSelectedTreeNode({ genre });
-                        }}
-                        style={{
-                          display: "flex", alignItems: "center", gap: 6,
-                          width: "100%",
-                          padding: "4px 6px",
-                          background: isSelectedGenre ? `${GREEN}18` : "transparent",
-                          border: "none",
-                          borderLeft: `2px solid ${isSelectedGenre ? GREEN : "transparent"}`,
-                          borderRadius: 0,
-                          color: GREEN,
-                          fontFamily: T.font_mono, fontSize: 11, fontWeight: 700,
-                          letterSpacing: "0.06em",
-                          textAlign: "left",
-                          cursor: "pointer",
-                          transition: `all ${T.dur_fast} ${T.ease}`,
-                          opacity: genreOverlay.archived ? 0.4 : 1,
-                          textDecoration: genreOverlay.archived ? "line-through" : "none",
-                        }}
-                        onMouseEnter={e => { e.currentTarget.style.background = `${GREEN}0d`; }}
-                        onMouseLeave={e => { e.currentTarget.style.background = isSelectedGenre ? `${GREEN}18` : "transparent"; }}>
-                        <span style={{ width: 10, opacity: 0.5 }}>
-                          {isExpanded ? "▾" : "▸"}
-                        </span>
-                        <span style={{ flex: 1, textTransform: "uppercase" }}>{genre}</span>
-                        {genreOverlay.bookmarked && (
-                          <span title="bookmarked" style={{ fontSize: 10, color: "#FFD700", textShadow: "0 0 4px rgba(255,215,0,0.6)" }}>★</span>
-                        )}
-                        {genreOverlay.note && genreOverlay.note.trim() && (
-                          <span title="annotated" style={{ fontSize: 10, color: GREEN }}>●</span>
-                        )}
-                        <span style={{
-                          fontSize: 9, color: "rgba(0,255,65,0.4)",
-                          fontWeight: 500,
-                        }}>{subEntries.length}</span>
-                      </button>
-                      {isExpanded && filteredSubs.map(([sub, micros]) => {
-                        const subKey = `${genre}::${sub}`;
-                        const microMatches = q
-                          ? (micros || []).filter(m => m.toLowerCase().includes(q))
-                          : (micros || []);
-                        const subExpanded = q
-                          ? microMatches.length > 0 || sub.toLowerCase().includes(q)
-                          : expandedSubgenres.has(subKey);
-                        const isSelectedSub = selectedTreeNode?.genre === genre
-                          && selectedTreeNode?.subgenre === sub
-                          && !selectedTreeNode?.microgenre;
-                        const microList = subExpanded ? microMatches : [];
-                        const subOverlay = getOverlayFor(subKey);
-                        return (
-                          <div key={sub}>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                toggleSubgenre(subKey);
-                                setSelectedTreeNode({ genre, subgenre: sub });
-                              }}
-                              style={{
-                                display: "flex", alignItems: "center", gap: 6,
-                                width: "100%",
-                                padding: "3px 6px 3px 20px",
-                                background: isSelectedSub ? `${GREEN}14` : "transparent",
-                                border: "none",
-                                borderLeft: `2px solid ${isSelectedSub ? GREEN_DIM : "transparent"}`,
-                                color: GREEN_DIM,
-                                fontFamily: T.font_mono, fontSize: 10, fontWeight: 500,
-                                letterSpacing: "0.04em",
-                                textAlign: "left",
-                                cursor: "pointer",
-                                transition: `all ${T.dur_fast} ${T.ease}`,
-                                opacity: subOverlay.archived ? 0.4 : 1,
-                                textDecoration: subOverlay.archived ? "line-through" : "none",
-                              }}
-                              onMouseEnter={e => { e.currentTarget.style.color = GREEN; }}
-                              onMouseLeave={e => { e.currentTarget.style.color = isSelectedSub ? GREEN : GREEN_DIM; }}>
-                              <span style={{ width: 8, opacity: 0.4 }}>
-                                {subExpanded ? "–" : "+"}
-                              </span>
-                              <span style={{ flex: 1 }}>{sub}</span>
-                              {subOverlay.bookmarked && (
-                                <span title="bookmarked" style={{ fontSize: 9, color: "#FFD700", textShadow: "0 0 4px rgba(255,215,0,0.5)" }}>★</span>
-                              )}
-                              {subOverlay.note && subOverlay.note.trim() && (
-                                <span title="annotated" style={{ fontSize: 9, color: GREEN }}>●</span>
-                              )}
-                              <span style={{
-                                fontSize: 8, color: "rgba(0,255,65,0.32)",
-                              }}>{(micros || []).length}</span>
-                            </button>
-                            {microList.map(m => {
-                              const isSelectedMicro = selectedTreeNode?.genre === genre
-                                && selectedTreeNode?.subgenre === sub
-                                && selectedTreeNode?.microgenre === m;
-                              const microKey = makeNodeKey(genre, sub, m);
-                              const microOverlay = getOverlayFor(microKey);
-                              return (
-                                <button
-                                  key={m}
-                                  type="button"
-                                  onClick={() => setSelectedTreeNode({ genre, subgenre: sub, microgenre: m })}
-                                  style={{
-                                    display: "flex", alignItems: "center", gap: 6,
-                                    width: "100%",
-                                    padding: "2px 6px 2px 36px",
-                                    background: isSelectedMicro ? `${GREEN}10` : "transparent",
-                                    border: "none",
-                                    borderLeft: `2px solid ${isSelectedMicro ? GREEN_FAINT : "transparent"}`,
-                                    color: isSelectedMicro ? GREEN : "rgba(0,255,65,0.55)",
-                                    fontFamily: T.font_mono, fontSize: 10,
-                                    letterSpacing: "0.03em",
-                                    textAlign: "left",
-                                    cursor: "pointer",
-                                    transition: `all ${T.dur_fast} ${T.ease}`,
-                                    fontStyle: "italic",
-                                    opacity: microOverlay.archived ? 0.4 : 1,
-                                    textDecoration: microOverlay.archived ? "line-through" : "none",
-                                  }}
-                                  onMouseEnter={e => { e.currentTarget.style.color = GREEN; }}
-                                  onMouseLeave={e => { e.currentTarget.style.color = isSelectedMicro ? GREEN : "rgba(0,255,65,0.55)"; }}>
-                                  <span style={{ flex: 1 }}>· {m}</span>
-                                  {microOverlay.bookmarked && (
-                                    <span title="bookmarked" style={{ fontSize: 9, color: "#FFD700", textShadow: "0 0 4px rgba(255,215,0,0.5)" }}>★</span>
-                                  )}
-                                  {microOverlay.note && microOverlay.note.trim() && (
-                                    <span title="annotated" style={{ fontSize: 9, color: GREEN }}>●</span>
-                                  )}
-                                </button>
-                              );
-                            })}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  );
-                })}
-              </div>
-              <div style={{
-                marginTop: T.s4,
-                paddingTop: T.s3,
-                borderTop: `1px dashed ${GREEN_FAINT}`,
-                fontFamily: T.font_mono, fontSize: 9,
-                color: "rgba(0,255,65,0.35)",
-                letterSpacing: "0.08em", lineHeight: 1.5,
-              }}>
-                [ ★ bookmarked · ● annotated<br />
-                &nbsp;&nbsp;select a node to edit ]
-              </div>
-            </aside>
-          )}
-
-          {/* ── CENTER PANE — WORKBENCH ──────────────────────────────
-              Tabbed container holding the existing workflow sections.
-              Tab bar up top; section JSX below is unchanged from v1 —
-              just hidden/shown by active-tab. On mobile, the tree
-              drawer trigger button sits to the left of the tab bar. */}
-          <div style={{ minWidth: 0 }}>
-            {isMobile && (
-              <button
-                type="button"
-                onClick={() => setTreeDrawerOpen(o => !o)}
-                style={{
-                  display: "inline-flex", alignItems: "center", gap: 6,
-                  padding: "6px 12px",
-                  background: treeDrawerOpen ? `${GREEN}14` : "transparent",
-                  border: `1px solid ${treeDrawerOpen ? GREEN_DIM : GREEN_FAINT}`,
-                  borderRadius: T.r_sm,
-                  color: GREEN,
-                  fontFamily: T.font_mono, fontSize: 10, fontWeight: 700,
-                  letterSpacing: "0.12em",
-                  cursor: "pointer",
-                  marginBottom: T.s3,
-                }}>
-                ◇ GENRE_TREE
-              </button>
-            )}
-            {/* Tab bar — two tabs because two distinct workflows. */}
-            <div role="tablist" style={{
-              display: "flex",
-              gap: 2,
-              marginBottom: T.s4,
-              borderBottom: `1px solid ${GREEN_FAINT}`,
-              overflowX: "auto",
-            }}>
-              {[
-                { id: "packs", label: "PACKS", hint: `${allPacksFlat.length} curated` },
-                { id: "poppy", label: "POPPY", hint: "pop maximizers" },
-              ].map(tab => {
-                const active = activeWorkbenchTab === tab.id;
-                return (
-                  <button
-                    key={tab.id}
-                    type="button"
-                    role="tab"
-                    aria-selected={active}
-                    onClick={() => { playSwitchSound(); setActiveWorkbenchTab(tab.id); }}
-                    style={{
-                      display: "inline-flex", alignItems: "center", gap: 8,
-                      padding: `${T.s2}px ${T.s4}px`,
-                      background: active ? GREEN_BG : "transparent",
-                      border: "none",
-                      borderBottom: `2px solid ${active ? GREEN : "transparent"}`,
-                      color: active ? GREEN : GREEN_DIM,
-                      fontFamily: T.font_mono, fontSize: 11, fontWeight: 700,
-                      letterSpacing: "0.14em",
-                      cursor: "pointer",
-                      whiteSpace: "nowrap",
-                      transition: `all ${T.dur_fast} ${T.ease}`,
-                      textShadow: active ? `0 0 8px ${GREEN_DIM}` : "none",
-                    }}
-                    onMouseEnter={e => { if (!active) e.currentTarget.style.color = GREEN; }}
-                    onMouseLeave={e => { if (!active) e.currentTarget.style.color = GREEN_DIM; }}>
-                    <span>{tab.label}</span>
-                    <span style={{
-                      fontSize: 8, color: "rgba(0,255,65,0.4)",
-                      fontWeight: 500, letterSpacing: "0.06em",
-                    }}>· {tab.hint}</span>
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Mobile tree drawer — full-width collapsible above tabs */}
-            {isMobile && treeDrawerOpen && (
-              <aside style={{
-                background: "#080808",
-                border: `1px solid ${GREEN_FAINT}`,
-                borderRadius: T.r_md,
-                padding: `${T.s3}px ${T.s3}px ${T.s4}px`,
-                marginBottom: T.s4,
-                maxHeight: "60vh",
-                overflowY: "auto",
-              }}>
-                <div style={{
-                  fontFamily: T.font_mono, fontSize: 10, fontWeight: 800,
-                  color: GREEN, letterSpacing: "0.16em",
-                  marginBottom: T.s2,
-                }}>◇ GENRE_TREE · {Object.keys(GENRE_TREE || {}).length} genres</div>
-                <input
-                  type="text"
-                  value={treeSearch}
-                  onChange={e => setTreeSearch(e.target.value)}
-                  placeholder="&gt; search_tree..."
-                  style={{
-                    width: "100%",
-                    padding: "6px 10px",
-                    background: "#000",
-                    border: `1px solid ${treeSearch ? GREEN_DIM : GREEN_FAINT}`,
-                    borderRadius: T.r_sm,
-                    color: GREEN,
-                    fontFamily: T.font_mono, fontSize: 16,
-                    letterSpacing: "0.04em",
-                    outline: "none",
-                    boxSizing: "border-box",
-                    marginBottom: T.s3,
-                  }}
-                />
-                <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-                  {Object.entries(GENRE_TREE || {}).map(([genre, subs]) => {
-                    const isExpanded = expandedGenres.has(genre);
-                    return (
-                      <div key={genre}>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            toggleGenre(genre);
-                            setSelectedTreeNode({ genre });
-                          }}
-                          style={{
-                            display: "flex", alignItems: "center", gap: 6,
-                            width: "100%", padding: "6px 8px",
-                            background: "transparent", border: "none",
-                            color: GREEN,
-                            fontFamily: T.font_mono, fontSize: 12, fontWeight: 700,
-                            textAlign: "left", cursor: "pointer",
-                          }}>
-                          <span>{isExpanded ? "▾" : "▸"}</span>
-                          <span style={{ flex: 1, textTransform: "uppercase" }}>{genre}</span>
-                          <span style={{ fontSize: 10, color: GREEN_DIM }}>{Object.keys(subs || {}).length}</span>
-                        </button>
-                        {isExpanded && Object.keys(subs || {}).map(sub => (
-                          <button
-                            key={sub}
-                            type="button"
-                            onClick={() => setSelectedTreeNode({ genre, subgenre: sub })}
-                            style={{
-                              display: "block", width: "100%",
-                              padding: "4px 8px 4px 24px",
-                              background: "transparent", border: "none",
-                              color: GREEN_DIM,
-                              fontFamily: T.font_mono, fontSize: 11,
-                              textAlign: "left", cursor: "pointer",
-                            }}>
-                            — {sub}
-                          </button>
-                        ))}
-                      </div>
-                    );
-                  })}
-                </div>
-              </aside>
-            )}
-
-            {/* ── TAB PANEL: POPPY ─────────────────────────────── */}
-            <div
-              role="tabpanel"
-              hidden={activeWorkbenchTab !== "poppy"}
-              style={{ display: activeWorkbenchTab === "poppy" ? "block" : "none" }}>
         {/* ── SECTION — SUNO MASTER CONSOLE ───────────────────────
             Purpose-built workstation for producers turning Suno AI
             output into finished tracks for Israeli artists. Not a
@@ -31008,13 +29683,7 @@ function BubbleToolsPage({ onNavigate }) {
             OPENED
           </span>
         </button>
-            </div>{/* end POPPY tabpanel */}
 
-            {/* ── TAB PANEL: PACKS ─────────────────────────────── */}
-            <div
-              role="tabpanel"
-              hidden={activeWorkbenchTab !== "packs"}
-              style={{ display: activeWorkbenchTab === "packs" ? "block" : "none" }}>
         {/* ── SECTION HEADER — MIMIC PACK BROWSER ─────────────────── */}
         <div style={{
           display: "flex", alignItems: "center", gap: T.s2,
@@ -31107,6 +29776,36 @@ function BubbleToolsPage({ onNavigate }) {
             ◆ SHUFFLE_VIBE
           </button>
           <span style={{ flex: 1 }} />
+          {mostUsedVibe && (() => {
+            const meta = VIBE_META.find(v => v.id === mostUsedVibe);
+            if (!meta) return null;
+            const total = vibeUsageCounts[mostUsedVibe] || 0;
+            return (
+              <span
+                title={`Most-used vibe this session: ${meta.label} (${total}×)`}
+                style={{
+                  display: "inline-flex", alignItems: "center", gap: 5,
+                  padding: "4px 9px",
+                  background: GREEN_BG,
+                  border: `1px dashed ${GREEN_DIM}`,
+                  borderRadius: T.r_sm,
+                  color: GREEN,
+                  fontFamily: T.font_mono, fontSize: 9, fontWeight: 700,
+                  letterSpacing: "0.1em",
+                }}
+              >
+                <span>{meta.icon}</span>
+                <span style={{ opacity: 0.7 }}>MOST_USED ·</span>
+                <span>{meta.label.toUpperCase()}</span>
+                <span style={{
+                  fontSize: 8,
+                  padding: "1px 4px",
+                  background: "rgba(0, 255, 65, 0.12)",
+                  borderRadius: 2,
+                }}>{total}×</span>
+              </span>
+            );
+          })()}
         </div>
 
         {/* ── BLEND ROW ───────────────────────────────────────────── */}
@@ -31522,323 +30221,6 @@ function BubbleToolsPage({ onNavigate }) {
             </div>
           </>
         )}
-            </div>{/* end PACKS tabpanel */}
-          </div>{/* end CENTER workbench pane */}
-
-          {/* ── RIGHT PANE — INSPECTOR ──────────────────────────────
-              Shows the selected tree node's detail. Turn A is read-
-              only + minimal: node path (genre > sub > micro), child
-              counts, and a hint that annotation/bookmark arrives in
-              Turn B. When nothing is selected, shows a hint to pick
-              a node. Sticky-top so the pane stays visible while the
-              center scrolls. */}
-          {!isMobile && (
-            <aside style={{
-              background: "#080808",
-              border: `1px solid ${GREEN_FAINT}`,
-              borderRadius: T.r_md,
-              padding: `${T.s3}px ${T.s3}px ${T.s4}px`,
-              maxHeight: "calc(100vh - 140px)",
-              overflowY: "auto",
-              position: "sticky",
-              top: T.s4,
-            }}>
-              <div style={{
-                fontFamily: T.font_mono, fontSize: 10, fontWeight: 800,
-                color: GREEN, letterSpacing: "0.16em",
-                marginBottom: T.s3, paddingBottom: T.s2,
-                borderBottom: `1px dashed ${GREEN_FAINT}`,
-              }}>◉ INSPECTOR</div>
-              {!selectedTreeNode && (
-                <div>
-                  {bookmarkList.length > 0 ? (
-                    <>
-                      <div style={{
-                        fontFamily: T.font_mono, fontSize: 9,
-                        color: "rgba(0,255,65,0.5)",
-                        letterSpacing: "0.12em", marginBottom: T.s2,
-                      }}>★ BOOKMARKS ({bookmarkList.length})</div>
-                      <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-                        {bookmarkList.slice(0, 20).map(bm => {
-                          const parts = bm.key.split("::");
-                          const [g, s, m] = parts;
-                          return (
-                            <button
-                              key={bm.key}
-                              type="button"
-                              onClick={() => setSelectedTreeNode({
-                                genre: g,
-                                subgenre: s || undefined,
-                                microgenre: m || undefined,
-                              })}
-                              style={{
-                                display: "flex", alignItems: "center", gap: 6,
-                                width: "100%",
-                                padding: "3px 6px",
-                                background: "transparent",
-                                border: "none",
-                                color: GREEN_DIM,
-                                fontFamily: T.font_mono, fontSize: 10,
-                                letterSpacing: "0.04em",
-                                textAlign: "left",
-                                cursor: "pointer",
-                                transition: `color ${T.dur_fast} ${T.ease}`,
-                              }}
-                              onMouseEnter={e => { e.currentTarget.style.color = GREEN; }}
-                              onMouseLeave={e => { e.currentTarget.style.color = GREEN_DIM; }}>
-                              <span style={{ color: "#FFD700", fontSize: 9 }}>★</span>
-                              <span style={{
-                                flex: 1,
-                                overflow: "hidden",
-                                textOverflow: "ellipsis",
-                                whiteSpace: "nowrap",
-                              }}>{m || s || g}</span>
-                            </button>
-                          );
-                        })}
-                        {bookmarkList.length > 20 && (
-                          <div style={{
-                            fontSize: 9, color: "rgba(0,255,65,0.3)",
-                            padding: "3px 6px",
-                          }}>+ {bookmarkList.length - 20} more</div>
-                        )}
-                      </div>
-                      <div style={{
-                        marginTop: T.s3,
-                        paddingTop: T.s2,
-                        borderTop: `1px dashed ${GREEN_FAINT}`,
-                        fontFamily: T.font_mono, fontSize: 9,
-                        color: "rgba(0,255,65,0.3)",
-                        letterSpacing: "0.08em", lineHeight: 1.5,
-                      }}>
-                        [ click a tree node<br />
-                        &nbsp;&nbsp;to annotate ]
-                      </div>
-                    </>
-                  ) : (
-                    <div style={{
-                      fontFamily: T.font_mono, fontSize: 10,
-                      color: "rgba(0,255,65,0.4)",
-                      letterSpacing: "0.04em", lineHeight: 1.65,
-                    }}>
-                      [ no node selected<br />
-                      &nbsp;&nbsp;click any genre, subgenre,<br />
-                      &nbsp;&nbsp;or microgenre in the tree<br />
-                      &nbsp;&nbsp;to inspect + annotate ]
-                    </div>
-                  )}
-                </div>
-              )}
-              {selectedTreeNode && (() => {
-                const { genre, subgenre, microgenre } = selectedTreeNode;
-                const subs = GENRE_TREE?.[genre] || {};
-                const micros = subgenre ? (subs[subgenre] || []) : null;
-                const nodeKey = makeNodeKeyFromSel(selectedTreeNode);
-                const overlay = getOverlayFor(nodeKey);
-                const noteValue = overlay.note || "";
-                return (
-                  <div style={{ display: "flex", flexDirection: "column", gap: T.s3 }}>
-                    {/* Breadcrumb path */}
-                    <div style={{
-                      fontFamily: T.font_mono, fontSize: 10,
-                      color: GREEN_DIM, letterSpacing: "0.05em",
-                      lineHeight: 1.55, wordBreak: "break-word",
-                    }}>
-                      <span style={{ color: GREEN, fontWeight: 700, textTransform: "uppercase" }}>{genre}</span>
-                      {subgenre && (<> <span style={{ opacity: 0.5 }}>›</span> <span>{subgenre}</span></>)}
-                      {microgenre && (<> <span style={{ opacity: 0.5 }}>›</span> <em style={{ color: "rgba(0,255,65,0.75)" }}>{microgenre}</em></>)}
-                    </div>
-
-                    {/* ── ACTION ROW — four icon buttons ───────────── */}
-                    <div style={{
-                      display: "grid",
-                      gridTemplateColumns: "repeat(4, 1fr)",
-                      gap: 4,
-                    }}>
-                      {/* Bookmark */}
-                      <button
-                        type="button"
-                        onClick={() => { playSwitchSound(); toggleBookmark(nodeKey); }}
-                        title={overlay.bookmarked ? "Remove bookmark" : "Bookmark"}
-                        style={{
-                          padding: "8px 4px",
-                          background: overlay.bookmarked ? "rgba(255,215,0,0.1)" : "transparent",
-                          border: `1px solid ${overlay.bookmarked ? "rgba(255,215,0,0.55)" : GREEN_FAINT}`,
-                          borderRadius: T.r_sm,
-                          color: overlay.bookmarked ? "#FFD700" : GREEN_DIM,
-                          fontFamily: T.font_mono, fontSize: 14, fontWeight: 700,
-                          cursor: "pointer",
-                          transition: `all ${T.dur_fast} ${T.ease}`,
-                          textShadow: overlay.bookmarked ? "0 0 6px rgba(255,215,0,0.6)" : "none",
-                        }}
-                        onMouseEnter={e => { if (!overlay.bookmarked) e.currentTarget.style.borderColor = GREEN_DIM; }}
-                        onMouseLeave={e => { if (!overlay.bookmarked) e.currentTarget.style.borderColor = GREEN_FAINT; }}>
-                        ★
-                      </button>
-                      {/* Archive */}
-                      <button
-                        type="button"
-                        onClick={() => { playSwitchSound(); toggleArchived(nodeKey); }}
-                        title={overlay.archived ? "Un-archive" : "Archive (admin-visible for now)"}
-                        style={{
-                          padding: "8px 4px",
-                          background: overlay.archived ? "rgba(239,68,68,0.1)" : "transparent",
-                          border: `1px solid ${overlay.archived ? "rgba(239,68,68,0.55)" : GREEN_FAINT}`,
-                          borderRadius: T.r_sm,
-                          color: overlay.archived ? "#EF4444" : GREEN_DIM,
-                          fontFamily: T.font_mono, fontSize: 12, fontWeight: 700,
-                          cursor: "pointer",
-                          transition: `all ${T.dur_fast} ${T.ease}`,
-                        }}
-                        onMouseEnter={e => { if (!overlay.archived) e.currentTarget.style.borderColor = GREEN_DIM; }}
-                        onMouseLeave={e => { if (!overlay.archived) e.currentTarget.style.borderColor = GREEN_FAINT; }}>
-                        ⊘
-                      </button>
-                      {/* Annotate (focuses textarea below) */}
-                      <button
-                        type="button"
-                        onClick={() => {
-                          playSwitchSound();
-                          const el = document.getElementById(`inspector-note-${nodeKey}`);
-                          if (el) el.focus();
-                        }}
-                        title="Annotate"
-                        style={{
-                          padding: "8px 4px",
-                          background: noteValue.trim() ? `${GREEN}10` : "transparent",
-                          border: `1px solid ${noteValue.trim() ? GREEN_DIM : GREEN_FAINT}`,
-                          borderRadius: T.r_sm,
-                          color: noteValue.trim() ? GREEN : GREEN_DIM,
-                          fontFamily: T.font_mono, fontSize: 12, fontWeight: 700,
-                          cursor: "pointer",
-                          transition: `all ${T.dur_fast} ${T.ease}`,
-                        }}>
-                        ✎
-                      </button>
-                      {/* Seed prompt → Engine */}
-                      <button
-                        type="button"
-                        onClick={() => { playSwitchSound(); seedPromptFromNode(genre, subgenre, microgenre); }}
-                        title="Seed this node into Engine"
-                        style={{
-                          padding: "8px 4px",
-                          background: "transparent",
-                          border: `1px solid ${GREEN_FAINT}`,
-                          borderRadius: T.r_sm,
-                          color: GREEN_DIM,
-                          fontFamily: T.font_mono, fontSize: 12, fontWeight: 700,
-                          cursor: "pointer",
-                          transition: `all ${T.dur_fast} ${T.ease}`,
-                        }}
-                        onMouseEnter={e => { e.currentTarget.style.color = GREEN; e.currentTarget.style.borderColor = GREEN_DIM; }}
-                        onMouseLeave={e => { e.currentTarget.style.color = GREEN_DIM; e.currentTarget.style.borderColor = GREEN_FAINT; }}>
-                        ↗
-                      </button>
-                    </div>
-
-                    {/* ── ANNOTATION TEXTAREA ───────────────────────── */}
-                    <div>
-                      <div style={{
-                        fontSize: 9, color: "rgba(0,255,65,0.5)",
-                        letterSpacing: "0.12em", marginBottom: 4,
-                        fontFamily: T.font_mono,
-                      }}>NOTE</div>
-                      <textarea
-                        id={`inspector-note-${nodeKey}`}
-                        key={nodeKey}
-                        defaultValue={noteValue}
-                        onBlur={e => {
-                          const next = e.target.value;
-                          if (next !== noteValue) setNoteFor(nodeKey, next);
-                        }}
-                        placeholder="> your notes on this node..."
-                        rows={4}
-                        style={{
-                          width: "100%",
-                          padding: "6px 8px",
-                          background: "#000",
-                          border: `1px solid ${noteValue.trim() ? GREEN_DIM : GREEN_FAINT}`,
-                          borderRadius: T.r_sm,
-                          color: GREEN,
-                          fontFamily: T.font_mono, fontSize: 11,
-                          letterSpacing: "0.03em", lineHeight: 1.55,
-                          outline: "none",
-                          boxSizing: "border-box",
-                          resize: "vertical",
-                          minHeight: 72,
-                        }}
-                        onFocus={e => { e.currentTarget.style.borderColor = GREEN; }}
-                        onMouseLeaveCapture={e => {
-                          // keep border reflecting saved-state when not focused
-                          if (document.activeElement !== e.currentTarget) {
-                            e.currentTarget.style.borderColor = noteValue.trim() ? GREEN_DIM : GREEN_FAINT;
-                          }
-                        }}
-                      />
-                      <div style={{
-                        fontSize: 9, color: "rgba(0,255,65,0.32)",
-                        letterSpacing: "0.06em", marginTop: 4,
-                        fontFamily: T.font_mono,
-                      }}>saves on blur · persists locally</div>
-                    </div>
-
-                    {/* ── ARCHIVE STATUS HINT ───────────────────────── */}
-                    {overlay.archived && (
-                      <div style={{
-                        padding: "6px 8px",
-                        background: "rgba(239,68,68,0.08)",
-                        border: "1px solid rgba(239,68,68,0.3)",
-                        borderRadius: T.r_sm,
-                        fontFamily: T.font_mono, fontSize: 9,
-                        color: "rgba(239,68,68,0.9)",
-                        letterSpacing: "0.06em", lineHeight: 1.5,
-                      }}>
-                        ⊘ ARCHIVED · admin-visible only<br />
-                        consumer-engine filter not yet wired
-                      </div>
-                    )}
-
-                    {/* ── DEPTH-SPECIFIC TREE SUMMARY ───────────────── */}
-                    {!subgenre && (
-                      <div style={{
-                        fontFamily: T.font_mono, fontSize: 10,
-                        color: GREEN_DIM, lineHeight: 1.6,
-                      }}>
-                        <div style={{
-                          fontSize: 9, color: "rgba(0,255,65,0.5)",
-                          letterSpacing: "0.12em", marginBottom: 4,
-                        }}>SUBGENRES ({Object.keys(subs).length})</div>
-                        {Object.keys(subs).slice(0, 12).map(s => (
-                          <div key={s} style={{ padding: "1px 0" }}>· {s}</div>
-                        ))}
-                        {Object.keys(subs).length > 12 && (
-                          <div style={{ opacity: 0.5, marginTop: 4 }}>
-                            + {Object.keys(subs).length - 12} more
-                          </div>
-                        )}
-                      </div>
-                    )}
-                    {subgenre && !microgenre && micros && (
-                      <div style={{
-                        fontFamily: T.font_mono, fontSize: 10,
-                        color: GREEN_DIM, lineHeight: 1.6,
-                      }}>
-                        <div style={{
-                          fontSize: 9, color: "rgba(0,255,65,0.5)",
-                          letterSpacing: "0.12em", marginBottom: 4,
-                        }}>MICROGENRES ({micros.length})</div>
-                        {micros.map(m => (
-                          <div key={m} style={{ padding: "1px 0", fontStyle: "italic" }}>· {m}</div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                );
-              })()}
-            </aside>
-          )}
-
-        </div>{/* end three-pane grid */}
 
         {/* ── FOOTER — exit prompt ───────────────────────────────── */}
         <div style={{
