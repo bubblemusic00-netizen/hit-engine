@@ -9199,6 +9199,18 @@ function ensureBannerFonts() {
 
 // Copy map: tailor the pitch per feature so it feels specific, not generic.
 const SALES_COPY = {
+  sectionSuggest: {
+    tier: "vip",
+    headline: "Smart section complements",
+    subline: "Tap ✨ SUGGEST on any picked element — mood, groove, texture, harmonic, mix, vocalist, energy, or lyrical vibe — and VIP analyzes your whole prompt to surface matching picks for every other empty section. Now with STRONG/GOOD/OK confidence tiers showing how many of your choices agree.",
+    bullet: [
+      "Weighted pool engine — multi-source agreements bubble up as STRONG fits",
+      "Reroll walks the ranking to next-best, never random jitter",
+      "Works from any filled section — mood-first, groove-first, any direction",
+      "Plus: per-instrument suggest, Trend Fuel, shuffle deck, all VIP tools",
+    ],
+    cta: "Upgrade to VIP",
+  },
   instrumentSuggest: {
     tier: "vip",
     headline: "Per-instrument AI complements",
@@ -14994,6 +15006,14 @@ function EngineWorkspace({ onNavigate, variant = "default" }) {
   // each contributing entry and pushes into the matching pool. This lets data
   // fill in incrementally without requiring code changes.
   //
+  // TURN B UPGRADE: pools are now weighted Maps instead of flat arrays.
+  // A value that appears in 3 different complement entries gets weight 3,
+  // while a value from 1 entry gets weight 1. This makes the suggestion
+  // engine inherently smarter — values that many of the user's picks
+  // AGREE ON bubble up as STRONG fits, while lucky-dip single-mentions
+  // are marked OK. Math preserves the old pool behavior (pickRandom still
+  // works) while adding confidence signal for UI.
+  //
   // Contribution layers:
   //   (1) SUGGESTION_MAP[instrument] for every selected instrument
   //   (2) Direct complement maps keyed by the user's current picks:
@@ -15003,17 +15023,26 @@ function EngineWorkspace({ onNavigate, variant = "default" }) {
   //       borrow all their OTHER-section options into the pools
   const POOL_FIELDS = ["mood","groove","lyricalVibe","energy","vocalist","harmonic","texture","mix"];
   const buildSuggestionPools = () => {
+    // pools[field] is now { value: weight } instead of flat array. Weight
+    // increments for each source that contributes the same value. This
+    // gives us "how many of your choices agree this is a good pairing?"
+    // for free — the answer is the weight.
     const pools = {};
-    POOL_FIELDS.forEach(f => { pools[f] = []; });
+    POOL_FIELDS.forEach(f => { pools[f] = {}; });
 
     // Generic helper: merge all fields from an entry into the pools,
     // skipping a source field (so we don't push a section's own value
     // into its own pool — that would suggest something the user just picked).
+    // Each value in the entry's arrays adds +1 to its weight.
     const mergeEntry = (entry, skipField) => {
       if (!entry) return;
       POOL_FIELDS.forEach(f => {
         if (f === skipField) return;
-        if (entry[f] && Array.isArray(entry[f])) pools[f].push(...entry[f]);
+        if (entry[f] && Array.isArray(entry[f])) {
+          entry[f].forEach(v => {
+            pools[f][v] = (pools[f][v] || 0) + 1;
+          });
+        }
       });
     };
 
@@ -15052,11 +15081,40 @@ function EngineWorkspace({ onNavigate, variant = "default" }) {
     return pools;
   };
 
-  const pickRandom = (arr, exclude) => {
-    if (!arr || arr.length === 0) return null;
-    const filtered = exclude ? arr.filter(v => v !== exclude) : arr;
-    const pool = filtered.length > 0 ? filtered : arr;
-    return pool[Math.floor(Math.random() * pool.length)];
+  // Pick highest-weighted value. Ties break by first alphabetical (stable
+  // so the same input always gives the same top pick — accepted suggestions
+  // feel predictable, not random). When exclude is set we pretend that
+  // entry doesn't exist so reroll can walk down the ranking.
+  const pickWeighted = (pool, exclude) => {
+    if (!pool || typeof pool !== "object") return null;
+    const entries = Object.entries(pool).filter(([v]) => v !== exclude);
+    if (entries.length === 0) return null;
+    // Sort by weight desc, value asc for tiebreak stability
+    entries.sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+    return entries[0][0];
+  };
+
+  // Backward-compat wrapper so any remaining callers that passed flat
+  // arrays still work. Accepts either shape.
+  const pickRandom = (arrOrMap, exclude) => {
+    if (!arrOrMap) return null;
+    if (Array.isArray(arrOrMap)) {
+      const filtered = exclude ? arrOrMap.filter(v => v !== exclude) : arrOrMap;
+      const pool = filtered.length > 0 ? filtered : arrOrMap;
+      return pool.length === 0 ? null : pool[Math.floor(Math.random() * pool.length)];
+    }
+    // Object-shape weighted pool — route to pickWeighted
+    return pickWeighted(arrOrMap, exclude);
+  };
+
+  // Bucket a weight into a confidence tier. Shown in UI as a small badge
+  // so users understand WHY a suggestion is being made: STRONG means
+  // multiple of your picks pointed here, OK means one source suggested it.
+  const confidenceFor = (weight) => {
+    if (!weight || weight < 1) return null;
+    if (weight >= 3) return "STRONG";
+    if (weight >= 2) return "GOOD";
+    return "OK";
   };
 
   // Returns whether a section currently has a user pick (accounts for the
@@ -15085,16 +15143,33 @@ function EngineWorkspace({ onNavigate, variant = "default" }) {
     // Filter targets to only those with non-empty pools — a section with
     // zero curated data shouldn't appear as an empty card in the panel.
     const rawTargets = pickTargetSections(sourceId);
-    const targets = rawTargets.filter(id => pools[id] && pools[id].length > 0);
+    const targets = rawTargets.filter(id => {
+      const p = pools[id];
+      // Pool is now an object — count keys rather than array length
+      return p && Object.keys(p).length > 0;
+    });
     if (targets.length === 0) return { sourceId, noMappings: true };
     const values = {};
+    const confidences = {};
     targets.forEach(id => {
-      values[id] = pickRandom(pools[id]);
+      // Pick TOP-weighted suggestion rather than random. Top pick = the
+      // value that appears in the most contribution sources. Deterministic
+      // until reroll walks it down the ranking.
+      const top = pickWeighted(pools[id], null);
+      values[id] = top;
+      confidences[id] = top ? confidenceFor(pools[id][top]) : null;
     });
-    return { sourceId, targets, values };
+    return { sourceId, targets, values, confidences };
   };
 
   const handleSuggestClick = (sourceId) => {
+    // Tier gate — Free/Pro should never land here (button renders
+    // locked + click is redirected to sales modal), but belt-and-
+    // braces: if anything ever bypasses the UI, block at the handler.
+    if (!canUseSectionSuggest) {
+      setSalesModalFeature("sectionSuggest");
+      return;
+    }
     // Toggle: clicking button from same section closes panel
     if (suggestions && suggestions.sourceId === sourceId) {
       setSuggestions(null);
@@ -15105,17 +15180,29 @@ function EngineWorkspace({ onNavigate, variant = "default" }) {
   };
 
   const rerollSuggestion = (sectionId) => {
+    // Gate — shouldn't be reachable from Free/Pro (panel never renders)
+    // but block here so no UI path can leak the feature.
+    if (!canUseSectionSuggest) return;
     if (!suggestions || suggestions.noMappings) return;
     const pools = buildSuggestionPools();
     const currentValue = suggestions.values ? suggestions.values[sectionId] : null;
-    const next = pickRandom(pools[sectionId], currentValue);
+    // Reroll walks DOWN the weighted ranking: exclude the current top
+    // pick, recompute highest of the remainder. Gives user a predictable
+    // "next-best" rather than random jitter.
+    const next = pickWeighted(pools[sectionId], currentValue);
+    const nextConf = next ? confidenceFor(pools[sectionId][next]) : null;
     setSuggestions(prev => {
       if (!prev || !prev.values) return prev;
-      return { ...prev, values: { ...prev.values, [sectionId]: next } };
+      return {
+        ...prev,
+        values: { ...prev.values, [sectionId]: next },
+        confidences: { ...(prev.confidences || {}), [sectionId]: nextConf },
+      };
     });
   };
 
   const acceptSuggestion = (sectionId, value) => {
+    if (!canUseSectionSuggest) return;
     if (!value) return;
     set(sectionId, value);
     setSuggestions(prev => {
@@ -15125,6 +15212,7 @@ function EngineWorkspace({ onNavigate, variant = "default" }) {
   };
 
   const acceptAllSuggestions = () => {
+    if (!canUseSectionSuggest) return;
     if (!suggestions || !suggestions.values) return;
     Object.entries(suggestions.values).forEach(([id, val]) => {
       if (val) set(id, val);
@@ -15141,6 +15229,13 @@ function EngineWorkspace({ onNavigate, variant = "default" }) {
   // subgenre from INSTRUMENT_GENRES. Scoped to ONE instrument at a time.
   // State: { inst, values:{ sectionId:value } }
   const canUseInstrSuggest = tier === "vip" || tier === "admin";
+  // Turn C gate audit: section-level ✨ SUGGEST was leaking to Free + Pro
+  // — the button rendered and clicked without any tier check. Rule is
+  // suggestions are VIP+admin only (standing instruction: "free user has
+  // access only to what we permitted and not more not even a bit, same
+  // for pro and VIP"). Lock the whole surface behind this gate; Free/Pro
+  // see a 🔒 variant that opens the sales modal with sectionSuggest copy.
+  const canUseSectionSuggest = tier === "vip" || tier === "admin";
   const [instrSuggest, setInstrSuggest] = useState(null);
 
   const computeInstrSuggestions = (inst) => {
@@ -15800,6 +15895,40 @@ function EngineWorkspace({ onNavigate, variant = "default" }) {
   const renderSectionSuggestButton = (sectionId) => {
     if (!sectionHasSelection(sectionId)) return null;
     const isOpen = suggestions && suggestions.sourceId === sectionId;
+    // Free / Pro see the locked variant — dashed gray border, lock
+    // glyph, click opens SalesModal instead of running compute. Keeps
+    // the feature discoverable (users learn what VIP offers) while
+    // strictly respecting the tier gate.
+    if (!canUseSectionSuggest) {
+      return (
+        <button
+          type="button"
+          onClick={() => { playSwitchSound(); setSalesModalFeature("sectionSuggest"); }}
+          title="VIP feature — tap to see what it does"
+          style={{
+            padding: "4px 10px",
+            background: "transparent",
+            border: `1px dashed ${T.border}`,
+            borderRadius: T.r_md,
+            color: T.textMuted,
+            fontSize: T.fs_sm, fontFamily: T.font_mono,
+            fontWeight: 700, letterSpacing: "0.08em",
+            cursor: "pointer", height: 24,
+            display: "inline-flex", alignItems: "center", gap: 4,
+            transition: `all ${T.dur_fast} ${T.ease}`,
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.borderColor = V.neonGold + "66";
+            e.currentTarget.style.color = V.neonGold;
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.borderColor = T.border;
+            e.currentTarget.style.color = T.textMuted;
+          }}>
+          🔒 VIP SUGGEST
+        </button>
+      );
+    }
     return (
       <button
         type="button"
@@ -15900,6 +16029,20 @@ function EngineWorkspace({ onNavigate, variant = "default" }) {
         }}>
           {suggestions.targets.map(id => {
             const value = suggestions.values ? suggestions.values[id] : null;
+            // TURN B: confidence tag shown next to the section label.
+            // STRONG = 3+ sources agree, GOOD = 2, OK = 1. Null means
+            // the pool still produced something but we don't have a
+            // weight (e.g. after a reroll that walked the list past
+            // all weighted matches).
+            const conf = suggestions.confidences ? suggestions.confidences[id] : null;
+            const confColor = conf === "STRONG" ? V.neonGold
+                            : conf === "GOOD"   ? `${V.neonGold}B0`
+                            : conf === "OK"     ? T.textMuted
+                            : null;
+            const confBg = conf === "STRONG" ? `${V.neonGold}22`
+                         : conf === "GOOD"   ? `${V.neonGold}14`
+                         : conf === "OK"     ? `${T.textMuted}22`
+                         : null;
             const labelFor = {
               mood: "Mood", groove: "Groove", lyricalVibe: "Lyrical",
               energy: "Energy", vocalist: "Vocalist", harmonic: "Harmonic",
@@ -15922,9 +16065,28 @@ function EngineWorkspace({ onNavigate, variant = "default" }) {
                   gap: T.s1,
                 }}>
                   <div style={{
-                    fontSize: 9, fontFamily: T.font_mono, fontWeight: 700,
-                    color: T.textMuted, letterSpacing: "0.15em",
-                  }}>{labelFor[id].toUpperCase()}</div>
+                    display: "flex", alignItems: "center", gap: 6,
+                    minWidth: 0,
+                  }}>
+                    <div style={{
+                      fontSize: 9, fontFamily: T.font_mono, fontWeight: 700,
+                      color: T.textMuted, letterSpacing: "0.15em",
+                    }}>{labelFor[id].toUpperCase()}</div>
+                    {conf && value && (
+                      <span title={
+                        conf === "STRONG" ? "Multiple of your picks agree this is a strong fit"
+                        : conf === "GOOD" ? "Two of your picks suggest this pairing"
+                        : "One source suggests this"
+                      } style={{
+                        fontSize: 8, fontFamily: T.font_mono, fontWeight: 700,
+                        letterSpacing: "0.12em",
+                        color: confColor, background: confBg,
+                        padding: "1px 5px", borderRadius: 2,
+                        border: `1px solid ${confColor}44`,
+                        whiteSpace: "nowrap",
+                      }}>{conf}</span>
+                    )}
+                  </div>
                   {value && (
                     <button type="button"
                       onClick={() => { playSwitchSound(); rerollSuggestion(id); }}
@@ -27567,6 +27729,42 @@ function SunoMasterConsole() {
   const BLACK = "#050805";
   const BLACK_RAISED = "#0A1008";
 
+  // Turn 2 depth pass — recessed-panel style used to carve each group
+  // section into the console surface. Inset shadow simulates light
+  // sinking into a cut-out cavity, subtle hairline top-border catches
+  // highlight, tinted background reads as a separate material layer.
+  // Applied via spread (style={{...recessedPanel, ...custom}}) so each
+  // group can still add its own padding/gap without losing the depth.
+  const recessedPanel = {
+    position: "relative",
+    padding: 14,
+    borderRadius: 4,
+    background: "rgba(0, 20, 8, 0.35)",
+    border: `1px solid rgba(0, 255, 65, 0.08)`,
+    boxShadow: `
+      inset 0 1px 0 rgba(0, 255, 65, 0.06),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.4),
+      inset 0 0 24px -8px rgba(0, 0, 0, 0.5)
+    `,
+  };
+  // Recessed-panel legend label — small mono tag top-right of each
+  // panel, shows the panel's "channel name" like a real rack unit
+  // faceplate. Absolute-positioned so it overlaps the panel's top
+  // border, creating a chrome-engraved look.
+  const panelLegend = (text) => (
+    <span aria-hidden="true" style={{
+      position: "absolute",
+      top: -8, right: 12,
+      fontSize: 8, fontFamily: T.font_mono, fontWeight: 700,
+      letterSpacing: "0.22em",
+      color: GREEN_MUTE,
+      background: BLACK,
+      padding: "2px 6px",
+      border: `1px solid rgba(0, 255, 65, 0.08)`,
+      borderRadius: 2,
+    }}>{text}</span>
+  );
+
   // ── Artists: Israeli roster only ──
   const israeliArtists = useMemo(
     () => MIMIC_PACKS.filter(a => a.region === "israeli"),
@@ -27604,6 +27802,15 @@ function SunoMasterConsole() {
   // LyricalSwitch. When true, Suno prompt includes a "with vocals"
   // framing; when false, an "instrumental, no vocals" explicit flag.
   const [lyricsOn, setLyricsOn] = useState(true);
+  // Turn 2 feature set — matches the consumer Engine's final parity gap
+  // INSTRUMENTS: Set of selected instrument names across all categories.
+  // ARTICULATIONS: map of {instrument → Set of selected articulations}
+  // so multi-select per instrument stays stable when instruments get
+  // added/removed. LYRICS: freeform textarea content (admin gets it at
+  // full power; song mode only — instrumental mode auto-hides it).
+  const [selectedInstruments, setSelectedInstruments] = useState(() => new Set());
+  const [articulations, setArticulations] = useState(() => ({}));
+  const [lyrics, setLyrics] = useState("");
   const [copied, setCopied] = useState(false);
 
   const activeArtist = israeliArtists.find(a => a.artistId === artistId) || israeliArtists[0];
@@ -27634,6 +27841,13 @@ function SunoMasterConsole() {
     if (s.vocalist) setVocalist(s.vocalist);
     if (s.language) setLanguage(s.language);
     if (s.lyricalVibe) setLyricalVibe(s.lyricalVibe);
+    // Turn 2: instruments seed. Pack ships with specificInstruments
+    // array — pull into our Set representation. Articulations aren't
+    // seeded (they default empty and user picks per instrument).
+    if (Array.isArray(s.specificInstruments) && s.specificInstruments.length) {
+      setSelectedInstruments(new Set(s.specificInstruments.slice(0, 8)));
+      setArticulations({});
+    }
     // Seed the full slot structure. Pack slots are already in
     // {genre, sub, micro} format — just copy the reference (pad/truncate
     // to exactly 3 entries so picker state shape is stable).
@@ -27685,6 +27899,21 @@ function SunoMasterConsole() {
       if (lyricalVibe && lyricalVibe !== "Any") voiceBits.push(`${lyricalVibe.toLowerCase()} lyrical mode`);
       if (voiceBits.length) parts.push(voiceBits.join(", "));
     }
+    // Turn 2 feature set — instruments + articulations + lyrics
+    // Instruments render as "featuring: x, y, z" list. Articulations
+    // attach inline as "(articulation1, articulation2)" right after
+    // the instrument name so Suno sees them as scoped to the right
+    // instrument rather than free-floating descriptors.
+    if (selectedInstruments.size > 0) {
+      const instBits = Array.from(selectedInstruments).map(inst => {
+        const arts = articulations[inst];
+        if (arts instanceof Set && arts.size > 0) {
+          return `${inst} (${Array.from(arts).join(", ")})`;
+        }
+        return inst;
+      });
+      parts.push(`featuring: ${instBits.join(", ")}`);
+    }
     // Line 5: DNA block — pulled from ARTIST_VOCABULARY when available
     if (vocab) {
       const vParts = [];
@@ -27695,8 +27924,14 @@ function SunoMasterConsole() {
     } else if (activeArtist) {
       parts.push(`[in the style of: ${activeArtist.artistName} pack palette]`);
     }
+    // Lyrics block — appended last as a labeled section so Suno can
+    // parse it as lyric content rather than descriptor text. Only
+    // included when user has entered something AND mode is SONG.
+    if (lyricsOn && lyrics.trim().length > 0) {
+      parts.push(`[lyrics]\n${lyrics.trim()}`);
+    }
     return parts.join(". ");
-  }, [genrePhrase, mood, energy, groove, bpm, harmonic, texture, mix, vocalist, language, lyricalVibe, lyricsOn, vocab, activeArtist]);
+  }, [genrePhrase, mood, energy, groove, bpm, harmonic, texture, mix, vocalist, language, lyricalVibe, lyricsOn, vocab, activeArtist, selectedInstruments, articulations, lyrics]);
 
   const doCopy = async () => {
     try {
@@ -27828,6 +28063,40 @@ function SunoMasterConsole() {
           35%, 36% { opacity: 0.96; }
           72%, 73% { opacity: 0.9; }
         }
+        /* Depth-pass additions — make the console feel like a real
+           instrument sitting on a workspace, not a flat div. */
+        @keyframes smcPhosphorBreathe {
+          0%, 100% { box-shadow:
+            0 0 0 1px rgba(0,255,65,0.08),
+            0 0 24px -4px rgba(0,255,65,0.22),
+            0 40px 80px -24px rgba(0,0,0,0.9),
+            0 18px 36px -18px rgba(0,0,0,0.65),
+            inset 0 0 80px -20px rgba(0,255,65,0.05); }
+          50% { box-shadow:
+            0 0 0 1px rgba(0,255,65,0.14),
+            0 0 32px -4px rgba(0,255,65,0.32),
+            0 40px 80px -24px rgba(0,0,0,0.9),
+            0 18px 36px -18px rgba(0,0,0,0.65),
+            inset 0 0 80px -20px rgba(0,255,65,0.08); }
+        }
+        @keyframes smcLedA {
+          0%, 100% { opacity: 0.25; }
+          45%, 55% { opacity: 0.9; }
+        }
+        @keyframes smcLedB {
+          0%, 100% { opacity: 0.8; }
+          40%, 60% { opacity: 0.2; }
+        }
+        @keyframes smcLedC {
+          0%, 100% { opacity: 0.4; }
+          30%, 35% { opacity: 1; }
+          70%, 72% { opacity: 0.15; }
+        }
+        @keyframes smcLedD {
+          0%, 100% { opacity: 0.55; }
+          33%, 38% { opacity: 0.1; }
+          66%, 70% { opacity: 0.95; }
+        }
       `}</style>
 
       {/* Section header */}
@@ -27860,16 +28129,82 @@ function SunoMasterConsole() {
         </span>
       </div>
 
-      {/* ── CONSOLE FRAME ── */}
+      {/* ── DEPTH BEZEL LAYER ──────────────────────────────────
+          The console used to float on the page as a flat div. This
+          bezel + shadow surround gives it weight: the gradient bezel
+          reads as brushed-dark-chrome around a recessed screen, the
+          long shadow below makes the unit look like it's RESTING on
+          a dark workspace surface (not floating in white space). The
+          phosphor breathe animation drives a slow 6s pulse of green
+          emission bleeding from the screen's edges — subtle, not
+          distracting, reads as "powered on CRT" rather than "page
+          decoration".
+
+          The 4 corner LEDs (status pulses) hint at a real rack unit
+          with blinkenlights. Each LED uses a different duty cycle so
+          they don't pulse in sync — reads as independent status
+          channels, not animation. */}
       <div style={{
-        marginBottom: 32,
         position: "relative",
-        border: `1px solid ${GREEN_FAINT}`,
-        borderRadius: 6,
-        background: BLACK,
-        overflow: "hidden",
-        animation: "smcBootGlow 420ms ease-out",
+        marginBottom: 32,
+        padding: 8,
+        borderRadius: 10,
+        background: `linear-gradient(135deg,
+          #0e1310 0%,
+          #171c17 22%,
+          #0a0f0b 48%,
+          #141a15 72%,
+          #080b08 100%)`,
+        boxShadow: `
+          0 0 0 1px rgba(0,0,0,0.8),
+          inset 0 1px 0 rgba(255,255,255,0.04),
+          inset 0 -1px 0 rgba(0,0,0,0.6),
+          0 40px 80px -24px rgba(0,0,0,0.95),
+          0 18px 36px -18px rgba(0,0,0,0.7)
+        `,
       }}>
+        {/* Brushed chrome highlight — a single hairline catching light
+            across the top of the bezel. Gives the impression of a
+            rolled-metal edge rather than a painted border. */}
+        <div aria-hidden="true" style={{
+          position: "absolute", top: 1, left: 12, right: 12, height: 1,
+          background: `linear-gradient(90deg,
+            transparent 0%,
+            rgba(255,255,255,0.08) 20%,
+            rgba(255,255,255,0.14) 50%,
+            rgba(255,255,255,0.08) 80%,
+            transparent 100%)`,
+          pointerEvents: "none",
+        }} />
+        {/* Four status LEDs at the bezel corners — each at a different
+            duty cycle so they feel like independent status lights. */}
+        {[
+          { pos: { top: 5, left: 6 },     anim: "smcLedA 3.2s ease-in-out infinite" },
+          { pos: { top: 5, right: 6 },    anim: "smcLedB 2.7s ease-in-out infinite" },
+          { pos: { bottom: 5, left: 6 },  anim: "smcLedC 4.1s ease-in-out infinite" },
+          { pos: { bottom: 5, right: 6 }, anim: "smcLedD 3.8s ease-in-out infinite" },
+        ].map((led, i) => (
+          <div key={i} aria-hidden="true" style={{
+            position: "absolute",
+            width: 4, height: 4, borderRadius: "50%",
+            background: "#00FF41",
+            boxShadow: "0 0 6px #00FF41, 0 0 2px #00FF41",
+            animation: led.anim,
+            pointerEvents: "none",
+            zIndex: 2,
+            ...led.pos,
+          }} />
+        ))}
+
+        {/* ── CONSOLE FRAME ── */}
+        <div style={{
+          position: "relative",
+          border: `1px solid ${GREEN_FAINT}`,
+          borderRadius: 6,
+          background: BLACK,
+          overflow: "hidden",
+          animation: "smcBootGlow 420ms ease-out, smcPhosphorBreathe 6s ease-in-out infinite 420ms",
+        }}>
         {/* CRT scan-line overlay — scoped to this frame */}
         <div aria-hidden="true" style={{
           position: "absolute", inset: 0, zIndex: 2,
@@ -27883,6 +28218,30 @@ function SunoMasterConsole() {
           width: "80%", height: "80%", zIndex: 1,
           pointerEvents: "none",
           background: "radial-gradient(ellipse, rgba(0,255,65,0.06) 0%, transparent 60%)",
+        }} />
+        {/* Top-left counterpoint glow — balances the bottom-right
+            vignette so the screen has lit corners on both the strong
+            and weak axes. Cooler color bias (slightly more cyan than
+            the warm bottom-right green) simulates two different
+            phosphor zones fading in. Very low opacity — it's a mood,
+            not a highlight. */}
+        <div aria-hidden="true" style={{
+          position: "absolute", left: "-15%", top: "-20%",
+          width: "70%", height: "70%", zIndex: 1,
+          pointerEvents: "none",
+          background: "radial-gradient(ellipse, rgba(100,255,180,0.04) 0%, transparent 65%)",
+        }} />
+        {/* Inner phosphor ring — a faint green inset halo just inside
+            the screen's edge. Reads as the CRT's own phosphor
+            emission bleeding back into the frame rather than an
+            externally painted border. Inset box-shadow on the screen
+            itself would fight with the scan-lines z-index, so we do
+            it as a dedicated overlay. */}
+        <div aria-hidden="true" style={{
+          position: "absolute", inset: 0, zIndex: 1,
+          pointerEvents: "none",
+          borderRadius: 6,
+          boxShadow: "inset 0 0 60px -10px rgba(0,255,65,0.08), inset 0 0 4px rgba(0,255,65,0.12)",
         }} />
 
         {/* Terminal title bar */}
@@ -28078,7 +28437,8 @@ function SunoMasterConsole() {
                 because it's structurally bigger + more important
                 (it's the primary anchor of any prompt). The other
                 sliders stay in the 2-col grid below. */}
-            <div>
+            <div style={recessedPanel}>
+              {panelLegend("CH · 01 · STACK")}
               <div style={{
                 display: "flex", alignItems: "baseline", gap: 6,
                 marginBottom: 8,
@@ -28116,7 +28476,8 @@ function SunoMasterConsole() {
                 (instrumental hides VOCALIST / LANGUAGE / LYRICAL_VIBE
                 since those are meaningless without vocals). Styled
                 as a CRT dual-tab rail to match the terminal aesthetic. */}
-            <div>
+            <div style={recessedPanel}>
+              {panelLegend("CH · 02 · TYPE")}
               <div style={{
                 display: "flex", alignItems: "baseline", gap: 6,
                 marginBottom: 8,
@@ -28169,37 +28530,53 @@ function SunoMasterConsole() {
                 Mood / energy / groove / harmonic / texture / mix / BPM
                 as terminal-skinned dropdowns + slider. Laid out in a
                 2-column grid (single column on mobile). */}
-            <div style={{
-              display: "grid",
-              gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr",
-              gap: 14,
-            }}>
-              {slot("MOOD",      mood,      setMood,      MOODS_OPTIONS, "emotional tone")}
-              {slot("ENERGY",    energy,    setEnergy,    ENERGIES_OPTIONS, "dynamic arc")}
-              {slot("GROOVE",    groove,    setGroove,    GROOVES_OPTIONS, "rhythmic feel")}
-              {slot("HARMONIC",  harmonic,  setHarmonic,  HARMONIC_OPTIONS, "key character")}
-              {slot("TEXTURE",   texture,   setTexture,   TEXTURE_OPTIONS, "sonic feel")}
-              {slot("MIX",       mix,       setMix,       MIX_OPTIONS, "polish character")}
-              {/* BPM — slider rather than dropdown */}
-              <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
-                  <span style={{
-                    fontSize: 9, fontWeight: 700, letterSpacing: "0.22em",
-                    color: GREEN_DIM, fontFamily: T.font_mono,
-                  }}>▸ BPM</span>
-                  <span style={{
-                    fontSize: 11, color: GREEN, fontFamily: T.font_mono,
-                    fontWeight: 700,
-                  }}>{bpm}</span>
-                </div>
-                <input type="range" min="60" max="180" value={bpm}
-                  onChange={e => setBpm(parseInt(e.target.value, 10))}
+            <div style={recessedPanel}>
+              {panelLegend("CH · 03 · PARAMS")}
+              <div style={{
+                display: "flex", alignItems: "baseline", gap: 6,
+                marginBottom: 10,
+              }}>
+                <span style={{
+                  fontSize: 9, fontWeight: 700, letterSpacing: "0.22em",
+                  color: GREEN_DIM, fontFamily: T.font_mono,
+                }}>▸ SONIC_PARAMS</span>
+                <span style={{
+                  fontSize: 9, color: GREEN_MUTE, fontFamily: T.font_mono,
+                  letterSpacing: "0.05em",
+                }}>// mood · energy · groove · harmonic · texture · mix · bpm</span>
+              </div>
+              <div style={{
+                display: "grid",
+                gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr",
+                gap: 14,
+              }}>
+                {slot("MOOD",      mood,      setMood,      MOODS_OPTIONS, "emotional tone")}
+                {slot("ENERGY",    energy,    setEnergy,    ENERGIES_OPTIONS, "dynamic arc")}
+                {slot("GROOVE",    groove,    setGroove,    GROOVES_OPTIONS, "rhythmic feel")}
+                {slot("HARMONIC",  harmonic,  setHarmonic,  HARMONIC_OPTIONS, "key character")}
+                {slot("TEXTURE",   texture,   setTexture,   TEXTURE_OPTIONS, "sonic feel")}
+                {slot("MIX",       mix,       setMix,       MIX_OPTIONS, "polish character")}
+                {/* BPM — slider rather than dropdown */}
+                <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                  <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
+                    <span style={{
+                      fontSize: 9, fontWeight: 700, letterSpacing: "0.22em",
+                      color: GREEN_DIM, fontFamily: T.font_mono,
+                    }}>▸ BPM</span>
+                    <span style={{
+                      fontSize: 11, color: GREEN, fontFamily: T.font_mono,
+                      fontWeight: 700,
+                    }}>{bpm}</span>
+                  </div>
+                  <input type="range" min="60" max="180" value={bpm}
+                    onChange={e => setBpm(parseInt(e.target.value, 10))}
                   style={{
                     width: "100%",
                     accentColor: GREEN,
                   }}
                 />
               </div>
+            </div>
             </div>
 
             {/* ═══════ VOCAL MODE ═══════
@@ -28209,7 +28586,8 @@ function SunoMasterConsole() {
                 Gated render keeps the console tight and honest about
                 what's actually driving the prompt. */}
             {lyricsOn && (
-              <div>
+              <div style={recessedPanel}>
+                {panelLegend("CH · 04 · VOCAL")}
                 <div style={{
                   display: "flex", alignItems: "baseline", gap: 6,
                   marginBottom: 8,
@@ -28275,6 +28653,252 @@ function SunoMasterConsole() {
                     </select>
                   </div>
                   {slot("LYRICAL_VIBE", lyricalVibe, setLyricalVibe, LYRICAL_VIBES_OPTIONS, "lyric framing")}
+                </div>
+              </div>
+            )}
+
+            {/* ═══════ INSTRUMENTS ═══════
+                Multi-select chip panel pulled from SPECIFIC_INSTRUMENTS
+                nested catalog. Grouped by category (Keys / Synths /
+                Strings / Guitars / Bass / Drums / Percussion / Brass /
+                Woodwinds / World / Mallet / Voice+Choir). Click to
+                toggle. Selected chips get a solid green border + glow,
+                unselected stay with a faint dashed border. Limit of 8
+                selections to keep the prompt focused — over 8, the
+                list becomes noise to Suno. */}
+            <div style={recessedPanel}>
+              {panelLegend("CH · 05 · INSTR")}
+              <div style={{
+                display: "flex", alignItems: "baseline", gap: 6,
+                marginBottom: 10,
+              }}>
+                <span style={{
+                  fontSize: 9, fontWeight: 700, letterSpacing: "0.22em",
+                  color: GREEN_DIM, fontFamily: T.font_mono,
+                }}>▸ SPECIFIC_INSTRUMENTS</span>
+                <span style={{
+                  fontSize: 9, color: GREEN_MUTE, fontFamily: T.font_mono,
+                  letterSpacing: "0.05em",
+                }}>// {selectedInstruments.size}/8 selected · click to toggle</span>
+              </div>
+              <div style={{
+                display: "flex", flexDirection: "column", gap: 8,
+                maxHeight: isMobile ? "38vh" : "32vh",
+                overflowY: "auto",
+                paddingRight: 4,
+              }}>
+                {Object.entries(SPECIFIC_INSTRUMENTS).map(([cat, entries]) => (
+                  <div key={cat}>
+                    <div style={{
+                      fontSize: 8, fontFamily: T.font_mono, fontWeight: 700,
+                      color: GREEN_MUTE, letterSpacing: "0.22em",
+                      marginBottom: 4,
+                    }}>▸ {cat.toUpperCase()}</div>
+                    <div style={{
+                      display: "flex", flexWrap: "wrap", gap: 4,
+                    }}>
+                      {Object.keys(entries).map(inst => {
+                        const isSelected = selectedInstruments.has(inst);
+                        const atCap = !isSelected && selectedInstruments.size >= 8;
+                        return (
+                          <button key={inst} type="button"
+                            disabled={atCap}
+                            onClick={() => {
+                              playSwitchSound();
+                              setSelectedInstruments(prev => {
+                                const next = new Set(prev);
+                                if (next.has(inst)) {
+                                  next.delete(inst);
+                                  // Also drop any articulations for this inst
+                                  setArticulations(prevArt => {
+                                    const nextArt = { ...prevArt };
+                                    delete nextArt[inst];
+                                    return nextArt;
+                                  });
+                                } else {
+                                  next.add(inst);
+                                }
+                                return next;
+                              });
+                            }}
+                            style={{
+                              padding: "4px 9px",
+                              background: isSelected ? "rgba(0, 255, 65, 0.10)" : "transparent",
+                              border: `1px ${isSelected ? "solid" : "dashed"} ${isSelected ? GREEN : GREEN_FAINT}`,
+                              borderRadius: 3,
+                              color: isSelected ? GREEN_HI : atCap ? GREEN_MUTE : GREEN_DIM,
+                              fontFamily: T.font_mono, fontSize: 10, fontWeight: 600,
+                              letterSpacing: "0.02em",
+                              cursor: atCap ? "not-allowed" : "pointer",
+                              opacity: atCap ? 0.4 : 1,
+                              textShadow: isSelected ? `0 0 4px ${GREEN_MUTE}` : "none",
+                              transition: `all ${T.dur_fast} ${T.ease}`,
+                            }}
+                            onMouseEnter={e => {
+                              if (!isSelected && !atCap) e.currentTarget.style.borderColor = GREEN_DIM;
+                            }}
+                            onMouseLeave={e => {
+                              if (!isSelected && !atCap) e.currentTarget.style.borderColor = GREEN_FAINT;
+                            }}
+                          >{inst}</button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* ═══════ ARTICULATIONS ═══════
+                Shown only when instruments are selected. For each
+                selected instrument, render a row of its available
+                articulations (pulled from SPECIFIC_INSTRUMENTS nested
+                arrays). Toggling articulations adds/removes them from
+                the state.articulations[instrument] Set. Collapses to
+                nothing when no instruments are picked — keeps the
+                console tight. */}
+            {selectedInstruments.size > 0 && (
+              <div style={recessedPanel}>
+                {panelLegend("CH · 06 · ARTIC")}
+                <div style={{
+                  display: "flex", alignItems: "baseline", gap: 6,
+                  marginBottom: 10,
+                }}>
+                  <span style={{
+                    fontSize: 9, fontWeight: 700, letterSpacing: "0.22em",
+                    color: GREEN_DIM, fontFamily: T.font_mono,
+                  }}>▸ ARTICULATIONS</span>
+                  <span style={{
+                    fontSize: 9, color: GREEN_MUTE, fontFamily: T.font_mono,
+                    letterSpacing: "0.05em",
+                  }}>// playing technique per instrument · optional</span>
+                </div>
+                <div style={{
+                  display: "flex", flexDirection: "column", gap: 10,
+                  maxHeight: isMobile ? "32vh" : "28vh",
+                  overflowY: "auto",
+                  paddingRight: 4,
+                }}>
+                  {Array.from(selectedInstruments).map(inst => {
+                    // Find the instrument's articulation list by scanning the
+                    // SPECIFIC_INSTRUMENTS categories (inst is unique across
+                    // the catalog, so first-hit wins).
+                    let articList = null;
+                    for (const cat of Object.values(SPECIFIC_INSTRUMENTS)) {
+                      if (cat[inst]) { articList = cat[inst]; break; }
+                    }
+                    if (!articList || articList.length === 0) return null;
+                    const selectedArtics = articulations[inst] || new Set();
+                    return (
+                      <div key={inst}>
+                        <div style={{
+                          fontSize: 8, fontFamily: T.font_mono, fontWeight: 700,
+                          color: GREEN_MUTE, letterSpacing: "0.22em",
+                          marginBottom: 4,
+                        }}>▸ {inst.toUpperCase()}</div>
+                        <div style={{
+                          display: "flex", flexWrap: "wrap", gap: 4,
+                        }}>
+                          {articList.map(art => {
+                            const isSel = selectedArtics instanceof Set && selectedArtics.has(art);
+                            return (
+                              <button key={art} type="button"
+                                onClick={() => {
+                                  playSwitchSound();
+                                  setArticulations(prev => {
+                                    const prevSet = prev[inst] instanceof Set ? prev[inst] : new Set();
+                                    const next = new Set(prevSet);
+                                    if (next.has(art)) next.delete(art);
+                                    else next.add(art);
+                                    return { ...prev, [inst]: next };
+                                  });
+                                }}
+                                style={{
+                                  padding: "3px 8px",
+                                  background: isSel ? "rgba(0, 255, 65, 0.08)" : "transparent",
+                                  border: `1px ${isSel ? "solid" : "dashed"} ${isSel ? GREEN_DIM : GREEN_FAINT}`,
+                                  borderRadius: 3,
+                                  color: isSel ? GREEN : GREEN_DIM,
+                                  fontFamily: T.font_mono, fontSize: 9, fontWeight: 500,
+                                  letterSpacing: "0.02em",
+                                  cursor: "pointer",
+                                  transition: `all ${T.dur_fast} ${T.ease}`,
+                                }}
+                              >{art}</button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* ═══════ LYRICS ═══════
+                Admin-exclusive freeform textarea for custom lyric
+                content. Only renders in SONG mode — instrumental mode
+                hides it (lyrics mean nothing without vocals). Character
+                + line counters update live. 2400 char soft cap keeps
+                Suno's input happy (their limit floats around there).
+                Cleared automatically when switching to INSTRUMENTAL. */}
+            {lyricsOn && (
+              <div style={recessedPanel}>
+                {panelLegend("CH · 07 · LYRICS")}
+                <div style={{
+                  display: "flex", alignItems: "baseline", gap: 6,
+                  marginBottom: 10,
+                }}>
+                  <span style={{
+                    fontSize: 9, fontWeight: 700, letterSpacing: "0.22em",
+                    color: GREEN_DIM, fontFamily: T.font_mono,
+                  }}>▸ LYRICS</span>
+                  <span style={{
+                    fontSize: 9, color: GREEN_MUTE, fontFamily: T.font_mono,
+                    letterSpacing: "0.05em",
+                  }}>// freeform text · optional · paste verses / chorus / bridge</span>
+                </div>
+                <textarea
+                  value={lyrics}
+                  onChange={e => setLyrics(e.target.value.slice(0, 2400))}
+                  placeholder={`[Verse 1]\nyour words here...\n\n[Chorus]\nyour hook here...`}
+                  style={{
+                    width: "100%", boxSizing: "border-box",
+                    minHeight: 110,
+                    padding: "10px 12px",
+                    background: BLACK,
+                    border: `1px solid ${GREEN_FAINT}`,
+                    borderRadius: 3,
+                    color: GREEN_HI,
+                    fontFamily: T.font_mono,
+                    fontSize: isMobile ? 16 : 12,
+                    lineHeight: 1.55,
+                    letterSpacing: "0.01em",
+                    resize: "vertical",
+                    outline: "none",
+                    textShadow: `0 0 3px ${GREEN_MUTE}`,
+                  }}
+                  onFocus={e => { e.currentTarget.style.borderColor = GREEN_DIM; }}
+                  onBlur={e => { e.currentTarget.style.borderColor = GREEN_FAINT; }}
+                />
+                <div style={{
+                  display: "flex", justifyContent: "space-between",
+                  marginTop: 4,
+                  fontFamily: T.font_mono, fontSize: 9,
+                  color: GREEN_MUTE, letterSpacing: "0.08em",
+                }}>
+                  <span>{lyrics.length}/2400 chars · {lyrics.split(/\r?\n/).filter(l => l.trim()).length} lines</span>
+                  {lyrics.length > 0 && (
+                    <button type="button"
+                      onClick={() => { playSwitchSound(); setLyrics(""); }}
+                      style={{
+                        background: "transparent", border: "none",
+                        color: GREEN_MUTE, fontFamily: T.font_mono, fontSize: 9,
+                        fontWeight: 700, letterSpacing: "0.12em",
+                        cursor: "pointer", padding: 0,
+                      }}
+                    >CLEAR</button>
+                  )}
                 </div>
               </div>
             )}
@@ -28358,6 +28982,10 @@ function SunoMasterConsole() {
               <div>length: {prompt.length} chars</div>
               <div>genre_slots: {slots.filter(Boolean).length}/3 · locked: {slotLocks.filter(Boolean).length}</div>
               <div>mode: {lyricsOn ? "song" : "instrumental"}{lyricsOn && language !== "en" ? ` · ${language}` : ""}</div>
+              <div>instruments: {selectedInstruments.size}/8{selectedInstruments.size > 0 ? ` · articulations: ${Object.values(articulations).reduce((a,s) => a + (s instanceof Set ? s.size : 0), 0)}` : ""}</div>
+              {lyricsOn && lyrics.length > 0 && (
+                <div>lyrics: {lyrics.length} chars · {lyrics.split(/\r?\n/).filter(l => l.trim()).length} lines</div>
+              )}
               <div>dna_source: {vocab ? "ARTIST_VOCABULARY" : "pack_palette_fallback"}</div>
             </div>
           </div>
@@ -28380,6 +29008,9 @@ function SunoMasterConsole() {
           <span>•</span>
           <span>{activeArtist?.artistName || "—"}</span>
         </div>
+      </div>
+      {/* End bezel wrapper — contains the console frame + corner LEDs.
+          Without this close the layout structure breaks. */}
       </div>
     </>
   );
